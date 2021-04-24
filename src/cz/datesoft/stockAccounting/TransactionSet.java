@@ -1,0 +1,725 @@
+/*
+ * TransactionSet.java
+ *
+ * Created on 6. říjen 2006, 17:36
+ *
+ * Main class holding data
+ */
+
+package cz.datesoft.stockAccounting;
+
+import java.util.Date;
+import java.util.Iterator;
+import java.util.Vector;
+import java.util.GregorianCalendar;
+import java.io.File;
+import java.io.PrintWriter;
+import java.io.BufferedReader;
+import cz.datesoft.stockAccounting.imp.*;
+
+/**
+ *
+ * @author lemming2
+ */
+public class TransactionSet extends javax.swing.table.AbstractTableModel
+{
+  /** Import format constants */
+  public final int IMPORT_FORMAT_FIO = 1;
+  public final int IMPORT_FORMAT_BJ_HTML = 2;
+  public final int IMPORT_FORMAT_IB_TRADELOG = 3;
+  
+  /** Our set */
+  protected Vector<Transaction> rows;
+
+  /**
+   * Filtered set. When not null, we are showing this filtered set
+   * instead of the complete one. But we still hold / save / enumerate / ...
+   * the complete, filtering affects only table model.
+   */
+  protected Vector<Transaction> filteredRows;
+  
+  /** Serial counter */
+  protected int serialCounter;
+  
+  /**
+   * Last date we set
+   */
+  protected Date lastDateSet;
+  
+  /** Column names */
+  private String[] columnNames = { "Datum", "Typ", "Směr", "Ticker", "Množství", "Kurs", "Měna kursu", "Poplatky", "Měna poplatků", "Trh", "Datum vypořádání" };
+
+  /**
+   * File we are stored in
+   */
+  private File diskFile;
+  
+  /**
+   * Whether we are modified
+   */
+  boolean modified;
+  
+  /**
+   * Combo box model we manage
+   */
+  SortedSetComboBoxModel cbmodel;
+  
+  /** Creates a new instance of TransactionSet */
+  public TransactionSet()
+  {
+     rows = new Vector<Transaction>();
+     
+     serialCounter = 1;
+     
+     cbmodel = new SortedSetComboBoxModel();
+  }
+
+  /**
+   * Read line
+   */
+  static public String[] readLine(BufferedReader ifl)
+  {
+    String res[] = new String[2];
+
+    try {
+      String line = ifl.readLine();
+      int sp,p;
+
+      if (line == null) return res; // Return initializes - two nulls
+
+      // Skip spaces at the beginning
+      sp = 0;
+      while(sp < line.length() && (line.charAt(sp) == ' ')) sp++;
+
+      // Find =
+      p = line.indexOf('=',sp);
+
+      if (p < 0) {
+        // Only one element
+        res[0] = line.substring(sp);
+        return res;
+      }
+
+      // name=value - split at =
+      res[0] = line.substring(sp,p);
+      res[1] = line.substring(p+1);
+    }
+    catch (java.io.IOException e) {}
+
+    return res;
+  }
+
+  /**
+   * Parse date from text to date object
+   */
+  public static Date parseDate(String dateTxt)
+  {
+    GregorianCalendar cal = new GregorianCalendar();
+    String a[] = dateTxt.split("[\\. :]");
+
+    if (a.length != 5) return cal.getTime();
+
+    cal.set(GregorianCalendar.DAY_OF_MONTH,Integer.parseInt(a[0]));
+    cal.set(GregorianCalendar.MONTH,Integer.parseInt(a[1])-1);
+    cal.set(GregorianCalendar.YEAR,Integer.parseInt(a[2]));
+    cal.set(GregorianCalendar.HOUR_OF_DAY,Integer.parseInt(a[3]));
+    cal.set(GregorianCalendar.MINUTE,Integer.parseInt(a[4]));
+    cal.set(GregorianCalendar.SECOND,0);
+    cal.set(GregorianCalendar.MILLISECOND,0);
+
+    return cal.getTime();
+  }
+
+  /** Add new transaction */
+  public synchronized Transaction addTransaction(Date date, int direction, String ticker, double amount, double price, String priceCurrency, double fee, String feeCurrency, String market, Date executionDate) throws Exception
+  {
+    Transaction tx = new Transaction(serialCounter++, date, direction, ticker, amount, price, priceCurrency, fee, feeCurrency, market, executionDate);
+    rows.add(tx);
+    if (filteredRows != null) filteredRows.add(tx);
+
+    if (date != null) lastDateSet = date;
+    
+    fireTableDataChanged();
+    
+    return tx;
+  }
+  
+  /**
+   * Whether is set modified
+   */
+  public boolean isModified()
+  {
+    return modified;
+  }
+  
+  /**
+   * Sort transaction vector
+   */
+  public void sort()
+  {
+    // Get rows as an array
+    Transaction[] arr = new Transaction[rows.size()];
+    rows.copyInto(arr);
+    
+    // Sort the array
+    java.util.Arrays.sort(arr);
+    
+    // Put array back to the rows
+    for(int i=0;i<arr.length;i++) rows.set(i,arr[i]);
+    
+    if (filteredRows == null) fireTableDataChanged();
+  }
+
+  /**
+   * Get value for table
+   */
+  public Object getValueAt(int row,int col)
+  {
+    Vector<Transaction> v = (filteredRows != null)?filteredRows:rows;
+
+    if (row >= v.size()) return null;
+    
+    Transaction tx = v.get(row);
+    
+    switch(col) {
+      case 0:
+        return tx.getDate();
+      case 1:
+        return tx.getStringType();
+      case 2:
+        return tx.getStringDirection();
+      case 3:
+        return tx.getTicker();
+      case 4:
+        return tx.getAmount();
+      case 5:
+        return tx.getPrice();
+      case 6:
+        return tx.getPriceCurrency();
+      case 7:
+        return tx.getFee();
+      case 8:
+        return tx.getFeeCurrency();
+      case 9:
+        return tx.getMarket();
+      case 10:
+        return tx.getExecutionDate();
+      default:
+        return null;
+    }
+  }
+  
+  /**
+   * Set value for table
+   */
+  @Override
+  public void setValueAt(Object value, int row, int col)
+  {
+    Transaction tx;
+    Vector<Transaction> v = (filteredRows != null)?filteredRows:rows;
+    
+    if (row == v.size()) {
+      if (value == null) return; // Don't add when null is set
+      
+      // Add new transaction
+      tx = new Transaction(serialCounter++);
+      
+      v.add(tx);
+      
+      fireTableRowsInserted(v.size()-1, v.size()-1);
+    }
+    else tx = v.get(row);
+    
+    switch(col) {
+      case 0:
+        if (value != null) lastDateSet = (Date)value; // Update last date set
+        tx.setDate((Date)value);
+        fireTableCellUpdated(row, col);
+        break;
+      case 1:
+        tx.setType((String)value);
+        fireTableCellUpdated(row, col);
+        fireTableCellUpdated(row, col+1); // Direction also might got updated
+        break;
+      case 2:
+        tx.setDirection((String)value);
+        fireTableCellUpdated(row, col);
+        break;
+      case 3:
+        String s = (String)value;
+        tx.setTicker(s);
+        if (s != null) {
+          if (s.length() > 0) cbmodel.putItem(((String)value).toUpperCase());
+        }
+        fireTableCellUpdated(row, col);
+        break;
+      case 4:
+        tx.setAmount((Double)value);
+        fireTableCellUpdated(row, col);
+        break;
+      case 5:
+        tx.setPrice((Double)value);
+        fireTableCellUpdated(row, col);
+        break;
+      case 6:
+        tx.setPriceCurrency((String)value);
+        if (tx.getFeeCurrency() == null) {
+          tx.setFeeCurrency((String)value); // Default fee currency to price currency
+          fireTableCellUpdated(row, 7);
+        }
+        fireTableCellUpdated(row, col);
+        break;
+      case 7:
+        tx.setFee((Double)value);
+        fireTableCellUpdated(row, col);
+        break;
+      case 8:
+        tx.setFeeCurrency((String)value);
+        if (tx.getPriceCurrency() == null) {
+          tx.setPriceCurrency((String)value); // Default price currency to fee currency
+          fireTableCellUpdated(row, 5);
+        }
+        fireTableCellUpdated(row, col);
+        break;
+      case 9:
+        tx.setMarket((String)value);
+        fireTableCellUpdated(row, col);
+        break;
+      case 10:
+        tx.setExecutionDate((Date)value);
+        fireTableCellUpdated(row, col);
+        break;        
+    }
+    
+    modified = true;
+  }
+  
+
+  /**
+   * Get column count (for table)
+   */
+  public int getColumnCount()
+  {
+    return columnNames.length;
+  }
+  
+  /**
+   * Get row count (for table)
+   */
+  public int getRowCount()
+  {
+    return ((filteredRows!=null)?filteredRows:rows).size()+1;
+  }
+  
+  /**
+   * Get column class (for table)
+   */
+  @Override
+  public Class getColumnClass(int c)
+  {
+    switch(c) {
+      case 0:
+      case 1:
+      case 2:
+      case 3:
+      case 6:
+      case 8:
+      case 9:
+      case 10:
+        return String.class;
+      case 5:
+      case 7:
+      case 4:
+        return Double.class;
+      default:
+        return Object.class;
+    }
+  }
+    
+  /** 
+   * Get column name (for table)
+   */
+  @Override
+  public String getColumnName(int col)
+  {
+    return columnNames[col];
+  }
+
+  /**
+   * Get column editable
+   */
+  @Override
+  public boolean isCellEditable(int row, int column)
+  {
+    return true;
+  }
+
+  /**
+   * Get transaction at the given offset
+   *
+   * @param row Row to get
+   *
+   * @return Transaction at the given row
+   */
+  public Transaction getRowAt(int row)
+  {
+    Vector<Transaction> v = (filteredRows != null)?filteredRows:rows;
+
+    return v.get(row);
+  }
+
+  /**
+   * Get last date we set so it can be used as a default for next date...
+   */
+  public Date getLastDateSet()
+  {
+    return lastDateSet;
+  }
+  
+  /**
+   * Get our file
+   */
+  public File getFile() { return diskFile; }
+
+  /**
+   * Save specified row set to a file
+   */
+  private void saveInternal(Vector<Transaction> rows, File dstFile) throws java.io.FileNotFoundException, java.io.IOException
+  {
+    PrintWriter ofl = new PrintWriter(new java.io.BufferedWriter(new java.io.FileWriter(dstFile)));
+    
+    try {
+      GregorianCalendar cal = new GregorianCalendar();
+      
+      ofl.println("version=1");
+      ofl.println("serialCounter="+serialCounter);
+      if (lastDateSet == null) lastDateSet = getMaxDate();
+      if (lastDateSet == null) {
+        ofl.println("lastDateSet=null");
+      }
+      else {
+        cal.setTime(lastDateSet);
+        ofl.println("lastDateSet="+cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+cal.get(GregorianCalendar.MINUTE));
+      }
+      
+      for(int i=0;i<rows.size();i++) {
+        Transaction tx = rows.elementAt(i);
+        
+        if (tx.isFilledIn()) {        
+          ofl.println("row (");
+          tx.save(ofl,"  ");
+          ofl.println(")");
+        }
+      }
+    }
+    finally  {
+      try { ofl.close(); } catch (Exception e) {}
+    }
+    
+    diskFile = dstFile;
+    
+    modified = false;
+  }
+  
+  /**
+   * Save all rows to a file
+   */
+  public void save(File dstFile) throws java.io.FileNotFoundException, java.io.IOException
+  {
+    saveInternal(rows, dstFile);
+  }
+
+  /**
+   * Save all rows to a file
+   */
+  public void saveFiltered(File dstFile) throws java.io.FileNotFoundException, java.io.IOException
+  {
+    if (filteredRows == null) throw new IllegalStateException("Filter not active");
+    saveInternal(filteredRows, dstFile);
+  }
+
+  /**
+   * Clear data
+   */
+  public void clear()
+  {
+    rows.clear();
+    filteredRows = null;
+    cbmodel.removeAllElements();
+    serialCounter = 1;
+
+    fireTableDataChanged();
+  }
+  
+  /**
+   * Load from a file
+   */
+  public void load(File srcFile) throws java.io.FileNotFoundException, java.io.IOException
+  {
+    BufferedReader ifl = new BufferedReader(new java.io.FileReader(srcFile));
+    String a[];
+
+    // Initialize
+    rows.clear();
+    filteredRows = null;
+    cbmodel.removeAllElements();
+    serialCounter = 1;
+    
+    a = readLine(ifl);
+    
+    if (a[0] == null) {
+      // No data(?)
+      ifl.close();
+      return;
+    }
+    
+    if (!a[0].equals("version")) {
+      // Version not first?
+      ifl.close();
+      return;
+    }
+    
+    if (!a[1].equals("1")) {
+      // Version not equal
+      ifl.close();
+      return;
+    }
+    
+    // Start reading lines
+    for(;;) {
+      a = readLine(ifl);
+      if (a[0] == null) break;
+
+      if (a[0].equals("row (")) {
+        // Add row
+        Transaction tx = new Transaction(ifl);
+        rows.add(tx);
+        
+        cbmodel.putItem(tx.ticker.toUpperCase());
+      }
+      else if (a[0].equals("serialCounter")) this.serialCounter = Integer.parseInt(a[1]);
+      else if (a[0].equals("lastDateSet")) {
+        if (a[1].equalsIgnoreCase("null")) this.lastDateSet = null;
+        else this.lastDateSet = parseDate(a[1]);
+      }
+    }
+    
+    sort();
+
+    // We don't fire data changed event, since it is alreday done by the sort()
+    
+    diskFile = srcFile;
+    modified = false;
+  }
+  
+  /**
+   * Delete row
+   *
+   * @param rowNo Row to delete
+   *
+   * @return Whether row was deleted
+   */
+  boolean deleteRow(int rowNo)
+  {
+    if (filteredRows != null) {
+      if ((rowNo < 0) || (rowNo >= filteredRows.size())) return false; // Last row or out of range
+
+      // Delete in original rows
+      rows.remove(filteredRows.get(rowNo));
+
+      // Delete in filtered rows
+      filteredRows.remove(rowNo);
+    }
+    else {
+      if ((rowNo < 0) || (rowNo >= rows.size())) return false; // Last row or out of range
+
+      // Remove
+      rows.remove(rowNo);
+    }
+    
+    fireTableRowsDeleted(rowNo, rowNo);
+    
+    return true;
+  }
+  
+  /**
+   * Get combo box model containing ticker names
+   */
+  public SortedSetComboBoxModel getTickersModel()
+  {
+    return cbmodel;
+  }
+
+  /**
+   * Get max date
+   */
+  public Date getMaxDate()
+  {
+    Date res = null;
+    
+    for(Iterator<Transaction> i=rows.iterator();i.hasNext();) {
+      if (res == null) res = i.next().getDate();
+      else {
+        Date d = i.next().getDate();
+        if (d != null) {
+          if (d.compareTo(res) > 0) res = d;
+        }
+      }
+    }
+    
+    return res;
+  }
+  
+  /**
+   * Import from a file
+   */
+  public void importFile(File srcFile, Date startDate, Date endDate, int format, Vector<String[]> notImported) throws ImportException, java.io.IOException
+  {
+    ImportBase importer = null;
+    
+    if (format == IMPORT_FORMAT_FIO) importer = new ImportFio();
+    else if (format == IMPORT_FORMAT_BJ_HTML) importer = new ImportBjHTML();
+    else if (format == IMPORT_FORMAT_IB_TRADELOG) importer = new ImportIBTradeLog();
+    else throw new ImportException("Unrecognized import format number!");
+    
+    Vector<Transaction> txs = importer.doImport(srcFile, startDate, endDate, notImported);
+    
+    // Pass resulting transactions
+    rows.clear();
+    for(Transaction tx : txs) {
+      tx.setSerial(serialCounter++);
+      rows.add(tx);
+    }
+    
+    sort();
+
+    // We don't fire data changed event, since it is alreday done by the sort()    
+    diskFile = null;
+    modified = false;    
+  }
+      
+  /**
+   * Merge data of our set to another set
+   */
+  public void mergeTo(TransactionSet dstSet) throws Exception
+  {
+    for(int i=0;i<rows.size();i++) {
+      Transaction tx = rows.get(i);
+
+      dstSet.addTransaction(tx.getDate(),tx.getDirection().intValue(),tx.getTicker(),tx.getAmount().intValue(),tx.getPrice().doubleValue(),tx.getPriceCurrency(),tx.getFee().doubleValue(),tx.getFeeCurrency(), tx.getMarket(), tx.getExecutionDate());
+    }
+    
+    // Sort destination
+    dstSet.sort();
+  }
+  
+  /**
+   * Get iterator over transactions
+   */
+  public Iterator<Transaction> iterator()
+  {
+    return rows.iterator();
+  }
+  
+  /**
+   * Export set to a file
+   */
+  public void export(File file) throws Exception
+  {
+    java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file));
+    
+    // Write header
+    ofl.println("Datum;Typ;Směr;Ticker;Množství;Kurs;Měna kursu;Poplatky;Měna poplatků;Trh");
+    
+    // Start writing rows
+    for(Transaction t : rows) {
+      t.export(ofl);
+    }
+    
+    ofl.close();
+  }
+
+  /**
+   * Clear filtering of the rows
+   */
+  public void clearFilter()
+  {
+    if (filteredRows != null) {
+      filteredRows = null;
+      fireTableDataChanged();
+    }
+  }
+
+  /**
+   * Create filtered set of rows
+   *
+   * @param from Minimum date. Must be present.
+   * @param to Maximum date. Must be present. All transactions on this date will go to the filtered set.
+   * @param ticker Ticker to filter (or null to filter all tickers)
+   * @param market Market to filter (or null to filter all markets)
+   */
+  public void applyFilter(Date from, Date to, String ticker, String market)
+  {
+    /* Preprocess to date */
+    GregorianCalendar gc = new GregorianCalendar();
+    gc.setTime(to);
+
+    // Move time to next midnight
+    gc.add(GregorianCalendar.DAY_OF_MONTH, 1);
+    gc.set(GregorianCalendar.HOUR_OF_DAY, 0);
+    gc.set(GregorianCalendar.MINUTE, 0);
+    gc.set(GregorianCalendar.SECOND, 0);
+    gc.set(GregorianCalendar.MILLISECOND, 0);
+
+    Date to2 = gc.getTime();
+
+    // Preprocess ticker
+    boolean tickerWild = false;
+    String tickerPrefix = null;
+    int tpLen = 0;
+    if (ticker != null) {
+      if (ticker.length() > 0) {
+        if (ticker.charAt(ticker.length()-1) == '*') {
+          // Found wildcard
+          tickerWild = true;
+          tickerPrefix = ticker.substring(0, ticker.length()-1);
+          tpLen = tickerPrefix.length();
+        }
+      }
+    }
+
+    // Create set
+    Vector<Transaction> v =  new Vector<Transaction>();
+
+    // Run filter
+    for(Transaction tx : rows) {
+      if ((!tx.date.before(from)) && (tx.date.before(to2))) {
+        // Date OK
+
+        // Check ticker
+        if (tickerWild) {
+          if (tx.ticker.length() < tpLen) continue; // Too short - cannot match
+          if (!tx.ticker.substring(0, tpLen).equalsIgnoreCase(tickerPrefix)) continue; // No match
+        }
+        else {
+          if (ticker != null) {
+            if (!tx.ticker.equalsIgnoreCase(ticker)) continue; // Different ticker - does not pass filter
+          }
+        }
+
+        // Check market
+        if (market != null) {
+          if (!tx.market.equalsIgnoreCase(market)) continue; // Different ticker - does not pass filter
+        }
+
+        // OK, add
+        v.add(tx);
+      }
+    }
+
+    // Set filtered rows and notify
+    filteredRows = v;
+    fireTableDataChanged();
+  }
+}
+

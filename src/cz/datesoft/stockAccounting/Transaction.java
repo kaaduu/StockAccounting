@@ -1,0 +1,568 @@
+/*
+ * Transaction.java
+ *
+ * Created on 26. únor 2008, 21:00
+ *
+ * To change this template, choose Tools | Template Manager
+ * and open the template in the editor.
+ */
+
+package cz.datesoft.stockAccounting;
+
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.text.DecimalFormat;
+import java.io.BufferedReader;
+import java.io.PrintWriter;
+
+/**
+ * Transaction (buy or sell)
+ */
+public class Transaction implements java.lang.Comparable, java.io.Serializable
+{
+  /** Direction constants */
+  public static final int DIRECTION_SBUY = 1;
+  public static final int DIRECTION_SSELL = -1;
+  public static final int DIRECTION_TRANS_ADD = 2;
+  public static final int DIRECTION_TRANS_SUB = -2;
+  public static final int DIRECTION_DBUY = 3;
+  public static final int DIRECTION_DSELL = -3;
+  public static final int DIRECTION_CBUY = 4;
+  public static final int DIRECTION_CSELL = -4;
+  public static final int DIRECTION_DIVI_BRUTTO = 10;
+  public static final int DIRECTION_DIVI_NETTO15 = 11;
+  public static final int DIRECTION_DIVI_TAX = 12;
+  public static final int DIRECTION_DIVI_UNKNOWN = 13;
+  
+  /** Serial number - used in sorting when dates equal */
+  int serial;
+  
+  /** Date */
+  Date date;
+  
+  /** Direction */
+  int direction;
+  
+  /** Ticker */
+  String ticker;
+  
+  /** Amount. Amount is double because due to splits etc. there can be non-integer amount */
+  Double amount;
+  
+  /** Price */
+  Double price;
+  
+  /** Price currency */
+  String priceCurrency;
+  
+  /** Fee */
+  Double fee;
+  
+  /** Fee currency */
+  String feeCurrency;
+  
+  /** Local double number format */
+  DecimalFormat ff;
+  
+  /** Market */
+  String market;
+  
+  /** Execution date */
+  Date executionDate;
+
+  /**
+   * Clear seconds and miliseconds in the date
+   */
+  private static Date clearSMS(Date d)
+  {
+    GregorianCalendar cal = new GregorianCalendar();
+    
+    cal.setTime(d);
+    cal.set(GregorianCalendar.SECOND,0);
+    cal.set(GregorianCalendar.MILLISECOND,0);
+    
+    return cal.getTime();
+  }
+    
+  /**
+   * Create "empty" transaction, just with a serial
+   */
+  protected Transaction(int serial)
+  {
+    ff = new DecimalFormat("#.#######");
+    
+    this.serial = serial;
+    
+    this.date = null;
+    this.direction = 0;
+    this.ticker = null;
+    this.amount = null;
+    this.price = null;
+    this.priceCurrency = null;
+    this.fee = null;
+    this.feeCurrency = null;
+    this.market = null;
+  }
+  
+  /**
+   * Create transaction from a file
+   */
+  protected Transaction(BufferedReader ifl)
+  {
+    ff = new DecimalFormat("#.#######");
+    
+    this.serial = 0;
+    this.date = null;
+    this.direction = 0;
+    this.ticker = null;
+    this.amount = null;
+    this.price = null;
+    this.priceCurrency = null;
+    this.fee = null;
+    this.feeCurrency = null;
+    this.market = null;
+    
+    String a[];
+    for(;;)
+    {
+      a = TransactionSet.readLine(ifl);
+      
+      if (a[0] == null) break; // Done - EOF
+      if (a[0].equals(")")) break; // Done - end of row
+      
+      if (a[0].equals("serial")) this.serial = Integer.parseInt(a[1]);
+      else if (a[0].equals("date")) this.date = TransactionSet.parseDate(a[1]);
+      else if (a[0].equals("direction")) this.direction = Integer.parseInt(a[1]);
+      else if (a[0].equals("ticker"))
+      {
+        if (a[1].length() > 0) this.ticker = a[1];
+      }
+      else if (a[0].equals("amount"))
+      {
+        if (a[1] != null)
+          this.amount = Double.parseDouble(a[1]);
+      }
+      else if (a[0].equals("price"))
+      {
+        if (!a[1].equals("null")) this.price = Double.parseDouble(a[1]);
+      }
+      else if (a[0].equals("priceCurrency"))
+      {
+        if (!a[1].equals("null")) this.priceCurrency = a[1];
+      }
+      else if (a[0].equals("fee"))
+      {
+        if (!a[1].equals("null")) this.fee = Double.parseDouble(a[1]);
+      }
+      else if (a[0].equals("feeCurrency"))
+      {
+        if (!a[1].equals("null")) this.feeCurrency = a[1];
+      }
+      else if (a[0].equals("market"))
+      {
+        if (!a[1].equals("null")) this.market = a[1];
+      }
+      else if (a[0].equals("exDate"))
+      {
+        this.executionDate = TransactionSet.parseDate(a[1]);
+      }
+    }
+
+    /*
+    // Fix type
+    if (this.market != null) {
+      if (this.market.equalsIgnoreCase("--") ||
+          this.market.equalsIgnoreCase("BOX") ||
+          this.market.equalsIgnoreCase("ISE") ||
+          this.market.equalsIgnoreCase("PSE") ||
+          this.market.equalsIgnoreCase("PHLX") ||
+          this.market.equalsIgnoreCase("NASDAQOM") ||
+          this.market.equalsIgnoreCase("CBOE")) {
+        if (this.direction == DIRECTION_SBUY) this.direction = DIRECTION_DBUY;
+        else if (this.direction == DIRECTION_SSELL) this.direction = DIRECTION_DSELL;
+      }
+    }
+     */
+  }
+  
+  /**
+   * Create new transaction with values
+   */
+  public Transaction(int serial, Date date, int direction, String ticker, double amount, double price, String priceCurrency, double fee, String feeCurrency, String market, Date executionDate) throws Exception
+  {
+    ff = new DecimalFormat("#.#######");
+    
+    this.serial = serial;
+    
+    this.date = clearSMS(date);
+    
+    switch(direction)
+    {
+      case DIRECTION_SBUY:
+      case DIRECTION_SSELL:
+      case DIRECTION_TRANS_ADD:
+      case DIRECTION_TRANS_SUB:
+      case DIRECTION_DBUY:
+      case DIRECTION_DSELL:
+      case DIRECTION_CBUY:
+      case DIRECTION_CSELL:
+      case DIRECTION_DIVI_BRUTTO:
+      case DIRECTION_DIVI_NETTO15:
+      case DIRECTION_DIVI_TAX:
+      case DIRECTION_DIVI_UNKNOWN:
+        break;
+      default:
+        throw new Exception("Bad direction constant: "+direction);
+    }
+    this.direction = direction;
+    
+    this.ticker = ticker;
+    this.amount = amount;
+    this.price = price;
+    this.priceCurrency = priceCurrency.toUpperCase();
+    
+    this.fee = fee;
+    if (feeCurrency == null) this.feeCurrency = this.priceCurrency;
+    else this.feeCurrency = feeCurrency.toUpperCase();
+    
+    this.market = market;
+    this.executionDate = executionDate;
+  }
+  
+  /**
+   * Getters
+   */
+  public Date getDate()
+  { return this.date; }
+  public String getStringDate()
+  {
+    if (date == null) return null;
+    java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+    cal.setTime(date);
+    
+    return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+cal.get(GregorianCalendar.MINUTE);
+  }
+  public String getStringExecutionDate()
+  {
+    if (executionDate == null) return null;
+    java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+    cal.setTime(executionDate);
+    
+    return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+cal.get(GregorianCalendar.MINUTE);
+  }
+  public int getSerial()
+  { return this.serial; }
+  public Integer getDirection()
+  { return direction; }
+  public String getStringDirection()
+  {
+    switch(this.direction)
+    {
+      case DIRECTION_SBUY:
+      case DIRECTION_DBUY:
+      case DIRECTION_CBUY:
+        return "Nákup";
+      case DIRECTION_SSELL:
+      case DIRECTION_DSELL:
+      case DIRECTION_CSELL:
+        return "Prodej";
+      case DIRECTION_TRANS_ADD:
+        return "Přidání";
+      case DIRECTION_TRANS_SUB:
+        return "Odebrání";
+      case DIRECTION_DIVI_BRUTTO:
+        return "Hrubá";
+      case DIRECTION_DIVI_NETTO15:
+        return "Čistá 15%";
+      case DIRECTION_DIVI_TAX:
+        return "Daň";
+      case DIRECTION_DIVI_UNKNOWN:
+        return "Neznámá";
+      default:
+        return null;
+    }
+  }
+  public String getStringType()
+  {
+    switch(this.direction)
+    {
+      case DIRECTION_SBUY:
+      case DIRECTION_SSELL:
+        return "CP";
+      case DIRECTION_TRANS_ADD:
+      case DIRECTION_TRANS_SUB:
+        return "Transformace";
+      case DIRECTION_DBUY:
+      case DIRECTION_DSELL:
+        return "Derivát";
+      case DIRECTION_CBUY:
+      case DIRECTION_CSELL:
+        return "Cash";
+      case DIRECTION_DIVI_BRUTTO:
+      case DIRECTION_DIVI_NETTO15:
+      case DIRECTION_DIVI_TAX:
+      case DIRECTION_DIVI_UNKNOWN:
+        return "Dividenda";
+      default:
+        return null;
+    }
+  }
+  public String getTicker()
+  { return ticker; }
+  public Double getAmount()
+  { return amount; }
+  public Double getFee()
+  { return fee;  }
+  public String getFeeCurrency()
+  { return feeCurrency; }
+  public Double getPrice()
+  { return price; }
+  public String getPriceCurrency()
+  { return priceCurrency; }
+  public String getMarket()
+  { return market; }
+  public Date getExecutionDate()
+  { return executionDate; }
+  
+  /**
+   * Setters
+   */
+  protected void setDate(Date date)
+  { this.date = clearSMS(date); }
+  public void setDirection(int direction)
+  { this.direction = direction; }
+
+  public void setType(String newDirection)
+  {
+    if (newDirection == null) return;
+
+    if (newDirection.equalsIgnoreCase("CP")) {
+      switch(direction) {
+        case DIRECTION_DBUY:
+        case DIRECTION_CBUY:
+        case DIRECTION_SBUY:
+        case DIRECTION_TRANS_ADD:
+          direction = DIRECTION_SBUY;
+          break;
+        case DIRECTION_DSELL:
+        case DIRECTION_CSELL:
+        case DIRECTION_SSELL:
+        case DIRECTION_TRANS_SUB:
+          direction = DIRECTION_SSELL;
+          break;
+        default:
+          direction = DIRECTION_SBUY;
+      }
+    }
+    else if (newDirection.equalsIgnoreCase("Derivát")) {
+      switch(direction) {
+        case DIRECTION_DBUY:
+        case DIRECTION_CBUY:
+        case DIRECTION_SBUY:
+        case DIRECTION_TRANS_ADD:
+          direction = DIRECTION_DBUY;
+          break;
+        case DIRECTION_DSELL:
+        case DIRECTION_CSELL:
+        case DIRECTION_SSELL:
+        case DIRECTION_TRANS_SUB:
+          direction = DIRECTION_DSELL;
+          break;
+        default:
+          direction = DIRECTION_DBUY;
+      }
+    }
+    else if (newDirection.equalsIgnoreCase("Transformace")) {
+      switch(direction) {
+        case DIRECTION_DBUY:
+        case DIRECTION_CBUY:
+        case DIRECTION_SBUY:
+        case DIRECTION_TRANS_ADD:
+          direction = DIRECTION_TRANS_ADD;
+          break;
+        case DIRECTION_DSELL:
+        case DIRECTION_CSELL:
+        case DIRECTION_SSELL:
+        case DIRECTION_TRANS_SUB:
+          direction = DIRECTION_TRANS_SUB;
+          break;
+        default:
+          direction = DIRECTION_TRANS_ADD;
+      }
+    }
+    else if (newDirection.equalsIgnoreCase("Cash")) {
+      switch(direction) {
+        case DIRECTION_DBUY:
+        case DIRECTION_CBUY:
+        case DIRECTION_SBUY:
+        case DIRECTION_TRANS_ADD:
+          direction = DIRECTION_CBUY;
+          break;
+        case DIRECTION_DSELL:
+        case DIRECTION_CSELL:
+        case DIRECTION_SSELL:
+        case DIRECTION_TRANS_SUB:
+          direction = DIRECTION_CSELL;
+          break;
+        default:
+          direction = DIRECTION_CBUY;
+      }
+    }
+    else if (newDirection.equalsIgnoreCase("Dividenda")) {
+      switch(direction) {
+        case DIRECTION_DIVI_BRUTTO:
+        case DIRECTION_DIVI_NETTO15:
+        case DIRECTION_DIVI_TAX:
+        case DIRECTION_DIVI_UNKNOWN:
+          break;
+        default:
+          direction = DIRECTION_DIVI_UNKNOWN;
+      }
+    }
+  }
+
+  /**
+   * Get possible directions
+   */
+  public String[] getPossibleDirections()
+  {
+    switch(this.direction) {
+      case DIRECTION_SBUY:
+      case DIRECTION_SSELL:
+      case DIRECTION_DBUY:
+      case DIRECTION_DSELL:
+      case DIRECTION_CBUY:
+      case DIRECTION_CSELL:
+        String[] a = { "Nákup", "Prodej" };
+        return a;
+      case DIRECTION_TRANS_ADD:
+      case DIRECTION_TRANS_SUB:
+        String[] b = { "Přidání", "Odebrání" };
+        return b;
+      case DIRECTION_DIVI_BRUTTO:
+      case DIRECTION_DIVI_NETTO15:
+      case DIRECTION_DIVI_TAX:
+      case DIRECTION_DIVI_UNKNOWN:
+        String[] c = { "Hrubá", "Čistá 15%", "Daň", "Neznámá" };
+        return c;
+      default:
+        String[] z = { };
+        return z;
+    }
+  }
+
+  public void setDirection(String direction)
+  {
+    if (direction == null) return;
+
+    switch(this.direction) {
+      case DIRECTION_SBUY:
+      case DIRECTION_SSELL:
+        if (direction.equalsIgnoreCase("Nákup")) this.direction = DIRECTION_SBUY;
+        else if (direction.equalsIgnoreCase("Prodej")) this.direction = DIRECTION_SSELL;
+        break;
+      case DIRECTION_DBUY:
+      case DIRECTION_DSELL:
+        if (direction.equalsIgnoreCase("Nákup")) this.direction = DIRECTION_DBUY;
+        else if (direction.equalsIgnoreCase("Prodej")) this.direction = DIRECTION_DSELL;
+        break;
+      case DIRECTION_CBUY:
+      case DIRECTION_CSELL:
+        if (direction.equalsIgnoreCase("Nákup")) this.direction = DIRECTION_CBUY;
+        else if (direction.equalsIgnoreCase("Prodej")) this.direction = DIRECTION_CSELL;
+        break;
+      case DIRECTION_TRANS_ADD:
+      case DIRECTION_TRANS_SUB:
+        if (direction.equalsIgnoreCase("Přidání")) this.direction = DIRECTION_TRANS_ADD;
+        else if (direction.equalsIgnoreCase("Odebrání")) this.direction = DIRECTION_TRANS_SUB;
+        break;
+      case DIRECTION_DIVI_BRUTTO:
+      case DIRECTION_DIVI_NETTO15:
+      case DIRECTION_DIVI_TAX:
+      case DIRECTION_DIVI_UNKNOWN:
+        if (direction.equalsIgnoreCase("Hrubá")) this.direction = DIRECTION_DIVI_BRUTTO;
+        else if (direction.equalsIgnoreCase("Čistá 15%")) this.direction = DIRECTION_DIVI_NETTO15;
+        else if (direction.equalsIgnoreCase("Daň")) this.direction = DIRECTION_DIVI_TAX;
+        else if (direction.equalsIgnoreCase("Neznámá")) this.direction = DIRECTION_DIVI_UNKNOWN;
+        break;
+    }
+  }
+  public void setSerial(int serial)
+  { this.serial = serial; }
+  public void setTicker(String ticker)
+  { this.ticker = ticker; }
+  public void setAmount(Double amount)
+  { this.amount = amount; }
+  public void setFee(Double fee)
+  { this.fee = fee; }
+  public void setFeeCurrency(String feeCurrency)
+  { this.feeCurrency = feeCurrency; }
+  public void setPrice(Double price)
+  { this.price = price; }
+  public void setPriceCurrency(String priceCurrency)
+  { this.priceCurrency = priceCurrency; }
+  public void setMarket(String market)
+  { this.market = market; }
+  public void setExecutionDate(Date executionDate)
+  { this.executionDate = executionDate; }
+  
+  /**
+   * Compare function
+   */
+  public int compareTo(Object o)
+  {
+    int res;
+    
+    Transaction tx = (Transaction)o;
+    
+    // Compare dates
+    res = date.compareTo(tx.getDate());
+    if (res != 0) return res;
+    
+    // Compare serials
+    if (serial < tx.getSerial()) return -1;
+    else return 1;
+  }
+  
+  /**
+   * Return whether transaction is completely filled in
+   */
+  public boolean isFilledIn()
+  {
+    switch(direction) {
+      case DIRECTION_TRANS_ADD:
+      case DIRECTION_TRANS_SUB:
+        // We need not price & price currency for transformations
+        return ((serial != 0) && (date != null) && (direction != 0) && (ticker != null) &&
+         (amount != null));
+      default:
+        return ((serial != 0) && (date != null) && (direction != 0) && (ticker != null) &&
+         (amount != null) && (price != null) && (priceCurrency != null));
+    }
+  }
+  
+  public void save(PrintWriter ofl, String prefix) throws java.io.IOException
+  {
+    GregorianCalendar cal = new GregorianCalendar();
+    
+    cal.setTime(date);
+    
+    ofl.println(prefix+"serial="+serial);
+    ofl.println(prefix+"date="+getStringDate());
+    ofl.println(prefix+"direction="+direction);
+    ofl.println(prefix+"ticker="+ticker);
+    ofl.println(prefix+"amount="+amount);
+    ofl.println(prefix+"price="+price);
+    ofl.println(prefix+"priceCurrency="+priceCurrency);
+    ofl.println(prefix+"fee="+fee);
+    ofl.println(prefix+"feeCurrency="+feeCurrency);
+    ofl.println(prefix+"market="+market);
+    ofl.println(prefix+"exDate="+getStringExecutionDate());
+  }
+  
+  public void export(PrintWriter ofl) throws java.io.IOException
+  {
+    ofl.println(getStringDate()+";"+getStringType()+";"+getStringDirection()+";"+ticker+";"+amount+";"+ff.format(price)+";"+priceCurrency+";"+ff.format(fee)+";"+feeCurrency+";"+market+";"+getStringExecutionDate());
+  }
+}
+
