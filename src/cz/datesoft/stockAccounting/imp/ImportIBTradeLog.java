@@ -49,7 +49,9 @@ public class ImportIBTradeLog extends ImportBase
           try {
             // Known trades
             DataRow drow = new DataRow();
-          
+            // IB have cancelled codes as "Ca" those needs to be filtered out too
+            String statusCode = a[6];
+            
             drow.ticker = a[2];
             drow.market = a[4];
           
@@ -76,8 +78,9 @@ public class ImportIBTradeLog extends ImportBase
             if (Math.abs(drow.fee) == 0) drow.fee = 0; // Avoid having "-0" as a fee
           
             addRow(res, drow);
-              
-            imported = true;
+            // We don't want import status codes Ca = Cancelled  
+            if (! statusCode.equals("Ca")) { imported = true; }
+            
           }
           catch(Exception e) {
             e.printStackTrace();
