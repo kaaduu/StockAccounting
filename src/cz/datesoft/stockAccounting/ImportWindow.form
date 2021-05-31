@@ -7,6 +7,7 @@
   </Properties>
   <SyntheticProperties>
     <SyntheticProperty name="formSizePolicy" type="int" value="1"/>
+    <SyntheticProperty name="generateCenter" type="boolean" value="false"/>
   </SyntheticProperties>
   <AuxValues>
     <AuxValue name="FormSettings_autoResourcing" type="java.lang.Integer" value="0"/>
@@ -57,11 +58,12 @@
     <Component class="javax.swing.JComboBox" name="cbFormat">
       <Properties>
         <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
-          <StringArray count="4">
+          <StringArray count="5">
             <StringItem index="0" value="&lt;vyberte form&#xe1;t&gt;"/>
             <StringItem index="1" value="Fio - obchody export"/>
             <StringItem index="2" value="BJ - HTML export"/>
             <StringItem index="3" value="IB - TradeLog"/>
+            <StringItem index="4" value="T212 - orders export"/>
           </StringArray>
         </Property>
         <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
