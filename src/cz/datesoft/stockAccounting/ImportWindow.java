@@ -248,6 +248,7 @@ public class ImportWindow extends javax.swing.JDialog
         niTable = new javax.swing.JTable();
 
         setTitle("Import souboru");
+        setMaximumSize(new java.awt.Dimension(1024, 1024));
         setModal(true);
         getContentPane().setLayout(new java.awt.GridBagLayout());
 
@@ -272,7 +273,7 @@ public class ImportWindow extends javax.swing.JDialog
         gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
         getContentPane().add(jLabel4, gridBagConstraints);
 
-        cbFormat.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "<vyberte formát>", "Fio - obchody export", "BJ - HTML export", "IB - TradeLog", "T212 - orders export" }));
+        cbFormat.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "<vyberte formát>", "Fio - obchody export", "BJ - HTML export", "IB - TradeLog", "T212 - orders export", "Custom CSV" }));
         cbFormat.setMinimumSize(new java.awt.Dimension(100, 20));
         cbFormat.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

@@ -28,6 +28,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
   public final int IMPORT_FORMAT_BJ_HTML = 2;
   public final int IMPORT_FORMAT_IB_TRADELOG = 3;
   public final int IMPORT_FORMAT_T212 = 4;
+  public final int IMPORT_FORMAT_CUSTOMCSV = 5;
   
   /** Our set */
   protected Vector<Transaction> rows;
@@ -582,6 +583,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
     else if (format == IMPORT_FORMAT_BJ_HTML) importer = new ImportBjHTML();
     else if (format == IMPORT_FORMAT_IB_TRADELOG) importer = new ImportIBTradeLog();
     else if (format == IMPORT_FORMAT_T212) importer = new ImportT212();
+    else if (format == IMPORT_FORMAT_CUSTOMCSV) importer = new ImportCustomCSV();
     else throw new ImportException("Unrecognized import format number!");
     
     Vector<Transaction> txs = importer.doImport(srcFile, startDate, endDate, notImported);

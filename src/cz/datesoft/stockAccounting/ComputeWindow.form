@@ -11,7 +11,9 @@
   </NonVisualComponents>
   <Properties>
     <Property name="title" type="java.lang.String" value="V&#xfd;po&#x10d;et z&#xe1;kladu pro DP nebo v&#xfd;sledku obchodov&#xe1;n&#xed;"/>
-    <Property name="undecorated" type="boolean" value="true"/>
+    <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+      <Dimension value="[1069, 232]"/>
+    </Property>
   </Properties>
   <SyntheticProperties>
     <SyntheticProperty name="formSizePolicy" type="int" value="1"/>
