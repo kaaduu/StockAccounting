@@ -6,6 +6,9 @@
 
 package cz.datesoft.stockAccounting;
 
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Toolkit;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
@@ -66,9 +69,15 @@ public class ComputeWindow extends javax.swing.JDialog
     mainWindow = (MainWindow)parent;
     initComponents();
 
+    //works better on multiple monitors environment
+    GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+    int width = gd.getDisplayMode().getWidth();
+    int height = gd.getDisplayMode().getHeight();
     // Maximize window
-    setLocation(0, 0);
-    setSize(java.awt.Toolkit.getDefaultToolkit().getScreenSize());
+    setBounds(0,0,width,height);
+    //setLocation(0, 0);    
+    //setSize(java.awt.Toolkit.getDefaultToolkit().getScreenSize());    #worked well on single monitor only
+    //setSize(width, height);
     
     // Set right-aligning renderer for columns that need it
     DefaultTableCellRenderer rarenderer = new DefaultTableCellRenderer();
@@ -105,7 +114,7 @@ public class ComputeWindow extends javax.swing.JDialog
    */
   private void saveHTMLHeader(java.io.PrintWriter ofl, String title, javax.swing.JTable tbl)
   {
-    ofl.println("<?xml version=\"1.0\" encoding=\"windows-1250\"?>"+
+    ofl.println("<?xml version=\"1.0\" encoding=\"utf-8\"?>"+
 "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">"+
 "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"cz\" lang=\"cz\"><head><title>"+title+"</title>");
     ofl.println("<style type=\"text/css\">");
@@ -523,7 +532,7 @@ public class ComputeWindow extends javax.swing.JDialog
         fileChooser.setDialogType(javax.swing.JFileChooser.SAVE_DIALOG);
 
         setTitle("Výpočet základu pro DP nebo výsledku obchodování");
-        setUndecorated(true);
+        setMaximumSize(new java.awt.Dimension(1069, 232));
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowOpened(java.awt.event.WindowEvent evt) {
                 formWindowOpened(evt);
