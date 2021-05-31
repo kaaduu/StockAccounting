@@ -70,7 +70,7 @@ public class AboutWindow extends javax.swing.JDialog
         jEditorPane2.setBackground(java.awt.SystemColor.control);
         jEditorPane2.setBorder(null);
         jEditorPane2.setFont(new java.awt.Font("Tahoma", 2, 11)); // NOI18N
-        jEditorPane2.setText("Upozornění: Použití tohoto programu je pouze na vlastní nebezpečí!\nAutor neručí za jeho metodickou ani výpočetní správnost!\n\nChanges:\n01.01.2021 - Import/ IB Tradelog: oprava ktera neignoruje obchody  ktere maji jen 15 sloupce mimo 16\n                   - pridana podpora pro FOP_TRD (future options)\n                   - opraveno detekce CASH_TRD jako penize\n\nKnow bugs:\n                   - IBImport spatne priradi CASH_TRD jako Typ CP (STK_TRD) jako fyzicka osoba co nedela FOREX je to asi jedno\n\ta, ale je nutne takove ochody pak manualne zmenit.");
+        jEditorPane2.setText("Upozornění: Použití tohoto programu je pouze na vlastní nebezpečí!\nAutor neručí za jeho metodickou ani výpočetní správnost!\n\nChanges:\n31.05.2021 - Pridana podpora importu z Trading 212\n\n01.01.2021 - Import/ IB Tradelog: oprava ktera neignoruje obchody  ktere maji jen 15 sloupce mimo 16\n                   - pridana podpora pro FOP_TRD (future options)\n                   - opraveno detekce CASH_TRD jako penize\n\nKnow bugs:\n                   - IBImport spatne priradi CASH_TRD jako Typ CP (STK_TRD) jako fyzicka osoba co nedela FOREX je to asi jedno\n\ta, ale je nutne takove ochody pak manualne zmenit.");
         jEditorPane2.setOpaque(false);
 
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(getContentPane());

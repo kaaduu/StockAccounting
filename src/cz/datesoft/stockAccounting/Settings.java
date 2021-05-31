@@ -288,11 +288,10 @@ public class Settings
     
     // Load ratios
     ratios = new TreeSet<CurrencyRatio>();
-    s = p.get("ratios","CAD|2009|16.76\nEUR|2009|26.5\nGBP|2009|29.78\nHUF|2009|0.0942\nJPY|2009|0.2035\n"+
-     "PLN|2009|6.1\nUSD|2009|19.06\nCAD|2008|16.01\nEUR|2008|25.05\nUSD|2008|17.11\n"+
-     "EUR|2007|27.74\nGBP|2007|40.4\nHUF|2007|0.1104\nJPY|2007|0.1712\nPLN|2007|7.35\nUSD|2007|20.15\n"+
-     "EUR|2006|28.27\nGBP|2006|41.46\nHUF|2006|0.1072\nJPY|2006|0.1928\nPLN|2006|7.25\nUSD|2006|22.41\n"+
-     "EUR|2005|29.8\nGBP|2005|43.63\nHUF|2005|0.1199\nJPY|2005|0.2178\nPLN|2005|7.41\nUSD|2005|24.1");
+    s = p.get("ratios",
+     "EUR|2020|26.50\nUSD|2020|23.14\nCAD|2020|17.23\n"+
+     "EUR|2019|25.66\nUSD|2019|22.93\n"+     
+     "EUR|2018|25.68\nUSD|2018|21.78\n");
 
 //    System.out.println(s);
     a = s.split("\n");
