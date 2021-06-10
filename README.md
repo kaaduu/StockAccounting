@@ -1,7 +1,11 @@
 Akciove Ucetnictvi - vetsinu kodu a logiky napsal Michal Kara (lemming@ucw.cz) a od 2020 jsou mensinove opravy a vylepseni udrzovany zde.
    vychazi z puvodniho zdrojoveho kodu siren pod GPL na http://lemming.ucw.cz/ucetnictvi/ (zde je i detailni popis pouziti aplikace)
    
-
+Changes:
+2021 JUN Rev1
+   - pridana soupec poznamka - u importu kde existuje jmeno spolecnosti se prida automaticky. Zaroven u drzenych opcnich pozic to zlepsi citelnost.
+   - vyber souboru - nastaven defaultni pohled - details
+   - pridana podpora importu Trading 212
 
 
 =======================
