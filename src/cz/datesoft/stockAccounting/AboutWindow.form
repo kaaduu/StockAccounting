@@ -44,7 +44,7 @@
           <Group type="102" alignment="0" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
-                  <Component id="iconButton" pref="70" max="32767" attributes="1"/>
+                  <Component id="iconButton" pref="181" max="32767" attributes="1"/>
                   <Component id="jEditorPane1" min="-2" pref="58" max="-2" attributes="1"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
@@ -76,10 +76,12 @@
             <LineBorder/>
           </Border>
         </Property>
+        <Property name="contentType" type="java.lang.String" value="text/html" noResource="true"/>
         <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
           <Font name="Tahoma" size="11" style="1"/>
         </Property>
-        <Property name="text" type="java.lang.String" value="Akciov&#xe9; &#xfa;&#x10d;etnictv&#xed; verze 1.2.7  (C) 2020 Michal K&#xe1;ra (lemming@ucw.cz), minor bugfixes Karel Dusek (karel.dusek@gmail.com)&#xa;Domovsk&#xe1; str&#xe1;nka: http://lemming.ucw.cz/ucetnictvi/ &#x160;&#xed;&#x159;eno pod licenc&#xed; GPL"/>
+        <Property name="text" type="java.lang.String" value="&lt;html&gt;&#xa;  &lt;head&gt;&#xa;&#xa;  &lt;/head&gt;&#xa;  &lt;body&gt;&#xa;    &lt;p style=&quot;margin-top: 0&quot;&gt;&#xa;      Akciov&#xe9; &#xfa;&#x10d;etnictv&#xed; verze 2021-06 rev 1 (&lt;a href=&quot;http://lemming.ucw.cz/ucetnictvi/&quot;&gt;vychazi z puvodni verze 1.2.7&lt;/a&gt; - Michal K&#xe1;ra)&lt;br&gt; &#xa;     Zdrojove kody na &lt;a href=&quot;https://github.com/kaaduu/StockAccounting&quot;&gt;githubu&lt;/a&gt; - vydano pod licenc&#xed; GPL&#xa;    &lt;/p&gt;&#xa;  &lt;/body&gt;&#xa;&lt;/html&gt;&#xa;"/>
+        <Property name="toolTipText" type="java.lang.String" value=""/>
         <Property name="cursor" type="java.awt.Cursor" editor="org.netbeans.modules.form.editors2.CursorEditor">
           <Color id="Default Cursor"/>
         </Property>
@@ -108,16 +110,14 @@
     <Component class="javax.swing.JEditorPane" name="jEditorPane2">
       <Properties>
         <Property name="editable" type="boolean" value="false"/>
-        <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-          <Color blue="df" green="df" id="Control" palette="2" red="df" type="palette"/>
-        </Property>
         <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
           <Border info="null"/>
         </Property>
+        <Property name="contentType" type="java.lang.String" value="text/html" noResource="true"/>
         <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
-          <Font name="Tahoma" size="11" style="2"/>
+          <Font name="Tahoma" size="10" style="2"/>
         </Property>
-        <Property name="text" type="java.lang.String" value="Upozorn&#x11b;n&#xed;: Pou&#x17e;it&#xed; tohoto programu je pouze na vlastn&#xed; nebezpe&#x10d;&#xed;!&#xa;Autor neru&#x10d;&#xed; za jeho metodickou ani v&#xfd;po&#x10d;etn&#xed; spr&#xe1;vnost!&#xa;&#xa;Changes:&#xa;31.05.2021 - Pridana podpora importu z Trading 212&#xa;&#xa;01.01.2021 - Import/ IB Tradelog: oprava ktera neignoruje obchody  ktere maji jen 15 sloupce mimo 16&#xa;                   - pridana podpora pro FOP_TRD (future options)&#xa;                   - opraveno detekce CASH_TRD jako penize&#xa;&#xa;Know bugs:&#xa;                   - IBImport spatne priradi CASH_TRD jako Typ CP (STK_TRD) jako fyzicka osoba co nedela FOREX je to asi jedno&#xa;&#x9;a, ale je nutne takove ochody pak manualne zmenit."/>
+        <Property name="text" type="java.lang.String" value="&lt;html&gt;&#xa;  &lt;head&gt;&#xa;    &lt;style type=&quot;text/css&quot;&gt;&#xa;     .style1 { color: #000000; font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 8px;  }&#xa;     .style2 { font-family: Verdana, Arial, Helvetica, sans-serif;&#x9;color: red;&#x9; font-size:0.9em; }&#xa;  &lt;/style&gt;  &#xa;  &lt;/head&gt;&#xa;  &lt;body&gt;&#xa;&lt;div class=&quot;style2&quot;&gt;&#xa;Upozorn&#x11b;n&#xed;: Pou&#x17e;it&#xed; tohoto programu je pouze na vlastn&#xed; nebezpe&#x10d;&#xed;!&#xa;Autor neru&#x10d;&#xed; za jeho metodickou ani v&#xfd;po&#x10d;etn&#xed; spr&#xe1;vnost!&lt;br&gt;&#xa;&lt;/div&gt;&#xa;&lt;div class=&quot;style1&quot;&gt;&#xa;Zmeny:&lt;br&gt;&#xa;10.06.2021 - T212 Import fix - konverze GBX na GBP&lt;br&gt;&#xa;                   - Pridan sloupec Poznamka (pri importu vlozi jmeno spolecnosti a pripadne dalsi pomocne informace)&lt;br&gt;&#xa;                   - Nastaveni maximalni sirky sloupcu v hlavnim okne&lt;br&gt;&#xa;                   - Opravena hodnota amount (pocet akcii) pri importu  na double - podpora frakcnich akcii (castecne jiz umelo)&lt;br&gt;&#xa;                   - zmena verzovani na format : 2021 JUN rev 1&lt;br&gt;&#xa;&#xa;plna historie zmen na       &lt;a href=&quot;https://github.com/kaaduu/StockAccounting&quot;&gt;githubu&lt;/a&gt;&lt;br&gt;&#xa;&lt;br&gt;&#xa;Know bugs:&lt;br&gt;&#xa;                   - IBImport spatne priradi CASH_TRD jako Typ CP (STK_TRD) jako fyzicka osoba co nedela FOREX je to asi jedno&lt;br&gt;&#xa;&#x9;a, ale je nutne takove ochody pak manualne zmenit.&lt;br&gt;&#xa;&lt;/div&gt;&#xa;&lt;/body&gt;&#xa;&lt;/html&gt;&#xa;"/>
         <Property name="opaque" type="boolean" value="false"/>
       </Properties>
     </Component>

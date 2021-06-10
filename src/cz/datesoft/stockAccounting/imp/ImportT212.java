@@ -66,6 +66,7 @@ public class ImportT212 extends ImportBase
     registerColumnName("Price / share", ID_PRICE);
     registerColumnName("Currency (Price / share)", ID_CURRENCY);    
     registerColumnName("Time", ID_DATE);
+    registerColumnName("Name", ID_NOTE);
     //registerColumnName("Trh", ID_MARKET);
     //registerColumnName("Množství", ID_AMOUNT);    
 
@@ -106,6 +107,7 @@ public class ImportT212 extends ImportBase
     //int feeCZKIdx = getColumnNo(ID_FEE_CZK);
     //int feeUSDIdx = getColumnNo(ID_FEE_USD);
     //int feeEURIdx = getColumnNo(ID_FEE_EUR);
+    int noteIdx = getColumnNo(ID_NOTE);
     
     // Process data rows
     while((s = ifl.readLine()) != null) {
@@ -130,19 +132,26 @@ public class ImportT212 extends ImportBase
         //if (drow.direction == 0) {            }
         //else {
           /** Buy, sell or transformation **/
-          String ticker = a[tickerIdx];
-
+          String ticker = a[tickerIdx]; 
+          String currency =a[currencyIdx].toUpperCase();
+          
           try {
-            //LOGGER.debug("This is a debug");
+            //LOGGER.debug("This is a debug");      
+            //We dont report GBX only GBP so we need convert it
+            if (currency.equals("GBX")) {
+                drow.currency = "GBP";
+                drow.price = Double.parseDouble(a[priceIdx])/100;                                
+            } else {
+               drow.currency = currency;
+               drow.price = Double.parseDouble(a[priceIdx]);                                
+            }
             
-            //drow.amount = (int)parseNumber(a[amountIdx]);
-            drow.amount = (int)Math.abs(Double.parseDouble(a[amountIdx]) );
-            drow.price = Double.parseDouble(a[priceIdx]);
+            drow.amount = Double.parseDouble(a[amountIdx]);                                    
             //drow.price = parseNumber(a[priceIdx]);
-            drow.currency = a[currencyIdx].toUpperCase();
+            
             //drow.market = a[marketIdx].toUpperCase();
             drow.market = "UnknownT212";
-
+            drow.note = a[noteIdx].replace("\"","");
             /* Get date */
             //Date date = parseDate(a[dateIdx], null);
             String x = a[dateIdx];
@@ -151,7 +160,16 @@ public class ImportT212 extends ImportBase
             drow.date = parseDate(x.substring(8,10)+"."+x.substring(5,7)+"."+x.substring(0,4)+" "+x.substring(11), null);
             drow.executionDate = drow.date;
           
-            
+            //TODO
+            // I need add 2 rows per one dividend record Dividena-Hruba a Dividenda-Dan
+            // Determine direction (i.e. type)
+            //       drow.text = a[textIdx];
+            //      if (drow.text.equalsIgnoreCase("Dividenda - USA")) drow.direction = Transaction.DIRECTION_DIVI_BRUTTO;
+            //      else if (equalsIgoreCaseAndEncoding(drow.text, "Daň z divid. zaplacená v USA", "Da? z divid. zaplacen? v USA")) drow.direction = Transaction.DIRECTION_DIVI_TAX;
+            //      else {
+            //        if (drow.price < 0) drow.direction = Transaction.DIRECTION_DIVI_TAX;
+            //        else drow.direction = Transaction.DIRECTION_DIVI_UNKNOWN;
+            //      }            
             
             //boolean outOfDateRange = false;
 
