@@ -49,7 +49,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
   protected Date lastDateSet;
   
   /** Column names */
-  private String[] columnNames = { "Datum", "Typ", "Směr", "Ticker", "Množství", "Kurs", "Měna kursu", "Poplatky", "Měna poplatků", "Trh", "Datum vypořádání" };
+  private String[] columnNames = { "Datum", "Typ", "Směr", "Ticker", "Množství", "Kurs", "Měna kursu", "Poplatky", "Měna poplatků", "Trh", "Datum vypořádání", "Note" };
 
   /**
    * File we are stored in
@@ -133,9 +133,9 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
   }
 
   /** Add new transaction */
-  public synchronized Transaction addTransaction(Date date, int direction, String ticker, double amount, double price, String priceCurrency, double fee, String feeCurrency, String market, Date executionDate) throws Exception
+  public synchronized Transaction addTransaction(Date date, int direction, String ticker, double amount, double price, String priceCurrency, double fee, String feeCurrency, String market, Date executionDate, String note) throws Exception
   {
-    Transaction tx = new Transaction(serialCounter++, date, direction, ticker, amount, price, priceCurrency, fee, feeCurrency, market, executionDate);
+    Transaction tx = new Transaction(serialCounter++, date, direction, ticker, amount, price, priceCurrency, fee, feeCurrency, market, executionDate, note);
     rows.add(tx);
     if (filteredRows != null) filteredRows.add(tx);
 
@@ -206,6 +206,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
         return tx.getMarket();
       case 10:
         return tx.getExecutionDate();
+      case 11:
+        return tx.getNote();
       default:
         return null;
     }
@@ -290,7 +292,11 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
       case 10:
         tx.setExecutionDate((Date)value);
         fireTableCellUpdated(row, col);
-        break;        
+        break;       
+      case 11:
+        tx.setNote((String)value);
+        fireTableCellUpdated(row, col);
+        break;                
     }
     
     modified = true;
@@ -327,8 +333,9 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
       case 6:
       case 8:
       case 9:
+      case 11:          
       case 10:
-        return String.class;
+        return String.class;      
       case 5:
       case 7:
       case 4:
@@ -610,7 +617,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
     for(int i=0;i<rows.size();i++) {
       Transaction tx = rows.get(i);
 
-      dstSet.addTransaction(tx.getDate(),tx.getDirection().intValue(),tx.getTicker(),tx.getAmount().intValue(),tx.getPrice().doubleValue(),tx.getPriceCurrency(),tx.getFee().doubleValue(),tx.getFeeCurrency(), tx.getMarket(), tx.getExecutionDate());
+      dstSet.addTransaction(tx.getDate(),tx.getDirection().intValue(),tx.getTicker(),tx.getAmount().doubleValue(),tx.getPrice().doubleValue(),tx.getPriceCurrency(),tx.getFee().doubleValue(),tx.getFeeCurrency(), tx.getMarket(), tx.getExecutionDate(), tx.getNote());
     }
     
     // Sort destination
@@ -632,8 +639,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
   {
     java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file));
     
-    // Write header
-    ofl.println("Datum;Typ;Směr;Ticker;Množství;Kurs;Měna kursu;Poplatky;Měna poplatků;Trh");
+    // Write header 
+    ofl.println("Datum;Typ;Směr;Ticker;Množství;Kurs;Měna kursu;Poplatky;Měna poplatků;Trh;Vyporadani;Poznamka");
     
     // Start writing rows
     for(Transaction t : rows) {

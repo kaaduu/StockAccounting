@@ -34,13 +34,15 @@ public abstract class ImportBase
     public Date date;
     public int direction;
     public String ticker;
-    public int amount;
+    //changed to double from int to support fractional shares
+    public double amount;
     public double price;
     public double fee;
     public String currency;
     public String feeCurrency;
     public String market;
     public Date executionDate;
+    public String note;
   }
   
   /**
@@ -253,7 +255,7 @@ public abstract class ImportBase
    */
   protected void addRow(Vector<Transaction> set, DataRow row) throws Exception
   {
-    Transaction tx = new Transaction(0, row.date, row.direction, row.ticker, row.amount, row.price, row.currency, row.fee, row.feeCurrency, row.market, row.executionDate);
+    Transaction tx = new Transaction(0, row.date, row.direction, row.ticker, row.amount, row.price, row.currency, row.fee, row.feeCurrency, row.market, row.executionDate, row.note);
     
     set.add(tx);
   }

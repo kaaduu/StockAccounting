@@ -54,6 +54,19 @@ public class ImportIBTradeLog extends ImportBase
             
             drow.ticker = a[2];
             drow.market = a[4];
+
+            //note will contain close code if interesting
+            // filtering O,C (Open,Close)
+            switch(statusCode) {
+                case "O":
+                case "C":
+                       drow.note   = a[3];
+                       break;
+                default:
+                       drow.note   = a[3]+"|Code:"+a[6];
+                       break;                
+            }
+            
           
             drow.direction = 0;
             if (a[5].length() >= 4) {
@@ -77,9 +90,9 @@ public class ImportIBTradeLog extends ImportBase
             drow.fee = -Double.parseDouble(a[14]);
             if (Math.abs(drow.fee) == 0) drow.fee = 0; // Avoid having "-0" as a fee
           
-            addRow(res, drow);
+            
             // We don't want import status codes Ca = Cancelled  
-            if (! statusCode.equals("Ca")) { imported = true; }
+            if (! statusCode.equals("Ca")) { imported = true; addRow(res, drow); }
             
           }
           catch(Exception e) {

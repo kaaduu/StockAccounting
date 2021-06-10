@@ -187,6 +187,13 @@ public class Stocks
      */
     private String market;
 
+    
+    /**
+     * Market where opening trade was executed
+     */
+    private String note;
+    
+    
     /**
      * Ratio to original amount (i.e. to convert from current amount to original amount)
      */
@@ -218,6 +225,8 @@ public class Stocks
       this.oamRatio = 1;
       this.priceCurrency = priceCurrency;
       this.feeCurrency = feeCurrency;
+      this.note = note;
+      
       
       splits = new Vector<StockSplit>();
       renames = new Vector<StockRename>();
@@ -1048,7 +1057,7 @@ public class Stocks
             break;
         }
 
-        res.addTransaction(f.opened, direction, ticker, Math.abs(f.amount), f.price, f.priceCurrency, f.fee, f.feeCurrency, f.market, f.opened);
+        res.addTransaction(f.opened, direction, ticker, Math.abs(f.amount), f.price, f.priceCurrency, f.fee, f.feeCurrency, f.market, f.opened,f.note);
       }
     }
 

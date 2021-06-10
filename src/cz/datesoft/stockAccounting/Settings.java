@@ -289,9 +289,9 @@ public class Settings
     // Load ratios
     ratios = new TreeSet<CurrencyRatio>();
     s = p.get("ratios",
-     "EUR|2020|26.50\nUSD|2020|23.14\nCAD|2020|17.23\n"+
-     "EUR|2019|25.66\nUSD|2019|22.93\n"+     
-     "EUR|2018|25.68\nUSD|2018|21.78\n");
+     "EUR|2020|26.50\nUSD|2020|23.14\nCAD|2020|17.23\nGBP|2020|29.800\n"+
+     "EUR|2019|25.66\nUSD|2019|22.93\nGBP|2019|29.310\n"+     
+     "EUR|2018|25.68\nUSD|2018|21.78\nGBP|2018|28.980\n");
 
 //    System.out.println(s);
     a = s.split("\n");

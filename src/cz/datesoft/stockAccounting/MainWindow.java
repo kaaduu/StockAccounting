@@ -16,6 +16,8 @@ import java.util.GregorianCalendar;
 import java.text.SimpleDateFormat;
 import javax.swing.JFileChooser;
 import java.awt.event.KeyEvent;
+import javax.swing.Action;
+
 /**
  *
  * @author  lemming2
@@ -110,14 +112,43 @@ public class MainWindow extends javax.swing.JFrame
       dcTo.setDateFormat(new SimpleDateFormat("dd.MM.yyyy"));
       
       table.setModel(transactions);
-      table.getColumnModel().getColumn(0).setPreferredWidth(150);
+      //Datum obchodu
+      table.getColumnModel().getColumn(0).setPreferredWidth(100);
+      table.getColumnModel().getColumn(0).setMaxWidth(100);
       table.getColumnModel().getColumn(0).setCellRenderer(new CZDateRenderer());
       table.getColumnModel().getColumn(0).setCellEditor(new DateChooserCellEditor());
+      //Typ 
+      table.getColumnModel().getColumn(1).setPreferredWidth(100);
+      table.getColumnModel().getColumn(1).setMaxWidth(100);
       table.getColumnModel().getColumn(1).setCellEditor(new javax.swing.DefaultCellEditor(cbType));
+      //Smer
+      table.getColumnModel().getColumn(2).setPreferredWidth(80);
+      table.getColumnModel().getColumn(2).setMaxWidth(80);
       table.getColumnModel().getColumn(2).setCellEditor(new TransactionDirectionCellEditor(cbDirection));
+      //Ticker
+      table.getColumnModel().getColumn(3).setPreferredWidth(50);
+      table.getColumnModel().getColumn(3).setMaxWidth(100);
       table.getColumnModel().getColumn(3).setCellEditor(new javax.swing.DefaultCellEditor(cbTickers));
       table.getColumnModel().getColumn(6).setCellEditor(new javax.swing.DefaultCellEditor(cbCurrencies));
+      table.getColumnModel().getColumn(4).setPreferredWidth(80);
+      table.getColumnModel().getColumn(4).setMaxWidth(80);
+      table.getColumnModel().getColumn(5).setPreferredWidth(80);
+      table.getColumnModel().getColumn(5).setMaxWidth(80);
+      table.getColumnModel().getColumn(6).setPreferredWidth(50);
+      table.getColumnModel().getColumn(6).setMaxWidth(50);
+      //fee
+      table.getColumnModel().getColumn(7).setPreferredWidth(30);
+      table.getColumnModel().getColumn(7).setMaxWidth(50);
+      //feeCurrency
+      table.getColumnModel().getColumn(8).setPreferredWidth(30);
+      table.getColumnModel().getColumn(8).setMaxWidth(50);
       table.getColumnModel().getColumn(8).setCellEditor(new javax.swing.DefaultCellEditor(cbCurrencies));
+      //Trh
+      table.getColumnModel().getColumn(9).setPreferredWidth(80);
+      table.getColumnModel().getColumn(9).setMaxWidth(80);
+      //Datum vyporadani
+      table.getColumnModel().getColumn(10).setPreferredWidth(100);
+      table.getColumnModel().getColumn(10).setMaxWidth(100);
       table.getColumnModel().getColumn(10).setCellRenderer(new CZDateRenderer());
       table.getColumnModel().getColumn(10).setCellEditor(new DateChooserCellEditor());
       
@@ -226,6 +257,11 @@ public class MainWindow extends javax.swing.JFrame
 
         cbDirection.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "A-nákup", "E-nákup", "T-přidání", "T-odebrání", "D-hrubá", "D-daň", "D-neznámá", "A-prodej", "E-prodej", " " }));
 
+        fileChooser.setBackground(java.awt.Color.white);
+        fileChooser.setDialogTitle("");
+        fileChooser.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
+        fileChooser.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+
         cbTickers.setEditable(true);
         cbTickers.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
@@ -301,6 +337,11 @@ public class MainWindow extends javax.swing.JFrame
 
         tfTicker.setMinimumSize(new java.awt.Dimension(60, 20));
         tfTicker.setPreferredSize(new java.awt.Dimension(60, 20));
+        tfTicker.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                tfTickerActionPerformed(evt);
+            }
+        });
         tfTicker.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyPressed(java.awt.event.KeyEvent evt) {
                 tfTickerKeyPressed(evt);
@@ -362,17 +403,17 @@ public class MainWindow extends javax.swing.JFrame
 
         table.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {null, null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null, null}
+                {null, null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null, null}
             },
             new String [] {
-                "Datum", "Směr", "Ticker", "Množství", "Kurs", "Měna kursu", "Poplatky", "Měna poplatků"
+                "Datum", "Směr", "Ticker", "Množství", "Kurs", "Měna kursu", "Poplatky", "Měna poplatků", "Note"
             }
         ) {
             Class[] types = new Class [] {
-                java.lang.Object.class, java.lang.Object.class, java.lang.String.class, java.lang.Integer.class, java.lang.Double.class, java.lang.Object.class, java.lang.Double.class, java.lang.Object.class
+                java.lang.Object.class, java.lang.Object.class, java.lang.String.class, java.lang.Integer.class, java.lang.Double.class, java.lang.Object.class, java.lang.Double.class, java.lang.Object.class, java.lang.String.class
             };
 
             public Class getColumnClass(int columnIndex) {
@@ -549,9 +590,16 @@ public class MainWindow extends javax.swing.JFrame
   private void miExportActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_miExportActionPerformed
   {//GEN-HEADEREND:event_miExportActionPerformed
     fileChooser.setDialogTitle("Exportovat do CSV");
+    
+    // set default view
+    Action details = fileChooser.getActionMap().get("viewTypeDetails");
+    details.actionPerformed(null);
 
+    
     int res = fileChooser.showSaveDialog(this);
-
+    
+   
+    
     if (res == JFileChooser.APPROVE_OPTION) {
       try {
         // Add .csv to file if it has no extension
@@ -600,7 +648,12 @@ public class MainWindow extends javax.swing.JFrame
 
     String loc = Settings.getImportDirectory();
     if (loc != null) fileChooser.setCurrentDirectory(new File(loc));
-
+    
+    // set default view
+    Action details = fileChooser.getActionMap().get("viewTypeDetails");
+    details.actionPerformed(null);
+   
+    
     int res = fileChooser.showOpenDialog(this);
     
     if (res == JFileChooser.APPROVE_OPTION) {
@@ -671,6 +724,10 @@ public class MainWindow extends javax.swing.JFrame
   {
     fileChooser.setDialogTitle("Uložit soubor");
 
+    // set default view
+    Action details = fileChooser.getActionMap().get("viewTypeDetails");
+    details.actionPerformed(null);
+    
     String loc = Settings.getDataDirectory();
     if (loc != null) fileChooser.setCurrentDirectory(new File(loc));
 
@@ -698,6 +755,10 @@ public class MainWindow extends javax.swing.JFrame
 
     String loc = Settings.getDataDirectory();
     if (loc != null) fileChooser.setCurrentDirectory(new File(loc));
+    
+    // set default view
+    Action details = fileChooser.getActionMap().get("viewTypeDetails");
+    details.actionPerformed(null);
 
     int res = fileChooser.showSaveDialog(this);
 
@@ -812,6 +873,10 @@ public class MainWindow extends javax.swing.JFrame
 
     String loc = Settings.getDataDirectory();
     if (loc != null) fileChooser.setCurrentDirectory(new File(loc));
+    
+    // set default view
+    Action details = fileChooser.getActionMap().get("viewTypeDetails");
+    details.actionPerformed(null);
 
     int res = fileChooser.showOpenDialog(this);
 
@@ -834,6 +899,10 @@ public class MainWindow extends javax.swing.JFrame
       }
     }
   }//GEN-LAST:event_miOpenActionPerformed
+
+    private void tfTickerActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tfTickerActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_tfTickerActionPerformed
 
   /**
    * Refresh currencies combo

@@ -45,7 +45,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   
   /** Ticker */
   String ticker;
-  
+    
   /** Amount. Amount is double because due to splits etc. there can be non-integer amount */
   Double amount;
   
@@ -70,6 +70,9 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   /** Execution date */
   Date executionDate;
 
+    /** Note */
+  String note;
+  
   /**
    * Clear seconds and miliseconds in the date
    */
@@ -95,13 +98,14 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     
     this.date = null;
     this.direction = 0;
-    this.ticker = null;
+    this.ticker = null;    
     this.amount = null;
     this.price = null;
     this.priceCurrency = null;
     this.fee = null;
     this.feeCurrency = null;
     this.market = null;
+    this.note = null;
   }
   
   /**
@@ -121,6 +125,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.fee = null;
     this.feeCurrency = null;
     this.market = null;
+    this.note = null;
     
     String a[];
     for(;;)
@@ -166,6 +171,10 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       {
         this.executionDate = TransactionSet.parseDate(a[1]);
       }
+      else if (a[0].equals("note"))
+      {
+        if (!a[1].equals("null")) this.note = a[1];
+      }
     }
 
     /*
@@ -188,7 +197,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   /**
    * Create new transaction with values
    */
-  public Transaction(int serial, Date date, int direction, String ticker, double amount, double price, String priceCurrency, double fee, String feeCurrency, String market, Date executionDate) throws Exception
+  public Transaction(int serial, Date date, int direction, String ticker, double amount, double price, String priceCurrency, double fee, String feeCurrency, String market, Date executionDate,String note) throws Exception
   {
     ff = new DecimalFormat("#.#######");
     
@@ -227,6 +236,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     
     this.market = market;
     this.executionDate = executionDate;
+    this.note = note;
   }
   
   /**
@@ -308,7 +318,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     }
   }
   public String getTicker()
-  { return ticker; }
+  { return ticker; } 
   public Double getAmount()
   { return amount; }
   public Double getFee()
@@ -323,6 +333,8 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   { return market; }
   public Date getExecutionDate()
   { return executionDate; }
+  public String getNote()
+  { return note; }
   
   /**
    * Setters
@@ -505,6 +517,8 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   { this.market = market; }
   public void setExecutionDate(Date executionDate)
   { this.executionDate = executionDate; }
+  public void setNote(String note)
+  { this.note = note; }
   
   /**
    * Compare function
@@ -558,11 +572,12 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     ofl.println(prefix+"feeCurrency="+feeCurrency);
     ofl.println(prefix+"market="+market);
     ofl.println(prefix+"exDate="+getStringExecutionDate());
+    ofl.println(prefix+"note="+note);
   }
   
   public void export(PrintWriter ofl) throws java.io.IOException
   {
-    ofl.println(getStringDate()+";"+getStringType()+";"+getStringDirection()+";"+ticker+";"+amount+";"+ff.format(price)+";"+priceCurrency+";"+ff.format(fee)+";"+feeCurrency+";"+market+";"+getStringExecutionDate());
+    ofl.println(getStringDate()+";"+getStringType()+";"+getStringDirection()+";"+ticker+";"+amount+";"+ff.format(price)+";"+priceCurrency+";"+ff.format(fee)+";"+feeCurrency+";"+market+";"+getStringExecutionDate()+";"+note);
   }
 }
 
