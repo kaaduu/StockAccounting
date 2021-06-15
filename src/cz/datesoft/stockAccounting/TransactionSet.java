@@ -16,6 +16,9 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.io.BufferedReader;
 import cz.datesoft.stockAccounting.imp.*;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -27,8 +30,11 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
   public final int IMPORT_FORMAT_FIO = 1;
   public final int IMPORT_FORMAT_BJ_HTML = 2;
   public final int IMPORT_FORMAT_IB_TRADELOG = 3;
-  public final int IMPORT_FORMAT_T212 = 4;
-  public final int IMPORT_FORMAT_CUSTOMCSV = 5;
+  public final int IMPORT_FORMAT_CUSTOMCSV = 4;
+  public final int IMPORT_FORMAT_T212USD = 5;
+  public final int IMPORT_FORMAT_T212CZK = 6;
+  
+  
   
   /** Our set */
   protected Vector<Transaction> rows;
@@ -589,8 +595,9 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
     if (format == IMPORT_FORMAT_FIO) importer = new ImportFio();
     else if (format == IMPORT_FORMAT_BJ_HTML) importer = new ImportBjHTML();
     else if (format == IMPORT_FORMAT_IB_TRADELOG) importer = new ImportIBTradeLog();
-    else if (format == IMPORT_FORMAT_T212) importer = new ImportT212();
     else if (format == IMPORT_FORMAT_CUSTOMCSV) importer = new ImportCustomCSV();
+    else if (format == IMPORT_FORMAT_T212USD) importer = new ImportT212();
+    else if (format == IMPORT_FORMAT_T212CZK) importer = new ImportT212CZK();    
     else throw new ImportException("Unrecognized import format number!");
     
     Vector<Transaction> txs = importer.doImport(srcFile, startDate, endDate, notImported);
@@ -644,12 +651,37 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
     
     // Start writing rows
     for(Transaction t : rows) {
+        
       t.export(ofl);
     }
     
     ofl.close();
   }
+  public void exportFIO(File file) throws Exception
+  {
+   
+      // Show warning message
+//      if (JOptionPane.showConfirmDialog(rootPane, "Pozor! Export do FIO formatu je aktualne v utf-8 je tedy nutne zkonvertovat, treba pres iconv\n #iconv -f utf-8 -t WINDOWS-1250 ./FIO_export.csv -o FIO_export_win1250.csv\n\nDale se exportuji pouze obchody typu Cenny Papir a veskere transformace split,reverse split zatim filtrovane\n", "Špatný typ výpočtu", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.OK_OPTION) {
+//          return;
+//      }
+     
+    java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file));
 
+    // Write header 
+    String Header="Datum obchodu;Směr;Symbol;Cena;Počet;Měna;Objem v CZK;Poplatky v CZK;Objem v USD;Poplatky v USD;Objem v EUR;Poplatky v EUR;Text FIO;Datum vypořádání";
+    //String Header_CP1250 = new String(Header.getBytes("Windows-1250"), "UTF-8");
+    ofl.println(Header);
+    
+    
+    // Start writing rows
+    for(Transaction t : rows) {
+        
+      t.exportFIO(ofl);
+    }
+    
+    ofl.close();                
+  }
+  
   /**
    * Clear filtering of the rows
    */
@@ -668,8 +700,9 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
    * @param to Maximum date. Must be present. All transactions on this date will go to the filtered set.
    * @param ticker Ticker to filter (or null to filter all tickers)
    * @param market Market to filter (or null to filter all markets)
+   * @param note note to filter (or null to filter all notes)
    */
-  public void applyFilter(Date from, Date to, String ticker, String market)
+  public void applyFilter(Date from, Date to, String ticker, String market, String note)
   {
     /* Preprocess to date */
     GregorianCalendar gc = new GregorianCalendar();
@@ -698,8 +731,13 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
         }
       }
     }
-
+    
+    String notePrefix = null;
+    notePrefix = note.substring(0, note.length());
+    String regex = ".*"+notePrefix+".*";
+          
     // Create set
+    //Vector<Transaction> v =  new Vector<Transaction>();
     Vector<Transaction> v =  new Vector<Transaction>();
 
     // Run filter
@@ -723,6 +761,12 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
           if (!tx.market.equalsIgnoreCase(market)) continue; // Different ticker - does not pass filter
         }
 
+        // Check note
+        if (note != null) {
+          if (!tx.note.matches(regex)) continue; // No match
+        }        
+
+        
         // OK, add
         v.add(tx);
       }

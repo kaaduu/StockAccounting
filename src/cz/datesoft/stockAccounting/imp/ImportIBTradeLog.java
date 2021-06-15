@@ -60,20 +60,29 @@ public class ImportIBTradeLog extends ImportBase
             switch(statusCode) {
                 case "O":
                 case "C":
-                       drow.note   = a[3];
+                       drow.note   = a[3]+"|Broker:IB";
                        break;
                 default:
-                       drow.note   = a[3]+"|Code:"+a[6];
+                       drow.note   = a[3]+"|Broker:IB|Code:"+a[6];
                        break;                
             }
             
           
             drow.direction = 0;
-            if (a[5].length() >= 4) {
-              if (a[5].substring(0,4).equals("SELL")) drow.direction = derivate?Transaction.DIRECTION_DSELL:Transaction.DIRECTION_SSELL;
-            }
-            if (a[5].substring(0,3).equals("BUY")) drow.direction = derivate?Transaction.DIRECTION_DBUY:Transaction.DIRECTION_SBUY;
-          
+            //detect types
+            if(!cash) {
+                if (a[5].length() >= 4) {
+                    if (a[5].substring(0,4).equals("SELL")) drow.direction = derivate?Transaction.DIRECTION_DSELL:Transaction.DIRECTION_SSELL;
+                }
+                if (a[5].substring(0,3).equals("BUY")) drow.direction = derivate?Transaction.DIRECTION_DBUY:Transaction.DIRECTION_SBUY;
+            } else {
+                if (a[5].substring(0,4).equals("SELL")) drow.direction = Transaction.DIRECTION_CSELL;
+                if (a[5].substring(0,3).equals("BUY")) drow.direction = Transaction.DIRECTION_CBUY;
+            } //!cash             
+                            
+            
+            
+            
             String date = a[7];
             drow.date = parseDate(date.substring(6)+"."+date.substring(4,6)+"."+date.substring(0,4)+" "+a[8], null);
             drow.executionDate = drow.date;
