@@ -164,7 +164,7 @@ public abstract class ImportBase
   protected static double parseNumber(String value)
   {
     // Remove all non-numeric and non-comma characters
-    String s = value.replaceAll("[^0-9,]+", "");
+    String s = value.replaceAll("[^0-9,.]+", "");
     
     if (s.length() == 0) return 0; // Empty string is 0
     

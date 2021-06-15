@@ -9,12 +9,14 @@
 
 package cz.datesoft.stockAccounting.imp;
 
+//import static com.sun.xml.internal.ws.spi.db.BindingContextFactory.LOGGER;
 import java.util.Vector;
 import java.io.File;
 import java.util.Date;
 
 import cz.datesoft.stockAccounting.Transaction;
 import static cz.datesoft.stockAccounting.imp.ImportBase.parseNumber;
+import java.util.Arrays;
 
 /**
  * Import data from Trading 212 CSV export
@@ -35,9 +37,10 @@ public class ImportCustomCSV extends ImportBase
   private final int ID_MARKET = 7;
   private final int ID_EXECUTION_DATE = 8;
   private final int ID_NOTE = 9;
-  private final int ID_FEE_CZK = 10;
-  private final int ID_FEE_USD = 11;
-  private final int ID_FEE_EUR = 12;
+  //private final int ID_FEE_CZK = 10;
+  private final int ID_FEE = 10;
+  private final int ID_FEE_CURRENCY = 11;
+  //private final int ID_FEE_EUR = 12;
   
   /**
    * Our data row with a bit more fields
@@ -59,26 +62,40 @@ public class ImportCustomCSV extends ImportBase
     java.io.BufferedReader ifl = new java.io.BufferedReader(new java.io.FileReader(srcFile));
     String s;
     
+    
     // Establish column names
-    registerColumnName("Ticker", ID_TICKER);
-    registerColumnName("Action", ID_TYPE);    
-    registerColumnName("Shares", ID_AMOUNT);    
-    registerColumnName("Price", ID_PRICE);
-    registerColumnName("Currency", ID_CURRENCY);    
-    registerColumnName("Date", ID_DATE);
-    //registerColumnName("Trh", ID_MARKET);
-    //registerColumnName("Množství", ID_AMOUNT);    
+    registerColumnName("Symbol", ID_TICKER);
+    registerColumnName("Buy/Sell", ID_TYPE);    
+    registerColumnName("Quantity", ID_AMOUNT);    
+    registerColumnName("TradePrice", ID_PRICE);
+    registerColumnName("CurrencyPrimary", ID_CURRENCY);    
+    //format "20210128;093002"
+    registerColumnName("DateTime", ID_DATE);    
+    registerColumnName("Exchange", ID_MARKET);    
+    // format: "20210201"
+    registerColumnName("SettleDateTarget", ID_EXECUTION_DATE);
+    registerColumnName("Description", ID_NOTE);    
+    registerColumnName("IBCommission", ID_FEE);    
+    registerColumnName("IBCommissionCurrency", ID_FEE_CURRENCY);        
+
+    // local columns not propagated
+    final int ID_MULTIPLIER = 13;
+    registerColumnName("Multiplier", ID_MULTIPLIER);  
+    final int ID_ASSETCLASS = 14;
+    registerColumnName("AssetClass", ID_ASSETCLASS);  
+    
 
 
     // Find start
     int neededLen = 0;
     boolean startFound = false;
     while((s = ifl.readLine()) != null) {
-      String[] a = s.split(";");
-      if (a.length >= 6) {
+      String[] a = s.split(",");
+      if (a.length >= 20) {
         startFound = true;
         for(int i = 0; i < a.length; i++) {
-          if (setColumnIdentity(i, a[i])) {
+           //remove "
+          if (setColumnIdentity(i, a[i].replace("\"",""))) {
             neededLen = i+1;
           }
         }
@@ -87,22 +104,26 @@ public class ImportCustomCSV extends ImportBase
       }
     }
     
-    if (!startFound) throw new ImportException("CustomCSV: Nemohu najít začátek dat - je soubor ve správném formátu?");
+    if (!startFound) throw new ImportException("IB FlexQuery Trades CSV: Nemohu najít začátek dat - je soubor ve správném formátu?");
     
     // Check all columns are present...
     checkAllColumnsPresent();
     
     // Get indices
     int dirIdx = getColumnNo(ID_TYPE);
-    //int marketIdx = getColumnNo(ID_MARKET);
+    int marketIdx = getColumnNo(ID_MARKET);
     //int marketIdx = getColumnNo(ID_MARKET);
     int dateIdx = getColumnNo(ID_DATE);
     int amountIdx = getColumnNo(ID_AMOUNT);
     int currencyIdx = getColumnNo(ID_CURRENCY);
-    //int textIdx = getColumnNo(ID_NOTE);
-    //int executionIdx = getColumnNo(ID_EXECUTION_DATE);
+    int noteIdx = getColumnNo(ID_NOTE);
+    int executionIdx = getColumnNo(ID_EXECUTION_DATE);
     int tickerIdx = getColumnNo(ID_TICKER);
     int priceIdx = getColumnNo(ID_PRICE);
+    int feeIdx = getColumnNo(ID_FEE);
+    int feeCurrencyIdx = getColumnNo(ID_FEE_CURRENCY);    
+    int multiplierIdx = getColumnNo(ID_MULTIPLIER);
+    int typeIdx = getColumnNo(ID_ASSETCLASS);
     //int feeCZKIdx = getColumnNo(ID_FEE_CZK);
     //int feeUSDIdx = getColumnNo(ID_FEE_USD);
     //int feeEURIdx = getColumnNo(ID_FEE_EUR);
@@ -110,48 +131,74 @@ public class ImportCustomCSV extends ImportBase
     // Process data rows
     while((s = ifl.readLine()) != null) {
       boolean imported = false;
-      
-      String[] a = s.split(";", -1);
-      
+      //remove all " from text
+      String[] a = s.replace("\"","").split(",", -1);
+      //System.out.print(Arrays.toString(a)+"\n");
       if (a.length >= neededLen) {
         CustomCSVDataRow drow = new CustomCSVDataRow();
-
         String dirStr = a[dirIdx];
-
         drow.direction = 0;
+        
+        // false false true :) mame vzdy jeden typ
+        boolean cash = a[typeIdx].equals("CASH");
+        boolean derivate = (a[typeIdx].equals("FUT") || a[typeIdx].equals("OPT") || a[typeIdx].equals("FOP") );
+        boolean stock = ( a[typeIdx].equals("STK") || a[typeIdx].equals("WAR"));
 
-        //if (equalsIgoreCaseAndEncoding(dirStr, "Limit buy", "Market buy")) drow.direction = Transaction.DIRECTION_SBUY;
-        // "Limit buy", "Market buy", "Stop buy"
-        if (dirStr.matches(".*Buy.*")) drow.direction = Transaction.DIRECTION_SBUY;
-        //else if (dirStr.equalsIgnoreCase("Prodej")) drow.direction = Transaction.DIRECTION_SSELL;
-        // "Limit sell", "Market sell", "Stop sell"
-        else if (dirStr.matches(".*Sell.*")) drow.direction = Transaction.DIRECTION_SSELL;
 
-        //if (drow.direction == 0) {            }
-        //else {
-          /** Buy, sell or transformation **/
-          String ticker = a[tickerIdx];
+        // detekce typu 
+         if (!cash) {
+            if (dirStr.equals("SELL")) drow.direction = derivate?Transaction.DIRECTION_DSELL:Transaction.DIRECTION_SSELL;            
+            if (dirStr.equals("BUY"))  drow.direction = derivate?Transaction.DIRECTION_DBUY:Transaction.DIRECTION_SBUY;
+         } else {
+            if (dirStr.equals("SELL")) drow.direction = Transaction.DIRECTION_CSELL;
+            if (dirStr.equals("BUY"))  drow.direction = Transaction.DIRECTION_CBUY;             
+         }
 
-          try {
-            //LOGGER.debug("This is a debug");
+            String ticker = a[tickerIdx];
+
+          try {                        
+            // We must turn negative amount in sell to positive amounts
+            //a[19] should be Multiplier
+            drow.amount = (int)Math.abs(Double.parseDouble(a[amountIdx]) * Double.parseDouble(a[multiplierIdx]));
+            //drow.amount = (int)Math.abs(Double.parseDouble(a[amountIdx]));
             
-            //drow.amount = (int)parseNumber(a[amountIdx]);
-            //drow.amount = (int)Math.abs(Double.parseDouble(a[amountIdx]) );
-            drow.amount = (int)(Math.abs(Double.parseDouble(a[amountIdx]))*1000);
-            drow.price = (Double.parseDouble(a[priceIdx]))/1000;
+            //drow.amount = (int)(Math.abs(Double.parseDouble(a[amountIdx]))*1000);
+            drow.price = (Double.parseDouble(a[priceIdx]));
             //drow.price = parseNumber(a[priceIdx]);
             drow.currency = a[currencyIdx].toUpperCase();
-            //drow.market = a[marketIdx].toUpperCase();
-            drow.market = "Unknown";
+
+            if (cash) drow.feeCurrency = "USD"; // For FX trades fees are always in USD
+            else drow.feeCurrency = a[feeCurrencyIdx];
+            drow.fee = -Double.parseDouble(a[feeIdx]);
+            if (Math.abs(drow.fee) == 0) drow.fee = 0; // Avoid having "-0" as a fee
+
+            
+
+            drow.market = a[marketIdx].toUpperCase();
+            //drow.market = "Unknown";
 
             /* Get date */
             //Date date = parseDate(a[dateIdx], null);
             String x = a[dateIdx];
-            /* "2021-05-28 13:34:53" */      
+            /* "20210128;093002" */                  
+            drow.date = parseDate(x.substring(6,8)+"."+x.substring(4,6)+"."+x.substring(0,4)+" "+x.substring(9,11)+":"+x.substring(11,13)+":"+x.substring(13,15), null);
+            //System.out.print(drow.date+"\n");
             
-            drow.date = parseDate(x.substring(8,10)+"."+x.substring(5,7)+"."+x.substring(0,4)+" "+"00:00:00", null);
-            drow.executionDate = drow.date;
-          
+            // 20210201  - im adding same HHMMSS from trade but with settlement date
+            String y = a[executionIdx];
+            //System.out.print(x+"\n");
+            //System.out.print(y+"\n");
+            drow.executionDate = parseDate(y.substring(6,8)+"."+y.substring(4,6)+"."+y.substring(0,4)+" "+x.substring(9,11)+":"+x.substring(11,13)+":"+x.substring(13,15), null);
+            
+            switch(a[typeIdx]) {
+                case "WAR":
+                       drow.note   = a[noteIdx]+"|Broker:IB|Type:Warrant";
+                       break;
+                default:
+                       drow.note   = a[noteIdx]+"|Broker:IB";
+                       break;                
+            }
+            //drow.note   = a[noteIdx];
             
             
             //boolean outOfDateRange = false;
@@ -161,7 +208,7 @@ public class ImportCustomCSV extends ImportBase
 
             //if (!outOfDateRange) {
             //drow.date = date;
-            drow.ticker = ticker;
+            drow.ticker = a[tickerIdx];
               
             //drow.executionDate = parseDate(a[executionIdx],date);
             //drow.executionDate = drow.date;

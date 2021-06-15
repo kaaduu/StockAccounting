@@ -44,13 +44,13 @@
           <Group type="102" alignment="0" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
-                  <Component id="iconButton" pref="181" max="32767" attributes="1"/>
+                  <Component id="iconButton" max="32767" attributes="1"/>
                   <Component id="jEditorPane1" min="-2" pref="58" max="-2" attributes="1"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
-              <Component id="jEditorPane2" min="-2" pref="204" max="-2" attributes="0"/>
+              <Component id="jEditorPane2" min="-2" pref="166" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
-              <Component id="jPanel1" min="-2" pref="46" max="-2" attributes="0"/>
+              <Component id="jPanel1" min="-2" pref="77" max="-2" attributes="0"/>
               <EmptySpace min="-2" max="-2" attributes="0"/>
           </Group>
       </Group>
@@ -80,7 +80,7 @@
         <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
           <Font name="Tahoma" size="11" style="1"/>
         </Property>
-        <Property name="text" type="java.lang.String" value="&lt;html&gt;&#xa;  &lt;head&gt;&#xa;&#xa;  &lt;/head&gt;&#xa;  &lt;body&gt;&#xa;    &lt;p style=&quot;margin-top: 0&quot;&gt;&#xa;      Akciov&#xe9; &#xfa;&#x10d;etnictv&#xed; verze 2021-06 rev 1 (&lt;a href=&quot;http://lemming.ucw.cz/ucetnictvi/&quot;&gt;vychazi z puvodni verze 1.2.7&lt;/a&gt; - Michal K&#xe1;ra)&lt;br&gt; &#xa;     Zdrojove kody na &lt;a href=&quot;https://github.com/kaaduu/StockAccounting&quot;&gt;githubu&lt;/a&gt; - vydano pod licenc&#xed; GPL&#xa;    &lt;/p&gt;&#xa;  &lt;/body&gt;&#xa;&lt;/html&gt;&#xa;"/>
+        <Property name="text" type="java.lang.String" value="&lt;html&gt;&#xa;  &lt;head&gt;&#xa;&#xa;  &lt;/head&gt;&#xa;  &lt;body&gt;&#xa;    &lt;p style=&quot;margin-top: 0&quot;&gt;&#xa;      Akciov&#xe9; &#xfa;&#x10d;etnictv&#xed; verze 2021-06 rev 2 (&lt;a href=&quot;http://lemming.ucw.cz/ucetnictvi/&quot;&gt;vychazi z puvodni verze 1.2.7&lt;/a&gt; - Michal K&#xe1;ra)&lt;br&gt; &#xa;     Zdrojove kody na &lt;a href=&quot;https://github.com/kaaduu/StockAccounting&quot;&gt;githubu&lt;/a&gt; - vydano pod licenc&#xed; GPL&#xa;    &lt;/p&gt;&#xa;  &lt;/body&gt;&#xa;&lt;/html&gt;&#xa;"/>
         <Property name="toolTipText" type="java.lang.String" value=""/>
         <Property name="cursor" type="java.awt.Cursor" editor="org.netbeans.modules.form.editors2.CursorEditor">
           <Color id="Default Cursor"/>
@@ -117,7 +117,7 @@
         <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
           <Font name="Tahoma" size="10" style="2"/>
         </Property>
-        <Property name="text" type="java.lang.String" value="&lt;html&gt;&#xa;  &lt;head&gt;&#xa;    &lt;style type=&quot;text/css&quot;&gt;&#xa;     .style1 { color: #000000; font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 8px;  }&#xa;     .style2 { font-family: Verdana, Arial, Helvetica, sans-serif;&#x9;color: red;&#x9; font-size:0.9em; }&#xa;  &lt;/style&gt;  &#xa;  &lt;/head&gt;&#xa;  &lt;body&gt;&#xa;&lt;div class=&quot;style2&quot;&gt;&#xa;Upozorn&#x11b;n&#xed;: Pou&#x17e;it&#xed; tohoto programu je pouze na vlastn&#xed; nebezpe&#x10d;&#xed;!&#xa;Autor neru&#x10d;&#xed; za jeho metodickou ani v&#xfd;po&#x10d;etn&#xed; spr&#xe1;vnost!&lt;br&gt;&#xa;&lt;/div&gt;&#xa;&lt;div class=&quot;style1&quot;&gt;&#xa;Zmeny:&lt;br&gt;&#xa;10.06.2021 - T212 Import fix - konverze GBX na GBP&lt;br&gt;&#xa;                   - Pridan sloupec Poznamka (pri importu vlozi jmeno spolecnosti a pripadne dalsi pomocne informace)&lt;br&gt;&#xa;                   - Nastaveni maximalni sirky sloupcu v hlavnim okne&lt;br&gt;&#xa;                   - Opravena hodnota amount (pocet akcii) pri importu  na double - podpora frakcnich akcii (castecne jiz umelo)&lt;br&gt;&#xa;                   - zmena verzovani na format : 2021 JUN rev 1&lt;br&gt;&#xa;&#xa;plna historie zmen na       &lt;a href=&quot;https://github.com/kaaduu/StockAccounting&quot;&gt;githubu&lt;/a&gt;&lt;br&gt;&#xa;&lt;br&gt;&#xa;Know bugs:&lt;br&gt;&#xa;                   - IBImport spatne priradi CASH_TRD jako Typ CP (STK_TRD) jako fyzicka osoba co nedela FOREX je to asi jedno&lt;br&gt;&#xa;&#x9;a, ale je nutne takove ochody pak manualne zmenit.&lt;br&gt;&#xa;&lt;/div&gt;&#xa;&lt;/body&gt;&#xa;&lt;/html&gt;&#xa;"/>
+        <Property name="text" type="java.lang.String" value="&lt;html&gt;&#xa;  &lt;head&gt;&#xa;    &lt;style type=&quot;text/css&quot;&gt;&#xa;     .style1 { color: #000000; font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 8px;  }&#xa;     .style2 { font-family: Verdana, Arial, Helvetica, sans-serif;&#x9;color: red;&#x9; font-size:0.9em; }&#xa;  &lt;/style&gt;  &#xa;  &lt;/head&gt;&#xa;  &lt;body&gt;&#xa;&lt;div class=&quot;style2&quot;&gt;&#xa;Upozorn&#x11b;n&#xed;: Pou&#x17e;it&#xed; tohoto programu je pouze na vlastn&#xed; nebezpe&#x10d;&#xed;!&#xa;Autor neru&#x10d;&#xed; za jeho metodickou ani v&#xfd;po&#x10d;etn&#xed; spr&#xe1;vnost!&lt;br&gt;&#xa;&lt;/div&gt;&#xa;&lt;div class=&quot;style1&quot;&gt;&#xa;plna historie zmen na       &lt;a href=&quot;https://github.com/kaaduu/StockAccounting&quot;&gt;githubu&lt;/a&gt;&lt;br&gt;&#xa;&lt;br&gt;&#xa;Zname chyby:&lt;br&gt;&#xa; - Importy TradeLog, T212 neobsahuji datum vyporadani&lt;br&gt;&#xa; - TradeLog neobsahuje obchody warrantu (chyba u brokera - reportovano)&lt;br&gt;&#xa;&lt;/div&gt;&#xa;&lt;/body&gt;&#xa;&lt;/html&gt;&#xa;"/>
         <Property name="opaque" type="boolean" value="false"/>
       </Properties>
     </Component>

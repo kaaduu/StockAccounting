@@ -28,7 +28,7 @@ public class AboutWindow extends javax.swing.JDialog
     initComponents();
     
     setLocationByPlatform(true);
-    setSize(750,400);
+    setSize(750,350);
     
     // Set icon
     iconButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("images/dolar.png")));
@@ -96,7 +96,7 @@ public class AboutWindow extends javax.swing.JDialog
         jEditorPane1.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         jEditorPane1.setContentType("text/html"); // NOI18N
         jEditorPane1.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
-        jEditorPane1.setText("<html>\n  <head>\n\n  </head>\n  <body>\n    <p style=\"margin-top: 0\">\n      Akciové účetnictví verze 2021-06 rev 1 (<a href=\"http://lemming.ucw.cz/ucetnictvi/\">vychazi z puvodni verze 1.2.7</a> - Michal Kára)<br> \n     Zdrojove kody na <a href=\"https://github.com/kaaduu/StockAccounting\">githubu</a> - vydano pod licencí GPL\n    </p>\n  </body>\n</html>\n");
+        jEditorPane1.setText("<html>\n  <head>\n\n  </head>\n  <body>\n    <p style=\"margin-top: 0\">\n      Akciové účetnictví verze 2021-06 rev 2 (<a href=\"http://lemming.ucw.cz/ucetnictvi/\">vychazi z puvodni verze 1.2.7</a> - Michal Kára)<br> \n     Zdrojove kody na <a href=\"https://github.com/kaaduu/StockAccounting\">githubu</a> - vydano pod licencí GPL\n    </p>\n  </body>\n</html>\n");
         jEditorPane1.setToolTipText("");
         jEditorPane1.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         jEditorPane1.setOpaque(false);
@@ -115,7 +115,7 @@ public class AboutWindow extends javax.swing.JDialog
         jEditorPane2.setBorder(null);
         jEditorPane2.setContentType("text/html"); // NOI18N
         jEditorPane2.setFont(new java.awt.Font("Tahoma", 2, 10)); // NOI18N
-        jEditorPane2.setText("<html>\n  <head>\n    <style type=\"text/css\">\n     .style1 { color: #000000; font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 8px;  }\n     .style2 { font-family: Verdana, Arial, Helvetica, sans-serif;\tcolor: red;\t font-size:0.9em; }\n  </style>  \n  </head>\n  <body>\n<div class=\"style2\">\nUpozornění: Použití tohoto programu je pouze na vlastní nebezpečí!\nAutor neručí za jeho metodickou ani výpočetní správnost!<br>\n</div>\n<div class=\"style1\">\nZmeny:<br>\n10.06.2021 - T212 Import fix - konverze GBX na GBP<br>\n                   - Pridan sloupec Poznamka (pri importu vlozi jmeno spolecnosti a pripadne dalsi pomocne informace)<br>\n                   - Nastaveni maximalni sirky sloupcu v hlavnim okne<br>\n                   - Opravena hodnota amount (pocet akcii) pri importu  na double - podpora frakcnich akcii (castecne jiz umelo)<br>\n                   - zmena verzovani na format : 2021 JUN rev 1<br>\n\nplna historie zmen na       <a href=\"https://github.com/kaaduu/StockAccounting\">githubu</a><br>\n<br>\nKnow bugs:<br>\n                   - IBImport spatne priradi CASH_TRD jako Typ CP (STK_TRD) jako fyzicka osoba co nedela FOREX je to asi jedno<br>\n\ta, ale je nutne takove ochody pak manualne zmenit.<br>\n</div>\n</body>\n</html>\n");
+        jEditorPane2.setText("<html>\n  <head>\n    <style type=\"text/css\">\n     .style1 { color: #000000; font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 8px;  }\n     .style2 { font-family: Verdana, Arial, Helvetica, sans-serif;\tcolor: red;\t font-size:0.9em; }\n  </style>  \n  </head>\n  <body>\n<div class=\"style2\">\nUpozornění: Použití tohoto programu je pouze na vlastní nebezpečí!\nAutor neručí za jeho metodickou ani výpočetní správnost!<br>\n</div>\n<div class=\"style1\">\nplna historie zmen na       <a href=\"https://github.com/kaaduu/StockAccounting\">githubu</a><br>\n<br>\nZname chyby:<br>\n - Importy TradeLog, T212 neobsahuji datum vyporadani<br>\n - TradeLog neobsahuje obchody warrantu (chyba u brokera - reportovano)<br>\n</div>\n</body>\n</html>\n");
         jEditorPane2.setOpaque(false);
 
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(getContentPane());
@@ -138,12 +138,12 @@ public class AboutWindow extends javax.swing.JDialog
             .add(layout.createSequentialGroup()
                 .addContainerGap()
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(iconButton, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 181, Short.MAX_VALUE)
+                    .add(iconButton, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .add(jEditorPane1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 58, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(jEditorPane2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 204, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .add(jEditorPane2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 166, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 46, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 77, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
 

@@ -61,13 +61,15 @@
     <Component class="javax.swing.JComboBox" name="cbFormat">
       <Properties>
         <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
-          <StringArray count="6">
+          <StringArray count="8">
             <StringItem index="0" value="&lt;vyberte form&#xe1;t&gt;"/>
             <StringItem index="1" value="Fio - obchody export"/>
-            <StringItem index="2" value="BJ - HTML export"/>
+            <StringItem index="2" value="BrokerJet - HTML export (legacy)"/>
             <StringItem index="3" value="IB - TradeLog"/>
-            <StringItem index="4" value="T212 - orders export"/>
-            <StringItem index="5" value="Custom CSV"/>
+            <StringItem index="4" value="IB - FlexQuery Trades only CSV"/>
+            <StringItem index="5" value="T212 Invest  - csv  mena: USD"/>
+            <StringItem index="6" value="T212 Invest  - csv  mena: CZK"/>
+            <StringItem index="7" value=" "/>
           </StringArray>
         </Property>
         <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">

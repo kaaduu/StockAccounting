@@ -273,7 +273,7 @@ public class ImportWindow extends javax.swing.JDialog
         gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
         getContentPane().add(jLabel4, gridBagConstraints);
 
-        cbFormat.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "<vyberte formát>", "Fio - obchody export", "BJ - HTML export", "IB - TradeLog", "T212 - orders export", "Custom CSV" }));
+        cbFormat.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "<vyberte formát>", "Fio - obchody export", "BrokerJet - HTML export (legacy)", "IB - TradeLog", "IB - FlexQuery Trades only CSV", "T212 Invest  - csv  mena: USD", "T212 Invest  - csv  mena: CZK", " " }));
         cbFormat.setMinimumSize(new java.awt.Dimension(100, 20));
         cbFormat.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

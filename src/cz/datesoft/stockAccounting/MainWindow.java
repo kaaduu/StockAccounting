@@ -16,6 +16,13 @@ import java.util.GregorianCalendar;
 import java.text.SimpleDateFormat;
 import javax.swing.JFileChooser;
 import java.awt.event.KeyEvent;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import javax.swing.Action;
 
 /**
@@ -103,7 +110,7 @@ public class MainWindow extends javax.swing.JFrame
       
       cbTickers.setModel(transactions.getTickersModel());
       
-      this.setSize(800,550);
+      this.setSize(1000,550);
       this.setLocationByPlatform(true);
 
       dcFrom.setDateFormat(new SimpleDateFormat("dd.MM.yyyy"));
@@ -230,6 +237,8 @@ public class MainWindow extends javax.swing.JFrame
         jSeparator3 = new javax.swing.JSeparator();
         bDelete = new javax.swing.JButton();
         bSort = new javax.swing.JButton();
+        jLabel7 = new javax.swing.JLabel();
+        tfNote = new javax.swing.JTextField();
         jScrollPane1 = new javax.swing.JScrollPane();
         table = new javax.swing.JTable();
         jPanel1 = new javax.swing.JPanel();
@@ -243,6 +252,7 @@ public class MainWindow extends javax.swing.JFrame
         miSaveFiltered = new javax.swing.JMenuItem();
         miImport = new javax.swing.JMenuItem();
         miExport = new javax.swing.JMenuItem();
+        miExportFIO = new javax.swing.JMenuItem();
         jSeparator2 = new javax.swing.JSeparator();
         miExit = new javax.swing.JMenuItem();
         jMenu2 = new javax.swing.JMenu();
@@ -358,17 +368,26 @@ public class MainWindow extends javax.swing.JFrame
 
         tfMarket.setMinimumSize(new java.awt.Dimension(60, 20));
         tfMarket.setPreferredSize(new java.awt.Dimension(60, 20));
+        tfMarket.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                tfMarketActionPerformed(evt);
+            }
+        });
         tfMarket.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyPressed(java.awt.event.KeyEvent evt) {
                 tfMarketKeyPressed(evt);
             }
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 9;
+        gridBagConstraints.gridy = 0;
         gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
         jPanel2.add(tfMarket, gridBagConstraints);
 
         jSeparator3.setOrientation(javax.swing.SwingConstants.VERTICAL);
         gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 15;
+        gridBagConstraints.gridy = 0;
         gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.EAST;
         gridBagConstraints.weightx = 1.0;
@@ -382,6 +401,8 @@ public class MainWindow extends javax.swing.JFrame
             }
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 16;
+        gridBagConstraints.gridy = 0;
         gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
         jPanel2.add(bDelete, gridBagConstraints);
 
@@ -392,8 +413,34 @@ public class MainWindow extends javax.swing.JFrame
             }
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 17;
+        gridBagConstraints.gridy = 0;
         gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
         jPanel2.add(bSort, gridBagConstraints);
+
+        jLabel7.setText("Note:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 10;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+        jPanel2.add(jLabel7, gridBagConstraints);
+
+        tfNote.setMinimumSize(new java.awt.Dimension(60, 20));
+        tfNote.setPreferredSize(new java.awt.Dimension(60, 20));
+        tfNote.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                tfNoteActionPerformed(evt);
+            }
+        });
+        tfNote.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                tfNoteKeyPressed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 11;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+        jPanel2.add(tfNote, gridBagConstraints);
 
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridy = 0;
@@ -493,7 +540,7 @@ public class MainWindow extends javax.swing.JFrame
         jMenu1.add(miSaveFiltered);
 
         miImport.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_I, java.awt.event.InputEvent.CTRL_DOWN_MASK));
-        miImport.setText("Import");
+        miImport.setText("Import od brokera");
         miImport.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 miImportActionPerformed(evt);
@@ -501,13 +548,21 @@ public class MainWindow extends javax.swing.JFrame
         });
         jMenu1.add(miImport);
 
-        miExport.setText("Export");
+        miExport.setText("Export do interni csv");
         miExport.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 miExportActionPerformed(evt);
             }
         });
         jMenu1.add(miExport);
+
+        miExportFIO.setText("Export do FIO formatu");
+        miExportFIO.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                miExportFIOActionPerformed(evt);
+            }
+        });
+        jMenu1.add(miExportFIO);
         jMenu1.add(jSeparator2);
 
         miExit.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, java.awt.event.InputEvent.CTRL_DOWN_MASK));
@@ -580,11 +635,14 @@ public class MainWindow extends javax.swing.JFrame
 
   private void miNewActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_miNewActionPerformed
   {//GEN-HEADEREND:event_miNewActionPerformed
-    transactions = new TransactionSet();
-    table.setModel(transactions);
-
+    // There is bug no calendar choser working and others..  so disabling this menu activity
+    if (JOptionPane.showConfirmDialog(rootPane, "Pozor!\n Aktualne nefunguje, ukonci a spust aplikaci znovu :)\nAle pokud rozumis jave a chtel bys toto opravit budu jen rad\n", "Upozorneni", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.OK_OPTION) return;
+    //transactions = new TransactionSet();
+    //table.setModel(transactions);
+ 
     // Clear results of computing
-    computeWindow.clearComputeResults();
+    //computeWindow.clearComputeResults();
+    
   }//GEN-LAST:event_miNewActionPerformed
 
   private void miExportActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_miExportActionPerformed
@@ -810,12 +868,14 @@ public class MainWindow extends javax.swing.JFrame
     // Get ticker and market. Set them to NULL when they are not set.
     String ticker = tfTicker.getText();
     String market = tfMarket.getText();
+    String note =   tfNote.getText();
 
     if (ticker.length() == 0) ticker = null;
     if (market.length() == 0) market = null;
+    if (note.length() == 0) note = null;
 
     // Apply filter
-    transactions.applyFilter(dcFrom.getValue().getTime(), dcTo.getValue().getTime(), ticker, market);
+    transactions.applyFilter(dcFrom.getValue().getTime(), dcTo.getValue().getTime(), ticker, market, note);
     
     // Enable clear filter button and save filtered
     bClearFilter.setEnabled(true);
@@ -904,6 +964,73 @@ public class MainWindow extends javax.swing.JFrame
         // TODO add your handling code here:
     }//GEN-LAST:event_tfTickerActionPerformed
 
+    private void tfNoteKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_tfNoteKeyPressed
+         if (evt.getKeyCode() == KeyEvent.VK_ENTER) applyFilter();
+    }//GEN-LAST:event_tfNoteKeyPressed
+
+    private void tfMarketActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tfMarketActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_tfMarketActionPerformed
+
+    private void miExportFIOActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_miExportFIOActionPerformed
+    if (JOptionPane.showConfirmDialog(rootPane, "Pozor!\n Exportuji se pouze obchody typu Cenny Papir a veskere transformace split,reverse split zatim filtrovane\n\nPo exportu muzete porovnat s vystupy na http://kacka.baldsoft.com/\nBohuzel frakcni akcie FIO format nepodporuje", "Limitovany export", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.OK_OPTION) return;
+
+
+fileChooser.setDialogTitle("Exportovat do FIO CSV formatu - lze pouzit na kacka.baldsoft.com");
+    
+    // set default view
+    Action details = fileChooser.getActionMap().get("viewTypeDetails");
+    details.actionPerformed(null);
+
+    
+    int res = fileChooser.showSaveDialog(this);
+    
+   
+    
+    if (res == JFileChooser.APPROVE_OPTION) {
+      try {
+        // Add .csv to file if it has no extension
+        File file = fileChooser.getSelectedFile();
+        if (file.getName().indexOf('.') < 0) file = new File(file.getParent(),file.getName()+".csv");
+        
+        if (file.exists()) {
+          // Ask whether to overwrite
+          if (JOptionPane.showConfirmDialog(this,"Soubor "+file.toString()+" existuje. Chcete jej přepsat?","Soubor existuje",JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
+        }
+        
+        
+        transactions.exportFIO(file);
+        
+        // Convert just created exportFIO from utf-8 to Windows-1250
+        FileInputStream input = new FileInputStream(file);
+        InputStreamReader reader = new InputStreamReader(input, "utf-8");
+        //create temporary file
+        File destinationFile = File.createTempFile("temp", ".csv");
+        //System.out.println(destinationFile.getAbsolutePath());
+        
+        FileOutputStream output = new FileOutputStream(destinationFile);
+        OutputStreamWriter writer = new OutputStreamWriter(output, "Windows-1250");
+
+        int read = reader.read();
+        while (read != -1) { writer.write(read); read = reader.read(); }    
+        reader.close();
+        writer.close();   
+        // Move temporary converted file as original
+        Files.move(Paths.get(destinationFile.toString()), Paths.get(file.toString()), StandardCopyOption.REPLACE_EXISTING);
+        
+                
+        
+      }
+      catch(Exception e) {
+        JOptionPane.showMessageDialog(this,"Při ukládání nastala chyba:"+e);
+      }
+    }        // TODO add your handling code here:
+    }//GEN-LAST:event_miExportFIOActionPerformed
+
+    private void tfNoteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tfNoteActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_tfNoteActionPerformed
+
   /**
    * Refresh currencies combo
    */
@@ -955,6 +1082,7 @@ public class MainWindow extends javax.swing.JFrame
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel7;
     private javax.swing.JMenu jMenu1;
     private javax.swing.JMenu jMenu2;
     private javax.swing.JMenu jMenu3;
@@ -969,6 +1097,7 @@ public class MainWindow extends javax.swing.JFrame
     private javax.swing.JMenuItem miAccountState;
     private javax.swing.JMenuItem miExit;
     private javax.swing.JMenuItem miExport;
+    private javax.swing.JMenuItem miExportFIO;
     private javax.swing.JMenuItem miImport;
     private javax.swing.JMenuItem miNew;
     private javax.swing.JMenuItem miOpen;
@@ -979,6 +1108,7 @@ public class MainWindow extends javax.swing.JFrame
     private javax.swing.JMenuItem miSettings;
     private javax.swing.JTable table;
     private javax.swing.JTextField tfMarket;
+    private javax.swing.JTextField tfNote;
     private javax.swing.JTextField tfTicker;
     // End of variables declaration//GEN-END:variables
     

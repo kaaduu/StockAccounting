@@ -21,7 +21,7 @@ import static cz.datesoft.stockAccounting.imp.ImportBase.parseNumber;
  *
  * @author Michal Kara
  */
-public class ImportT212 extends ImportBase
+public class ImportT212CZK extends ImportBase
 {
   /**
    * Identities of columns for this imported
@@ -48,7 +48,7 @@ public class ImportT212 extends ImportBase
   }
   
   /** Creates a new instance of ImportT212 */
-  public ImportT212()
+  public ImportT212CZK()
   {
     super();
   }
@@ -70,13 +70,13 @@ public class ImportT212 extends ImportBase
     //registerColumnName("Trh", ID_MARKET);
     //registerColumnName("Množství", ID_AMOUNT);    
     final int ID_FEE1 = 13;
-    registerColumnName("Transaction fee (USD)", ID_FEE1);
+    registerColumnName("Stamp duty reserve tax (CZK)", ID_FEE1);
     final int ID_FEE2 = 14;
-    registerColumnName("Finra fee (USD)", ID_FEE2);
+    registerColumnName("Currency conversion fee (CZK)", ID_FEE2);
     final int ID_CASH = 15;
-    registerColumnName("Charge amount (USD)", ID_CASH);
-    final int ID_CASHFEE = 16;
-    registerColumnName("Deposit fee (USD)", ID_CASHFEE);
+    registerColumnName("Total (CZK)", ID_CASH);
+    //final int ID_CASHFEE = 16;
+    //registerColumnName("Deposit fee (USD)", ID_CASHFEE);
     
 
     // Find start
@@ -113,12 +113,12 @@ public class ImportT212 extends ImportBase
     int tickerIdx = getColumnNo(ID_TICKER);
     int priceIdx = getColumnNo(ID_PRICE);
     //int feeCZKIdx = getColumnNo(ID_FEE_CZK);
-    int feeTransactionIdx = getColumnNo(ID_FEE1);
-    int feeFinfraIdx = getColumnNo(ID_FEE2);
+    int feeStampIdx = getColumnNo(ID_FEE1);
+    int feeConversionIdx = getColumnNo(ID_FEE2);
     //int feeEURIdx = getColumnNo(ID_FEE_EUR);
     int noteIdx = getColumnNo(ID_NOTE);
-    int depositIdx = getColumnNo(ID_CASH);
-    int depositfeeIdx = getColumnNo(ID_CASHFEE);
+    //int depositIdx = getColumnNo(ID_CASH);
+    //int depositfeeIdx = getColumnNo(ID_CASHFEE);
     
     // Process data rows
     while((s = ifl.readLine()) != null) {
@@ -186,7 +186,7 @@ public class ImportT212 extends ImportBase
             drow.executionDate = drow.date;
             
             // Get fee - works of base currency USD?
-            drow.fee = parseNumber(a[feeTransactionIdx])+parseNumber(a[feeFinfraIdx]);
+            drow.fee = parseNumber(a[feeStampIdx])+parseNumber(a[feeConversionIdx]);
               
             //TODO
             // I need add 2 rows per one dividend record Dividena-Hruba a Dividenda-Dan
