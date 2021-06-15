@@ -1016,10 +1016,7 @@ fileChooser.setDialogTitle("Exportovat do FIO CSV formatu - lze pouzit na kacka.
         reader.close();
         writer.close();   
         // Move temporary converted file as original
-        Files.move(Paths.get(destinationFile.toString()), Paths.get(file.toString()), StandardCopyOption.REPLACE_EXISTING);
-        
-                
-        
+        Files.move(Paths.get(destinationFile.toString()), Paths.get(file.toString()), StandardCopyOption.REPLACE_EXISTING);                                       
       }
       catch(Exception e) {
         JOptionPane.showMessageDialog(this,"Při ukládání nastala chyba:"+e);
