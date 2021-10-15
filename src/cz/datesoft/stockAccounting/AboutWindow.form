@@ -80,7 +80,7 @@
         <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
           <Font name="Tahoma" size="11" style="1"/>
         </Property>
-        <Property name="text" type="java.lang.String" value="&lt;html&gt;&#xa;  &lt;head&gt;&#xa;&#xa;  &lt;/head&gt;&#xa;  &lt;body&gt;&#xa;    &lt;p style=&quot;margin-top: 0&quot;&gt;&#xa;      Akciov&#xe9; &#xfa;&#x10d;etnictv&#xed; verze 2021-06 rev 2 (&lt;a href=&quot;http://lemming.ucw.cz/ucetnictvi/&quot;&gt;vychazi z puvodni verze 1.2.7&lt;/a&gt; - Michal K&#xe1;ra)&lt;br&gt; &#xa;     Zdrojove kody na &lt;a href=&quot;https://github.com/kaaduu/StockAccounting&quot;&gt;githubu&lt;/a&gt; - vydano pod licenc&#xed; GPL&#xa;    &lt;/p&gt;&#xa;  &lt;/body&gt;&#xa;&lt;/html&gt;&#xa;"/>
+        <Property name="text" type="java.lang.String" value="&lt;html&gt;&#xa;  &lt;head&gt;&#xa;&#xa;  &lt;/head&gt;&#xa;  &lt;body&gt;&#xa;    &lt;p style=&quot;margin-top: 0&quot;&gt;&#xa;      Akciov&#xe9; &#xfa;&#x10d;etnictv&#xed; verze 2021-10 rev 1 (&lt;a href=&quot;http://lemming.ucw.cz/ucetnictvi/&quot;&gt;vychazi z puvodni verze 1.2.7&lt;/a&gt; - Michal K&#xe1;ra)&lt;br&gt; &#xa;     Zdrojove kody na &lt;a href=&quot;https://github.com/kaaduu/StockAccounting&quot;&gt;githubu&lt;/a&gt; - vydano pod licenc&#xed; GPL&#xa;    &lt;/p&gt;&#xa;  &lt;/body&gt;&#xa;&lt;/html&gt;&#xa;"/>
         <Property name="toolTipText" type="java.lang.String" value=""/>
         <Property name="cursor" type="java.awt.Cursor" editor="org.netbeans.modules.form.editors2.CursorEditor">
           <Color id="Default Cursor"/>

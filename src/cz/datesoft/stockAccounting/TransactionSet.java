@@ -18,6 +18,7 @@ import java.io.BufferedReader;
 import cz.datesoft.stockAccounting.imp.*;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.util.regex.Pattern;
 import javax.swing.JOptionPane;
 
 /**
@@ -731,10 +732,26 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
         }
       }
     }
-    
+
+/*
+    boolean noteWild = false;
     String notePrefix = null;
-    notePrefix = note.substring(0, note.length());
-    String regex = ".*"+notePrefix+".*";
+    int noteLen = 0;
+    if (note != null) {
+      if (note.length() > 0) {
+        if (note.charAt(ticker.length()-1) == '*') {
+          // Found wildcard
+          noteWild = true;
+          notePrefix = note.substring(0, ticker.length()-1);
+          noteLen = notePrefix.length();
+        }
+      }
+    }
+*/
+    //String notePrefix = null;
+    //notePrefix = note.substring(0, note.length());
+    String noteRegex = ".*"+note+".*";
+    //String noteRegex = "^this$";
           
     // Create set
     //Vector<Transaction> v =  new Vector<Transaction>();
@@ -762,10 +779,15 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
         }
 
         // Check note
+        
         if (note != null) {
-          if (!tx.note.matches(regex)) continue; // No match
+          //if (!tx.note.matches(noteRegex)) continue; // No match
+          // Avoid triggering NullPointerException we can't search empty lines
+          if (tx.note != null) {
+            if (!tx.note.matches(noteRegex)) continue; // No match
+          // and null notes lines also skip via continue
+          } else  continue ;
         }        
-
         
         // OK, add
         v.add(tx);

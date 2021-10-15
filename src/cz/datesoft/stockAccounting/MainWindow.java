@@ -158,6 +158,9 @@ public class MainWindow extends javax.swing.JFrame
       table.getColumnModel().getColumn(10).setMaxWidth(100);
       table.getColumnModel().getColumn(10).setCellRenderer(new CZDateRenderer());
       table.getColumnModel().getColumn(10).setCellEditor(new DateChooserCellEditor());
+      //Poznamka (Note)
+      table.getColumnModel().getColumn(11).setPreferredWidth(200);
+      table.getColumnModel().getColumn(11).setMaxWidth(500);      
       
       // Create dialogs
       importWindow = new ImportWindow(this, true);
