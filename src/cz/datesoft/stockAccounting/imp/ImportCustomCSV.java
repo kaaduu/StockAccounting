@@ -185,9 +185,12 @@ public class ImportCustomCSV extends ImportBase
             //System.out.print(drow.date+"\n");
             
             // 20210201  - im adding same HHMMSS from trade but with settlement date
+            if(a[executionIdx].equals("")) {  throw new SecurityException("Not settlement date - excluding not trade - probably corporate action"); }
+            //; 
             String y = a[executionIdx];
+            
             //System.out.print(x+"\n");
-            //System.out.print(y+"\n");
+            //System.out.print(y+"\n");            
             drow.executionDate = parseDate(y.substring(6,8)+"."+y.substring(4,6)+"."+y.substring(0,4)+" "+x.substring(9,11)+":"+x.substring(11,13)+":"+x.substring(13,15), null);
             
             switch(a[typeIdx]) {

@@ -69,14 +69,14 @@ public class ImportT212 extends ImportBase
     registerColumnName("Name", ID_NOTE);
     //registerColumnName("Trh", ID_MARKET);
     //registerColumnName("Množství", ID_AMOUNT);    
-    final int ID_FEE1 = 13;
-    registerColumnName("Transaction fee (USD)", ID_FEE1);
-    final int ID_FEE2 = 14;
-    registerColumnName("Finra fee (USD)", ID_FEE2);
-    final int ID_CASH = 15;
-    registerColumnName("Charge amount (USD)", ID_CASH);
-    final int ID_CASHFEE = 16;
-    registerColumnName("Deposit fee (USD)", ID_CASHFEE);
+    //final int ID_FEE1 = 13;
+    //registerColumnName("Transaction fee (USD)", ID_FEE1);
+    //final int ID_FEE2 = 14;
+    //registerColumnName("Finra fee (USD)", ID_FEE2);
+    //final int ID_CASH = 15;
+    //registerColumnName("Charge amount (USD)", ID_CASH);
+    //final int ID_CASHFEE = 16;
+    //registerColumnName("Deposit fee (USD)", ID_CASHFEE);
     
 
     // Find start
@@ -113,12 +113,12 @@ public class ImportT212 extends ImportBase
     int tickerIdx = getColumnNo(ID_TICKER);
     int priceIdx = getColumnNo(ID_PRICE);
     //int feeCZKIdx = getColumnNo(ID_FEE_CZK);
-    int feeTransactionIdx = getColumnNo(ID_FEE1);
-    int feeFinfraIdx = getColumnNo(ID_FEE2);
+    //int feeTransactionIdx = getColumnNo(ID_FEE1);
+    //int feeFinfraIdx = getColumnNo(ID_FEE2);
     //int feeEURIdx = getColumnNo(ID_FEE_EUR);
     int noteIdx = getColumnNo(ID_NOTE);
-    int depositIdx = getColumnNo(ID_CASH);
-    int depositfeeIdx = getColumnNo(ID_CASHFEE);
+    //int depositIdx = getColumnNo(ID_CASH);
+    //int depositfeeIdx = getColumnNo(ID_CASHFEE);
     
     // Process data rows
     while((s = ifl.readLine()) != null) {
@@ -135,20 +135,20 @@ public class ImportT212 extends ImportBase
         
         
         // false false true :) mame vzdy jeden typ
-        boolean cash = dirStr.equals("Deposit");
+        //boolean cash = dirStr.equals("Deposit");
         //boolean derivate = (a[typeIdx].equals("FUT") || a[typeIdx].equals("OPT") || a[typeIdx].equals("FOP") );
         //boolean stock = ( a[typeIdx].equals("STK") || a[typeIdx].equals("WAR"));
 
 
         // detekce typu 
-         if (!cash) {
+         //if (!cash) {
             if (dirStr.matches(".*sell.*")) drow.direction = Transaction.DIRECTION_SSELL;          
             if (dirStr.matches(".*buy.*")) drow.direction = Transaction.DIRECTION_SBUY;
-         } else {
-            if (dirStr.equals("Deposit")) drow.direction = Transaction.DIRECTION_CBUY;
+         //} else {
+         //   if (dirStr.equals("Deposit")) drow.direction = Transaction.DIRECTION_CBUY;
             //Don't have real data so just guessing format :)
-            if (dirStr.equals("Withdrawal"))  drow.direction = Transaction.DIRECTION_CSELL;             
-         }
+         //   if (dirStr.equals("Withdrawal"))  drow.direction = Transaction.DIRECTION_CSELL;             
+         //}
         
         
         //if (equalsIgoreCaseAndEncoding(dirStr, "Limit buy", "Market buy")) drow.direction = Transaction.DIRECTION_SBUY;
@@ -186,7 +186,10 @@ public class ImportT212 extends ImportBase
             drow.executionDate = drow.date;
             
             // Get fee - works of base currency USD?
-            drow.fee = parseNumber(a[feeTransactionIdx])+parseNumber(a[feeFinfraIdx]);
+            // Temporary fee = 0 sometimes those fields are not present
+            //drow.fee = parseNumber(a[feeTransactionIdx])+parseNumber(a[feeFinfraIdx]);
+            drow.fee = 0;
+            
               
             //TODO
             // I need add 2 rows per one dividend record Dividena-Hruba a Dividenda-Dan
