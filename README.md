@@ -2,6 +2,10 @@ Akciove Ucetnictvi - vetsinu kodu a logiky napsal Michal Kara (lemming@ucw.cz) a
    vychazi z puvodniho zdrojoveho kodu siren pod GPL na http://lemming.ucw.cz/ucetnictvi/ (zde je i detailni popis pouziti aplikace)
    
 Changes:   
+16.10.2021  - Kontrola import souboru pro IB TradeLog, FlexQuery
+            - Oprava menu/novy ted spravne inicializuje i helpery, ktere zmizeli (jako datum apod)
+            - Oprava vyhledavani podle poznamky - hleda jako regexp tedy vyraz kdekoliv uvnitr poznamky
+
 15.06.2021 - Pridat export do FIO formatu pro ucely importu na http://kacka.baldsoft.com<br>
            - Pridano vyhledavani podle poznamky<br>
 
