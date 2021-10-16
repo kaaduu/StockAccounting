@@ -117,7 +117,7 @@ public class MainWindow extends javax.swing.JFrame
       dcFrom.setValue("1900-01-01");
 
       dcTo.setDateFormat(new SimpleDateFormat("dd.MM.yyyy"));
-      
+            
       table.setModel(transactions);
       //Datum obchodu
       table.getColumnModel().getColumn(0).setPreferredWidth(100);
@@ -160,7 +160,8 @@ public class MainWindow extends javax.swing.JFrame
       table.getColumnModel().getColumn(10).setCellEditor(new DateChooserCellEditor());
       //Poznamka (Note)
       table.getColumnModel().getColumn(11).setPreferredWidth(200);
-      table.getColumnModel().getColumn(11).setMaxWidth(500);      
+      table.getColumnModel().getColumn(11).setMaxWidth(500);    
+      
       
       // Create dialogs
       importWindow = new ImportWindow(this, true);
@@ -172,7 +173,7 @@ public class MainWindow extends javax.swing.JFrame
       dollarIcon = new javax.swing.ImageIcon(iconURL);
       setIconImage(getDollarImage());
   }
-
+  
   /**
    * Return image for (window) dollar icon
    */
@@ -250,6 +251,7 @@ public class MainWindow extends javax.swing.JFrame
         jMenu1 = new javax.swing.JMenu();
         miNew = new javax.swing.JMenuItem();
         miOpen = new javax.swing.JMenuItem();
+        miOpenAdd = new javax.swing.JMenuItem();
         miSave = new javax.swing.JMenuItem();
         miSaveAs = new javax.swing.JMenuItem();
         miSaveFiltered = new javax.swing.JMenuItem();
@@ -509,13 +511,21 @@ public class MainWindow extends javax.swing.JFrame
         jMenu1.add(miNew);
 
         miOpen.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, java.awt.event.InputEvent.ALT_DOWN_MASK));
-        miOpen.setText("Otevřít");
+        miOpen.setText("Otevřít - nový");
         miOpen.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 miOpenActionPerformed(evt);
             }
         });
         jMenu1.add(miOpen);
+
+        miOpenAdd.setText("Otevřít - přidat");
+        miOpenAdd.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                miOpenAddActionPerformed(evt);
+            }
+        });
+        jMenu1.add(miOpenAdd);
 
         miSave.setText("Uložit");
         miSave.addActionListener(new java.awt.event.ActionListener() {
@@ -639,12 +649,63 @@ public class MainWindow extends javax.swing.JFrame
   private void miNewActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_miNewActionPerformed
   {//GEN-HEADEREND:event_miNewActionPerformed
     // There is bug no calendar choser working and others..  so disabling this menu activity
-    if (JOptionPane.showConfirmDialog(rootPane, "Pozor!\n Aktualne nefunguje, ukonci a spust aplikaci znovu :)\nAle pokud rozumis jave a chtel bys toto opravit budu jen rad\n", "Upozorneni", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.OK_OPTION) return;
-    //transactions = new TransactionSet();
-    //table.setModel(transactions);
+    //if (JOptionPane.showConfirmDialog(rootPane, "Pozor!\n Aktualne nefunguje, ukonci a spust aplikaci znovu :)\nAle pokud rozumis jave a chtel bys toto opravit budu jen rad\n", "Upozorneni", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.OK_OPTION) return;
+
+    transactions = new TransactionSet();
+    table.setModel(transactions);
+    
+      //get list of tickers from current transactions (if new = empty)
+      cbTickers.setModel(transactions.getTickersModel());
+      //Datum obchodu
+      table.getColumnModel().getColumn(0).setPreferredWidth(100);
+      table.getColumnModel().getColumn(0).setMaxWidth(100);
+      table.getColumnModel().getColumn(0).setCellRenderer(new CZDateRenderer());
+      table.getColumnModel().getColumn(0).setCellEditor(new DateChooserCellEditor());
+      //Typ 
+      table.getColumnModel().getColumn(1).setPreferredWidth(100);
+      table.getColumnModel().getColumn(1).setMaxWidth(100);
+      table.getColumnModel().getColumn(1).setCellEditor(new javax.swing.DefaultCellEditor(cbType));
+      //Smer
+      table.getColumnModel().getColumn(2).setPreferredWidth(80);
+      table.getColumnModel().getColumn(2).setMaxWidth(80);
+      table.getColumnModel().getColumn(2).setCellEditor(new TransactionDirectionCellEditor(cbDirection));
+      //Ticker
+      table.getColumnModel().getColumn(3).setPreferredWidth(50);
+      table.getColumnModel().getColumn(3).setMaxWidth(100);
+      table.getColumnModel().getColumn(3).setCellEditor(new javax.swing.DefaultCellEditor(cbTickers));
+      table.getColumnModel().getColumn(6).setCellEditor(new javax.swing.DefaultCellEditor(cbCurrencies));
+      table.getColumnModel().getColumn(4).setPreferredWidth(80);
+      table.getColumnModel().getColumn(4).setMaxWidth(80);
+      table.getColumnModel().getColumn(5).setPreferredWidth(80);
+      table.getColumnModel().getColumn(5).setMaxWidth(80);
+      table.getColumnModel().getColumn(6).setPreferredWidth(50);
+      table.getColumnModel().getColumn(6).setMaxWidth(50);
+      //fee
+      table.getColumnModel().getColumn(7).setPreferredWidth(30);
+      table.getColumnModel().getColumn(7).setMaxWidth(50);
+      //feeCurrency
+      table.getColumnModel().getColumn(8).setPreferredWidth(30);
+      table.getColumnModel().getColumn(8).setMaxWidth(50);
+      table.getColumnModel().getColumn(8).setCellEditor(new javax.swing.DefaultCellEditor(cbCurrencies));
+      //Trh
+      table.getColumnModel().getColumn(9).setPreferredWidth(80);
+      table.getColumnModel().getColumn(9).setMaxWidth(80);
+      //Datum vyporadani
+      table.getColumnModel().getColumn(10).setPreferredWidth(100);
+      table.getColumnModel().getColumn(10).setMaxWidth(100);
+      table.getColumnModel().getColumn(10).setCellRenderer(new CZDateRenderer());
+      table.getColumnModel().getColumn(10).setCellEditor(new DateChooserCellEditor());
+      //Poznamka (Note)
+      table.getColumnModel().getColumn(11).setPreferredWidth(200);
+      table.getColumnModel().getColumn(11).setMaxWidth(500);      
  
     // Clear results of computing
-    //computeWindow.clearComputeResults();
+    computeWindow.clearComputeResults();
+    // Clear filter
+    clearFilter();
+    
+    
+    //if (JOptionPane.showConfirmDialog(rootPane, "Pozor!\n Aktualne nefunguje, ukonci a spust aplikaci znovu :)\nAle pokud rozumis jave a chtel bys toto opravit budu jen rad\n", "Upozorneni", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.OK_OPTION) return;
     
   }//GEN-LAST:event_miNewActionPerformed
 
@@ -1031,6 +1092,40 @@ fileChooser.setDialogTitle("Exportovat do FIO CSV formatu - lze pouzit na kacka.
         // TODO add your handling code here:
     }//GEN-LAST:event_tfNoteActionPerformed
 
+    private void miOpenAddActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_miOpenAddActionPerformed
+    
+    // Show open dialog
+    fileChooser.setDialogTitle("Otevřít soubor");
+
+    String loc = Settings.getDataDirectory();
+    if (loc != null) fileChooser.setCurrentDirectory(new File(loc));
+    
+    // set default view
+    Action details = fileChooser.getActionMap().get("viewTypeDetails");
+    details.actionPerformed(null);
+
+    int res = fileChooser.showOpenDialog(this);
+
+    if (res == JFileChooser.APPROVE_OPTION) {
+      Settings.setDataDirectory(fileChooser.getCurrentDirectory().getAbsolutePath());
+      Settings.save();
+
+      try {
+        // Load file
+        transactions.load(fileChooser.getSelectedFile());
+
+        // Clear results of computing to avoid confusion
+        computeWindow.clearComputeResults();
+
+        // Clear filter
+        clearFilter();
+      }
+      catch(Exception e) {
+        JOptionPane.showMessageDialog(this, "Při načítání souboru nastala chyba: "+e);
+      }
+    }
+    }//GEN-LAST:event_miOpenAddActionPerformed
+
   /**
    * Refresh currencies combo
    */
@@ -1101,6 +1196,7 @@ fileChooser.setDialogTitle("Exportovat do FIO CSV formatu - lze pouzit na kacka.
     private javax.swing.JMenuItem miImport;
     private javax.swing.JMenuItem miNew;
     private javax.swing.JMenuItem miOpen;
+    private javax.swing.JMenuItem miOpenAdd;
     private javax.swing.JMenuItem miReport;
     private javax.swing.JMenuItem miSave;
     private javax.swing.JMenuItem miSaveAs;
