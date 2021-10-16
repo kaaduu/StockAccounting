@@ -102,7 +102,10 @@ public class ImportIBTradeLog extends ImportBase
             else drow.feeCurrency = drow.currency;
           
             // We must turn negative amounts in sell to positive amounts
-            drow.amount = (int)Math.abs(Double.parseDouble(a[10]) * Double.parseDouble(a[11]));
+            //beware of Corporate Actions splits number of shares between 0-1 negative value - we want to exclude it
+            double x = (Double)Math.abs(Double.parseDouble(a[10]));
+            if ( x>0 && x<1 )   throw new ImportException("Obchod obsahuje 0 akcii - pravdepodobne corporate akce - FractShare?");          
+            drow.amount = (Double)Math.abs(Double.parseDouble(a[10]) * Double.parseDouble(a[11]));
           
             drow.price = Double.parseDouble(a[12]);
             
