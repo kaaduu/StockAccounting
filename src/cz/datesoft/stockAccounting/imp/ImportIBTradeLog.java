@@ -33,6 +33,16 @@ public class ImportIBTradeLog extends ImportBase
     Vector<Transaction> res = new Vector<Transaction>();
     java.io.BufferedReader ifl = new java.io.BufferedReader(new java.io.FileReader(srcFile));
     String s;
+
+
+    // Check tradelog format - basic test
+    int neededLen = 0;
+    boolean startFound = false;
+    s = ifl.readLine();
+    if (s.equals("ACCOUNT_INFORMATION"))  startFound = true;             
+    
+    if (!startFound) throw new ImportException("IB FlexQuery Trades CSV: Nemohu najít začátek dat - je soubor ve správném formátu? Prvni radka ACCOUNT_INFORAMTION chybi");
+    
     
    
     // Process data rows

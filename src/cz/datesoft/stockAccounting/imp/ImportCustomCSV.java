@@ -92,8 +92,11 @@ public class ImportCustomCSV extends ImportBase
     while((s = ifl.readLine()) != null) {
       String[] a = s.split(",");
       if (a.length >= 20) {
-        startFound = true;
+        //startFound = true;
         for(int i = 0; i < a.length; i++) {
+            // Check this is FlexQuery format (first line contains "ClientAccountID" i=0 first line
+            if (i == 0 && a[i].equals("\"ClientAccountID\""))  startFound = true;             
+            
            //remove "
           if (setColumnIdentity(i, a[i].replace("\"",""))) {
             neededLen = i+1;
@@ -104,7 +107,7 @@ public class ImportCustomCSV extends ImportBase
       }
     }
     
-    if (!startFound) throw new ImportException("IB FlexQuery Trades CSV: Nemohu najít začátek dat - je soubor ve správném formátu?");
+    if (!startFound) throw new ImportException("IB FlexQuery Trades CSV: Nemohu najít začátek dat - je soubor ve správném formátu? Prvni string \"ClientAccountID\" chybi");
     
     // Check all columns are present...
     checkAllColumnsPresent();
