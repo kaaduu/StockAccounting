@@ -119,49 +119,9 @@ public class MainWindow extends javax.swing.JFrame
       dcTo.setDateFormat(new SimpleDateFormat("dd.MM.yyyy"));
             
       table.setModel(transactions);
-      //Datum obchodu
-      table.getColumnModel().getColumn(0).setPreferredWidth(100);
-      table.getColumnModel().getColumn(0).setMaxWidth(100);
-      table.getColumnModel().getColumn(0).setCellRenderer(new CZDateRenderer());
-      table.getColumnModel().getColumn(0).setCellEditor(new DateChooserCellEditor());
-      //Typ 
-      table.getColumnModel().getColumn(1).setPreferredWidth(100);
-      table.getColumnModel().getColumn(1).setMaxWidth(100);
-      table.getColumnModel().getColumn(1).setCellEditor(new javax.swing.DefaultCellEditor(cbType));
-      //Smer
-      table.getColumnModel().getColumn(2).setPreferredWidth(80);
-      table.getColumnModel().getColumn(2).setMaxWidth(80);
-      table.getColumnModel().getColumn(2).setCellEditor(new TransactionDirectionCellEditor(cbDirection));
-      //Ticker
-      table.getColumnModel().getColumn(3).setPreferredWidth(50);
-      table.getColumnModel().getColumn(3).setMaxWidth(100);
-      table.getColumnModel().getColumn(3).setCellEditor(new javax.swing.DefaultCellEditor(cbTickers));
-      table.getColumnModel().getColumn(6).setCellEditor(new javax.swing.DefaultCellEditor(cbCurrencies));
-      table.getColumnModel().getColumn(4).setPreferredWidth(80);
-      table.getColumnModel().getColumn(4).setMaxWidth(80);
-      table.getColumnModel().getColumn(5).setPreferredWidth(80);
-      table.getColumnModel().getColumn(5).setMaxWidth(80);
-      table.getColumnModel().getColumn(6).setPreferredWidth(50);
-      table.getColumnModel().getColumn(6).setMaxWidth(50);
-      //fee
-      table.getColumnModel().getColumn(7).setPreferredWidth(30);
-      table.getColumnModel().getColumn(7).setMaxWidth(50);
-      //feeCurrency
-      table.getColumnModel().getColumn(8).setPreferredWidth(30);
-      table.getColumnModel().getColumn(8).setMaxWidth(50);
-      table.getColumnModel().getColumn(8).setCellEditor(new javax.swing.DefaultCellEditor(cbCurrencies));
-      //Trh
-      table.getColumnModel().getColumn(9).setPreferredWidth(80);
-      table.getColumnModel().getColumn(9).setMaxWidth(80);
-      //Datum vyporadani
-      table.getColumnModel().getColumn(10).setPreferredWidth(100);
-      table.getColumnModel().getColumn(10).setMaxWidth(100);
-      table.getColumnModel().getColumn(10).setCellRenderer(new CZDateRenderer());
-      table.getColumnModel().getColumn(10).setCellEditor(new DateChooserCellEditor());
-      //Poznamka (Note)
-      table.getColumnModel().getColumn(11).setPreferredWidth(200);
-      table.getColumnModel().getColumn(11).setMaxWidth(500);    
       
+      // Call mainwindow table initialization - helpers, column setting
+      initTableColumns();  
       
       // Create dialogs
       importWindow = new ImportWindow(this, true);
@@ -646,14 +606,8 @@ public class MainWindow extends javax.swing.JFrame
     exitRequested();
   }//GEN-LAST:event_miExitActionPerformed
 
-  private void miNewActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_miNewActionPerformed
-  {//GEN-HEADEREND:event_miNewActionPerformed
-    // There is bug no calendar choser working and others..  so disabling this menu activity
-    //if (JOptionPane.showConfirmDialog(rootPane, "Pozor!\n Aktualne nefunguje, ukonci a spust aplikaci znovu :)\nAle pokud rozumis jave a chtel bys toto opravit budu jen rad\n", "Upozorneni", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.OK_OPTION) return;
-
-    transactions = new TransactionSet();
-    table.setModel(transactions);
-    
+    public void initTableColumns()
+  {
       //get list of tickers from current transactions (if new = empty)
       cbTickers.setModel(transactions.getTickersModel());
       //Datum obchodu
@@ -697,8 +651,19 @@ public class MainWindow extends javax.swing.JFrame
       table.getColumnModel().getColumn(10).setCellEditor(new DateChooserCellEditor());
       //Poznamka (Note)
       table.getColumnModel().getColumn(11).setPreferredWidth(200);
-      table.getColumnModel().getColumn(11).setMaxWidth(500);      
- 
+      table.getColumnModel().getColumn(11).setMaxWidth(500);    
+
+  }
+  private void miNewActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_miNewActionPerformed
+  {//GEN-HEADEREND:event_miNewActionPerformed
+    // There is bug no calendar choser working and others..  so disabling this menu activity
+    //if (JOptionPane.showConfirmDialog(rootPane, "Pozor!\n Aktualne nefunguje, ukonci a spust aplikaci znovu :)\nAle pokud rozumis jave a chtel bys toto opravit budu jen rad\n", "Upozorneni", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.OK_OPTION) return;
+
+    transactions = new TransactionSet();
+    table.setModel(transactions);
+    // Call mainwindow table initialization - helpers, column setting
+    initTableColumns();
+
     // Clear results of computing
     computeWindow.clearComputeResults();
     // Clear filter
