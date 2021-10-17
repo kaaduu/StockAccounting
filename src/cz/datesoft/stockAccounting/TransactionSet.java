@@ -19,7 +19,7 @@ import cz.datesoft.stockAccounting.imp.*;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.regex.Pattern;
-import javax.swing.JOptionPane;
+
 
 /**
  *
@@ -496,8 +496,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
     }
     
     if (!a[1].equals("1")) {
-      // Version not equal
-      ifl.close();
+      // Version not equal      
+      ifl.close();      
       return;
     }
     
