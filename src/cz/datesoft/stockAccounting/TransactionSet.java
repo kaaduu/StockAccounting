@@ -528,6 +528,67 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
     modified = false;
   }
   
+    /**
+   * Load  from a file and merge with existing data
+   */
+  public void loadAdd(File srcFile) throws java.io.FileNotFoundException, java.io.IOException
+  {
+    BufferedReader ifl = new BufferedReader(new java.io.FileReader(srcFile));
+    String a[];
+
+    // Initialize
+    //rows.clear();
+    filteredRows = null;
+    //cbmodel.removeAllElements();
+    serialCounter = 1;
+    
+    a = readLine(ifl);
+    
+    if (a[0] == null) {
+      // No data(?)
+      ifl.close();
+      return;
+    }
+    
+    if (!a[0].equals("version")) {
+      // Version not first?
+      ifl.close();
+      return;
+    }
+    
+    if (!a[1].equals("1")) {
+      // Version not equal      
+      ifl.close();      
+      return;
+    }
+    
+    // Start reading lines
+    for(;;) {
+      a = readLine(ifl);
+      if (a[0] == null) break;
+
+      if (a[0].equals("row (")) {
+        // Add row
+        Transaction tx = new Transaction(ifl);
+        rows.add(tx);
+        
+        cbmodel.putItem(tx.ticker.toUpperCase());
+      }
+      else if (a[0].equals("serialCounter")) this.serialCounter = Integer.parseInt(a[1]);
+      else if (a[0].equals("lastDateSet")) {
+        if (a[1].equalsIgnoreCase("null")) this.lastDateSet = null;
+        else this.lastDateSet = parseDate(a[1]);
+      }
+    }
+    
+    sort();
+
+    // We don't fire data changed event, since it is alreday done by the sort()
+    
+    diskFile = srcFile;
+    modified = false;
+  }
+  
   /**
    * Delete row
    *

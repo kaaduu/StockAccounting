@@ -1077,7 +1077,7 @@ fileChooser.setDialogTitle("Exportovat do FIO CSV formatu - lze pouzit na kacka.
 
       try {
         // Load file
-        transactions.load(fileChooser.getSelectedFile());
+        transactions.loadAdd(fileChooser.getSelectedFile());
 
         // Clear results of computing to avoid confusion
         computeWindow.clearComputeResults();
