@@ -93,14 +93,13 @@ public class ImportCustomCSV extends ImportBase
       String[] a = s.split(",");
       if (a.length >= 20) {
         //startFound = true;
-        for(int i = 0; i < a.length; i++) {
-            // Check this is FlexQuery format (first line contains "ClientAccountID" i=0 first line
-            if (i == 0 && a[i].equals("\"ClientAccountID\""))  startFound = true;             
-            
-           //remove "
+        for(int i = 0; i < a.length; i++) {                  
+          //remove "
           if (setColumnIdentity(i, a[i].replace("\"",""))) {
             neededLen = i+1;
           }
+          // Check this is FlexQuery format (first line contains "ClientAccountID" i=0 first line
+          if (i == 0 && a[i].replace("\"","").equals("ClientAccountID"))  startFound = true;                       
         }
         
         break;

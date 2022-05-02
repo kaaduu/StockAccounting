@@ -971,12 +971,14 @@ public class Stocks
   /**
    * Get amount of stock we have
    */
-  public int getStockAmount(String stock)
+  //public int getStockAmount(String stock)
+  public double getStockAmount(String stock)
   {
     StockInfo info = infos.get(stock.toUpperCase());
     
     if (info == null) return 0;
-    else return info.getAmountInt();
+    //else return info.getAmountInt();    
+    else return info.getAmountD();
   }
 
   /**

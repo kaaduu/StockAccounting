@@ -60,17 +60,8 @@
     </Component>
     <Component class="javax.swing.JComboBox" name="cbFormat">
       <Properties>
-        <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
-          <StringArray count="8">
-            <StringItem index="0" value="&lt;vyberte form&#xe1;t&gt;"/>
-            <StringItem index="1" value="Fio - obchody export"/>
-            <StringItem index="2" value="BrokerJet - HTML export (legacy)"/>
-            <StringItem index="3" value="IB - TradeLog"/>
-            <StringItem index="4" value="IB - FlexQuery Trades only CSV"/>
-            <StringItem index="5" value="T212 Invest  - csv  mena: USD"/>
-            <StringItem index="6" value="T212 Invest  - csv  mena: CZK"/>
-            <StringItem index="7" value=" "/>
-          </StringArray>
+        <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+          <Connection code="new javax.swing.DefaultComboBoxModel(new String[] { &quot;&lt;vyberte form&#xe1;t&gt;&quot;, &quot;Fio - obchody export&quot;, &quot;BrokerJet - HTML export (legacy)&quot;, &quot;IB - TradeLog&quot;, &quot;IB - FlexQuery Trades only CSV&quot;, &quot;T212 Invest  - csv  mena: USD&quot;, &quot;T212 Invest  - csv  mena: CZK&quot;, &quot;Revolut - csv&quot; })" type="code"/>
         </Property>
         <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
           <Dimension value="[100, 20]"/>
