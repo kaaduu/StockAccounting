@@ -34,6 +34,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
   public final int IMPORT_FORMAT_CUSTOMCSV = 4;
   public final int IMPORT_FORMAT_T212USD = 5;
   public final int IMPORT_FORMAT_T212CZK = 6;
+  public final int IMPORT_FORMAT_REVOLUT_CSV = 7;
   
   
   
@@ -660,6 +661,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel
     else if (format == IMPORT_FORMAT_CUSTOMCSV) importer = new ImportCustomCSV();
     else if (format == IMPORT_FORMAT_T212USD) importer = new ImportT212();
     else if (format == IMPORT_FORMAT_T212CZK) importer = new ImportT212CZK();    
+    else if (format == IMPORT_FORMAT_REVOLUT_CSV) importer = new ImportRevolutCSV();    
     else throw new ImportException("Unrecognized import format number!");
     
     Vector<Transaction> txs = importer.doImport(srcFile, startDate, endDate, notImported);
