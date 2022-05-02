@@ -1,8 +1,13 @@
 Akciove Ucetnictvi - vetsinu kodu a logiky napsal Michal Kara (lemming@ucw.cz) a od 2020 jsou mensinove opravy a vylepseni udrzovany zde.
    vychazi z puvodniho zdrojoveho kodu siren pod GPL na http://lemming.ucw.cz/ucetnictvi/ (zde je i detailni popis pouziti aplikace)
    
-Changes:   
-17.10.2021  - Pridana moznost v menu Otevrit - pridat, vhodne pokud si vedete corporate aktivity v extra souboru (a behem roku ruzne importujete a ocistujete trade data)
+Changes:
+02.05.2022    - Pridan import Revolut csv - pro VejbyCZ <br>   
+              - Stav uctu ukazu frakcni mnozstvi<br>
+<br>
+
+17.10.2021  - Pridana moznost v menu Otevrit - pridat, vhodne pokud si vedete corporate aktivity v extra souboru (a behem roku ruzne importujete a ocistujete trade data)<br>
+<br>
 16.10.2021  - Kontrola import souboru pro IB TradeLog, FlexQuery<br>
             - Oprava menu/novy ted spravne inicializuje i helpery, ktere zmizeli (jako datum apod)<br>
             - Oprava vyhledavani podle poznamky - hleda jako regexp tedy vyraz kdekoliv uvnitr poznamky<br>
