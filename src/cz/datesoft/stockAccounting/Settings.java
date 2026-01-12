@@ -201,7 +201,7 @@ public class Settings
     for(Iterator i=ratios.iterator();i.hasNext();) {
       r = (CurrencyRatio)i.next();
       
-      ratioCache.put(r.getCurrency()+"|"+r.getYear(),new Double(r.getRatio()));
+      ratioCache.put(r.getCurrency()+"|"+r.getYear(), Double.valueOf(r.getRatio()));
     }    
     
     ratioCacheValid = true;

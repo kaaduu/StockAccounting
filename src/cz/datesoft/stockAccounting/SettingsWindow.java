@@ -75,7 +75,7 @@ public class SettingsWindow extends javax.swing.JDialog
       for(i2=names.iterator();i2.hasNext();) {
         String name = i2.next();
         
-        colName2Idx.put(name,new Integer(columnNames.size()));
+        colName2Idx.put(name, Integer.valueOf(columnNames.size()));
         columnNames.add(name);
       }
       
@@ -88,7 +88,7 @@ public class SettingsWindow extends javax.swing.JDialog
         if (v == null) {
           // New year
           v = new Vector<Object>();
-          Integer y = new Integer(r.getYear());
+          Integer y = Integer.valueOf(r.getYear());
           year2Vector.put(y,v);
           
           v.add(y); // Initialize first column with year
@@ -99,7 +99,7 @@ public class SettingsWindow extends javax.swing.JDialog
         i = colName2Idx.get(r.getCurrency()).intValue();
         while(v.size() <= i) v.add(null); // Enlarge vector
         
-        v.set(i,new Double(r.getRatio()));
+        v.set(i, Double.valueOf(r.getRatio()));
       }      
     }
     
@@ -186,7 +186,7 @@ public class SettingsWindow extends javax.swing.JDialog
       if (colName2Idx.get(currency) != null) throw new java.lang.IllegalArgumentException("Currency already present"); // Already present
       
       idx = columnNames.size();
-      colName2Idx.put(currency,new Integer(idx));
+      colName2Idx.put(currency, Integer.valueOf(idx));
       columnNames.add(currency);      
       
       return idx;

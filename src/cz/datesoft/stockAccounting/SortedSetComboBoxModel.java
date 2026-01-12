@@ -11,43 +11,40 @@ package cz.datesoft.stockAccounting;
 import javax.swing.*;
 import java.util.Vector;
 
-
 /**
  *
  * @author lemming2
  */
-public class SortedSetComboBoxModel extends DefaultComboBoxModel
-{
+public class SortedSetComboBoxModel extends DefaultComboBoxModel<String> {
   /** Creates a new instance of SortedSetComboBoxModel */
-  public SortedSetComboBoxModel()
-  {
+  public SortedSetComboBoxModel() {
   }
-    
+
   /**
-   *  Add item.
+   * Add item.
    *
    * @param item Item to be added
    *
    * @return Whether item was inserted.
    */
-  public boolean putItem(String item)
-  {
-    for(int i=0;i<getSize();i++) {
-      int r = ((String)getElementAt(i)).compareTo(item);
-      
-      if (r == 0) return false; // Equals
-      
+  public boolean putItem(String item) {
+    for (int i = 0; i < getSize(); i++) {
+      int r = ((String) getElementAt(i)).compareTo(item);
+
+      if (r == 0)
+        return false; // Equals
+
       if (r > 0) {
         // Insert new item here
-        insertElementAt(item,i);
-        
+        insertElementAt(item, i);
+
         return true;
       }
     }
-    
+
     // Append
     addElement(item);
-        
+
     return true;
   }
 }
