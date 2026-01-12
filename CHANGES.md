@@ -24,3 +24,20 @@ All notable changes to the StockAccounting project will be documented in this fi
     - `DatePicker.jar` (replaced by JDateChooser).
     - `looks-2.0.1.jar` (unused JGoodies library).
     - `swing-layout-1.0.3.jar` (redundant, version 1.0.4 is kept).
+## [Currency Rate Fetching Feature] - 2026-01-13
+
+### Added
+- **CNB Integration**: New `CurrencyRateFetcher` utility to automatically fetch official "jednotný kurz" (unified exchange rate) from the Czech National Bank (CNB).
+- **Automated Calculations**: Calculates "jednotný kurz" as an arithmetic mean of 12 month-end rates according to Ministry of Finance (GFŘ) guidelines.
+- **Enhanced Settings UI**:
+    - Added "Načíst kurzy" button to the currency settings table.
+    - Added modal progress bar with real-time feedback during data fetching.
+    - Implemented **Single Year Fetching**: Users can now fetch rates for a specific selected year or all at once.
+- **Preview & Rollback**: 
+    - Fetched rates are previewed in the table with yellow highlighting for modified values.
+    - Confirmation dialog allows users to either apply the changes or rollback to original values.
+- **Precision Grounding**: Exchange rates are automatically rounded to 2 decimal places to match official tax requirements.
+
+### Changed
+- **SettingsWindow Improvements**: Integrated `HighlightedDoubleRenderer` to visually distinguish fetched data from manual entries.
+- **Validation**: Added comparison logic (0.001 tolerance) to identify and highlight modified exchange rates.
