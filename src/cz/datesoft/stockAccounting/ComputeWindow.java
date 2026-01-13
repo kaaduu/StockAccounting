@@ -91,10 +91,17 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     yearComputed = 0;
 
-    // Initialize conversion method label
-    lConvMethod = new javax.swing.JLabel();
-    lConvMethod.setFont(new java.awt.Font("Tahoma", 1, 11));
-    lConvMethod.setText("Metoda přepočtu: " + (Settings.getUseDailyRates() ? "Denní kurz" : "Jednotný kurz"));
+    // Initialize conversion method toggle
+    cbUseDailyRatesCompute = new javax.swing.JCheckBox();
+    cbUseDailyRatesCompute.setFont(new java.awt.Font("Tahoma", 1, 11));
+    cbUseDailyRatesCompute.setText("Používat denní kurzy");
+    cbUseDailyRatesCompute.setSelected(Settings.getUseDailyRates());
+    cbUseDailyRatesCompute.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        Settings.setUseDailyRates(cbUseDailyRatesCompute.isSelected());
+        Settings.save();
+      }
+    });
 
     java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
     gbc.gridy = 1;
@@ -102,7 +109,7 @@ public class ComputeWindow extends javax.swing.JDialog {
     gbc.gridwidth = 3;
     gbc.anchor = java.awt.GridBagConstraints.WEST;
     gbc.insets = new java.awt.Insets(5, 5, 5, 5);
-    jPanel1.add(lConvMethod, gbc);
+    jPanel1.add(cbUseDailyRatesCompute, gbc);
 
     // Update table columns and renderers
     TableColumnModel[] tcms = { tableCP.getColumnModel(), tableDer.getColumnModel(), tableCash.getColumnModel() };
@@ -988,252 +995,99 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     // Run computation
     Stocks stocks = new Stocks();
-    double cp_sumCZK = 0;
-    double cp_openCreditSumCZK = 0;
-    double cp_openDebitSumCZK = 0;
-    double cp_closeCreditSumCZK = 0;
-    double cp_closeDebitSumCZK = 0;
-    double der_sumCZK = 0;
-    double der_openCreditSumCZK = 0;
-    double der_openDebitSumCZK = 0;
-    double der_closeCreditSumCZK = 0;
-    double der_closeDebitSumCZK = 0;
-    double cash_sumCZK = 0;
-    double cash_openCreditSumCZK = 0;
-    double cash_openDebitSumCZK = 0;
-    double cash_closeCreditSumCZK = 0;
-    double cash_closeDebitSumCZK = 0;
+
+    RowStatsHelper rowStatsHelper = new RowStatsHelper();
 
     try {
-      for (Iterator<Transaction> i = transactions.iterator();;) {
-        Stocks.StockTrade[] ts = null;
-        boolean autoCloseShorts = false;
 
-        if (i.hasNext()) {
-          // We have a transaction to process
-          Transaction tx = i.next();
-          ts = stocks.applyTransaction(tx, true);
-        } else {
-          // End of transactions - find short trades opened in year we compute for that
-          // are not yet closed and add them
-          ts = stocks.autocloseShortTransactions(year);
-          autoCloseShorts = true;
-        }
+      for (Iterator<Transaction> i = transactions.iterator(); i.hasNext();) {
+        Transaction tx = i.next();
+        Stocks.StockTrade[] ts = stocks.applyTransaction(tx, true);
 
         if (ts != null) {
           // Print out only transactions that happen in the year that interests us
           for (int n = 0; n < ts.length; n++) {
             Stocks.StockTrade t = ts[n];
-
-            // Check year of the income
-            cal.setTime(t.getIncomeDate());
-            if (cal.get(GregorianCalendar.YEAR) == year) {
-              // Determine row flags
-              boolean cp = (t.secType == Stocks.SecType.STOCK);
-              boolean cash = (t.secType == Stocks.SecType.CASH);
-              boolean cpOverTaxFreeDuration = cp && Stocks.isOverTaxFreeDuration(t.open.date, t.close.date);
-              boolean include = (overTaxFreeDuration == IncludeOverTaxFreeDuration.INCLUDE) || (!cpOverTaxFreeDuration);
-              boolean show = (overTaxFreeDuration != IncludeOverTaxFreeDuration.LEAVE_OUT) || (!cpOverTaxFreeDuration);
-
-              /* Note */
-              StringBuffer msg = new StringBuffer();
-
-              if (show && (!t.doesIncome())) {
-                switch (noIncomeTrades) {
-                  case INCLUDE:
-                    // Keep
-                    break;
-                  case LEAVE_OUT:
-                    include = false;
-                    show = false;
-                    break;
-                  case SHOW_ONLY:
-                    include = false;
-                    msg.append("Z obchodu není příjem; výdej nezapočítán.");
-                    break;
-                }
-              }
-
-              if (show) {
-                Vector<String> rowData = new Vector<String>();
-
-                /* Open */
-
-                // Date
-                rowData.add(formatDateTime(t.open.date));
-
-                // Ticker
-                rowData.add(t.open.ticker);
-
-                // Amount
-                rowData.add(f2.format(t.open.amount));
-
-                // Kurz
-                rowData.add(fRate.format(t.openRate));
-
-                // Price
-                if (t.open.priceCurrency != null)
-                  rowData.add(fn.format(t.open.price) + " " + t.open.priceCurrency);
-                else
-                  rowData.add("0");
-
-                // Fee
-                if (t.open.feeCurrency != null)
-                  rowData.add(f2.format(t.open.fee) + " " + t.open.feeCurrency);
-                else
-                  rowData.add("-");
-
-                // Open sum
-                if (include)
-                  rowData.add(f2.format(t.openSumCZK));
-                else
-                  rowData.add("-");
-
-                if (include) {
-                  if (cp) {
-                    cp_openCreditSumCZK += t.openCreditCZK;
-                    cp_openDebitSumCZK += t.openDebitCZK;
-                  } else if (cash) {
-                    cash_openCreditSumCZK += t.openCreditCZK;
-                    cash_openDebitSumCZK += t.openDebitCZK;
-                  } else {
-                    der_openCreditSumCZK += t.openCreditCZK;
-                    der_openDebitSumCZK += t.openDebitCZK;
-                  }
-                }
-
-                /* Close */
-
-                if (!autoCloseShorts) {
-                  /* Go normal */
-                  // Date
-                  rowData.add(formatDateTime(t.close.date));
-
-                  // Ticker
-                  rowData.add(t.close.ticker);
-
-                  // Amount
-                  rowData.add(f2.format(t.close.amount));
-
-                  // Kurz Close
-                  rowData.add(fRate.format(t.closeRate));
-
-                  // Price
-                  if (t.close.priceCurrency != null)
-                    rowData.add(fn.format(t.close.price) + " " + t.close.priceCurrency);
-                  else
-                    rowData.add("0");
-
-                  // Fee
-                  if (t.close.feeCurrency != null)
-                    rowData.add(f2.format(t.close.fee) + " " + t.close.feeCurrency);
-                  else
-                    rowData.add("-");
-
-                  // Close sum
-                  if (include) {
-                    String v = f2.format(t.closeSumCZK); // Prepare content
-
-                    // Check if this is a short over year's border
-                    if ((!allowShortsOverYearBorder) && (t.open.amount < 0)) {
-                      // Short trade && we do not allow them over year's border
-                      cal.setTime(t.close.date);
-                      if (cal.get(GregorianCalendar.YEAR) != year) {
-                        // Closed in another year - do not count expenses for closing
-                        t.closeSumCZK = 0;
-                        t.profitCZK = t.openSumCZK;
-                        msg.append("Obchod nakrátko přes přelom roku; náklad na zavření nezapočítán. ");
-                        rowData.add("-");
-                      } else {
-                        rowData.add(v);
-                      }
-                    } else {
-                      rowData.add(v);
-                    }
-                  } else
-                    rowData.add("-");
-                } else {
-                  // Automatically closed short position - do not fill in close
-                  rowData.add("-"); // Date
-                  rowData.add("-"); // Ticker
-                  rowData.add("-"); // Amount
-                  rowData.add("-"); // Kurz
-                  rowData.add("-"); // Price
-                  rowData.add("-"); // Fee
-                  rowData.add("-"); // Sum
-
-                  msg.append("Neuzavřený obchod nakrátko");
-                }
-
-                if (include) {
-                  if (cp) {
-                    cp_closeCreditSumCZK += t.closeCreditCZK;
-                    cp_closeDebitSumCZK += t.closeDebitCZK;
-                  } else if (cash) {
-                    cash_closeCreditSumCZK += t.closeCreditCZK;
-                    cash_closeDebitSumCZK += t.closeDebitCZK;
-                  } else {
-                    der_closeCreditSumCZK += t.closeCreditCZK;
-                    der_closeDebitSumCZK += t.closeDebitCZK;
-                  }
-                }
-
-                /* Results */
-
-                // Result in CZK
-                if (include) {
-                  rowData.add(f2.format(t.profitCZK));
-
-                  if (cp)
-                    cp_sumCZK += t.profitCZK;
-                  else if (cash)
-                    cash_sumCZK += t.profitCZK;
-                  else
-                    der_sumCZK += t.profitCZK;
-                } else
-                  rowData.add("-");
-
-                if ((overTaxFreeDuration != IncludeOverTaxFreeDuration.INCLUDE) && (cpOverTaxFreeDuration)) {
-                  if (t.open.date.before(Stocks.TAX_FREE_DURATION_BOUNDARY))
-                    msg.append("Nad 6m. ");
-                  else
-                    msg.append("Nad 3r. ");
-                }
-
-                for (int j = 0; j < t.renames.length; j++) {
-                  if (msg.length() > 0)
-                    msg.append(", ");
-                  Stocks.StockRename rename = t.renames[j];
-                  msg.append(formatDateTime(rename.getDate()) + " ticker " + rename.getOldName() + " přejmenován na "
-                      + rename.getNewName());
-                }
-
-                for (int j = 0; j < t.splits.length; j++) {
-                  if (msg.length() > 0)
-                    msg.append(", ");
-                  Stocks.StockSplit split = t.splits[j];
-                  msg.append(formatDateTime(split.getDate()) + " proveden " + split.getType() + " v poměru "
-                      + split.getSRatio());
-                }
-
-                // Notes
-                rowData.add(msg.toString());
-
-                // Adding
-                if (cp)
-                  modelCP.addRow(rowData);
-                else if (cash)
-                  modelCash.addRow(rowData);
-                else
-                  modelDer.addRow(rowData);
-              }
-            }
+            processTradeRow(t, modelCP, modelDer, modelCash, year, overTaxFreeDuration, noIncomeTrades,
+                rowStatsHelper, allowShortsOverYearBorder);
           }
-        } else {
-          // ts == null -> end of transactions
-          break;
         }
       }
+
+      // Finalize - find short trades opened in year we compute for that
+      // are not yet closed and add them
+      Stocks.StockTrade[] ts = stocks.autocloseShortTransactions(year);
+      if (ts != null) {
+        for (int n = 0; n < ts.length; n++) {
+          Stocks.StockTrade t = ts[n];
+          processTradeRow(t, modelCP, modelDer, modelCash, year, overTaxFreeDuration, noIncomeTrades,
+              rowStatsHelper, allowShortsOverYearBorder);
+        }
+      }
+
+      // Add summary
+      String row[] = { "", "", "", "", "", "", "-----------", "", "", "", "", "", "", "-----------", "-----------",
+          "" };
+      modelCP.addRow(row);
+      modelDer.addRow(row);
+      modelCash.addRow(row);
+
+      String row3a[] = { "", "", "", "", "", "Příjem:", f2.format(rowStatsHelper.cp_openCreditSumCZK), "", "", "", "",
+          "",
+          "",
+          f2.format(rowStatsHelper.cp_closeCreditSumCZK),
+          f2.format(rowStatsHelper.cp_openCreditSumCZK + rowStatsHelper.cp_closeCreditSumCZK), "" };
+      modelCP.addRow(row3a);
+      String row3b[] = { "", "", "", "", "", "Příjem:", f2.format(rowStatsHelper.der_openCreditSumCZK), "", "", "", "",
+          "",
+          "",
+          f2.format(rowStatsHelper.der_closeCreditSumCZK),
+          f2.format(rowStatsHelper.der_openCreditSumCZK + rowStatsHelper.der_closeCreditSumCZK), "" };
+      modelDer.addRow(row3b);
+      String row3c[] = { "", "", "", "", "", "Příjem:", f2.format(rowStatsHelper.cash_openCreditSumCZK), "", "", "", "",
+          "",
+          "",
+          f2.format(rowStatsHelper.cash_closeCreditSumCZK),
+          f2.format(rowStatsHelper.cash_openCreditSumCZK + rowStatsHelper.cash_closeCreditSumCZK), "" };
+      modelCash.addRow(row3c);
+
+      String row4a[] = { "", "", "", "", "", "Výdej:", f2.format(rowStatsHelper.cp_openDebitSumCZK), "", "", "", "", "",
+          "",
+          f2.format(rowStatsHelper.cp_closeDebitSumCZK),
+          f2.format(rowStatsHelper.cp_openDebitSumCZK + rowStatsHelper.cp_closeDebitSumCZK), "" };
+      modelCP.addRow(row4a);
+      String row4b[] = { "", "", "", "", "", "Výdej:", f2.format(rowStatsHelper.der_openDebitSumCZK), "", "", "", "",
+          "", "",
+          f2.format(rowStatsHelper.der_closeDebitSumCZK),
+          f2.format(rowStatsHelper.der_openDebitSumCZK + rowStatsHelper.der_closeDebitSumCZK), "" };
+      modelDer.addRow(row4b);
+      String row4c[] = { "", "", "", "", "", "Výdej:", f2.format(rowStatsHelper.cash_openDebitSumCZK), "", "", "", "",
+          "", "",
+          f2.format(rowStatsHelper.cash_closeDebitSumCZK),
+          f2.format(rowStatsHelper.cash_openDebitSumCZK + rowStatsHelper.cash_closeDebitSumCZK), "" };
+      modelCash.addRow(row4c);
+
+      String row2a[] = { "", "", "", "", "", "Zisk:", "", "", "", "", "", "", "", "",
+          f2.format(rowStatsHelper.cp_sumCZK),
+          "" };
+      modelCP.addRow(row2a);
+      String row2b[] = { "", "", "", "", "", "Zisk:", "", "", "", "", "", "", "", "",
+          f2.format(rowStatsHelper.der_sumCZK),
+          "" };
+      modelDer.addRow(row2b);
+      String row2c[] = { "", "", "", "", "", "Zisk:", "", "", "", "", "", "", "", "",
+          f2.format(rowStatsHelper.cash_sumCZK),
+          "" };
+      modelCash.addRow(row2c);
+
+      yearComputed = year;
+
+      if (cbComputeDivi.isSelected())
+        computeDividends(year); // Compute dividends
+      else
+        ((DefaultTableModel) (diviTable.getModel())).setNumRows(0); // Clear dividend table
+
+      saveSettings();
     } catch (Stocks.TradingException ex) {
       // Clear model
       modelCP.setNumRows(0);
@@ -1247,48 +1101,6 @@ public class ComputeWindow extends javax.swing.JDialog {
 
       return;
     }
-
-    // Add summary
-    String row[] = { "", "", "", "", "", "", "-----------", "", "", "", "", "", "", "-----------", "-----------", "" };
-    modelCP.addRow(row);
-    modelDer.addRow(row);
-    modelCash.addRow(row);
-
-    String row3a[] = { "", "", "", "", "Příjem:", "", f2.format(cp_openCreditSumCZK), "", "", "", "", "", "",
-        f2.format(cp_closeCreditSumCZK), f2.format(cp_openCreditSumCZK + cp_closeCreditSumCZK), "" };
-    modelCP.addRow(row3a);
-    String row3b[] = { "", "", "", "", "Příjem:", "", f2.format(der_openCreditSumCZK), "", "", "", "", "", "",
-        f2.format(der_closeCreditSumCZK), f2.format(der_openCreditSumCZK + der_closeCreditSumCZK), "" };
-    modelDer.addRow(row3b);
-    String row3c[] = { "", "", "", "", "Příjem:", "", f2.format(cash_openCreditSumCZK), "", "", "", "", "", "",
-        f2.format(cash_closeCreditSumCZK), f2.format(cash_openCreditSumCZK + cash_closeCreditSumCZK), "" };
-    modelCash.addRow(row3c);
-
-    String row4a[] = { "", "", "", "", "Výdej:", "", f2.format(cp_openDebitSumCZK), "", "", "", "", "", "",
-        f2.format(cp_closeDebitSumCZK), f2.format(cp_openDebitSumCZK + cp_closeDebitSumCZK), "" };
-    modelCP.addRow(row4a);
-    String row4b[] = { "", "", "", "", "Výdej:", "", f2.format(der_openDebitSumCZK), "", "", "", "", "", "",
-        f2.format(der_closeDebitSumCZK), f2.format(der_openDebitSumCZK + der_closeDebitSumCZK), "" };
-    modelDer.addRow(row4b);
-    String row4c[] = { "", "", "", "", "Výdej:", "", f2.format(cash_openDebitSumCZK), "", "", "", "", "", "",
-        f2.format(cash_closeDebitSumCZK), f2.format(cash_openDebitSumCZK + cash_closeDebitSumCZK), "" };
-    modelCash.addRow(row4c);
-
-    String row2a[] = { "", "", "", "", "Zisk:", "", "", "", "", "", "", "", "", "", f2.format(cp_sumCZK), "" };
-    modelCP.addRow(row2a);
-    String row2b[] = { "", "", "", "", "Zisk:", "", "", "", "", "", "", "", "", "", f2.format(der_sumCZK), "" };
-    modelDer.addRow(row2b);
-    String row2c[] = { "", "", "", "", "Zisk:", "", "", "", "", "", "", "", "", "", f2.format(cash_sumCZK), "" };
-    modelCash.addRow(row2c);
-
-    yearComputed = year;
-
-    if (cbComputeDivi.isSelected())
-      computeDividends(year); // Compute dividends
-    else
-      ((DefaultTableModel) (diviTable.getModel())).setNumRows(0); // Clear dividend table
-
-    saveSettings();
   }// GEN-LAST:event_bComputeActionPerformed
 
   private void formWindowOpened(java.awt.event.WindowEvent evt)// GEN-FIRST:event_formWindowOpened
@@ -1300,6 +1112,11 @@ public class ComputeWindow extends javax.swing.JDialog {
     cbNoIncome.setSelectedIndex(Settings.getNoIncomeTrades());
     cbOverTaxFreeDuration.setSelectedIndex(Settings.getOverTaxFreeDuration());
     cbSeparateCurrencyCSV.setSelected(Settings.getSeparateCurrencyInCSVExport());
+
+    /* Refresh conversion method toggle */
+    if (cbUseDailyRatesCompute != null) {
+      cbUseDailyRatesCompute.setSelected(Settings.getUseDailyRates());
+    }
 
   }// GEN-LAST:event_formWindowOpened
 
@@ -1365,7 +1182,242 @@ public class ComputeWindow extends javax.swing.JDialog {
   private javax.swing.JTable tableCP;
   private javax.swing.JTable tableCash;
   private javax.swing.JTable tableDer;
-  private javax.swing.JLabel lConvMethod;
+  private javax.swing.JCheckBox cbUseDailyRatesCompute;
   // End of variables declaration//GEN-END:variables
+
+  private class RowStatsHelper {
+    double cp_sumCZK = 0;
+    double cp_openCreditSumCZK = 0;
+    double cp_openDebitSumCZK = 0;
+    double cp_closeCreditSumCZK = 0;
+    double cp_closeDebitSumCZK = 0;
+    double der_sumCZK = 0;
+    double der_openCreditSumCZK = 0;
+    double der_openDebitSumCZK = 0;
+    double der_closeCreditSumCZK = 0;
+    double der_closeDebitSumCZK = 0;
+    double cash_sumCZK = 0;
+    double cash_openCreditSumCZK = 0;
+    double cash_openDebitSumCZK = 0;
+    double cash_closeCreditSumCZK = 0;
+    double cash_closeDebitSumCZK = 0;
+  }
+
+  private void processTradeRow(Stocks.StockTrade t, DefaultTableModel modelCP, DefaultTableModel modelDer,
+      DefaultTableModel modelCash, int year, IncludeOverTaxFreeDuration overTaxFreeDuration,
+      NoIncomeTrades noIncomeTrades, RowStatsHelper stats, boolean allowShortsOverYearBorder) {
+    GregorianCalendar cal = new GregorianCalendar();
+    DecimalFormat fn = new DecimalFormat("0.00#####");
+    fn.setGroupingUsed(true);
+    fn.setGroupingSize(3);
+    DecimalFormat f2 = new DecimalFormat("0.00");
+    f2.setGroupingUsed(true);
+    f2.setGroupingSize(3);
+    DecimalFormat fRate = new DecimalFormat("0.0000");
+
+    // Check year of the income
+    cal.setTime(t.getIncomeDate());
+    if (cal.get(GregorianCalendar.YEAR) == year) {
+      // Determine row flags
+      boolean cp = (t.secType == Stocks.SecType.STOCK);
+      boolean cash = (t.secType == Stocks.SecType.CASH);
+      boolean cpOverTaxFreeDuration = cp && Stocks.isOverTaxFreeDuration(t.open.date, t.close.date);
+      boolean include = (overTaxFreeDuration == IncludeOverTaxFreeDuration.INCLUDE) || (!cpOverTaxFreeDuration);
+      boolean show = (overTaxFreeDuration != IncludeOverTaxFreeDuration.LEAVE_OUT) || (!cpOverTaxFreeDuration);
+
+      /* Note */
+      StringBuffer msg = new StringBuffer();
+
+      if (show && (!t.doesIncome())) {
+        switch (noIncomeTrades) {
+          case INCLUDE:
+            // Keep
+            break;
+          case LEAVE_OUT:
+            include = false;
+            show = false;
+            break;
+          case SHOW_ONLY:
+            include = false;
+            msg.append("Z obchodu není příjem; výdej nezapočítán.");
+            break;
+        }
+      }
+
+      if (show) {
+        Vector<String> rowData = new Vector<String>();
+
+        /* Open */
+
+        // Date
+        rowData.add(formatDateTime(t.open.date));
+
+        // Ticker
+        rowData.add(t.open.ticker);
+
+        // Amount
+        rowData.add(f2.format(t.open.amount));
+
+        // Kurz
+        rowData.add(fRate.format(t.openRate));
+
+        // Price
+        if (t.open.priceCurrency != null)
+          rowData.add(fn.format(t.open.price) + " " + t.open.priceCurrency);
+        else
+          rowData.add("0");
+
+        // Fee
+        if (t.open.feeCurrency != null)
+          rowData.add(f2.format(t.open.fee) + " " + t.open.feeCurrency);
+        else
+          rowData.add("-");
+
+        // Open sum
+        if (include)
+          rowData.add(f2.format(t.openSumCZK));
+        else
+          rowData.add("-");
+
+        if (include) {
+          if (cp) {
+            stats.cp_openCreditSumCZK += t.openCreditCZK;
+            stats.cp_openDebitSumCZK += t.openDebitCZK;
+          } else if (cash) {
+            stats.cash_openCreditSumCZK += t.openCreditCZK;
+            stats.cash_openDebitSumCZK += t.openDebitCZK;
+          } else {
+            stats.der_openCreditSumCZK += t.openCreditCZK;
+            stats.der_openDebitSumCZK += t.openDebitCZK;
+          }
+        }
+
+        /* Close */
+
+        if (t.close != null) {
+          /* Go normal */
+          // Date
+          rowData.add(formatDateTime(t.close.date));
+
+          // Ticker
+          rowData.add(t.close.ticker);
+
+          // Amount
+          rowData.add(f2.format(t.close.amount));
+
+          // Kurz Close
+          rowData.add(fRate.format(t.closeRate));
+
+          // Price
+          if (t.close.priceCurrency != null)
+            rowData.add(fn.format(t.close.price) + " " + t.close.priceCurrency);
+          else
+            rowData.add("0");
+
+          // Fee
+          if (t.close.feeCurrency != null)
+            rowData.add(f2.format(t.close.fee) + " " + t.close.feeCurrency);
+          else
+            rowData.add("-");
+
+          // Close sum
+          if (include) {
+            String v = f2.format(t.closeSumCZK); // Prepare content
+
+            // Check if this is a short over year's border
+            if ((!allowShortsOverYearBorder) && (t.open.amount < 0)) {
+              // Short trade && we do not allow them over year's border
+              cal.setTime(t.close.date);
+              if (cal.get(GregorianCalendar.YEAR) != year) {
+                // Closed in another year - do not count expenses for closing
+                t.closeSumCZK = 0;
+                t.profitCZK = t.openSumCZK;
+                msg.append("Obchod nakrátko přes přelom roku; náklad na zavření nezapočítán. ");
+                rowData.add("-");
+              } else {
+                rowData.add(v);
+              }
+            } else {
+              rowData.add(v);
+            }
+          } else
+            rowData.add("-");
+        } else {
+          // Automatically closed short position - do not fill in close
+          rowData.add("-"); // Date
+          rowData.add("-"); // Ticker
+          rowData.add("-"); // Amount
+          rowData.add("-"); // Kurz
+          rowData.add("-"); // Price
+          rowData.add("-"); // Fee
+          rowData.add("-"); // Sum
+
+          msg.append("Neuzavřený obchod nakrátko");
+        }
+
+        if (include) {
+          if (cp) {
+            stats.cp_closeCreditSumCZK += t.closeCreditCZK;
+            stats.cp_closeDebitSumCZK += t.closeDebitCZK;
+          } else if (cash) {
+            stats.cash_closeCreditSumCZK += t.closeCreditCZK;
+            stats.cash_closeDebitSumCZK += t.closeDebitCZK;
+          } else {
+            stats.der_closeCreditSumCZK += t.closeCreditCZK;
+            stats.der_closeDebitSumCZK += t.closeDebitCZK;
+          }
+        }
+
+        /* Results */
+
+        // Result in CZK
+        if (include) {
+          rowData.add(f2.format(t.profitCZK));
+
+          if (cp)
+            stats.cp_sumCZK += t.profitCZK;
+          else if (cash)
+            stats.cash_sumCZK += t.profitCZK;
+          else
+            stats.der_sumCZK += t.profitCZK;
+        } else
+          rowData.add("-");
+
+        if ((overTaxFreeDuration != IncludeOverTaxFreeDuration.INCLUDE) && (cpOverTaxFreeDuration)) {
+          if (t.open.date.before(Stocks.TAX_FREE_DURATION_BOUNDARY))
+            msg.append("Nad 6m. ");
+          else
+            msg.append("Nad 3r. ");
+        }
+
+        for (int j = 0; j < t.renames.length; j++) {
+          if (msg.length() > 0)
+            msg.append(", ");
+          Stocks.StockRename rename = t.renames[j];
+          msg.append(formatDateTime(rename.getDate()) + " ticker " + rename.getOldName() + " přejmenován na "
+              + rename.getNewName());
+        }
+
+        for (int j = 0; j < t.splits.length; j++) {
+          if (msg.length() > 0)
+            msg.append(", ");
+          Stocks.StockSplit split = t.splits[j];
+          msg.append(formatDateTime(split.getDate()) + " proveden " + split.getType() + " v poměru "
+              + split.getSRatio());
+        }
+
+        // Notes
+        rowData.add(msg.toString());
+
+        // Adding
+        if (cp)
+          modelCP.addRow(rowData);
+        else if (cash)
+          modelCash.addRow(rowData);
+        else
+          modelDer.addRow(rowData);
+      }
+    }
+  }
 
 }

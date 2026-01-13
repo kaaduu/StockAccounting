@@ -62,3 +62,7 @@ All notable changes to the StockAccounting project will be documented in this fi
     - Implemented a 7-day lookback logic in the exchange rate provider.
     - Automatically handles CNB holidays and weekends by fetching the rate from the previous working day.
     - Eliminates false-positive "missing rate" warnings during calculation.
+- **ComputeWindow Quick Selection & UI Fix**:
+    - Added a "Používat denní kurzy" toggle directly to the `ComputeWindow` for rapid switching between calculation methods.
+    - Refactored calculation loop to resolve a critical bug where results were not displayed due to structural inconsistencies.
+    - Corrected column alignment for summary rows (Příjem, Výdej, Zisk) to reflect the new table structure.

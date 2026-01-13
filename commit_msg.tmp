@@ -1,0 +1,6 @@
+feat: add daily exchange rate support and quick toggle in ComputeWindow
+
+- Implemented daily exchange rate support with 7-day lookback logic.
+- Added a quick conversion method toggle directly to the ComputeWindow.
+- Refactored ComputeWindow calculation loop to fix display bugs.
+- Updated documentation (CHANGES.md, walkthrough.md).
