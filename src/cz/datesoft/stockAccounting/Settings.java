@@ -363,13 +363,24 @@ public class Settings {
       return 1.0;
 
     if (useDailyRates && dailyRates != null) {
-      String key = currency.toUpperCase() + "|" + dateFormat.format(date);
-      Double rate = dailyRates.get(key);
-      if (rate != null)
-        return rate.doubleValue();
+      // Try current date, then look back up to 7 days for weekends/holidays
+      GregorianCalendar lookbackCal = new GregorianCalendar();
+      lookbackCal.setTime(date);
 
-      // Fallback with warning
-      System.err.println("Warning: Daily rate for " + key + " missing, falling back to unified rate.");
+      for (int i = 0; i < 7; i++) {
+        String key = currency.toUpperCase() + "|" + dateFormat.format(lookbackCal.getTime());
+        Double rate = dailyRates.get(key);
+        if (rate != null)
+          return rate.doubleValue();
+
+        // Not found, try previous day
+        lookbackCal.add(Calendar.DAY_OF_MONTH, -1);
+      }
+
+      // If we're here, no daily rate found in last 7 days
+      // System.err.println("Warning: Daily rate for " + currency + " at " +
+      // dateFormat.format(date) + " or previous 7 days missing, falling back to
+      // unified rate.");
     }
 
     // Default to unified rate (jednotný kurz)

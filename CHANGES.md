@@ -58,3 +58,7 @@ All notable changes to the StockAccounting project will be documented in this fi
     - Added "Metoda přepočtu" (Conversion Method) indicator to show whether Daily or Unified rates are being used.
     - Added "Kurz" (Exchange Rate) columns to trade tables for both open and close sides.
     - Updated CSV/HTML exports to include these new columns and maintain proper alignment.
+- **Improved Exchange Rate Reliability**:
+    - Implemented a 7-day lookback logic in the exchange rate provider.
+    - Automatically handles CNB holidays and weekends by fetching the rate from the previous working day.
+    - Eliminates false-positive "missing rate" warnings during calculation.
