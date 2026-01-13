@@ -1,7 +1,7 @@
-feat: enhance calculation details in Podklad pro DP
+fix: implement daily rate lookback for holidays/weekends
 
-- Added conversion method indicator (Daily vs Unified) to ComputeWindow
-- Added exchange rate columns to trade tables for open and close sides
-- Modified Stocks.StockTrade to preserve rates used at calculation time
-- Updated HTML/CSV export logic to handle new column structure
+- Added 7-day lookback logic to Settings.getExchangeRate()
+- Correctly handles dates when CNB doesn't publish rates (weekends/holidays)
+- Removed unnecessary warning for missing daily rates
+- Removed unused import in ComputeWindow.java
 - Updated documentation (CHANGES.md, walkthrough.md)

@@ -8,7 +8,6 @@ package cz.datesoft.stockAccounting;
 
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
-import java.awt.Toolkit;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
