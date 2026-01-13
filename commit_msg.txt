@@ -1,7 +1,0 @@
-fix: implement daily rate lookback for holidays/weekends
-
-- Added 7-day lookback logic to Settings.getExchangeRate()
-- Correctly handles dates when CNB doesn't publish rates (weekends/holidays)
-- Removed unnecessary warning for missing daily rates
-- Removed unused import in ComputeWindow.java
-- Updated documentation (CHANGES.md, walkthrough.md)
