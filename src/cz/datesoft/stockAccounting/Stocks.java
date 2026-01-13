@@ -508,6 +508,16 @@ public class Stocks {
      */
     double profitCZK;
 
+    /**
+     * Rate used for open side
+     */
+    double openRate;
+
+    /**
+     * Rate used for close side
+     */
+    double closeRate;
+
     public StockTrade(SecType secType, HalfTrade open, HalfTrade close, StockSplit[] splits, StockRename[] renames)
         throws TradingException {
       this.secType = secType;
@@ -554,24 +564,36 @@ public class Stocks {
 
       /* Compute sums */
       try {
-        // Buy sum
-        openDebitCZK = Stocks.roundToHellers(open.fee * Settings.getExchangeRate(open.feeCurrency, open.date));
-        if (open.amount > 0)
-          openDebitCZK += Stocks.roundToHellers(
-              open.price * open.amount * Settings.getExchangeRate(open.priceCurrency, open.date));
-        else
-          openCreditCZK = Stocks.roundToHellers(
-              open.price * -open.amount * Settings.getExchangeRate(open.priceCurrency, open.date));
+        // Open sum
+        openRate = Settings.getExchangeRate(open.feeCurrency, open.date); // Use fee currency for general check, ideally
+                                                                          // we'd store per-currency if mixed, but
+                                                                          // usually they match
+        // Actually, we should probably just store the rates used in the calc below
+        double feeRate = Settings.getExchangeRate(open.feeCurrency, open.date);
+        openDebitCZK = Stocks.roundToHellers(open.fee * feeRate);
+        if (open.amount > 0) {
+          double priceRate = Settings.getExchangeRate(open.priceCurrency, open.date);
+          openRate = priceRate; // Primary rate is the price one
+          openDebitCZK += Stocks.roundToHellers(open.price * open.amount * priceRate);
+        } else {
+          double priceRate = Settings.getExchangeRate(open.priceCurrency, open.date);
+          openRate = priceRate;
+          openCreditCZK = Stocks.roundToHellers(open.price * -open.amount * priceRate);
+        }
         openSumCZK = openCreditCZK - openDebitCZK;
 
         // Sell sum
-        closeDebitCZK = Stocks.roundToHellers(close.fee * Settings.getExchangeRate(close.feeCurrency, close.date));
-        if (close.amount > 0)
-          closeCreditCZK += Stocks.roundToHellers(
-              close.price * close.amount * Settings.getExchangeRate(close.priceCurrency, close.date));
-        else
-          closeDebitCZK += Stocks.roundToHellers(
-              close.price * -close.amount * Settings.getExchangeRate(close.priceCurrency, close.date));
+        double closeFeeRate = Settings.getExchangeRate(close.feeCurrency, close.date);
+        closeDebitCZK = Stocks.roundToHellers(close.fee * closeFeeRate);
+        if (close.amount > 0) {
+          double closePriceRate = Settings.getExchangeRate(close.priceCurrency, close.date);
+          closeRate = closePriceRate;
+          closeCreditCZK += Stocks.roundToHellers(close.price * close.amount * closePriceRate);
+        } else {
+          double closePriceRate = Settings.getExchangeRate(close.priceCurrency, close.date);
+          closeRate = closePriceRate;
+          closeDebitCZK += Stocks.roundToHellers(close.price * -close.amount * closePriceRate);
+        }
         closeSumCZK = closeCreditCZK - closeDebitCZK;
 
         // Profit

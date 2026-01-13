@@ -90,30 +90,38 @@ public class ComputeWindow extends javax.swing.JDialog {
     DefaultTableCellRenderer rarenderer = new DefaultTableCellRenderer();
     rarenderer.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
 
-    TableColumnModel[] tcms = { tableCP.getColumnModel(), tableDer.getColumnModel(), tableCash.getColumnModel() };
+    yearComputed = 0;
 
+    // Initialize conversion method label
+    lConvMethod = new javax.swing.JLabel();
+    lConvMethod.setFont(new java.awt.Font("Tahoma", 1, 11));
+    lConvMethod.setText("Metoda přepočtu: " + (Settings.getUseDailyRates() ? "Denní kurz" : "Jednotný kurz"));
+
+    java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
+    gbc.gridy = 1;
+    gbc.gridx = 6; // After cbSeparateCurrencyCSV
+    gbc.gridwidth = 3;
+    gbc.anchor = java.awt.GridBagConstraints.WEST;
+    gbc.insets = new java.awt.Insets(5, 5, 5, 5);
+    jPanel1.add(lConvMethod, gbc);
+
+    // Update table columns and renderers
+    TableColumnModel[] tcms = { tableCP.getColumnModel(), tableDer.getColumnModel(), tableCash.getColumnModel() };
     for (TableColumnModel tcm : tcms) {
-      tcm.getColumn(0).setCellRenderer(rarenderer);
-      tcm.getColumn(2).setCellRenderer(rarenderer);
-      tcm.getColumn(3).setCellRenderer(rarenderer);
-      tcm.getColumn(4).setCellRenderer(rarenderer);
-      tcm.getColumn(5).setCellRenderer(rarenderer);
-      tcm.getColumn(6).setCellRenderer(rarenderer);
-      tcm.getColumn(8).setCellRenderer(rarenderer);
-      tcm.getColumn(9).setCellRenderer(rarenderer);
-      tcm.getColumn(10).setCellRenderer(rarenderer);
-      tcm.getColumn(11).setCellRenderer(rarenderer);
-      tcm.getColumn(12).setCellRenderer(rarenderer);
+      // Indices: 0:Date, 2:Počet, 3:Kurz, 4:J.Cena, 5:Poplatky, 6:Otevření, 9:Počet,
+      // 10:Kurz, 11:J.Cena, 12:Poplatky, 13:Zavření, 14:Výsledek
+      int[] rightAligned = { 0, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14 };
+      for (int idx : rightAligned) {
+        tcm.getColumn(idx).setCellRenderer(rarenderer);
+      }
     }
 
-    TableColumnModel tcm = diviTable.getColumnModel();
-    tcm.getColumn(0).setCellRenderer(rarenderer);
-    tcm.getColumn(2).setCellRenderer(rarenderer);
-    tcm.getColumn(3).setCellRenderer(rarenderer);
-    tcm.getColumn(4).setCellRenderer(rarenderer);
-    tcm.getColumn(5).setCellRenderer(rarenderer);
-
-    yearComputed = 0;
+    TableColumnModel tcmDiv = diviTable.getColumnModel();
+    tcmDiv.getColumn(0).setCellRenderer(rarenderer);
+    tcmDiv.getColumn(2).setCellRenderer(rarenderer);
+    tcmDiv.getColumn(3).setCellRenderer(rarenderer);
+    tcmDiv.getColumn(4).setCellRenderer(rarenderer);
+    tcmDiv.getColumn(5).setCellRenderer(rarenderer);
   }
 
   /**
@@ -161,12 +169,12 @@ public class ComputeWindow extends javax.swing.JDialog {
       if (i != emptyRow) {
         ofl.write("<tr" + ((i == finalRow) ? " class=\"finalRow\"" : "") + ">");
         for (int n = 0; n < model.getColumnCount(); n++) {
-          if ((n == 1) || (n == 6) || (n == 13))
+          if ((n == 1) || (n == 7) || (n == 8) || (n == 15))
             ofl.write("<td class=\"left\">");
           else
             ofl.write("<td>");
           String s = (String) model.getValueAt(i, n);
-          if (n != 13)
+          if (n != 15)
             s = spaces2nbsp(s);
           ofl.write(s + "</td>");
         }
@@ -670,23 +678,23 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     tableCP.setModel(new javax.swing.table.DefaultTableModel(
         new Object[][] {
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null },
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null },
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null },
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null }
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null }
         },
         new String[] {
-            "Otevřeno", "Ticker", "Počet", "J. cena", "Poplatky", "Otevření CZK", "Zavřeno", "Ticker", "Počet",
-            "J. cena", "Poplatky", "Zavření CZK", "Výsledek CZK", "Poznámka"
+            "Otevřeno", "Ticker", "Počet", "Kurz", "J. cena", "Poplatky", "Otevření CZK", "Zavřeno", "Ticker", "Počet",
+            "Kurz", "J. cena", "Poplatky", "Zavření CZK", "Výsledek CZK", "Poznámka"
         }) {
       Class[] types = new Class[] {
           java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
           java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
           java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
-          java.lang.String.class, java.lang.String.class
+          java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
       };
       boolean[] canEdit = new boolean[] {
-          false, false, false, false, false, false, false, false, false, false, false, false, false, false
+          false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
       };
 
       public Class getColumnClass(int columnIndex) {
@@ -733,23 +741,23 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     tableDer.setModel(new javax.swing.table.DefaultTableModel(
         new Object[][] {
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null },
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null },
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null },
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null }
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null }
         },
         new String[] {
-            "Otevřeno", "Ticker", "Počet", "J. cena", "Poplatky", "Otevření CZK", "Zavřeno", "Ticker", "Počet",
-            "J. cena", "Poplatky", "Zavření CZK", "Výsledek CZK", "Poznámka"
+            "Otevřeno", "Ticker", "Počet", "Kurz", "J. cena", "Poplatky", "Otevření CZK", "Zavřeno", "Ticker", "Počet",
+            "Kurz", "J. cena", "Poplatky", "Zavření CZK", "Výsledek CZK", "Poznámka"
         }) {
       Class[] types = new Class[] {
           java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
           java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
           java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
-          java.lang.String.class, java.lang.String.class
+          java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
       };
       boolean[] canEdit = new boolean[] {
-          false, false, false, false, false, false, false, false, false, false, false, false, false, false
+          false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
       };
 
       public Class getColumnClass(int columnIndex) {
@@ -796,23 +804,23 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     tableCash.setModel(new javax.swing.table.DefaultTableModel(
         new Object[][] {
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null },
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null },
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null },
-            { null, null, null, null, null, null, null, null, null, null, null, null, null, null }
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
+            { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null }
         },
         new String[] {
-            "Otevřeno", "Ticker", "Počet", "J. cena", "Poplatky", "Otevření CZK", "Zavřeno", "Ticker", "Počet",
-            "J. cena", "Poplatky", "Zavření CZK", "Výsledek CZK", "Poznámka"
+            "Otevřeno", "Ticker", "Počet", "Kurz", "J. cena", "Poplatky", "Otevření CZK", "Zavřeno", "Ticker", "Počet",
+            "Kurz", "J. cena", "Poplatky", "Zavření CZK", "Výsledek CZK", "Poznámka"
         }) {
       Class[] types = new Class[] {
           java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
           java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
           java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
-          java.lang.String.class, java.lang.String.class
+          java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
       };
       boolean[] canEdit = new boolean[] {
-          false, false, false, false, false, false, false, false, false, false, false, false, false, false
+          false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
       };
 
       public Class getColumnClass(int columnIndex) {
@@ -971,6 +979,7 @@ public class ComputeWindow extends javax.swing.JDialog {
     DecimalFormat f2 = new DecimalFormat("0.00");
     f2.setGroupingUsed(true);
     f2.setGroupingSize(3);
+    DecimalFormat fRate = new DecimalFormat("0.0000");
 
     // Sort transactions before we proceed
     transactions.sort();
@@ -1060,6 +1069,9 @@ public class ComputeWindow extends javax.swing.JDialog {
                 // Amount
                 rowData.add(f2.format(t.open.amount));
 
+                // Kurz
+                rowData.add(fRate.format(t.openRate));
+
                 // Price
                 if (t.open.priceCurrency != null)
                   rowData.add(fn.format(t.open.price) + " " + t.open.priceCurrency);
@@ -1104,6 +1116,9 @@ public class ComputeWindow extends javax.swing.JDialog {
                   // Amount
                   rowData.add(f2.format(t.close.amount));
 
+                  // Kurz Close
+                  rowData.add(fRate.format(t.closeRate));
+
                   // Price
                   if (t.close.priceCurrency != null)
                     rowData.add(fn.format(t.close.price) + " " + t.close.priceCurrency);
@@ -1143,6 +1158,7 @@ public class ComputeWindow extends javax.swing.JDialog {
                   rowData.add("-"); // Date
                   rowData.add("-"); // Ticker
                   rowData.add("-"); // Amount
+                  rowData.add("-"); // Kurz
                   rowData.add("-"); // Price
                   rowData.add("-"); // Fee
                   rowData.add("-"); // Sum
@@ -1201,9 +1217,10 @@ public class ComputeWindow extends javax.swing.JDialog {
                       + split.getSRatio());
                 }
 
+                // Notes
                 rowData.add(msg.toString());
 
-                // Add row
+                // Adding
                 if (cp)
                   modelCP.addRow(rowData);
                 else if (cash)
@@ -1213,10 +1230,10 @@ public class ComputeWindow extends javax.swing.JDialog {
               }
             }
           }
+        } else {
+          // ts == null -> end of transactions
+          break;
         }
-
-        if (autoCloseShorts)
-          break; // This was the last iteration
       }
     } catch (Stocks.TradingException ex) {
       // Clear model
@@ -1233,36 +1250,36 @@ public class ComputeWindow extends javax.swing.JDialog {
     }
 
     // Add summary
-    String row[] = { "", "", "", "", "", "-----------", "", "", "", "", "", "-----------", "-----------", "", "" };
+    String row[] = { "", "", "", "", "", "", "-----------", "", "", "", "", "", "", "-----------", "-----------", "" };
     modelCP.addRow(row);
     modelDer.addRow(row);
     modelCash.addRow(row);
 
-    String row3a[] = { "", "", "", "", "Příjem:", f2.format(cp_openCreditSumCZK), "", "", "", "", "",
-        f2.format(cp_closeCreditSumCZK), f2.format(cp_openCreditSumCZK + cp_closeCreditSumCZK), "", "" };
+    String row3a[] = { "", "", "", "", "Příjem:", "", f2.format(cp_openCreditSumCZK), "", "", "", "", "", "",
+        f2.format(cp_closeCreditSumCZK), f2.format(cp_openCreditSumCZK + cp_closeCreditSumCZK), "" };
     modelCP.addRow(row3a);
-    String row3b[] = { "", "", "", "", "Příjem:", f2.format(der_openCreditSumCZK), "", "", "", "", "",
-        f2.format(der_closeCreditSumCZK), f2.format(der_openCreditSumCZK + der_closeCreditSumCZK), "", "" };
+    String row3b[] = { "", "", "", "", "Příjem:", "", f2.format(der_openCreditSumCZK), "", "", "", "", "", "",
+        f2.format(der_closeCreditSumCZK), f2.format(der_openCreditSumCZK + der_closeCreditSumCZK), "" };
     modelDer.addRow(row3b);
-    String row3c[] = { "", "", "", "", "Příjem:", f2.format(cash_openCreditSumCZK), "", "", "", "", "",
-        f2.format(cash_closeCreditSumCZK), f2.format(cash_openCreditSumCZK + cash_closeCreditSumCZK), "", "" };
+    String row3c[] = { "", "", "", "", "Příjem:", "", f2.format(cash_openCreditSumCZK), "", "", "", "", "", "",
+        f2.format(cash_closeCreditSumCZK), f2.format(cash_openCreditSumCZK + cash_closeCreditSumCZK), "" };
     modelCash.addRow(row3c);
 
-    String row4a[] = { "", "", "", "", "Výdej:", f2.format(cp_openDebitSumCZK), "", "", "", "", "",
-        f2.format(cp_closeDebitSumCZK), f2.format(cp_openDebitSumCZK + cp_closeDebitSumCZK), "", "" };
+    String row4a[] = { "", "", "", "", "Výdej:", "", f2.format(cp_openDebitSumCZK), "", "", "", "", "", "",
+        f2.format(cp_closeDebitSumCZK), f2.format(cp_openDebitSumCZK + cp_closeDebitSumCZK), "" };
     modelCP.addRow(row4a);
-    String row4b[] = { "", "", "", "", "Výdej:", f2.format(der_openDebitSumCZK), "", "", "", "", "",
-        f2.format(der_closeDebitSumCZK), f2.format(der_openDebitSumCZK + der_closeDebitSumCZK), "", "" };
+    String row4b[] = { "", "", "", "", "Výdej:", "", f2.format(der_openDebitSumCZK), "", "", "", "", "", "",
+        f2.format(der_closeDebitSumCZK), f2.format(der_openDebitSumCZK + der_closeDebitSumCZK), "" };
     modelDer.addRow(row4b);
-    String row4c[] = { "", "", "", "", "Výdej:", f2.format(cash_openDebitSumCZK), "", "", "", "", "",
-        f2.format(cash_closeDebitSumCZK), f2.format(cash_openDebitSumCZK + cash_closeDebitSumCZK), "", "" };
+    String row4c[] = { "", "", "", "", "Výdej:", "", f2.format(cash_openDebitSumCZK), "", "", "", "", "", "",
+        f2.format(cash_closeDebitSumCZK), f2.format(cash_openDebitSumCZK + cash_closeDebitSumCZK), "" };
     modelCash.addRow(row4c);
 
-    String row2a[] = { "", "", "", "", "Zisk:", "", "", "", "", "", "", "", f2.format(cp_sumCZK), "", "" };
+    String row2a[] = { "", "", "", "", "Zisk:", "", "", "", "", "", "", "", "", "", f2.format(cp_sumCZK), "" };
     modelCP.addRow(row2a);
-    String row2b[] = { "", "", "", "", "Zisk:", "", "", "", "", "", "", "", f2.format(der_sumCZK), "", "" };
+    String row2b[] = { "", "", "", "", "Zisk:", "", "", "", "", "", "", "", "", "", f2.format(der_sumCZK), "" };
     modelDer.addRow(row2b);
-    String row2c[] = { "", "", "", "", "Zisk:", "", "", "", "", "", "", "", f2.format(cash_sumCZK), "", "" };
+    String row2c[] = { "", "", "", "", "Zisk:", "", "", "", "", "", "", "", "", "", f2.format(cash_sumCZK), "" };
     modelCash.addRow(row2c);
 
     yearComputed = year;
@@ -1349,6 +1366,7 @@ public class ComputeWindow extends javax.swing.JDialog {
   private javax.swing.JTable tableCP;
   private javax.swing.JTable tableCash;
   private javax.swing.JTable tableDer;
+  private javax.swing.JLabel lConvMethod;
   // End of variables declaration//GEN-END:variables
 
 }

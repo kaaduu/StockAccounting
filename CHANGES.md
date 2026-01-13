@@ -54,3 +54,7 @@ All notable changes to the StockAccounting project will be documented in this fi
 ### Changed
 - **Core Calculation Integration**: Migrated `Stocks.java` and `ComputeWindow.java` to use the new exchange rate wrapper.
 - **Data Persistence**: Updated `Settings.java` to handle new settings and daily rate storage.
+- **Enhanced ComputeWindow UI**:
+    - Added "Metoda přepočtu" (Conversion Method) indicator to show whether Daily or Unified rates are being used.
+    - Added "Kurz" (Exchange Rate) columns to trade tables for both open and close sides.
+    - Updated CSV/HTML exports to include these new columns and maintain proper alignment.
