@@ -1,9 +1,0 @@
-feat: implement currency exchange rate fetching from CNB
-
-- Added CurrencyRateFetcher utility to fetch official "jednotný kurz" from CNB API.
-- Calculates "jednotný kurz" as arithmetic mean of 12 month-end rates, rounded to 2 decimal places.
-- Enhanced SettingsWindow with "Načíst kurzy" button and progress bar.
-- Implemented live preview with yellow highlighting for changed values.
-- Added support for fetching rates for a single selected year or all at once.
-- Added rollback mechanism to restore original values if fetch confirmation is rejected.
-- Updated CHANGES.md with detailed feature summary.

@@ -15,13 +15,20 @@ import javax.swing.table.TableColumn;
 import java.text.DecimalFormat;
 import javax.swing.table.TableColumnModel;
 import javax.swing.JOptionPane;
+import javax.swing.JDialog;
+import javax.swing.JProgressBar;
+import javax.swing.SwingUtilities;
 import javax.swing.DefaultListModel;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 
 /**
  *
  * @author lemming2
  */
 public class SettingsWindow extends javax.swing.JDialog {
+  private MainWindow mainWindow;
+
   /**
    * Column names
    */
@@ -355,12 +362,14 @@ public class SettingsWindow extends javax.swing.JDialog {
   /** Creates new form SettingsDialog */
   public SettingsWindow(java.awt.Frame parent, boolean modal) {
     super(parent, modal);
+    this.mainWindow = (MainWindow) parent;
     initComponents();
 
     this.setLocationByPlatform(true);
     doubleRenderer = new DoubleRenderer();
     highlightedRenderer = new HighlightedDoubleRenderer();
     fetchedCells = new java.util.HashSet<String>();
+    initDailyRatesTab();
   }
 
   /**
@@ -1196,6 +1205,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     Settings.setMarkets(markets);
 
     // And save them
+    Settings.setUseDailyRates(cbUseDailyRates.isSelected());
     Settings.save();
 
     // Close
@@ -1487,6 +1497,160 @@ public class SettingsWindow extends javax.swing.JDialog {
   /**
    * Refresh "remove curency" combo box & button state
    */
+  /* Daily Rates Tab Implementation */
+  private javax.swing.JPanel pDailyRates;
+  private javax.swing.JTable dailyRatesTable;
+  private javax.swing.JCheckBox cbUseDailyRates;
+  private javax.swing.JButton bFetchDailyRates;
+  private javax.swing.table.DefaultTableModel dailyRatesModel;
+
+  private void initDailyRatesTab() {
+    pDailyRates = new javax.swing.JPanel();
+    pDailyRates.setLayout(new java.awt.BorderLayout());
+
+    // Top panel for options
+    javax.swing.JPanel pTop = new javax.swing.JPanel();
+    pTop.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+
+    cbUseDailyRates = new javax.swing.JCheckBox("Používat denní kurzy");
+    cbUseDailyRates.setSelected(Settings.getUseDailyRates());
+    cbUseDailyRates.setToolTipText(
+        "Při zaškrtnutí budou pro přepočet měn používány přesné denní kurzy ČNB namísto jednotného kurzu");
+    pTop.add(cbUseDailyRates);
+
+    bFetchDailyRates = new javax.swing.JButton("Chytré stažení");
+    bFetchDailyRates.setToolTipText("Automaticky zjistí roky s obchody a stáhne pro ně chybějící denní kurzy z ČNB");
+    bFetchDailyRates.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bFetchDailyRatesActionPerformed(evt);
+      }
+    });
+    pTop.add(bFetchDailyRates);
+
+    pDailyRates.add(pTop, java.awt.BorderLayout.NORTH);
+
+    // Table for daily rates
+    dailyRatesModel = new javax.swing.table.DefaultTableModel(
+        new Object[][] {},
+        new String[] { "Měna", "Datum", "Kurz" }) {
+      @Override
+      public boolean isCellEditable(int row, int column) {
+        return false;
+      }
+
+      @Override
+      public Class<?> getColumnClass(int columnIndex) {
+        if (columnIndex == 2)
+          return Double.class;
+        return String.class;
+      }
+    };
+
+    dailyRatesTable = new javax.swing.JTable(dailyRatesModel);
+    dailyRatesTable.setAutoCreateRowSorter(true);
+
+    // Use the same DoubleRenderer for formatting
+    dailyRatesTable.setDefaultRenderer(Double.class, new DoubleRenderer());
+
+    javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(dailyRatesTable);
+    pDailyRates.add(scrollPane, java.awt.BorderLayout.CENTER);
+
+    jTabbedPane1.addTab("Denní kurzy", pDailyRates);
+
+    // Populate table
+    refreshDailyRatesTable();
+  }
+
+  private void refreshDailyRatesTable() {
+    dailyRatesModel.setRowCount(0);
+    java.util.HashMap<String, Double> rates = Settings.getDailyRates();
+    if (rates == null)
+      return;
+
+    // Use a strategy to show many rates efficiently
+    // Sort keys to have some order (optional but nice)
+    java.util.List<String> sortedKeys = new java.util.ArrayList<String>(rates.keySet());
+    java.util.Collections.sort(sortedKeys);
+
+    for (String key : sortedKeys) {
+      String[] parts = key.split("\\|");
+      if (parts.length == 2) {
+        dailyRatesModel.addRow(new Object[] { parts[0], parts[1], rates.get(key) });
+      }
+    }
+  }
+
+  private void bFetchDailyRatesActionPerformed(java.awt.event.ActionEvent evt) {
+    // 1. Identify years with trades
+    final java.util.Set<Integer> years = new java.util.HashSet<Integer>();
+    TransactionSet ts = mainWindow.getTransactionDatabase();
+    if (ts != null) {
+      java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+      for (Iterator<Transaction> i = ts.iterator(); i.hasNext();) {
+        Transaction tx = i.next();
+        cal.setTime(tx.getExecutionDate());
+        years.add(cal.get(java.util.GregorianCalendar.YEAR));
+      }
+    }
+
+    if (years.isEmpty()) {
+      JOptionPane.showMessageDialog(this, "Nebyly nalezeny žádné roky s obchody k načtení.");
+      return;
+    }
+
+    // 2. Fetch in background with progress bar
+    final JDialog progressDialog = new JDialog(this, "Načítání denních kurzů", true);
+    final JProgressBar progressBar = new JProgressBar(0, years.size());
+    progressBar.setStringPainted(true);
+    progressDialog.add(progressBar, java.awt.BorderLayout.CENTER);
+    progressDialog.setSize(300, 75);
+    progressDialog.setLocationRelativeTo(this);
+
+    new Thread(new Runnable() {
+      public void run() {
+        int loadedCount = 0;
+        int failedCount = 0;
+        final java.util.HashMap<String, Double> allNewRates = new java.util.HashMap<String, Double>();
+        java.util.HashMap<String, Double> existingRates = Settings.getDailyRates();
+        if (existingRates != null)
+          allNewRates.putAll(existingRates);
+
+        for (final int year : years) {
+          SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+              progressBar.setValue(progressBar.getValue() + 1);
+              progressBar.setString("Načítám rok " + year + "...");
+            }
+          });
+
+          try {
+            java.util.Map<String, Double> yearRates = CurrencyRateFetcher.fetchAnnualDailyRates(year);
+            allNewRates.putAll(yearRates);
+            loadedCount++;
+          } catch (Exception e) {
+            System.err.println("Chyba při načítání roku " + year + ": " + e.getMessage());
+            failedCount++;
+          }
+        }
+
+        final int fLoaded = loadedCount;
+        final int fFailed = failedCount;
+
+        SwingUtilities.invokeLater(new Runnable() {
+          public void run() {
+            progressDialog.dispose();
+            Settings.setDailyRates(allNewRates);
+            refreshDailyRatesTable();
+            JOptionPane.showMessageDialog(SettingsWindow.this,
+                "Načítání dokončeno.\nÚspěšně načteno roků: " + fLoaded + "\nChyb: " + fFailed);
+          }
+        });
+      }
+    }).start();
+
+    progressDialog.setVisible(true);
+  }
+
   private void refreshCurrenciesCombo() {
     // Get list of currencies from data mode
     Object[] currencies = model.getCurrenciesList();
@@ -1538,6 +1702,12 @@ public class SettingsWindow extends javax.swing.JDialog {
     // Setup models
     lMarkets.setModel(markets);
     marketSelectionChanged();
+
+    // Refresh daily rates tab
+    if (cbUseDailyRates != null) {
+      cbUseDailyRates.setSelected(Settings.getUseDailyRates());
+      refreshDailyRatesTable();
+    }
 
     setVisible(true);
   }

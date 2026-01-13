@@ -458,7 +458,7 @@ public class ComputeWindow extends javax.swing.JDialog {
       if (d.dividendCurrency != null) {
         row.add(f2.format(d.dividend) + " " + d.dividendCurrency);
 
-        double czk = Stocks.roundToHellers(d.dividend * Settings.getRatio(d.dividendCurrency, year));
+        double czk = Stocks.roundToHellers(d.dividend * Settings.getExchangeRate(d.dividendCurrency, d.date));
         row.add(f2.format(czk));
 
         sumDivi += czk;
@@ -471,7 +471,7 @@ public class ComputeWindow extends javax.swing.JDialog {
       if (d.taxCurrency != null) {
         row.add(f2.format(d.tax) + " " + d.taxCurrency);
 
-        double czk = Stocks.roundToHellers(d.tax * Settings.getRatio(d.taxCurrency, year));
+        double czk = Stocks.roundToHellers(d.tax * Settings.getExchangeRate(d.taxCurrency, d.date));
         row.add(f2.format(czk));
 
         sumTaxes += czk;
