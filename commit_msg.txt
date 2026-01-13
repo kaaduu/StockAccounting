@@ -1,0 +1,8 @@
+feat: implement daily exchange rates support
+
+- Extended Settings.java with daily rates storage and persistent .dat file
+- Added CurrencyRateFetcher.fetchAnnualDailyRates for bulk CNB downloading
+- Implemented "Denní kurzy" tab in SettingsWindow with smart fetch tool
+- Added centralized getExchangeRate wrapper for intelligent rate selection
+- Integrated daily rates into Stocks.java and ComputeWindow.java calculations
+- Updated documentation (CHANGES.md, walkthrough.md)

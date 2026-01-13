@@ -41,3 +41,16 @@ All notable changes to the StockAccounting project will be documented in this fi
 ### Changed
 - **SettingsWindow Improvements**: Integrated `HighlightedDoubleRenderer` to visually distinguish fetched data from manual entries.
 - **Validation**: Added comparison logic (0.001 tolerance) to identify and highlight modified exchange rates.
+## [Daily Exchange Rates Support] - 2026-01-13
+
+### Added
+- **Daily Rate Maintenance**: New "Denní kurzy" tab in Settings to manage precise daily exchange rates.
+- **Bulk Fetching**: Efficient annual bulk download of daily rates from CNB.
+- **Smart Fetch Tool**: Automatically identifies years with existing trades and downloads missing daily rates for them.
+- **Calculation Wrapper**: Implemented a centralized exchange rate provider that switches between Daily and Unified rates based on global settings.
+- **Persistence**: Daily rates are stored in a dedicated `daily_rates.dat` file in the data directory.
+- **Global Toggle**: Added a "Používat denní kurzy" setting to control precision level across all calculations (trades, dividends, taxes).
+
+### Changed
+- **Core Calculation Integration**: Migrated `Stocks.java` and `ComputeWindow.java` to use the new exchange rate wrapper.
+- **Data Persistence**: Updated `Settings.java` to handle new settings and daily rate storage.
