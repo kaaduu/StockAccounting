@@ -1,3 +1,4 @@
 Manifest-Version: 1.0
-X-COMMENT: Main-Class will be added automatically by build
+Main-Class: cz.datesoft.stockAccounting.Main
+Class-Path: lib/jcalendar-1.4.jar lib/swing-layout-1.0.4.jar
 
