@@ -68,13 +68,13 @@ public abstract class ImportBase
    */
   protected void setColumnIdentity(int columnNo, int identity)
   {
-    if (_fields.size() > columnNo) _fields.set(columnNo, new Integer(identity));
+    if (_fields.size() > columnNo) _fields.set(columnNo, Integer.valueOf(identity));
     
     while(_fields.size() < columnNo) {
-      _fields.add(new Integer(ID_NONE));
+      _fields.add(Integer.valueOf(ID_NONE));
     }
     
-    _fields.add(new Integer(identity));
+    _fields.add(Integer.valueOf(identity));
   }
   
   /**
@@ -222,7 +222,7 @@ public abstract class ImportBase
    */
   protected void registerColumnName(String name, int identity)
   {
-    _columnNames.put(name, new Integer(identity));
+    _columnNames.put(name, Integer.valueOf(identity));
   }
     
   /**

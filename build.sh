@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Exit on error
+set -e
+
+echo "Building StockAccounting..."
+
+# Create build directory
+mkdir -p build
+rm -rf build/*
+
+# Compile Java files
+echo "Compiling..."
+javac -d build -cp "libjar/*" $(find src -name "*.java")
+
+# Copy resources
+echo "Copying resources..."
+mkdir -p build/cz/datesoft/stockAccounting/images
+cp -v src/cz/datesoft/stockAccounting/images/*.png build/cz/datesoft/stockAccounting/images/
+
+# Create distribution directory
+mkdir -p dist/lib
+rm -rf dist/*
+mkdir -p dist/lib
+
+# Package JAR
+echo "Packaging JAR..."
+jar cfm dist/StockAccounting.jar manifest.mf -C build .
+
+# Copy dependencies
+echo "Copying dependencies..."
+cp libjar/*.jar dist/lib/
+
+# Copy launchers
+echo "Copying launchers..."
+cp run.sh dist/
+cp run.bat dist/ 2>/dev/null || true
+chmod +x dist/run.sh
+
+echo "Build successful! Distribution ready in 'dist' folder."

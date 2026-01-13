@@ -32,22 +32,6 @@
         </Property>
       </Properties>
     </Component>
-    <Component class="javax.swing.JFileChooser" name="fileChooser">
-      <Properties>
-        <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-          <Color blue="ff" green="ff" id="white" palette="1" red="ff" type="palette"/>
-        </Property>
-        <Property name="dialogTitle" type="java.lang.String" value=""/>
-        <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
-          <Border info="org.netbeans.modules.form.compat2.border.BevelBorderInfo">
-            <BevelBorder/>
-          </Border>
-        </Property>
-        <Property name="cursor" type="java.awt.Cursor" editor="org.netbeans.modules.form.editors2.CursorEditor">
-          <Color id="Default Cursor"/>
-        </Property>
-      </Properties>
-    </Component>
     <Component class="javax.swing.JComboBox" name="cbTickers">
       <Properties>
         <Property name="editable" type="boolean" value="true"/>
@@ -312,7 +296,7 @@
             </Constraint>
           </Constraints>
         </Component>
-        <Component class="com.n1logic.date.DatePicker" name="dcFrom">
+        <Component class="com.toedter.calendar.JDateChooser" name="dcFrom">
           <Properties>
             <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
               <Dimension value="[90, 20]"/>
@@ -337,7 +321,7 @@
             </Constraint>
           </Constraints>
         </Component>
-        <Component class="com.n1logic.date.DatePicker" name="dcTo">
+        <Component class="com.toedter.calendar.JDateChooser" name="dcTo">
           <Properties>
             <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
               <Dimension value="[70, 20]"/>
