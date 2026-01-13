@@ -1,8 +1,7 @@
-feat: implement daily exchange rates support
+feat: enhance calculation details in Podklad pro DP
 
-- Extended Settings.java with daily rates storage and persistent .dat file
-- Added CurrencyRateFetcher.fetchAnnualDailyRates for bulk CNB downloading
-- Implemented "Denní kurzy" tab in SettingsWindow with smart fetch tool
-- Added centralized getExchangeRate wrapper for intelligent rate selection
-- Integrated daily rates into Stocks.java and ComputeWindow.java calculations
+- Added conversion method indicator (Daily vs Unified) to ComputeWindow
+- Added exchange rate columns to trade tables for open and close sides
+- Modified Stocks.StockTrade to preserve rates used at calculation time
+- Updated HTML/CSV export logic to handle new column structure
 - Updated documentation (CHANGES.md, walkthrough.md)
