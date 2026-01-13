@@ -1,6 +1,8 @@
 Akciove Ucetnictvi - vetsinu kodu a logiky napsal Michal Kara (lemming@ucw.cz) a od 2020 jsou mensinove opravy a vylepseni udrzovany zde.
    vychazi z puvodniho zdrojoveho kodu siren pod GPL na http://lemming.ucw.cz/ucetnictvi/ (zde je i detailni popis pouziti aplikace)
    
+See [CHANGES.md](CHANGES.md) for the latest modernization updates.
+
 Changes:
 02.05.2022    - Pridan import Revolut csv - pro VejbyCZ <br>   
               - Stav uctu ukazu frakcni mnozstvi<br>
@@ -31,9 +33,30 @@ Changes:
 =======================
 # StockAccounting
 
-To compile: download NetBeans and set java platform JDK 1.8 (on linux Zulu is good choice https://www.azul.com/downloads/zulu-community/?package=jdk)
+To compile with NetBeans: download NetBeans and set java platform JDK 1.8 (on linux Zulu is good choice https://www.azul.com/downloads/zulu-community/?package=jdk)
 
 Project Properties -> Libraries and here tab Compile set classpath:
 libjar/DatePicker.jar
 libjar/swing-layout-1.0.4.jar
 libjar/jcalendar-1.3.2.jar
+
+### Sestavení a spuštění
+
+Projekt lze sestavit a spustit z příkazové řádky pomocí přiložených skriptů (vyžaduje JDK 21):
+
+1. **Sestavení**: `./build.sh` (vytvoří adresář `dist` s připravenou aplikací)
+2. **Spuštění**: `./run.sh`
+
+## Jak spustit aplikaci (Distribuce)
+
+V adresáři `dist` najdete vše potřebné pro běh aplikace:
+
+#### Windows
+- Spusťte soubor `run.bat` dvojitým kliknutím.
+
+#### Linux
+- Spusťte příkaz `./run.sh` v adresáři `dist`.
+
+## CI/CD (Gitea Actions)
+
+Projekt používá Gitea Actions pro automatické sestavení. Při vytvoření tagu (např. `v1.0.0`) se automaticky vytvoří Release se ZIP archivem připraveným k použití.
