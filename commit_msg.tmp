@@ -1,6 +1,7 @@
-feat: add daily exchange rate support and quick toggle in ComputeWindow
+feat: add Gitea Actions workflow and multi-platform launchers
 
-- Implemented daily exchange rate support with 7-day lookback logic.
-- Added a quick conversion method toggle directly to the ComputeWindow.
-- Refactored ComputeWindow calculation loop to fix display bugs.
-- Updated documentation (CHANGES.md, walkthrough.md).
+- Added .gitea/workflows/release.yml for automated releases.
+- Updated build.sh to package distribution into dist/ folder.
+- Created run.bat (Windows) and improved run.sh (Linux) launchers.
+- Updated README.md with execution instructions.
+- Configured executable JAR with dependencies in manifest.mf.

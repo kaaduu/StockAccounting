@@ -40,11 +40,23 @@ libjar/DatePicker.jar
 libjar/swing-layout-1.0.4.jar
 libjar/jcalendar-1.3.2.jar
 
-### Command Line Build
+### Sestavení a spuštění
 
-You can also build and run the project from the command line without NetBeans using the provided scripts:
+Projekt lze sestavit a spustit z příkazové řádky pomocí přiložených skriptů (vyžaduje JDK 21):
 
-1. **Build**: `./build.sh`
-2. **Run**: `./run.sh`
+1. **Sestavení**: `./build.sh` (vytvoří adresář `dist` s připravenou aplikací)
+2. **Spuštění**: `./run.sh`
 
-Requirements: `javac` and `java` (JDK 8 or newer) should be in your PATH.
+## Jak spustit aplikaci (Distribuce)
+
+V adresáři `dist` najdete vše potřebné pro běh aplikace:
+
+#### Windows
+- Spusťte soubor `run.bat` dvojitým kliknutím.
+
+#### Linux
+- Spusťte příkaz `./run.sh` v adresáři `dist`.
+
+## CI/CD (Gitea Actions)
+
+Projekt používá Gitea Actions pro automatické sestavení. Při vytvoření tagu (např. `v1.0.0`) se automaticky vytvoří Release se ZIP archivem připraveným k použití.
