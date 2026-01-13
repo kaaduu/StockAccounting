@@ -1,7 +1,4 @@
-feat: add Gitea Actions workflow and multi-platform launchers
+feat: add GitHub compatibility for CI/CD workflow
 
-- Added .gitea/workflows/release.yml for automated releases.
-- Updated build.sh to package distribution into dist/ folder.
-- Created run.bat (Windows) and improved run.sh (Linux) launchers.
-- Updated README.md with execution instructions.
-- Configured executable JAR with dependencies in manifest.mf.
+- Duplicated Gitea workflow to .github/workflows/release.yml.
+- Both Gitea and GitHub now support automated releases on tag pushes.
