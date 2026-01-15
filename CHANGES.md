@@ -1,101 +1,100 @@
 # Changes
 
-# Changes
+# Změny
 
-All notable changes to the StockAccounting project will be documented in this file.
+Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
-## [Dynamic Version Display & Runtime Information] - 2026-01-15
+## [Dynamické zobrazení verze a informace o běhovém prostředí] - 2026-01-15
 
-### Changed
-- **Java Version Requirement**: Downgraded from Java 21 to Java 17 for broader compatibility
-- **Build System**: Updated to use Java 17 compiler with `--release 17` flag
-- **GitHub Workflow**: Modified to use JDK 17 instead of JDK 21
+### Změněno
+- **Požadavek na verzi Java**: Snížena z Java 21 na Java 17 pro širší kompatibilitu
+- **Sestavovací systém**: Aktualizováno pro použití kompilátoru Java 17 s příznakem `--release 17`
+- **GitHub Workflow**: Upraveno pro použití JDK 17 místo JDK 21
 
-### Added
-- **Version Detection**: Enhanced `run.sh` and `run.bat` scripts with automatic Java version checking
-- **User-Friendly Errors**: Clear installation instructions when Java version is insufficient
-- **Cross-Platform Support**: Both Linux and Windows launcher scripts now provide helpful guidance
-- **Installation Documentation**: Added system requirements and Java installation instructions to README.md
+### Přidáno
+- **Detekce verze**: Vylepšené skripty `run.sh` a `run.bat` s automatickou kontrolou verze Java
+- **Uživatelsky přívětivé chyby**: Jasné instrukce pro instalaci při nedostatečné verzi Java
+- **Multiplatformní podpora**: Spouštěcí skripty pro Linux i Windows nyní poskytují užitečné pokyny
+- **Dokumentace instalace**: Přidány systémové požadavky a instrukce pro instalaci Java do README.md
 
-### Technical Details
-- **Version Format**: Full git describe output (tag-commits-hash)
-- **Fallback Behavior**: Git describe → JAR-embedded version.properties → "dev-build"
-- **License Links**: Czech (gnugpl.cz) and English (gnu.org) GPL-3.0 links in About window
-- **Performance**: Git command executed once at application startup, cached for session
-- **Class File Version**: Now generates Java 17 compatible bytecode (version 61.0)
-- **Build Process**: Explicitly uses Java 17 compiler to ensure consistent compilation
-- **Runtime Check**: Application verifies Java 17+ at startup with helpful error messages
+### Technické detaily
+- **Formát verze**: Úplný výstup git describe (značka-počet commitů-hash)
+- **Náhradní chování**: Git describe → JAR-vložený version.properties → "dev-build"
+- **Výkon**: Příkaz git spuštěn jednou při spuštění aplikace, uložen v cache pro relaci
+- **Verze souboru třídy**: Nyní generuje bytecode kompatibilní s Java 17 (verze 61.0)
+- **Proces sestavení**: Explicitně používá kompilátor Java 17 pro zajištění konzistentní kompilace
+- **Kontrola za běhu**: Aplikace ověřuje Java 17+ při spuštění s užitečnými chybovými hláškami
 
-## [Remote Repository Configuration] - 2026-01-15
+## [Konfigurace vzdáleného repozitáře] - 2026-01-15
 
-### Changed
-- **Remote Repository**: Configured dual remote setup with Gitea as primary and GitHub as secondary
-- **Primary Remote (gitea)**: `ssh://git@192.168.88.97:222/kadu/stock_accounting`
-- **Secondary Remote (origin)**: `https://github.com/kaaduu/StockAccounting.git`
-- **Documentation**: Updated README.md and create-release-tag.sh for dual remote workflow
-- **Workflow**: Tags now push to Gitea by default, with optional GitHub push capability
+### Změněno
+- **Vzdálený repozitář**: Nakonfigurováno duální nastavení s Gitea jako primárním a GitHub jako sekundárním
+- **Primární vzdálený (gitea)**: `ssh://git@192.168.88.97:222/kadu/stock_accounting`
+- **Sekundární vzdálený (origin)**: `https://github.com/kaaduu/StockAccounting.git`
+- **Dokumentace**: Aktualizováno README.md a create-release-tag.sh pro duální workflow vzdálených repozitářů
+- **Workflow**: Značky se nyní odesílají do Gitea jako výchozí, s volitelným odesláním do GitHub
 
-## [Modernization & Java 21 Migration] - 2026-01-12
+## [Modernizace a migrace na Java 21] - 2026-01-12
 
-### Added
-- **Command-Line Build System**: Added `build.sh` and `run.sh` to allow building and running the project without NetBeans.
-- **Native File Choosers**: Integrated `java.awt.FileDialog` across the application for a native and responsive file selection experience (Open, Save, Import, Export).
-- **UX Shortcut**: Added "Enter to filter" functionality to date fields in `MainWindow`.
-- **Modern Dependencies**: Added `jcalendar-1.4.jar`.
+### Přidáno
+- **Sestavovací systém pro příkazový řádek**: Přidány `build.sh` a `run.sh` pro umožnění sestavení a spuštění projektu bez NetBeans.
+- **Nativní výběry souborů**: Integrováno `java.awt.FileDialog` v celé aplikaci pro nativní a responzivní zkušenost s výběrem souborů (Otevřít, Uložit, Import, Export).
+- **UX zkratka**: Přidána funkce "Enter pro filtrování" v polích data v `MainWindow`.
+- **Moderní závislosti**: Přidáno `jcalendar-1.4.jar`.
 
-### Changed
-- **Java 21 Compatibility**: 
-    - Replaced deprecated `Integer` and `Double` constructors with `valueOf()`.
-    - Added generics to `SortedSetComboBoxModel`, `JComboBox`, and `DefaultComboBoxModel` to reduce raw type warnings.
-    - Updated `TransactionSet.java` and `ComputeWindow.java` to fix raw `Class` type warnings.
-- **DatePicker Replacement**: Replaced the obscure `com.n1logic.date.DatePicker` with `com.toedter.calendar.JDateChooser`.
-- **Library Upgrades**: Upgraded `jcalendar` from 1.3.2 to 1.4.
-- **Improved MainWindow UI**: Migrated `MainWindow.java` and `MainWindow.form` to use `JDateChooser`.
+### Změněno
+- **Kompatibilita s Java 21**:
+    - Nahrazeny zastaralé konstruktory `Integer` a `Double` metodami `valueOf()`.
+    - Přidány generiky do `SortedSetComboBoxModel`, `JComboBox` a `DefaultComboBoxModel` pro snížení varování o raw typech.
+    - Aktualizováno `TransactionSet.java` a `ComputeWindow.java` pro opravu varování o raw typech `Class`.
+- **Nahrazení DatePicker**: Nahrazen nejasný `com.n1logic.date.DatePicker` s `com.toedter.calendar.JDateChooser`.
+- **Aktualizace knihoven**: Aktualizováno `jcalendar` z verze 1.3.2 na 1.4.
+- **Vylepšené UI MainWindow**: Migrace `MainWindow.java` a `MainWindow.form` pro použití `JDateChooser`.
 
-### Removed
-- **Obsolete Libraries**:
-    - `DatePicker.jar` (replaced by JDateChooser).
-    - `looks-2.0.1.jar` (unused JGoodies library).
-    - `swing-layout-1.0.3.jar` (redundant, version 1.0.4 is kept).
-## [Currency Rate Fetching Feature] - 2026-01-13
+### Odebráno
+- **Zastaralé knihovny**:
+    - `DatePicker.jar` (nahrazeno JDateChooser).
+    - `looks-2.0.1.jar` (nepoužívaná knihovna JGoodies).
+    - `swing-layout-1.0.3.jar` (redundantní, verze 1.0.4 je zachována).
+## [Funkce načítání kurzů měn] - 2026-01-13
 
-### Added
-- **CNB Integration**: New `CurrencyRateFetcher` utility to automatically fetch official "jednotný kurz" (unified exchange rate) from the Czech National Bank (CNB).
-- **Automated Calculations**: Calculates "jednotný kurz" as an arithmetic mean of 12 month-end rates according to Ministry of Finance (GFŘ) guidelines.
-- **Enhanced Settings UI**:
-    - Added "Načíst kurzy" button to the currency settings table.
-    - Added modal progress bar with real-time feedback during data fetching.
-    - Implemented **Single Year Fetching**: Users can now fetch rates for a specific selected year or all at once.
-- **Preview & Rollback**: 
-    - Fetched rates are previewed in the table with yellow highlighting for modified values.
-    - Confirmation dialog allows users to either apply the changes or rollback to original values.
-- **Precision Grounding**: Exchange rates are automatically rounded to 2 decimal places to match official tax requirements.
+### Přidáno
+- **Integrace ČNB**: Nový nástroj `CurrencyRateFetcher` pro automatické načítání oficiálního "jednotného kurzu" z České národní banky (ČNB).
+- **Automatické výpočty**: Počítá "jednotný kurz" jako aritmetický průměr 12 měsíčních koncových kurzů podle pokynů Ministerstva financí (GFŘ).
+- **Vylepšené UI nastavení**:
+    - Přidáno tlačítko "Načíst kurzy" do tabulky nastavení měn.
+    - Přidán modální ukazatel průběhu se zpětnou vazbou v reálném čase během načítání dat.
+    - Implementováno **načítání pro jeden rok**: Uživatelé mohou nyní načíst kurzy pro konkrétní vybraný rok nebo všechny najednou.
+- **Náhled a návrat**:
+    - Načtené kurzy jsou zobrazeny v tabulce se žlutým zvýrazněním pro upravené hodnoty.
+    - Potvrzovací dialog umožňuje buď aplikovat změny nebo se vrátit k původním hodnotám.
+- **Přesné zaokrouhlení**: Směnné kurzy jsou automaticky zaokrouhleny na 2 desetinná místa podle oficiálních daňových požadavků.
 
-### Changed
-- **SettingsWindow Improvements**: Integrated `HighlightedDoubleRenderer` to visually distinguish fetched data from manual entries.
-- **Validation**: Added comparison logic (0.001 tolerance) to identify and highlight modified exchange rates.
-## [Daily Exchange Rates Support] - 2026-01-13
+### Změněno
+- **Vylepšení SettingsWindow**: Integrováno `HighlightedDoubleRenderer` pro vizuální odlišení načtených dat od ručně zadaných.
+- **Validace**: Přidána logika porovnání (tolerance 0.001) pro identifikaci a zvýraznění upravených směnných kurzů.
+## [Podpora denních kurzů měn] - 2026-01-13
 
-### Added
-- **Daily Rate Maintenance**: New "Denní kurzy" tab in Settings to manage precise daily exchange rates.
-- **Bulk Fetching**: Efficient annual bulk download of daily rates from CNB.
-- **Smart Fetch Tool**: Automatically identifies years with existing trades and downloads missing daily rates for them.
-- **Calculation Wrapper**: Implemented a centralized exchange rate provider that switches between Daily and Unified rates based on global settings.
-- **Persistence**: Daily rates are stored in a dedicated `daily_rates.dat` file in the data directory.
-- **Global Toggle**: Added a "Používat denní kurzy" setting to control precision level across all calculations (trades, dividends, taxes).
+### Přidáno
+- **Správa denních kurzů**: Nová záložka "Denní kurzy" v Nastavení pro správu přesných denních kurzů měn.
+- **Hromadné načítání**: Efektivní roční hromadné stahování denních kurzů z ČNB.
+- **Inteligentní nástroj načítání**: Automaticky identifikuje roky se stávajícími obchody a stahuje chybějící denní kurzy pro ně.
+- **Obálka výpočtů**: Implementována centralizovaná poskytovatel kurzů, která přepíná mezi Denními a Sjednocenými kurzy na základě globálního nastavení.
+- **Persistence**: Denní kurzy jsou uloženy v dedikovaném souboru `daily_rates.dat` v adresáři dat.
+- **Globální přepínač**: Přidáno nastavení "Používat denní kurzy" pro kontrolu úrovně přesnosti ve všech výpočtech (obchody, dividendy, daně).
 
-### Changed
-- **Core Calculation Integration**: Migrated `Stocks.java` and `ComputeWindow.java` to use the new exchange rate wrapper.
-- **Data Persistence**: Updated `Settings.java` to handle new settings and daily rate storage.
-- **Enhanced ComputeWindow UI**:
-    - Added "Metoda přepočtu" (Conversion Method) indicator to show whether Daily or Unified rates are being used.
-    - Added "Kurz" (Exchange Rate) columns to trade tables for both open and close sides.
-    - Updated CSV/HTML exports to include these new columns and maintain proper alignment.
-- **Improved Exchange Rate Reliability**:
-    - Implemented a 7-day lookback logic in the exchange rate provider.
-    - Automatically handles CNB holidays and weekends by fetching the rate from the previous working day.
-    - Eliminates false-positive "missing rate" warnings during calculation.
-- **ComputeWindow Quick Selection & UI Fix**:
-    - Added a "Používat denní kurzy" toggle directly to the `ComputeWindow` for rapid switching between calculation methods.
-    - Refactored calculation loop to resolve a critical bug where results were not displayed due to structural inconsistencies.
-    - Corrected column alignment for summary rows (Příjem, Výdej, Zisk) to reflect the new table structure.
+### Změněno
+- **Integrace základních výpočtů**: Migrace `Stocks.java` a `ComputeWindow.java` pro použití nové obálky kurzů měn.
+- **Persistence dat**: Aktualizováno `Settings.java` pro zpracování nových nastavení a uložení denních kurzů.
+- **Vylepšené UI ComputeWindow**:
+    - Přidán indikátor "Metoda přepočtu" zobrazující, zda se používají Denní nebo Sjednocené kurzy.
+    - Přidány sloupce "Kurz" do tabulek obchodů pro obě strany (otevření i uzavření).
+    - Aktualizovány exporty CSV/HTML pro zahrnutí těchto nových sloupců a zachování správného zarovnání.
+- **Vylepšená spolehlivost kurzů měn**:
+    - Implementována logika zpětného pohledu 7 dnů v poskytovateli kurzů.
+    - Automaticky zpracovává svátky ČNB a víkendy načtením kurzu z předchozího pracovního dne.
+    - Odstraňuje falešně pozitivní varování "chybějící kurz" během výpočtu.
+- **Rychlý výběr v ComputeWindow a oprava UI**:
+    - Přidán přepínač "Používat denní kurzy" přímo do `ComputeWindow` pro rychlé přepínání mezi metodami výpočtu.
+    - Refaktorována výpočetní smyčka pro vyřešení kritické chyby, kde se výsledky nezobrazovaly kvůli strukturálním nekonzistencím.
+    - Opraveno zarovnání sloupců pro souhrnné řádky (Příjem, Výdej, Zisk) tak, aby odráželo novou strukturu tabulky.
