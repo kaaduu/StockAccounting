@@ -80,35 +80,26 @@ V adresáři `dist` najdete vše potřebné pro běh aplikace:
 
 ## CI/CD (Gitea Actions)
 
-### Remote Repository Setup
-This project uses dual remotes for version control and CI/CD:
-- `gitea` (Primary - Gitea server): `ssh://git@192.168.88.97:222/kadu/stock_accounting`
-- `origin` (Secondary - GitHub): `https://github.com/kaaduu/StockAccounting.git`
+### Nastavení vzdáleného repozitáře
+Tento projekt používá duální vzdálené repozitáře pro správu verzí a CI/CD:
+- `gitea` (Primární - Gitea server): `ssh://git@192.168.88.97:222/kadu/stock_accounting`
+- `origin` (Sekundární - GitHub): `https://github.com/kaaduu/StockAccounting.git`
 
-To push changes and trigger releases:
-1. Commit your changes: `git add . && git commit -m "your message"`
-2. Push to Gitea (primary): `git push gitea modernization-java21`
-3. Push to GitHub (optional): `git push origin modernization-java21`
-4. Create a release tag: `./create-release-tag.sh` (creates vYYYY.MM.DD format)
-5. Push tags to both: `git push gitea --tags && git push origin --tags`
+Pro odeslání změn a spuštění vydání:
+1. Commitněte změny: `git add . && git commit -m "vaše zpráva"`
+2. Odešlete do Gitea (primární): `git push gitea modernization-java21`
+3. Odešlete do GitHub (volitelné): `git push origin modernization-java21`
+4. Vytvořte značku vydání: `./create-release-tag.sh` (vytvoří formát vRRRR.MM.DD)
+5. Odešlete značky do obou: `git push gitea --tags && git push origin --tags`
 
-The Gitea Actions workflow will automatically build and release the application.
+Gitea Actions workflow automaticky sestaví a vydá aplikaci.
 
-## License / Licence
+## Informace o verzi
+Aplikace zobrazuje informace o verzi automaticky na základě git značek.
+- **Označená vydání**: Zobrazuje název značky (např. `v2026.01.15` nebo `v2026.01.15-2-g123abc`)
+- **Vývojové sestavení**: Zobrazuje `dev-build` pokud git není k dispozici
+- **Informace o běhu**: Zobrazuje verzi Java, dodavatele a detaily operačního systému
 
-This project is licensed under GPL-3.0.
-
-- [English License](LICENSE)
-- [Czech License / Česká licence](LICENSE.cs)
-- [Online GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.html)
-- [Online Czech GPL-3.0 / Online česká GPL-3.0](http://www.gnugpl.cz/v3/)
-
-## Version Information
-The application displays version information automatically based on git tags.
-- **Tagged releases**: Shows tag name (e.g., `v2026.01.15` or `v2026.01.15-2-g123abc`)
-- **Development builds**: Shows `dev-build` when git is unavailable
-- **Runtime info**: Displays Java version, vendor, and operating system details
-
-**Note**: You can modify `create-release-tag.sh` to push tags to `origin` (GitHub) instead of `gitea` by changing the push command in the script. Test tag `v2026.01.15-origin-test` successfully pushed to GitHub only.
+**Poznámka**: Můžete upravit `create-release-tag.sh` pro odeslání značek do `origin` (GitHub) místo `gitea` změnou příkazu push ve skriptu. Test značka `v2026.01.15-origin-test` byla úspěšně odeslána pouze do GitHub.
 
 Projekt používá Gitea Actions pro automatické sestavení. Při vytvoření tagu (např. `v1.0.0`) se automaticky vytvoří Release se ZIP archivem připraveným k použití.
