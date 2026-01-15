@@ -94,6 +94,12 @@ To push changes and trigger releases:
 
 The Gitea Actions workflow will automatically build and release the application.
 
+## Version Information
+The application displays version information automatically based on git tags.
+- **Tagged releases**: Shows tag name (e.g., `v2026.01.15` or `v2026.01.15-2-g123abc`)
+- **Development builds**: Shows `dev-build` when git is unavailable
+- **Runtime info**: Displays Java version, vendor, and operating system details
+
 **Note**: You can modify `create-release-tag.sh` to push tags to `origin` (GitHub) instead of `gitea` by changing the push command in the script. Test tag `v2026.01.15-origin-test` successfully pushed to GitHub only.
 
 Projekt používá Gitea Actions pro automatické sestavení. Při vytvoření tagu (např. `v1.0.0`) se automaticky vytvoří Release se ZIP archivem připraveným k použití.

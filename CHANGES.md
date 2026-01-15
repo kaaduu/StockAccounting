@@ -4,7 +4,7 @@
 
 All notable changes to the StockAccounting project will be documented in this file.
 
-## [Java 17 Compatibility & Enhanced Launcher] - 2026-01-15
+## [Dynamic Version Display & Runtime Information] - 2026-01-15
 
 ### Changed
 - **Java Version Requirement**: Downgraded from Java 21 to Java 17 for broader compatibility
@@ -18,6 +18,9 @@ All notable changes to the StockAccounting project will be documented in this fi
 - **Installation Documentation**: Added system requirements and Java installation instructions to README.md
 
 ### Technical Details
+- **Version Format**: Full git describe output (tag-commits-hash)
+- **Fallback Behavior**: Shows "dev-build" when git unavailable, uses version.properties as secondary fallback
+- **Performance**: Git command executed once at application startup
 - **Class File Version**: Now generates Java 17 compatible bytecode (version 61.0)
 - **Build Process**: Explicitly uses Java 17 compiler to ensure consistent compilation
 - **Runtime Check**: Application verifies Java 17+ at startup with helpful error messages
