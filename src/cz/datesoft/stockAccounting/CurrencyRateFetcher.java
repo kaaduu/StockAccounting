@@ -352,4 +352,88 @@ public class CurrencyRateFetcher {
       conn.disconnect();
     }
   }
+
+  /**
+   * Fetch daily rates for selected currencies for a specific year from CNB
+   * @param year Year to fetch (e.g., 2024)
+   * @param currencies List of currency codes to fetch (null means all currencies)
+   * @return Map of "CURRENCY|YYYY-MM-DD" -> Rate
+   */
+  public static Map<String, Double> fetchSelectiveDailyRates(int year, java.util.List<String> currencies) throws Exception {
+    Map<String, Double> results = new HashMap<String, Double>();
+    String urlStr = "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/rok.txt?rok="
+        + year;
+    URL url = new URL(urlStr);
+    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+    try {
+      conn.setRequestMethod("GET");
+      conn.setConnectTimeout(TIMEOUT_MS);
+      conn.setReadTimeout(TIMEOUT_MS);
+
+      int responseCode = conn.getResponseCode();
+      if (responseCode != 200) {
+        throw new Exception("CNB API returned response code " + responseCode + " for year " + year);
+      }
+
+      BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+      String headerLine = reader.readLine();
+      if (headerLine == null)
+        throw new Exception("Empty response from CNB API");
+
+      // Parse header to get currencies and multipliers
+      // Datum|1 AUD|1 BGN|...|100 HUF|...
+      String[] headers = headerLine.split("\\|");
+      String[] curCodes = new String[headers.length];
+      double[] multipliers = new double[headers.length];
+
+      for (int i = 1; i < headers.length; i++) {
+        String h = headers[i].trim();
+        String[] hParts = h.split(" ");
+        if (hParts.length == 2) {
+          multipliers[i] = Double.parseDouble(hParts[0]);
+          curCodes[i] = hParts[1].toUpperCase();
+        }
+      }
+
+      String line;
+      while ((line = reader.readLine()) != null) {
+        String[] parts = line.split("\\|");
+        if (parts.length < 2)
+          continue;
+
+        // Datum: DD.MM.YYYY
+        String dateParts[] = parts[0].split("\\.");
+        if (dateParts.length != 3)
+          continue;
+        String isoDate = String.format("%s-%s-%s", dateParts[2], dateParts[1], dateParts[0]);
+
+        for (int i = 1; i < parts.length && i < curCodes.length; i++) {
+          if (curCodes[i] == null)
+            continue;
+
+          // Filter by requested currencies if specified
+          if (currencies != null && !currencies.contains(curCodes[i])) {
+            continue;
+          }
+
+          try {
+            String rateStr = parts[i].trim().replace(',', '.');
+            double rate = Double.parseDouble(rateStr);
+            double normalizedRate = rate / multipliers[i];
+
+            results.put(curCodes[i] + "|" + isoDate, normalizedRate);
+          } catch (NumberFormatException e) {
+            // Skip invalid rates
+          }
+        }
+      }
+
+      reader.close();
+      return results;
+
+    } finally {
+      conn.disconnect();
+    }
+  }
 }

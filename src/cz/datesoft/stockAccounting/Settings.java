@@ -400,33 +400,29 @@ public class Settings {
    */
   private static void loadDailyRates() {
     dailyRates = new HashMap<String, Double>();
-    File file = new File(dataDirectory == null ? "." : dataDirectory, "daily_rates.dat");
-    if (!file.exists())
-      return;
 
-    BufferedReader reader = null;
     try {
-      reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
-      String line;
-      while ((line = reader.readLine()) != null) {
-        String[] parts = line.split("\\|");
-        if (parts.length == 2) {
-          try {
-            dailyRates.put(parts[0], Double.valueOf(Double.parseDouble(parts[1])));
-          } catch (NumberFormatException e) {
-            // Skip invalid numbers
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      String[] keys = p.keys();
+
+      for (String key : keys) {
+        if (key.startsWith("dailyRate.")) {
+          // Extract the rate key (remove "dailyRate." prefix)
+          String rateKey = key.substring("dailyRate.".length());
+          String rateValue = p.get(key, "");
+
+          if (!rateValue.isEmpty()) {
+            try {
+              dailyRates.put(rateKey, Double.valueOf(Double.parseDouble(rateValue)));
+            } catch (NumberFormatException e) {
+              // Skip invalid entries
+              System.err.println("Invalid daily rate value for key: " + key);
+            }
           }
         }
       }
     } catch (Exception e) {
-      System.err.println("Error loading daily rates: " + e.getMessage());
-    } finally {
-      if (reader != null) {
-        try {
-          reader.close();
-        } catch (IOException e) {
-        }
-      }
+      System.err.println("Error loading daily rates from Preferences: " + e.getMessage());
     }
   }
 
@@ -434,22 +430,16 @@ public class Settings {
    * Save daily rates to data directory
    */
   public static void saveDailyRates() {
-    if (dailyRates == null)
+    if (dailyRates == null || dailyRates.isEmpty())
       return;
-    File file = new File(dataDirectory == null ? "." : dataDirectory, "daily_rates.dat");
 
-    PrintWriter writer = null;
     try {
-      writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"));
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
       for (Map.Entry<String, Double> entry : dailyRates.entrySet()) {
-        writer.println(entry.getKey() + "|" + entry.getValue());
+        p.put("dailyRate." + entry.getKey(), entry.getValue().toString());
       }
     } catch (Exception e) {
       System.err.println("Error saving daily rates: " + e.getMessage());
-    } finally {
-      if (writer != null) {
-        writer.close();
-      }
     }
   }
 
@@ -609,5 +599,418 @@ public class Settings {
     cset.toArray(res);
 
     return res;
+  }
+
+  /**
+   * Get currencies that are actually used in transactions
+   */
+  public static java.util.Set<String> getUsedCurrencies(TransactionSet transactions) {
+    java.util.Set<String> usedCurrencies = new java.util.HashSet<String>();
+
+    if (transactions != null) {
+      for (java.util.Iterator<Transaction> i = transactions.iterator(); i.hasNext();) {
+        Transaction tx = i.next();
+        String priceCurrency = tx.getPriceCurrency();
+        String feeCurrency = tx.getFeeCurrency();
+
+        if (priceCurrency != null && !priceCurrency.trim().isEmpty() && !"CZK".equalsIgnoreCase(priceCurrency)) {
+          usedCurrencies.add(priceCurrency.trim().toUpperCase());
+        }
+
+        if (feeCurrency != null && !feeCurrency.trim().isEmpty() && !"CZK".equalsIgnoreCase(feeCurrency)) {
+          usedCurrencies.add(feeCurrency.trim().toUpperCase());
+        }
+      }
+    }
+
+    return usedCurrencies;
+  }
+
+  /**
+   * Get list of currencies to fetch (prioritizing used currencies, falling back to defaults)
+   */
+  public static java.util.List<String> getCurrenciesToFetch(TransactionSet transactions) {
+    java.util.Set<String> usedCurrencies = getUsedCurrencies(transactions);
+    java.util.List<String> currenciesToFetch = new java.util.ArrayList<String>();
+
+    if (!usedCurrencies.isEmpty()) {
+      currenciesToFetch.addAll(usedCurrencies);
+    } else {
+      // Fallback to common currencies if no transactions found
+      currenciesToFetch.addAll(java.util.Arrays.asList("USD", "EUR", "GBP"));
+    }
+
+    return currenciesToFetch;
+  }
+
+  /**
+   * Statistics about daily rates for UI display
+   */
+  public static class RateStats {
+    public final int totalRates;
+    public final java.util.Map<String, java.util.Map<Integer, Integer>> currencyYearCounts;
+
+    public RateStats(int totalRates, java.util.Map<String, java.util.Map<Integer, Integer>> currencyYearCounts) {
+      this.totalRates = totalRates;
+      this.currencyYearCounts = currencyYearCounts;
+    }
+  }
+
+  /**
+   * Result of import operation
+   */
+  public static class ImportResult {
+    public final int imported;
+    public final int overwritten;
+    public final int skipped;
+    public final java.util.List<String> errors;
+
+    public ImportResult(int imported, int overwritten, int skipped, java.util.List<String> errors) {
+      this.imported = imported;
+      this.overwritten = overwritten;
+      this.skipped = skipped;
+      this.errors = errors;
+    }
+  }
+
+  /**
+   * Get statistics about current daily rates
+   */
+  public static RateStats getRateStats() {
+    if (dailyRates == null || dailyRates.isEmpty()) {
+      return new RateStats(0, java.util.Collections.emptyMap());
+    }
+
+    java.util.Map<String, java.util.Map<Integer, Integer>> currencyYearCounts = new java.util.TreeMap<>();
+
+    for (String key : dailyRates.keySet()) {
+      String[] parts = key.split("\\|");
+      if (parts.length == 2) {
+        String currency = parts[0];
+        try {
+          int year = Integer.parseInt(parts[1].substring(0, 4)); // Extract year from YYYY-MM-DD
+
+          currencyYearCounts.computeIfAbsent(currency, k -> new java.util.TreeMap<>())
+                           .merge(year, 1, Integer::sum);
+        } catch (Exception e) {
+          // Skip invalid entries
+        }
+      }
+    }
+
+    return new RateStats(dailyRates.size(), currencyYearCounts);
+  }
+
+  /**
+   * Delete daily rates by currency and year selection
+   */
+  public static int deleteRates(java.util.Set<String> currencies, java.util.Set<Integer> years) {
+    if (dailyRates == null || dailyRates.isEmpty()) {
+      return 0;
+    }
+
+    // Create auto-backup before deletion
+    try {
+      java.io.File backupDir = new java.io.File(dataDirectory == null ? "." : dataDirectory);
+      String timestamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+      java.io.File backupFile = new java.io.File(backupDir, "daily_rates_backup_" + timestamp + ".csv");
+      exportRates(backupFile, null, null); // Export all rates as backup
+    } catch (Exception e) {
+      System.err.println("Warning: Could not create backup before deletion: " + e.getMessage());
+    }
+
+    int deletedCount = 0;
+    java.util.Map<String, Double> deletedRatesBackup = new java.util.HashMap<>();
+    java.util.List<String> keysToRemove = new java.util.ArrayList<>();
+
+    try {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+
+      for (String key : dailyRates.keySet()) {
+        String[] parts = key.split("\\|");
+        if (parts.length == 2) {
+          String currency = parts[0];
+          try {
+            int year = Integer.parseInt(parts[1].substring(0, 4));
+
+            if (currencies.contains(currency) && years.contains(year)) {
+              keysToRemove.add(key);
+              deletedRatesBackup.put(key, dailyRates.get(key));
+              p.remove("dailyRate." + key);
+              deletedCount++;
+            }
+          } catch (Exception e) {
+            // Skip invalid entries
+          }
+        }
+      }
+
+      // Remove from in-memory map
+      for (String key : keysToRemove) {
+        dailyRates.remove(key);
+      }
+
+      // Store for potential undo
+      if (!deletedRatesBackup.isEmpty()) {
+        lastDeletedRates = deletedRatesBackup;
+      }
+
+    } catch (Exception e) {
+      System.err.println("Error during selective deletion: " + e.getMessage());
+    }
+
+    return deletedCount;
+  }
+
+  /**
+   * Export daily rates to CSV file
+   */
+  public static void exportRates(java.io.File file, java.util.Set<String> currencies, java.util.Set<Integer> years) throws Exception {
+    if (dailyRates == null || dailyRates.isEmpty()) {
+      throw new Exception("Žádné denní kurzy k exportu");
+    }
+
+    java.io.PrintWriter writer = null;
+    try {
+      writer = new java.io.PrintWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), "UTF-8"));
+
+      // Write header
+      writer.println("CURRENCY,DATE,RATE");
+
+      // Filter and write data
+      java.util.List<String> sortedKeys = new java.util.ArrayList<>(dailyRates.keySet());
+      java.util.Collections.sort(sortedKeys);
+
+      for (String key : sortedKeys) {
+        String[] parts = key.split("\\|");
+        if (parts.length == 2) {
+          String currency = parts[0];
+          String date = parts[1];
+          Double rate = dailyRates.get(key);
+
+          try {
+            int year = Integer.parseInt(date.substring(0, 4));
+
+            // Apply filters if specified
+            if (currencies != null && !currencies.contains(currency)) continue;
+            if (years != null && !years.contains(year)) continue;
+
+            writer.printf("%s,%s,%.4f%n", currency, date, rate);
+          } catch (Exception e) {
+            // Skip invalid entries
+          }
+        }
+      }
+
+    } finally {
+      if (writer != null) {
+        writer.close();
+      }
+    }
+  }
+
+  /**
+   * Import daily rates from CSV file
+   */
+  public static ImportResult importRates(java.io.File file, ConflictResolutionStrategy strategy) throws Exception {
+    if (!file.exists()) {
+      throw new Exception("Soubor neexistuje: " + file.getName());
+    }
+
+    java.util.List<String> errors = new java.util.ArrayList<>();
+    int imported = 0;
+    int overwritten = 0;
+    int skipped = 0;
+
+    java.io.BufferedReader reader = null;
+    try {
+      reader = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(file), "UTF-8"));
+
+      String line;
+      boolean headerSkipped = false;
+
+      while ((line = reader.readLine()) != null) {
+        if (!headerSkipped) {
+          headerSkipped = true;
+          continue; // Skip header
+        }
+
+        if (line.trim().isEmpty()) continue;
+
+        String[] parts = line.split(",");
+        if (parts.length != 3) {
+          errors.add("Neplatný formát řádku: " + line);
+          skipped++;
+          continue;
+        }
+
+        String currency = parts[0].trim().toUpperCase();
+        String date = parts[1].trim();
+        String rateStr = parts[2].trim();
+
+        // Validate data
+        if (!isValidCurrency(currency)) {
+          errors.add("Neplatná měna: " + currency);
+          skipped++;
+          continue;
+        }
+
+        if (!isValidDate(date)) {
+          errors.add("Neplatné datum: " + date);
+          skipped++;
+          continue;
+        }
+
+        Double rate;
+        try {
+          rate = Double.parseDouble(rateStr);
+          if (rate <= 0) {
+            errors.add("Neplatný kurz (musí být kladný): " + rateStr);
+            skipped++;
+            continue;
+          }
+        } catch (NumberFormatException e) {
+          errors.add("Neplatný formát kurzu: " + rateStr);
+          skipped++;
+          continue;
+        }
+
+        // Check for conflicts and apply strategy
+        String key = currency + "|" + date;
+        boolean exists = dailyRates.containsKey(key);
+
+        if (exists && strategy == ConflictResolutionStrategy.SKIP) {
+          skipped++;
+          continue;
+        }
+
+        if (exists && strategy == ConflictResolutionStrategy.ASK_USER) {
+          // This will be handled by the UI layer
+          // For now, we'll assume overwrite for programmatic imports
+        }
+
+        // Store the rate
+        try {
+          java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+          p.put("dailyRate." + key, rate.toString());
+
+          dailyRates.put(key, rate);
+
+          if (exists) {
+            overwritten++;
+          } else {
+            imported++;
+          }
+        } catch (Exception e) {
+          errors.add("Chyba při ukládání kurzu " + key + ": " + e.getMessage());
+          skipped++;
+        }
+      }
+
+    } finally {
+      if (reader != null) {
+        reader.close();
+      }
+    }
+
+    return new ImportResult(imported, overwritten, skipped, errors);
+  }
+
+  /**
+   * Simple undo for last deletion operation
+   */
+  private static java.util.Map<String, Double> lastDeletedRates = null;
+
+  public static boolean undoLastDeletion() {
+    if (lastDeletedRates == null || lastDeletedRates.isEmpty()) {
+      return false;
+    }
+
+    try {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+
+      for (java.util.Map.Entry<String, Double> entry : lastDeletedRates.entrySet()) {
+        p.put("dailyRate." + entry.getKey(), entry.getValue().toString());
+        dailyRates.put(entry.getKey(), entry.getValue());
+      }
+
+      lastDeletedRates.clear();
+      return true;
+    } catch (Exception e) {
+      System.err.println("Error during undo: " + e.getMessage());
+      return false;
+    }
+  }
+
+  // Utility methods for validation
+  private static boolean isValidCurrency(String currency) {
+    return currency.length() == 3 && currency.matches("[A-Z]{3}");
+  }
+
+  private static boolean isValidDate(String date) {
+    try {
+      java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
+      sdf.setLenient(false);
+      java.util.Date parsed = sdf.parse(date);
+      // Don't allow dates too far in the future (more than 1 year)
+      return parsed.before(new java.util.Date(System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000));
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  /**
+   * Conflict resolution strategies for import
+   */
+  public enum ConflictResolutionStrategy {
+    OVERWRITE, SKIP, ASK_USER
+  }
+
+  /**
+   * Show enhanced management dialog for daily rates
+   */
+  public static void showDeleteDailyRatesDialog(java.awt.Component parent) {
+    // This will be replaced by the new RateManagementDialog
+    // For now, keep the old implementation as fallback
+    int result = javax.swing.JOptionPane.showConfirmDialog(
+      parent,
+      "Opravdu chcete smazat všechny uložené denní kurzy?",
+      "Smazat denní kurzy",
+      javax.swing.JOptionPane.YES_NO_OPTION,
+      javax.swing.JOptionPane.WARNING_MESSAGE
+    );
+
+    if (result == javax.swing.JOptionPane.YES_OPTION) {
+      try {
+        java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+        String[] keys = p.keys();
+        int deletedCount = 0;
+
+        for (String key : keys) {
+          if (key.startsWith("dailyRate.")) {
+            p.remove(key);
+            deletedCount++;
+          }
+        }
+
+        if (dailyRates != null) {
+          dailyRates.clear();
+        }
+
+        javax.swing.JOptionPane.showMessageDialog(
+          parent,
+          "Smazáno " + deletedCount + " denních kurzů.",
+          "Hotovo",
+          javax.swing.JOptionPane.INFORMATION_MESSAGE
+        );
+      } catch (Exception e) {
+        javax.swing.JOptionPane.showMessageDialog(
+          parent,
+          "Chyba při mazání denních kurzů: " + e.getMessage(),
+          "Chyba",
+          javax.swing.JOptionPane.ERROR_MESSAGE
+        );
+      }
+    }
   }
 }
