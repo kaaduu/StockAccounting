@@ -42,10 +42,31 @@ libjar/jcalendar-1.3.2.jar
 
 ### Sestavení a spuštění
 
-Projekt lze sestavit a spustit z příkazové řádky pomocí přiložených skriptů (vyžaduje JDK 21):
+Projekt lze sestavit a spustit z příkazové řádky pomocí přiložených skriptů (vyžaduje JDK 17 nebo vyšší):
 
 1. **Sestavení**: `./build.sh` (vytvoří adresář `dist` s připravenou aplikací)
 2. **Spuštění**: `./run.sh`
+
+## Jak spustit aplikaci (Distribuce)
+
+### Požadavky na systém
+- **Java 17 nebo vyšší** - aplikace automaticky zkontroluje verzi při spuštění
+- Pokud nemáte správnou verzi Java, skript zobrazí instrukce pro instalaci
+
+### Instalace Java (pokud potřeba)
+**Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install openjdk-17-jdk
+```
+
+**Fedora/CentOS:**
+```bash
+sudo dnf install java-17-openjdk
+```
+
+**Windows/macOS:**
+Stáhněte z: https://adoptium.net/temurin/releases/
 
 ## Jak spustit aplikaci (Distribuce)
 
