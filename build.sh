@@ -9,9 +9,9 @@ echo "Building StockAccounting..."
 mkdir -p build
 rm -rf build/*
 
-# Compile Java files
-echo "Compiling..."
-javac -d build -cp "libjar/*" $(find src -name "*.java")
+ # Compile Java files
+ echo "Compiling with Java 17 compatibility..."
+ /usr/lib/jvm/java-17-openjdk-amd64/bin/javac --release 17 -d build -cp "libjar/*" $(find src -name "*.java")
 
 # Copy resources
 echo "Copying resources..."
