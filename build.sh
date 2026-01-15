@@ -31,10 +31,21 @@ jar cfm dist/StockAccounting.jar manifest.mf -C build .
 echo "Copying dependencies..."
 cp libjar/*.jar dist/lib/
 
-# Copy launchers
-echo "Copying launchers..."
-cp run.sh dist/
-cp run.bat dist/ 2>/dev/null || true
-chmod +x dist/run.sh
+ # Generate version information
+ echo "Generating version information..."
+ if command -v git >/dev/null 2>&1; then
+     git describe --tags --always > build/version.txt 2>/dev/null || echo "dev-build" > build/version.txt
+ else
+     echo "dev-build" > build/version.txt
+ fi
+
+ # Create version.properties for runtime access
+ echo "version=$(cat build/version.txt)" > build/version.properties
+
+ # Copy launchers
+ echo "Copying launchers..."
+ cp run.sh dist/
+ cp run.bat dist/ 2>/dev/null || true
+ chmod +x dist/run.sh
 
 echo "Build successful! Distribution ready in 'dist' folder."
