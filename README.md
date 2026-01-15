@@ -60,14 +60,16 @@ V adresáři `dist` najdete vše potřebné pro běh aplikace:
 ## CI/CD (Gitea Actions)
 
 ### Remote Repository Setup
-This project uses Gitea for version control and CI/CD. The remote is configured as:
-- `gitea` (Gitea server): `ssh://git@192.168.88.97:222/kadu/stock_accounting`
+This project uses dual remotes for version control and CI/CD:
+- `gitea` (Primary - Gitea server): `ssh://git@192.168.88.97:222/kadu/stock_accounting`
+- `origin` (Secondary - GitHub): `https://github.com/kaaduu/StockAccounting.git`
 
 To push changes and trigger releases:
 1. Commit your changes: `git add . && git commit -m "your message"`
-2. Push to Gitea: `git push gitea modernization-java21`
-3. Create a release tag: `./create-release-tag.sh` (creates vYYYY.MM.DD format)
-4. Push the tag: `git push gitea --tags`
+2. Push to Gitea (primary): `git push gitea modernization-java21`
+3. Push to GitHub (optional): `git push origin modernization-java21`
+4. Create a release tag: `./create-release-tag.sh` (creates vYYYY.MM.DD format)
+5. Push tags to both: `git push gitea --tags && git push origin --tags`
 
 The Gitea Actions workflow will automatically build and release the application.
 

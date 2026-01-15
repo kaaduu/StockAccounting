@@ -20,7 +20,10 @@ echo "Creating and pushing tag: $VERSION"
 # Create annotated tag with current date
 git tag -a "$VERSION" -m "Release $VERSION"
 
-# Push the tag to trigger Gitea Actions workflow
+# Push the tag to trigger Gitea Actions workflow (primary)
 git push gitea "$VERSION"
+
+# Optionally push to GitHub as well (comment out if not needed)
+# git push origin "$VERSION"
 
 echo "Tag $VERSION created and pushed. GitHub workflow should start building and releasing."
