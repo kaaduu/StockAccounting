@@ -462,45 +462,7 @@ public class Settings {
      }
    }
 
-   /**
-    * Check if daily rates data is complete for given years
-    * @return Map of year -> completeness status
-    */
-   public static Map<Integer, Boolean> checkDataCompleteness() {
-     Map<Integer, Boolean> completeness = new HashMap<>();
-     if (dailyRates == null) return completeness;
 
-     // Get current year and check recent years that likely have trades
-     Calendar cal = Calendar.getInstance();
-     int currentYear = cal.get(Calendar.YEAR);
-
-     // Check last 3 years (most likely to have trades)
-     for (int year = currentYear - 2; year <= currentYear; year++) {
-       boolean hasData = hasCompleteYearData(year);
-       completeness.put(year, hasData);
-     }
-
-     return completeness;
-   }
-
-   /**
-    * Check if we have complete daily rate data for a year
-    */
-   private static boolean hasCompleteYearData(int year) {
-     if (dailyRates == null) return false;
-
-     // Count rates for this year
-     int rateCount = 0;
-     for (String key : dailyRates.keySet()) {
-       // Key format: "CURRENCY|YYYY-MM-DD"
-       if (key.endsWith("|" + year)) {
-         rateCount++;
-       }
-     }
-
-     // Consider complete if we have > 200 rates (most business days in a year)
-     return rateCount > 200;
-   }
 
   /**
    * Load settings
