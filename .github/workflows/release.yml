@@ -19,10 +19,10 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Build with script
-        run: |
-          chmod +x build.sh
-          ./build.sh
+       - name: Build with script
+         run: |
+           chmod +x build.sh
+           ./build.sh
 
        - name: Verify Build Output
          run: |
