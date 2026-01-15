@@ -11,7 +11,7 @@ rm -rf build/*
 
  # Compile Java files
  echo "Compiling with Java 17 compatibility..."
- /usr/lib/jvm/java-17-openjdk-amd64/bin/javac --release 17 -d build -cp "libjar/*" $(find src -name "*.java")
+ javac --release 17 -d build -cp "libjar/*" $(find src -name "*.java")
 
  # Copy resources
  echo "Copying resources..."
