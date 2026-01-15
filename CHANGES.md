@@ -22,6 +22,11 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - **Selektivní načítání kurzů**: `getUsedCurrencies()` a `getCurrenciesToFetch()` pro inteligentní načítání pouze používaných měn
 - **Optimalizace API**: 90% snížení počtu volání ČNB API díky detekci měn z transakcí
 
+### Vyčištěno
+- **Redundantní menu item**: Odstraněn "Správa denních kurzů" z menu Nástroje
+- **Duplicitní kód**: Vyčištěny nepoužívané proměnné a metody
+- **Zjednodušení UI**: Jediný přístupový bod k správě kurzů přes Nastavení
+
 ### Technické detaily
 - **Migrace**: Automatická konverze ze starého file-based formátu na individuální klíče
 - **Škálovatelnost**: Žádné limity velikosti (oproti 8KB u jednotného klíče)
