@@ -61,7 +61,7 @@ public class RateManagementDialog extends JDialog {
         selectionTree = new JTree(treeModel);
         selectionTree.setRootVisible(false);
         selectionTree.getSelectionModel().setSelectionMode(TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION);
-        selectionTree.setCellRenderer(new RateTreeCellRenderer());
+        selectionTree.setCellRenderer(new RateTreeCellRenderer(selectedItems));
 
         // Add check box behavior
         selectionTree.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -160,6 +160,7 @@ public class RateManagementDialog extends JDialog {
         }
 
         treeModel.reload();
+        selectionTree.setCellRenderer(new RateTreeCellRenderer(selectedItems));
         updateStatus();
 
         // Expand all currencies by default
@@ -172,6 +173,7 @@ public class RateManagementDialog extends JDialog {
     private void selectAll() {
         selectAll((DefaultMutableTreeNode) treeModel.getRoot());
         treeModel.reload();
+        selectionTree.setCellRenderer(new RateTreeCellRenderer(selectedItems));
         updateStatus();
     }
 
@@ -190,6 +192,7 @@ public class RateManagementDialog extends JDialog {
     private void selectNone() {
         selectNone((DefaultMutableTreeNode) treeModel.getRoot());
         treeModel.reload();
+        selectionTree.setCellRenderer(new RateTreeCellRenderer(selectedItems));
         updateStatus();
     }
 
@@ -213,25 +216,29 @@ public class RateManagementDialog extends JDialog {
 
     private void updateSelection(RateTreeNode node) {
         if (node.isCurrency) {
-            // Currency selection affects all its years
-            Set<Integer> years = selectedItems.computeIfAbsent(node.text, k -> new HashSet<>());
             if (node.selected) {
-                // Add all years for this currency
+                // Currency selected: add all its years
+                Set<Integer> years = selectedItems.computeIfAbsent(node.text, k -> new HashSet<>());
                 Settings.RateStats stats = Settings.getRateStats();
                 Map<Integer, Integer> yearCounts = stats.currencyYearCounts.get(node.text);
                 if (yearCounts != null) {
                     years.addAll(yearCounts.keySet());
                 }
             } else {
-                years.clear();
+                // ✅ CRITICAL FIX: Completely remove unselected currency from selection
+                selectedItems.remove(node.text);
             }
         } else {
-            // Year selection
+            // Year-specific selection
             Set<Integer> years = selectedItems.computeIfAbsent(node.currency, k -> new HashSet<>());
             if (node.selected) {
                 years.add(node.year);
             } else {
                 years.remove(node.year);
+                // If no years remain selected for this currency, remove it entirely
+                if (years.isEmpty()) {
+                    selectedItems.remove(node.currency);
+                }
             }
         }
     }
@@ -260,21 +267,20 @@ public class RateManagementDialog extends JDialog {
             return;
         }
 
-        Set<String> currencies = selectedItems.keySet();
-        Set<Integer> allYears = new HashSet<>();
-        for (Set<Integer> years : selectedItems.values()) {
-            allYears.addAll(years);
-        }
-
-        int estimatedCount = currencies.size() * allYears.size() * 250; // Rough estimate
+        String preview = generateOperationPreview("smazat", "kurzů");
+        if (preview == null) return; // Error already shown
 
         int result = JOptionPane.showConfirmDialog(this,
-            String.format("Opravdu chcete smazat vybrané kurzy?\n" +
-                "Měny: %s\nRoky: %s\nOdhadovaný počet: ~%d kurzů\n\nBude vytvořena záloha.",
-                String.join(", ", currencies), allYears.toString(), estimatedCount),
+            preview + "\n\nBude vytvořena záloha.",
             "Potvrzení smazání", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (result == JOptionPane.YES_OPTION) {
+            Set<String> currencies = selectedItems.keySet();
+            Set<Integer> allYears = new HashSet<>();
+            for (Set<Integer> years : selectedItems.values()) {
+                allYears.addAll(years);
+            }
+
             int deletedCount = Settings.deleteRates(currencies, allYears);
 
             JOptionPane.showMessageDialog(this,
@@ -293,6 +299,16 @@ public class RateManagementDialog extends JDialog {
             return;
         }
 
+        String preview = generateOperationPreview("exportovat", "kurzů");
+        if (preview == null) return; // Error already shown
+
+        // Show preview before file selection
+        int confirm = JOptionPane.showConfirmDialog(this,
+            preview + "\n\nPokračovat s exportem?",
+            "Potvrzení exportu", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+        if (confirm != JOptionPane.YES_OPTION) return;
+
         JFileChooser chooser = new JFileChooser();
         chooser.setSelectedFile(generateExportFilename());
         if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
@@ -308,7 +324,7 @@ public class RateManagementDialog extends JDialog {
                 Settings.exportRates(file, currencies, allYears);
 
                 JOptionPane.showMessageDialog(this,
-                    "Kurzy byly úspěšně exportovány do souboru:\n" + file.getName(),
+                    String.format("Kurzy byly úspěšně exportovány do souboru:\n%s", file.getName()),
                     "Export dokončen", JOptionPane.INFORMATION_MESSAGE);
 
             } catch (Exception ex) {
@@ -372,6 +388,64 @@ public class RateManagementDialog extends JDialog {
         }
     }
 
+    /**
+     * Generate accurate preview of operation scope
+     */
+    private String generateOperationPreview(String action, String unit) {
+        if (selectedItems.isEmpty()) {
+            return null; // Caller should handle empty selection
+        }
+
+        Settings.RateStats stats = Settings.getRateStats();
+        if (stats.currencyYearCounts.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Žádné kurzy k " + action + ".",
+                "Žádné data", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+
+        StringBuilder preview = new StringBuilder();
+        int totalRates = 0;
+        java.util.List<String> details = new java.util.ArrayList<>();
+
+        for (java.util.Map.Entry<String, Set<Integer>> entry : selectedItems.entrySet()) {
+            String currency = entry.getKey();
+            Set<Integer> years = entry.getValue();
+
+            java.util.Map<Integer, Integer> currencyStats = stats.currencyYearCounts.get(currency);
+            if (currencyStats == null) {
+                // Currency no longer exists - skip
+                continue;
+            }
+
+            for (Integer year : years) {
+                Integer yearCount = currencyStats.get(year);
+                if (yearCount != null && yearCount > 0) {
+                    totalRates += yearCount;
+                    details.add(String.format("%s %d (%d %s)", currency, year, yearCount, unit));
+                }
+            }
+        }
+
+        if (totalRates == 0) {
+            JOptionPane.showMessageDialog(this, "Vybrané kombinace měn a roků neobsahují žádné kurzy.",
+                "Žádné kurzy", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+
+        preview.append(String.format("Opravdu chcete %s %d %s?\n\n", action, totalRates, unit));
+
+        // Show details (limit to first 10 items to avoid overwhelming dialog)
+        for (int i = 0; i < Math.min(details.size(), 10); i++) {
+            preview.append("• ").append(details.get(i)).append("\n");
+        }
+
+        if (details.size() > 10) {
+            preview.append(String.format("... a %d dalších položek\n", details.size() - 10));
+        }
+
+        return preview.toString().trim();
+    }
+
     private File generateExportFilename() {
         Set<String> currencies = selectedItems.keySet();
         Set<Integer> allYears = new HashSet<>();
@@ -417,6 +491,12 @@ public class RateManagementDialog extends JDialog {
 
     // Custom tree cell renderer with checkboxes
     private static class RateTreeCellRenderer extends DefaultTreeCellRenderer {
+        private java.util.Map<String, java.util.Set<Integer>> selectedItems;
+
+        public RateTreeCellRenderer(java.util.Map<String, java.util.Set<Integer>> selectedItems) {
+            this.selectedItems = selectedItems;
+        }
+
         @Override
         public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel,
                 boolean expanded, boolean leaf, int row, boolean hasFocus) {
@@ -427,11 +507,37 @@ public class RateManagementDialog extends JDialog {
                 DefaultMutableTreeNode node = (DefaultMutableTreeNode) value;
                 if (node.getUserObject() instanceof RateTreeNode) {
                     RateTreeNode rateNode = (RateTreeNode) node.getUserObject();
-                    setText(rateNode.toString());
+                    setText(getDisplayText(rateNode));
                 }
             }
 
             return this;
+        }
+
+        private String getDisplayText(RateTreeNode node) {
+            String checkboxChar = getCheckboxChar(node);
+            return String.format("%s %s (%d)", checkboxChar, node.text, node.count);
+        }
+
+        private String getCheckboxChar(RateTreeNode node) {
+            if (node.isCurrency) {
+                java.util.Set<Integer> selectedYears = selectedItems.get(node.text);
+                if (selectedYears == null || selectedYears.isEmpty()) {
+                    return "☐"; // Unselected
+                }
+
+                // Check if all years are selected (fully selected)
+                Settings.RateStats stats = Settings.getRateStats();
+                java.util.Map<Integer, Integer> allYears = stats.currencyYearCounts.get(node.text);
+                if (allYears != null && selectedYears.size() == allYears.size()) {
+                    return "☑"; // Fully selected
+                }
+                return "☒"; // Partially selected
+            } else {
+                // Year node
+                java.util.Set<Integer> selectedYears = selectedItems.get(node.currency);
+                return (selectedYears != null && selectedYears.contains(node.year)) ? "☑" : "☐";
+            }
         }
     }
 }
