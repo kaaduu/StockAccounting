@@ -7,10 +7,11 @@ All notable changes to the StockAccounting project will be documented in this fi
 ## [Remote Repository Configuration] - 2026-01-15
 
 ### Changed
-- **Remote Repository**: Switched from GitHub to local Gitea server for version control and CI/CD
-- **Remote URL**: Changed from `https://github.com/kaaduu/StockAccounting.git` to `ssh://git@192.168.88.97:222/kadu/stock_accounting`
-- **Remote Name**: Renamed `origin` to `gitea` for clarity
-- **Documentation**: Updated README.md with new remote configuration and push commands
+- **Remote Repository**: Configured dual remote setup with Gitea as primary and GitHub as secondary
+- **Primary Remote (gitea)**: `ssh://git@192.168.88.97:222/kadu/stock_accounting`
+- **Secondary Remote (origin)**: `https://github.com/kaaduu/StockAccounting.git`
+- **Documentation**: Updated README.md and create-release-tag.sh for dual remote workflow
+- **Workflow**: Tags now push to Gitea by default, with optional GitHub push capability
 
 ## [Modernization & Java 21 Migration] - 2026-01-12
 
