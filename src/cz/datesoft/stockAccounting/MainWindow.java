@@ -937,6 +937,8 @@ public class MainWindow extends javax.swing.JFrame {
     Settings.showDialog();
   }// GEN-LAST:event_miSettingsActionPerformed
 
+
+
   private void bApplyFilterActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_bApplyFilterActionPerformed
     applyFilter();
   }// GEN-LAST:event_bApplyFilterActionPerformed

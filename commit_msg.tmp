@@ -1,4 +1,0 @@
-feat: add GitHub compatibility for CI/CD workflow
-
-- Duplicated Gitea workflow to .github/workflows/release.yml.
-- Both Gitea and GitHub now support automated releases on tag pushes.

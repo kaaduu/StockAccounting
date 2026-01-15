@@ -42,10 +42,31 @@ libjar/jcalendar-1.3.2.jar
 
 ### Sestavení a spuštění
 
-Projekt lze sestavit a spustit z příkazové řádky pomocí přiložených skriptů (vyžaduje JDK 21):
+Projekt lze sestavit a spustit z příkazové řádky pomocí přiložených skriptů (vyžaduje JDK 17 nebo vyšší):
 
 1. **Sestavení**: `./build.sh` (vytvoří adresář `dist` s připravenou aplikací)
 2. **Spuštění**: `./run.sh`
+
+## Jak spustit aplikaci (Distribuce)
+
+### Požadavky na systém
+- **Java 17 nebo vyšší** - aplikace automaticky zkontroluje verzi při spuštění
+- Pokud nemáte správnou verzi Java, skript zobrazí instrukce pro instalaci
+
+### Instalace Java (pokud potřeba)
+**Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install openjdk-17-jdk
+```
+
+**Fedora/CentOS:**
+```bash
+sudo dnf install java-17-openjdk
+```
+
+**Windows/macOS:**
+Stáhněte z: https://adoptium.net/temurin/releases/
 
 ## Jak spustit aplikaci (Distribuce)
 
@@ -58,5 +79,27 @@ V adresáři `dist` najdete vše potřebné pro běh aplikace:
 - Spusťte příkaz `./run.sh` v adresáři `dist`.
 
 ## CI/CD (Gitea Actions)
+
+### Nastavení vzdáleného repozitáře
+Tento projekt používá duální vzdálené repozitáře pro správu verzí a CI/CD:
+- `gitea` (Primární - Gitea server): `ssh://git@192.168.88.97:222/kadu/stock_accounting`
+- `origin` (Sekundární - GitHub): `https://github.com/kaaduu/StockAccounting.git`
+
+Pro odeslání změn a spuštění vydání:
+1. Commitněte změny: `git add . && git commit -m "vaše zpráva"`
+2. Odešlete do Gitea (primární): `git push gitea modernization-java21`
+3. Odešlete do GitHub (volitelné): `git push origin modernization-java21`
+4. Vytvořte značku vydání: `./create-release-tag.sh` (vytvoří formát vRRRR.MM.DD)
+5. Odešlete značky do obou: `git push gitea --tags && git push origin --tags`
+
+Gitea Actions workflow automaticky sestaví a vydá aplikaci.
+
+## Informace o verzi
+Aplikace zobrazuje informace o verzi automaticky na základě git značek.
+- **Označená vydání**: Zobrazuje název značky (např. `v2026.01.15` nebo `v2026.01.15-2-g123abc`)
+- **Vývojové sestavení**: Zobrazuje `dev-build` pokud git není k dispozici
+- **Informace o běhu**: Zobrazuje verzi Java, dodavatele a detaily operačního systému
+
+**Poznámka**: Můžete upravit `create-release-tag.sh` pro odeslání značek do `origin` (GitHub) místo `gitea` změnou příkazu push ve skriptu. Test značka `v2026.01.15-origin-test` byla úspěšně odeslána pouze do GitHub.
 
 Projekt používá Gitea Actions pro automatické sestavení. Při vytvoření tagu (např. `v1.0.0`) se automaticky vytvoří Release se ZIP archivem připraveným k použití.
