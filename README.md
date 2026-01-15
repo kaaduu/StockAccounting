@@ -65,7 +65,7 @@ This project uses Gitea for version control and CI/CD. The remote is configured 
 
 To push changes and trigger releases:
 1. Commit your changes: `git add . && git commit -m "your message"`
-2. Push to Gitea: `git push gitea main`
+2. Push to Gitea: `git push gitea modernization-java21`
 3. Create a release tag: `./create-release-tag.sh` (creates vYYYY.MM.DD format)
 4. Push the tag: `git push gitea --tags`
 
