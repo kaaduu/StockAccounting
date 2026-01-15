@@ -94,6 +94,15 @@ To push changes and trigger releases:
 
 The Gitea Actions workflow will automatically build and release the application.
 
+## License / Licence
+
+This project is licensed under GPL-3.0.
+
+- [English License](LICENSE)
+- [Czech License / Česká licence](LICENSE.cs)
+- [Online GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.html)
+- [Online Czech GPL-3.0 / Online česká GPL-3.0](http://www.gnugpl.cz/v3/)
+
 ## Version Information
 The application displays version information automatically based on git tags.
 - **Tagged releases**: Shows tag name (e.g., `v2026.01.15` or `v2026.01.15-2-g123abc`)
