@@ -40,7 +40,7 @@ cp libjar/*.jar dist/lib/
  fi
 
  # Create version.properties for runtime access
- echo "version=$(cat build/version.txt)" > src/version.properties
+ echo "version=$(cat build/version.txt)" > build/version.properties
 
  # Copy launchers
  echo "Copying launchers..."
