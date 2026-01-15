@@ -24,17 +24,36 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
-      - name: Prepare Release Package
-        run: |
-          cd dist
-          zip -r ../StockAccounting-${{ github.ref_name }}.zip ./*
+       - name: Verify Build Output
+         run: |
+           echo "Checking build output..."
+           ls -la dist/
+           if [ ! -f "dist/StockAccounting.jar" ]; then
+             echo "ERROR: StockAccounting.jar not found in dist/"
+             exit 1
+           fi
+           echo "Build verification passed."
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: StockAccounting-${{ github.ref_name }}.zip
-          generate_release_notes: true
-          fail_on_unmatched_files: true
+       - name: Prepare Release Package
+         run: |
+           echo "Creating release package..."
+           cd dist
+           ls -la
+           zip -r ../StockAccounting-${{ github.ref_name }}.zip ./*
+           echo "Package created successfully"
+
+       - name: Verify Package
+         run: |
+           echo "Verifying package contents..."
+           unzip -l StockAccounting-${{ github.ref_name }}.zip
+           ls -la StockAccounting-${{ github.ref_name }}.zip
+
+       - name: Create Release
+         uses: softprops/action-gh-release@v2
+         if: startsWith(github.ref, 'refs/tags/')
+         with:
+           files: StockAccounting-${{ github.ref_name }}.zip
+           generate_release_notes: true
+           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
