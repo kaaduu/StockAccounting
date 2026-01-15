@@ -1016,7 +1016,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     bManageRates.setToolTipText("Správa uložených denních kurzů - mazání podle roku nebo vše");
     bManageRates.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
-        Settings.showDeleteDailyRatesDialog(SettingsWindow.this);
+        showRateManagementDialog();
       }
     });
     dailyRatesPanel.add(bManageRates);
@@ -1691,6 +1691,13 @@ public class SettingsWindow extends javax.swing.JDialog {
     }).start();
 
     progressDialog.setVisible(true);
+  }
+
+  private void showRateManagementDialog() {
+    RateManagementDialog dialog = new RateManagementDialog(this);
+    dialog.setVisible(true);
+    // Refresh the table after dialog closes (rates may have changed)
+    refreshDailyRatesTable();
   }
 
   private void refreshCurrenciesCombo() {
