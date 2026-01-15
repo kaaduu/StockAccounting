@@ -73,4 +73,6 @@ To push changes and trigger releases:
 
 The Gitea Actions workflow will automatically build and release the application.
 
+**Note**: You can modify `create-release-tag.sh` to push tags to `origin` (GitHub) instead of `gitea` by changing the push command in the script. Test tag `v2026.01.15-origin-test` successfully pushed to GitHub only.
+
 Projekt používá Gitea Actions pro automatické sestavení. Při vytvoření tagu (např. `v1.0.0`) se automaticky vytvoří Release se ZIP archivem připraveným k použití.
