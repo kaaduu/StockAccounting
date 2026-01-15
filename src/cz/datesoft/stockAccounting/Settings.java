@@ -400,69 +400,48 @@ public class Settings {
    */
   private static void loadDailyRates() {
     dailyRates = new HashMap<String, Double>();
-    File file = new File(dataDirectory == null ? "." : dataDirectory, "daily_rates.dat");
-    if (!file.exists())
-      return;
 
-    BufferedReader reader = null;
     try {
-      reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
-      String line;
-      while ((line = reader.readLine()) != null) {
-        String[] parts = line.split("\\|");
-        if (parts.length == 2) {
-          try {
-            dailyRates.put(parts[0], Double.valueOf(Double.parseDouble(parts[1])));
-          } catch (NumberFormatException e) {
-            // Skip invalid numbers
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      String[] keys = p.keys();
+
+      for (String key : keys) {
+        if (key.startsWith("dailyRate.")) {
+          // Extract the rate key (remove "dailyRate." prefix)
+          String rateKey = key.substring("dailyRate.".length());
+          String rateValue = p.get(key, "");
+
+          if (!rateValue.isEmpty()) {
+            try {
+              dailyRates.put(rateKey, Double.valueOf(Double.parseDouble(rateValue)));
+            } catch (NumberFormatException e) {
+              // Skip invalid entries
+              System.err.println("Invalid daily rate value for key: " + key);
+            }
           }
         }
       }
     } catch (Exception e) {
-      System.err.println("Error loading daily rates: " + e.getMessage());
-    } finally {
-      if (reader != null) {
-        try {
-          reader.close();
-        } catch (IOException e) {
-        }
-      }
+      System.err.println("Error loading daily rates from Preferences: " + e.getMessage());
     }
   }
 
-   /**
-    * Save daily rates to data directory
-    */
-   public static void saveDailyRates() {
-     if (dailyRates == null)
-       return;
-     File file = new File(dataDirectory == null ? "." : dataDirectory, "daily_rates.dat");
+  /**
+   * Save daily rates to data directory
+   */
+  public static void saveDailyRates() {
+    if (dailyRates == null || dailyRates.isEmpty())
+      return;
 
-     PrintWriter writer = null;
-     try {
-       writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"));
-       for (Map.Entry<String, Double> entry : dailyRates.entrySet()) {
-         writer.println(entry.getKey() + "|" + entry.getValue());
-       }
-     } catch (Exception e) {
-       System.err.println("Error saving daily rates: " + e.getMessage());
-     } finally {
-       if (writer != null) {
-         writer.close();
-       }
-     }
-   }
-
-   /**
-    * Save only daily rates immediately (like unified rates auto-save)
-    */
-   public static void saveDailyRatesImmediately() {
-     if (dailyRates != null && !dailyRates.isEmpty()) {
-       saveDailyRates(); // Call existing save method
-     }
-   }
-
-
+    try {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      for (Map.Entry<String, Double> entry : dailyRates.entrySet()) {
+        p.put("dailyRate." + entry.getKey(), entry.getValue().toString());
+      }
+    } catch (Exception e) {
+      System.err.println("Error saving daily rates: " + e.getMessage());
+    }
+  }
 
   /**
    * Load settings
@@ -620,5 +599,94 @@ public class Settings {
     cset.toArray(res);
 
     return res;
+  }
+
+  /**
+   * Get currencies that are actually used in transactions
+   */
+  public static java.util.Set<String> getUsedCurrencies(TransactionSet transactions) {
+    java.util.Set<String> usedCurrencies = new java.util.HashSet<String>();
+
+    if (transactions != null) {
+      for (java.util.Iterator<Transaction> i = transactions.iterator(); i.hasNext();) {
+        Transaction tx = i.next();
+        String priceCurrency = tx.getPriceCurrency();
+        String feeCurrency = tx.getFeeCurrency();
+
+        if (priceCurrency != null && !priceCurrency.trim().isEmpty() && !"CZK".equalsIgnoreCase(priceCurrency)) {
+          usedCurrencies.add(priceCurrency.trim().toUpperCase());
+        }
+
+        if (feeCurrency != null && !feeCurrency.trim().isEmpty() && !"CZK".equalsIgnoreCase(feeCurrency)) {
+          usedCurrencies.add(feeCurrency.trim().toUpperCase());
+        }
+      }
+    }
+
+    return usedCurrencies;
+  }
+
+  /**
+   * Get list of currencies to fetch (prioritizing used currencies, falling back to defaults)
+   */
+  public static java.util.List<String> getCurrenciesToFetch(TransactionSet transactions) {
+    java.util.Set<String> usedCurrencies = getUsedCurrencies(transactions);
+    java.util.List<String> currenciesToFetch = new java.util.ArrayList<String>();
+
+    if (!usedCurrencies.isEmpty()) {
+      currenciesToFetch.addAll(usedCurrencies);
+    } else {
+      // Fallback to common currencies if no transactions found
+      currenciesToFetch.addAll(java.util.Arrays.asList("USD", "EUR", "GBP"));
+    }
+
+    return currenciesToFetch;
+  }
+
+  /**
+   * Show dialog for deleting daily rates
+   */
+  public static void showDeleteDailyRatesDialog(java.awt.Component parent) {
+    // Simple confirmation dialog for now
+    int result = javax.swing.JOptionPane.showConfirmDialog(
+      parent,
+      "Opravdu chcete smazat všechny uložené denní kurzy?",
+      "Smazat denní kurzy",
+      javax.swing.JOptionPane.YES_NO_OPTION,
+      javax.swing.JOptionPane.WARNING_MESSAGE
+    );
+
+    if (result == javax.swing.JOptionPane.YES_OPTION) {
+      try {
+        java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+        String[] keys = p.keys();
+        int deletedCount = 0;
+
+        for (String key : keys) {
+          if (key.startsWith("dailyRate.")) {
+            p.remove(key);
+            deletedCount++;
+          }
+        }
+
+        if (dailyRates != null) {
+          dailyRates.clear();
+        }
+
+        javax.swing.JOptionPane.showMessageDialog(
+          parent,
+          "Smazáno " + deletedCount + " denních kurzů.",
+          "Hotovo",
+          javax.swing.JOptionPane.INFORMATION_MESSAGE
+        );
+      } catch (Exception e) {
+        javax.swing.JOptionPane.showMessageDialog(
+          parent,
+          "Chyba při mazání denních kurzů: " + e.getMessage(),
+          "Chyba",
+          javax.swing.JOptionPane.ERROR_MESSAGE
+        );
+      }
+    }
   }
 }

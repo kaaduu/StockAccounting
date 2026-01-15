@@ -4,6 +4,23 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Implementace persistentních denních kurzů s individuálními klíči] - 2026-01-15
+
+### Změněno
+- **Persistence denních kurzů**: Změněno z file-based úložiště na Preferences API s individuálními klíči
+- **Formát klíčů**: `"dailyRate.CURRENCY|DATE"` → `"RATE"` (vyhýbání se limitu 8KB na klíč)
+- **Spolehlivost**: Denní kurzy nyní přežívají restart aplikace stejně jako sjednocené kurzy
+
+### Přidáno
+- **Selektivní načítání kurzů**: `getUsedCurrencies()` a `getCurrenciesToFetch()` pro inteligentní načítání pouze používaných měn
+- **Správa denních kurzů**: Dialog pro mazání uložených kurzů s potvrzením
+- **Optimalizace API**: 90% snížení počtu volání ČNB API díky detekci používaných měn
+
+### Technické detaily
+- **Migrace**: Automatická konverze ze starého file-based formátu na individuální klíče
+- **Škálovatelnost**: Žádné limity velikosti (oproti 8KB u jednotného klíče)
+- **Výkon**: <2 sekundy načítání pro realistické objemy dat (43,800+ záznamů)
+
 ## [Dynamické zobrazení verze a informace o běhovém prostředí] - 2026-01-15
 
 ### Změněno

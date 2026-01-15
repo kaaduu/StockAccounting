@@ -989,6 +989,40 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
     jPanel2.add(jPanel5, gridBagConstraints);
 
+    // Add daily rates controls to currency tab
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridy = 2;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.insets = new java.awt.Insets(10, 5, 5, 5);
+
+    javax.swing.JPanel dailyRatesPanel = new javax.swing.JPanel();
+    dailyRatesPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+    dailyRatesPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Denní kurzy měn"));
+
+    cbUseDailyRates = new javax.swing.JCheckBox("Používat denní kurzy");
+    cbUseDailyRates.setToolTipText("Při zaškrtnutí budou pro přepočet měn používány přesné denní kurzy ČNB");
+    dailyRatesPanel.add(cbUseDailyRates);
+
+    javax.swing.JButton bSmartFetch = new javax.swing.JButton("Chytré stažení");
+    bSmartFetch.setToolTipText("Automaticky zjistí roky s obchody a stáhne pro ně chybějící denní kurzy z ČNB");
+    bSmartFetch.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bFetchDailyRatesActionPerformed(evt);
+      }
+    });
+    dailyRatesPanel.add(bSmartFetch);
+
+    javax.swing.JButton bManageRates = new javax.swing.JButton("Správa kurzů");
+    bManageRates.setToolTipText("Správa uložených denních kurzů - mazání podle roku nebo vše");
+    bManageRates.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        Settings.showDeleteDailyRatesDialog(SettingsWindow.this);
+      }
+    });
+    dailyRatesPanel.add(bManageRates);
+
+    jPanel2.add(dailyRatesPanel, gridBagConstraints);
+
     jTabbedPane1.addTab("Kurzy m\u011bn", jPanel2);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
@@ -1598,7 +1632,14 @@ public class SettingsWindow extends javax.swing.JDialog {
       return;
     }
 
-    // 2. Fetch in background with progress bar
+    // 2. Determine currencies to fetch
+    final java.util.List<String> currenciesToFetch = Settings.getCurrenciesToFetch(ts);
+    if (currenciesToFetch.isEmpty()) {
+      JOptionPane.showMessageDialog(this, "Nebyly určeny žádné měny k načtení.");
+      return;
+    }
+
+    // 3. Fetch in background with progress bar
     final JDialog progressDialog = new JDialog(this, "Načítání denních kurzů", true);
     final JProgressBar progressBar = new JProgressBar(0, years.size());
     progressBar.setStringPainted(true);
@@ -1624,7 +1665,8 @@ public class SettingsWindow extends javax.swing.JDialog {
           });
 
           try {
-            java.util.Map<String, Double> yearRates = CurrencyRateFetcher.fetchAnnualDailyRates(year);
+            // Use selective fetching - only fetch currencies that are needed
+            java.util.Map<String, Double> yearRates = CurrencyRateFetcher.fetchSelectiveDailyRates(year, currenciesToFetch);
             allNewRates.putAll(yearRates);
             loadedCount++;
           } catch (Exception e) {
@@ -1640,11 +1682,9 @@ public class SettingsWindow extends javax.swing.JDialog {
           public void run() {
             progressDialog.dispose();
             Settings.setDailyRates(allNewRates);
-            Settings.saveDailyRatesImmediately(); // Auto-save like unified rates
             refreshDailyRatesTable();
             JOptionPane.showMessageDialog(SettingsWindow.this,
-                "Načítání dokončeno.\nÚspěšně načteno roků: " + fLoaded + "\nChyb: " + fFailed +
-                "\n\nKurzy byly automaticky uloženy.");
+                "Načítání dokončeno.\nÚspěšně načteno roků: " + fLoaded + "\nChyb: " + fFailed);
           }
         });
       }
