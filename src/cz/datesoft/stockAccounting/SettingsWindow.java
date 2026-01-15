@@ -1574,8 +1574,10 @@ public class SettingsWindow extends javax.swing.JDialog {
         }
       }
     }
+  }
 
-
+  private void bFetchDailyRatesActionPerformed(java.awt.event.ActionEvent evt) {
+      }
     }
   }
 
