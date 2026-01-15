@@ -1,0 +1,6 @@
+[remote "gitea"]
+    url = https://git.example.com/username/stockaccounting.git
+    fetch = +refs/heads/*:refs/remotes/gitea/*
+[remote "origin"]
+    url = ssh://git@192.168.88.97:222/kadu/stock_accounting
+    fetch = +refs/heads/*:refs/remotes/origin/*
