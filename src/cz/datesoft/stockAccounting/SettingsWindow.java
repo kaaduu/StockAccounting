@@ -1561,20 +1561,21 @@ public class SettingsWindow extends javax.swing.JDialog {
     refreshDailyRatesTable();
   }
 
-
-
   private void refreshDailyRatesTable() {
     dailyRatesModel.setRowCount(0);
-    java.util.Map<String, Double> rates = Settings.getDailyRatesMap();
-    if (rates != null) {
-      for (java.util.Map.Entry<String, Double> entry : rates.entrySet()) {
-        String[] parts = entry.getKey().split("\\|");
-        if (parts.length == 2) {
-          dailyRatesModel.addRow(new Object[] { parts[0], parts[1], rates.get(entry.getKey()) });
-        }
-      }
-    }
-  }
+    java.util.HashMap<String, Double> rates = Settings.getDailyRates();
+    if (rates == null)
+      return;
+
+    // Use a strategy to show many rates efficiently
+    // Sort keys to have some order (optional but nice)
+    java.util.List<String> sortedKeys = new java.util.ArrayList<String>(rates.keySet());
+    java.util.Collections.sort(sortedKeys);
+
+    for (String key : sortedKeys) {
+      String[] parts = key.split("\\|");
+      if (parts.length == 2) {
+        dailyRatesModel.addRow(new Object[] { parts[0], parts[1], rates.get(key) });
       }
     }
   }
@@ -1638,25 +1639,12 @@ public class SettingsWindow extends javax.swing.JDialog {
         SwingUtilities.invokeLater(new Runnable() {
           public void run() {
             progressDialog.dispose();
-
-            // Set rates and auto-save immediately (like unified rates)
-            if (!allNewRates.isEmpty()) {
-              Settings.setDailyRates(allNewRates);
-              Settings.saveDailyRatesImmediately(); // Auto-save like unified rates
-            }
-
+            Settings.setDailyRates(allNewRates);
+            Settings.saveDailyRatesImmediately(); // Auto-save like unified rates
             refreshDailyRatesTable();
-
-            // Enhanced message with partial save info
-            String message = "Načítání dokončeno.\nÚspěšně načteno roků: " + fLoaded;
-            if (fFailed > 0) {
-              message += "\nNeúspěšně: " + fFailed + " roků";
-            }
-            if (!allNewRates.isEmpty()) {
-              message += "\n\nÚspěšně načtené kurzy byly automaticky uloženy.";
-            }
-
-            JOptionPane.showMessageDialog(SettingsWindow.this, message);
+            JOptionPane.showMessageDialog(SettingsWindow.this,
+                "Načítání dokončeno.\nÚspěšně načteno roků: " + fLoaded + "\nChyb: " + fFailed +
+                "\n\nKurzy byly automaticky uloženy.");
           }
         });
       }
