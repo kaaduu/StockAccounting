@@ -430,28 +430,77 @@ public class Settings {
     }
   }
 
-  /**
-   * Save daily rates to data directory
-   */
-  public static void saveDailyRates() {
-    if (dailyRates == null)
-      return;
-    File file = new File(dataDirectory == null ? "." : dataDirectory, "daily_rates.dat");
+   /**
+    * Save daily rates to data directory
+    */
+   public static void saveDailyRates() {
+     if (dailyRates == null)
+       return;
+     File file = new File(dataDirectory == null ? "." : dataDirectory, "daily_rates.dat");
 
-    PrintWriter writer = null;
-    try {
-      writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"));
-      for (Map.Entry<String, Double> entry : dailyRates.entrySet()) {
-        writer.println(entry.getKey() + "|" + entry.getValue());
-      }
-    } catch (Exception e) {
-      System.err.println("Error saving daily rates: " + e.getMessage());
-    } finally {
-      if (writer != null) {
-        writer.close();
-      }
-    }
-  }
+     PrintWriter writer = null;
+     try {
+       writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"));
+       for (Map.Entry<String, Double> entry : dailyRates.entrySet()) {
+         writer.println(entry.getKey() + "|" + entry.getValue());
+       }
+     } catch (Exception e) {
+       System.err.println("Error saving daily rates: " + e.getMessage());
+     } finally {
+       if (writer != null) {
+         writer.close();
+       }
+     }
+   }
+
+   /**
+    * Save only daily rates immediately (like unified rates auto-save)
+    */
+   public static void saveDailyRatesImmediately() {
+     if (dailyRates != null && !dailyRates.isEmpty()) {
+       saveDailyRates(); // Call existing save method
+     }
+   }
+
+   /**
+    * Check if daily rates data is complete for given years
+    * @return Map of year -> completeness status
+    */
+   public static Map<Integer, Boolean> checkDataCompleteness() {
+     Map<Integer, Boolean> completeness = new HashMap<>();
+     if (dailyRates == null) return completeness;
+
+     // Get current year and check recent years that likely have trades
+     Calendar cal = Calendar.getInstance();
+     int currentYear = cal.get(Calendar.YEAR);
+
+     // Check last 3 years (most likely to have trades)
+     for (int year = currentYear - 2; year <= currentYear; year++) {
+       boolean hasData = hasCompleteYearData(year);
+       completeness.put(year, hasData);
+     }
+
+     return completeness;
+   }
+
+   /**
+    * Check if we have complete daily rate data for a year
+    */
+   private static boolean hasCompleteYearData(int year) {
+     if (dailyRates == null) return false;
+
+     // Count rates for this year
+     int rateCount = 0;
+     for (String key : dailyRates.keySet()) {
+       // Key format: "CURRENCY|YYYY-MM-DD"
+       if (key.endsWith("|" + year)) {
+         rateCount++;
+       }
+     }
+
+     // Consider complete if we have > 200 rates (most business days in a year)
+     return rateCount > 200;
+   }
 
   /**
    * Load settings
