@@ -47,7 +47,7 @@ public class AboutWindow extends javax.swing.JDialog
          "    <p style=\"margin-top: 0\">\n" +
          "      Akciové účetnictví <strong>verze " + version + "</strong> " +
          "      (<a href=\"http://lemming.ucw.cz/ucetnictvi/\">vychazi z puvodni verze 1.2.7</a> - Michal Kára)<br> \n" +
-         "     Zdrojove kody na <a href=\"https://github.com/kaaduu/StockAccounting\">githubu</a> - vydano pod licencí GPL<br>\n" +
+         "     Zdrojove kody na <a href=\"https://github.com/kaaduu/StockAccounting\">githubu</a> - vydano pod <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">licencí GPL-3.0</a> (<a href=\"http://www.gnugpl.cz/v3/\">česky</a> / <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">english</a>)<br>\n" +
          "     <br>\n" +
          "     <strong>Java Runtime:</strong> " + javaInfo + "<br>\n" +
          "     <strong>Operační systém:</strong> " + systemInfo + "\n" +

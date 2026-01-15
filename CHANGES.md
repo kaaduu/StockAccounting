@@ -20,6 +20,7 @@ All notable changes to the StockAccounting project will be documented in this fi
 ### Technical Details
 - **Version Format**: Full git describe output (tag-commits-hash)
 - **Fallback Behavior**: Git describe → JAR-embedded version.properties → "dev-build"
+- **License Links**: Czech (gnugpl.cz) and English (gnu.org) GPL-3.0 links in About window
 - **Performance**: Git command executed once at application startup, cached for session
 - **Class File Version**: Now generates Java 17 compatible bytecode (version 61.0)
 - **Build Process**: Explicitly uses Java 17 compiler to ensure consistent compilation
