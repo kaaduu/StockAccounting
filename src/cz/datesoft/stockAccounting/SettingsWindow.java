@@ -1561,83 +1561,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     refreshDailyRatesTable();
   }
 
-  private void setupDailyRatesTab() {
-    // Check for incomplete data and add warning/refetch UI
-    Map<Integer, Boolean> completeness = Settings.checkDataCompleteness();
-    List<Integer> incompleteYears = new ArrayList<>();
 
-    for (Map.Entry<Integer, Boolean> entry : completeness.entrySet()) {
-      if (!entry.getValue()) {
-        incompleteYears.add(entry.getKey());
-      }
-    }
-
-    if (!incompleteYears.isEmpty()) {
-      // Add warning panel at the top of daily rates tab
-      JPanel warningPanel = new JPanel();
-      warningPanel.setLayout(new BoxLayout(warningPanel, BoxLayout.Y_AXIS));
-      warningPanel.setBorder(BorderFactory.createTitledBorder("Upozornění na neúplná data"));
-
-      JLabel warningLabel = new JLabel("<html><font color='red'>Neúplná data denních kurzů pro roky: " +
-        incompleteYears.toString() + "<br>Doporučujeme načíst chybějící data pro správné výpočty.</font></html>");
-
-      JButton refetchButton = new JButton("Načíst chybějící roky");
-      refetchButton.addActionListener(new ActionListener() {
-        public void actionPerformed(ActionEvent e) {
-          refetchIncompleteYears(incompleteYears);
-        }
-      });
-
-      warningPanel.add(warningLabel);
-      warningPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-      warningPanel.add(refetchButton);
-
-      // Add warning panel to the top of the tab
-      dailyRatesPanel.add(warningPanel, BorderLayout.NORTH);
-    }
-  }
-
-  private void refetchIncompleteYears(List<Integer> years) {
-    // Use existing bulk fetch logic but only for incomplete years
-    SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-      @Override
-      protected Void doInBackground() throws Exception {
-        Map<String, Double> refetchResults = new HashMap<>();
-        int successCount = 0;
-        int failCount = 0;
-
-        for (Integer year : years) {
-          try {
-            Map<String, Double> yearRates = CurrencyRateFetcher.fetchAnnualDailyRates(year);
-            refetchResults.putAll(yearRates);
-            successCount++;
-          } catch (Exception e) {
-            System.err.println("Chyba při načítání roku " + year + ": " + e.getMessage());
-            failCount++;
-          }
-        }
-
-        // Auto-save successful refetches
-        if (!refetchResults.isEmpty()) {
-          Settings.setDailyRates(refetchResults);
-          Settings.saveDailyRatesImmediately();
-        }
-
-        // Show results
-        final int finalSuccess = successCount;
-        final int finalFail = failCount;
-        SwingUtilities.invokeLater(() -> {
-          refreshDailyRatesTable();
-          JOptionPane.showMessageDialog(SettingsWindow.this,
-            "Opětovné načítání dokončeno.\nÚspěšně: " + finalSuccess + "\nNeúspěšně: " + finalFail +
-            (!refetchResults.isEmpty() ? "\n\nData byla automaticky uložena." : ""));
-        });
-
-        return null;
-      }
-    };
-    worker.execute();
-  }
 
   private void refreshDailyRatesTable() {
     dailyRatesModel.setRowCount(0);
@@ -1651,8 +1575,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       }
     }
 
-    // Setup completeness checking and refetch UI
-    setupDailyRatesTab();
+
     }
   }
 
