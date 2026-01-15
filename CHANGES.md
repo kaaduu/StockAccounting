@@ -4,6 +4,58 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Pridan import Revolut csv] - 2022-05-02
+
+### Přidáno
+- **Import Revolut CSV**: Podpora importu z Revolut CSV exportu pro VejbyCZ
+- **Zobrazení frakčních množství**: Stav účtu nyní ukazuje frakční množství akcií
+
+## [Přidat do menu Otevřít] - 2021-10-17
+
+### Přidáno
+- **Funkce "Přidat"**: Nová možnost v menu Otevřít pro správu corporate aktivit v extra souboru
+- **Flexibilní import**: Umožňuje během roku různě importovat a čistit obchodní data
+
+## [Kontrola import souboru] - 2021-10-16
+
+### Přidáno
+- **Validace import souborů**: Kontrola souborů pro IB TradeLog a FlexQuery před importem
+
+### Změněno
+- **Inicializace menu**: Oprava správné inicializace helperů (jako datum apod.)
+- **Vyhledávání poznámek**: Hledá jako regexp - vyraz kdekoliv v poznámce
+
+### Opraveno
+- **Issue #4**: Uzavřeno - oprava zobrazování menu a helperů
+
+## [Export do FIO formátu] - 2021-06-15
+
+### Přidáno
+- **FIO export**: Export do FIO formátu pro účely importu na kacka.baldsoft.com
+- **Vyhledávání poznámek**: Přidáno vyhledávání podle poznámky
+
+## [T212 Import fix] - 2021-06-10
+
+### Změněno
+- **Konverze GBX na GBP**: Oprava importu z Trading 212 - automatická konverze GBX na GBP
+- **Výchozí pohled**: Nastaven defaultní pohled "details" pro výběr souborů
+- **Sloupec Poznámka**: Přidán sloupec Poznámka (při importu vloží jméno společnosti a další pomocné informace)
+- **Maximální šířka sloupců**: Nastavena maximální šířka sloupců v hlavním okně
+- **Frakční akcie**: Opravena hodnota amount (počet akcii) při importu na double - podpora frakčních akcií
+- **Verzování**: Změna verzování na format: 2021 JUN rev 1
+
+## [Podpora Trading 212 Invest] - 2021-05-31
+
+### Přidáno
+- **Trading 212 Invest**: Přidána podpora importu z Trading 212 Invest platformy
+
+## [IB Tradelog import fix] - 2021-01-01
+
+### Změněno
+- **Ignorování obchodů**: Oprava která neignoruje obchody které mají jen 15 sloupců místo 16
+- **FOP_TRD podpora**: Přidána podpora pro FOP_TRD (future options)
+- **CASH_TRD detekce**: Opraveno detekování CASH_TRD jako peníze
+
 ## [Rozšířená správa denních kurzů s exportem/importem] - 2026-01-15
 
 ### Změněno
