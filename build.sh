@@ -11,7 +11,12 @@ rm -rf build/*
 
  # Compile Java files
  echo "Compiling with Java 17 compatibility..."
- javac --release 17 -d build -cp "libjar/*" $(find src -name "*.java")
+ # Check if javac supports --release flag (Java 9+), otherwise use -source/-target
+ if javac --help 2>&1 | grep -q "\-\-release"; then
+     javac --release 17 -d build -cp "libjar/*" $(find src -name "*.java")
+ else
+     javac -source 17 -target 17 -d build -cp "libjar/*" $(find src -name "*.java")
+ fi
 
  # Copy resources
  echo "Copying resources..."
