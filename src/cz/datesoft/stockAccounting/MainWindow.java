@@ -240,7 +240,6 @@ public class MainWindow extends javax.swing.JFrame {
     miReport = new javax.swing.JMenuItem();
     jSeparator1 = new javax.swing.JSeparator();
     miSettings = new javax.swing.JMenuItem();
-    miDailyRates = new javax.swing.JMenuItem();
     jMenu3 = new javax.swing.JMenu();
     miAbout = new javax.swing.JMenuItem();
 
@@ -588,14 +587,6 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
     jMenu2.add(miSettings);
-
-    miDailyRates.setText("Správa denních kurzů");
-    miDailyRates.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        miDailyRatesActionPerformed(evt);
-      }
-    });
-    jMenu2.add(miDailyRates);
 
     jMenuBar1.add(jMenu2);
 
@@ -946,9 +937,7 @@ public class MainWindow extends javax.swing.JFrame {
     Settings.showDialog();
   }// GEN-LAST:event_miSettingsActionPerformed
 
-  private void miDailyRatesActionPerformed(java.awt.event.ActionEvent evt) {
-    Settings.showDeleteDailyRatesDialog(this);
-  }
+
 
   private void bApplyFilterActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_bApplyFilterActionPerformed
     applyFilter();
@@ -1178,7 +1167,6 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JMenuItem miSaveAs;
   private javax.swing.JMenuItem miSaveFiltered;
   private javax.swing.JMenuItem miSettings;
-  private javax.swing.JMenuItem miDailyRates;
   private javax.swing.JTable table;
   private javax.swing.JTextField tfMarket;
   private javax.swing.JTextField tfNote;
