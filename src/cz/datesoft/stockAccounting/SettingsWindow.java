@@ -1638,12 +1638,25 @@ public class SettingsWindow extends javax.swing.JDialog {
         SwingUtilities.invokeLater(new Runnable() {
           public void run() {
             progressDialog.dispose();
-            Settings.setDailyRates(allNewRates);
-            Settings.saveDailyRatesImmediately(); // Auto-save like unified rates
+
+            // Set rates and auto-save immediately (like unified rates)
+            if (!allNewRates.isEmpty()) {
+              Settings.setDailyRates(allNewRates);
+              Settings.saveDailyRatesImmediately(); // Auto-save like unified rates
+            }
+
             refreshDailyRatesTable();
-            JOptionPane.showMessageDialog(SettingsWindow.this,
-                "Načítání dokončeno.\nÚspěšně načteno roků: " + fLoaded + "\nChyb: " + fFailed +
-                "\n\nKurzy byly automaticky uloženy.");
+
+            // Enhanced message with partial save info
+            String message = "Načítání dokončeno.\nÚspěšně načteno roků: " + fLoaded;
+            if (fFailed > 0) {
+              message += "\nNeúspěšně: " + fFailed + " roků";
+            }
+            if (!allNewRates.isEmpty()) {
+              message += "\n\nÚspěšně načtené kurzy byly automaticky uloženy.";
+            }
+
+            JOptionPane.showMessageDialog(SettingsWindow.this, message);
           }
         });
       }
