@@ -151,11 +151,12 @@ public class Settings {
    * File directory
    */
   private static String dataDirectory;
-
-  /**
-   * Import directory
-   */
   private static String importDirectory;
+
+  // Trading 212 API settings
+  private static String trading212ApiKey;
+  private static String trading212ApiSecret;
+  private static boolean trading212UseDemo;
 
   /**
    * Use daily exchange rates instead of unified rate
@@ -303,6 +304,30 @@ public class Settings {
     return importDirectory;
   }
 
+  // Trading 212 API settings getters
+  public static String getTrading212ApiKey() {
+    return trading212ApiKey;
+  }
+
+  public static String getTrading212ApiSecret() {
+    return trading212ApiSecret;
+  }
+
+  public static boolean getTrading212UseDemo() {
+    return trading212UseDemo;
+  }
+
+  // Trading 212 import state
+  private static String trading212ImportState = null;
+
+  public static String getTrading212ImportState() {
+    return trading212ImportState;
+  }
+
+  public static void setTrading212ImportState(String state) {
+    trading212ImportState = state;
+  }
+
   /* Setters */
   public static void setOverTaxFreeDuration(int value) {
     overTaxFreeDuration = value;
@@ -326,6 +351,19 @@ public class Settings {
 
   public static void setImportDirectory(String value) {
     importDirectory = value;
+  }
+
+  // Trading 212 API settings setters
+  public static void setTrading212ApiKey(String value) {
+    trading212ApiKey = value;
+  }
+
+  public static void setTrading212ApiSecret(String value) {
+    trading212ApiSecret = value;
+  }
+
+  public static void setTrading212UseDemo(boolean value) {
+    trading212UseDemo = value;
   }
 
   /**
@@ -534,6 +572,14 @@ public class Settings {
 
     /* Load daily rates */
     loadDailyRates();
+
+    /* Trading 212 API settings */
+    trading212ApiKey = p.get("trading212ApiKey", null);
+    trading212ApiSecret = p.get("trading212ApiSecret", null);
+    trading212UseDemo = p.getBoolean("trading212UseDemo", true);
+
+    /* Trading 212 import state */
+    trading212ImportState = p.get("trading212ImportState", null);
   }
 
   /**
@@ -584,6 +630,20 @@ public class Settings {
 
     // Save daily rates
     saveDailyRates();
+
+    // Trading 212 API settings
+    if (trading212ApiKey != null) {
+      p.put("trading212ApiKey", trading212ApiKey);
+    }
+    if (trading212ApiSecret != null) {
+      p.put("trading212ApiSecret", trading212ApiSecret);
+    }
+    p.putBoolean("trading212UseDemo", trading212UseDemo);
+
+    // Trading 212 import state
+    if (trading212ImportState != null) {
+      p.put("trading212ImportState", trading212ImportState);
+    }
   }
 
   /**

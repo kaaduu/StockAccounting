@@ -14,11 +14,12 @@ import java.util.Vector;
 import java.util.GregorianCalendar;
 import java.io.File;
 import java.io.PrintWriter;
-import java.io.BufferedReader;
 import cz.datesoft.stockAccounting.imp.*;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.io.BufferedReader;
 import java.util.regex.Pattern;
+import java.util.logging.Logger;
 
 /**
  *
@@ -34,23 +35,29 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   public final int IMPORT_FORMAT_T212CZK = 6;
   public final int IMPORT_FORMAT_REVOLUT_CSV = 7;
 
-  /** Our set */
-  protected Vector<Transaction> rows;
+   /** Our set */
+   protected Vector<Transaction> rows;
 
-  /**
-   * Filtered set. When not null, we are showing this filtered set
-   * instead of the complete one. But we still hold / save / enumerate / ...
-   * the complete, filtering affects only table model.
-   */
-  protected Vector<Transaction> filteredRows;
+   /**
+    * Filtered set. When not null, we are showing this filtered set
+    * instead of the complete one. But we still hold / save / enumerate / ...
+    * the complete, filtering affects only table model.
+    */
+   protected Vector<Transaction> filteredRows;
 
-  /** Serial counter */
-  protected int serialCounter;
+   /** Logger */
+   private static final Logger logger = Logger.getLogger(TransactionSet.class.getName());
 
-  /**
-   * Last date we set
-   */
-  protected Date lastDateSet;
+   /** Serial counter */
+   protected int serialCounter;
+
+   /**
+    * Last date we set
+    */
+   protected Date lastDateSet;
+
+   /** Trading 212 API import constant */
+   public final int IMPORT_FORMAT_TRADING212_API = 8;
 
   /** Column names */
   private String[] columnNames = { "Datum", "Typ", "Směr", "Ticker", "Množství", "Kurs", "Měna kursu", "Poplatky",
@@ -672,6 +679,11 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       importer = new ImportT212CZK();
     else if (format == IMPORT_FORMAT_REVOLUT_CSV)
       importer = new ImportRevolutCSV();
+    else if (format == IMPORT_FORMAT_TRADING212_API) {
+      // Handle Trading 212 API import
+      handleTrading212ApiImport(startDate, endDate, notImported);
+      return;
+    }
     else
       throw new ImportException("Unrecognized import format number!");
 
@@ -689,6 +701,99 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     // We don't fire data changed event, since it is alreday done by the sort()
     diskFile = null;
     modified = false;
+  }
+
+  /**
+   * Import from Trading 212 API for a specific year
+   *
+   * @param year Year to import
+   * @param apiKey Trading 212 API key
+   * @param apiSecret Trading 212 API secret
+   * @param useDemo Whether to use demo environment
+   * @return Import result
+   */
+  public Trading212Importer.ImportResult importFromTrading212Api(int year, String apiKey, String apiSecret, boolean useDemo) throws Exception {
+    Trading212Importer importer = new Trading212Importer(apiKey, apiSecret, useDemo);
+    Trading212Importer.ImportResult result = importer.importYear(year);
+
+    if (result.success && result.transactionsImported > 0) {
+      // Note: The current implementation doesn't return actual transactions
+      // This needs to be enhanced to collect transactions from the importer
+      logger.info("Trading 212 import successful: " + result.message);
+
+      // Mark as modified
+      modified = true;
+    }
+
+    return result;
+  }
+
+  /**
+   * Handle Trading 212 API import from the import dialog
+   * This is called when format == IMPORT_FORMAT_TRADING212_API
+   */
+  private void handleTrading212ApiImport(Date startDate, Date endDate, Vector<String[]> notImported)
+      throws ImportException {
+
+    try {
+      // Validate input dates
+      if (startDate == null || endDate == null) {
+        throw new ImportException("Please select a valid date range for Trading 212 import.\n" +
+            "Trading 212 API requires specific start and end dates.");
+      }
+
+      if (startDate.after(endDate)) {
+        throw new ImportException("Start date cannot be after end date.");
+      }
+
+      // Validate date range doesn't exceed 1 year (API limitation)
+      long daysBetween = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysBetween > 365) {
+        throw new ImportException("Date range cannot exceed 1 year.\n" +
+            "Trading 212 API limitation: maximum 1 year of data per request.");
+      }
+
+      // Get credentials from settings
+      String apiKey = Settings.getTrading212ApiKey();
+      String apiSecret = Settings.getTrading212ApiSecret();
+      boolean useDemo = Settings.getTrading212UseDemo();
+
+      if (apiKey == null || apiKey.trim().isEmpty() ||
+          apiSecret == null || apiSecret.trim().isEmpty()) {
+        throw new ImportException("Trading 212 API credentials not configured. " +
+            "Please set them in Settings → Trading 212 API tab.");
+      }
+
+      // Extract year from date range
+      GregorianCalendar cal = new GregorianCalendar();
+      cal.setTime(startDate);
+      int year = cal.get(GregorianCalendar.YEAR);
+
+      // Perform import
+      Trading212Importer.ImportResult result = importFromTrading212Api(year, apiKey, apiSecret, useDemo);
+
+      if (!result.success) {
+        throw new ImportException("Trading 212 import failed: " + result.message);
+      }
+
+      // Add imported transactions to our set
+      if (result.transactions != null && !result.transactions.isEmpty()) {
+        rows.clear(); // Clear existing transactions for this import
+        for (Transaction tx : result.transactions) {
+          tx.setSerial(serialCounter++);
+          rows.add(tx);
+        }
+
+        sort();
+        modified = true;
+      }
+
+      logger.info("Trading 212 API import completed: " + result.message);
+
+    } catch (Exception e) {
+      logger.severe("Trading 212 API import failed: " + e.getMessage());
+      throw new ImportException("Trading 212 API import failed: " + e.getMessage());
+    }
   }
 
   /**
