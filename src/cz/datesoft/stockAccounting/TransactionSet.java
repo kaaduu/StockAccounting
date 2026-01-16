@@ -772,16 +772,16 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   /**
-   * Create filtered set of rows
+   * Apply filter
    *
-   * @param from   Minimum date. Must be present.
-   * @param to     Maximum date. Must be present. All transactions on this date
-   *               will go to the filtered set.
+   * @param from  From date (inclusive)
+   * @param to    To date (inclusive)
    * @param ticker Ticker to filter (or null to filter all tickers)
    * @param market Market to filter (or null to filter all markets)
+   * @param type   Type to filter (or null to filter all types)
    * @param note   note to filter (or null to filter all notes)
    */
-  public void applyFilter(Date from, Date to, String ticker, String market, String note) {
+  public void applyFilter(Date from, Date to, String ticker, String market, String type, String note) {
     /* Preprocess to date */
     GregorianCalendar gc = new GregorianCalendar();
     gc.setTime(to);
@@ -856,6 +856,12 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         if (market != null) {
           if (!tx.market.equalsIgnoreCase(market))
             continue; // Different ticker - does not pass filter
+        }
+
+        // Check type
+        if (type != null) {
+          if (!tx.getStringType().equals(type))
+            continue; // Different type - does not pass filter
         }
 
         // Check note
