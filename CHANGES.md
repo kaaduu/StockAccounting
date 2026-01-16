@@ -4,6 +4,28 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Filtrování podle typu transakce s přednastavenými hodnotami] - 2026-01-16
+
+### Přidáno
+- **Filtrování podle typu**: Nový combobox "Typ" v hlavním okně umožňující filtrování transakcí podle typu (CP, Derivát, Transformace, Dividenda, Cash)
+- **Přednastavené hodnoty**: Combobox obsahuje všechny platné typy transakcí plus prázdnou možnost pro zrušení filtru
+- **Integrace s existujícím systémem**: Filtrování typu je plně integrováno s ostatními filtry (datum, ticker, trh, poznámka)
+
+### Technické detaily
+- **applyFilter()**: Rozšířena metoda pro přijetí parametru typu a filtrování pomocí `tx.getStringType().equals(type)`
+- **UI komponenty**: Přidán `JComboBox cbTypeFilter` s přednastavenými hodnotami mezi filtry "Trh" a "Note"
+- **Reset filtru**: Combobox se automaticky resetuje při zrušení všech filtrů
+
+## [Rozšiřitelná velikost sloupců tabulky a širší sloupec Ticker] - 2026-01-16
+
+### Změněno
+- **Sloupec Ticker**: Zvětšena preferovaná šířka z 50 na 150 pixelů a maximální šířka z 100 na 300 pixelů pro zobrazení dlouhých názvů opcí (např. "SOXS  220218C00003000")
+- **Změna velikosti sloupců**: Povolena manuální změna velikosti všech sloupců tabulky pomocí myši (AUTO_RESIZE_OFF)
+
+### Technické detaily
+- **initTableColumns()**: Přidáno `table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF)` pro plnou kontrolu nad šířkou sloupců
+- **Kompatibilita**: Žádný vliv na existující funkcionalitu, pouze vylepšení UI
+
 ## [Oprava okna O aplikaci a CHANGES.md] - 2026-01-16
 
 ### Změněno
