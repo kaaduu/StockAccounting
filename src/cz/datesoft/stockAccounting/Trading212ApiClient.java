@@ -17,7 +17,7 @@ import java.util.Base64;
 import java.util.logging.Logger;
 
 /**
- * HTTP client for Trading 212 API
+ * Client for Trading 212 API communication
  */
 public class Trading212ApiClient {
 
@@ -147,9 +147,9 @@ public class Trading212ApiClient {
     }
 
     /**
-     * Test connection by making a simple API call to account summary
+     * Test API connection by fetching account summary and return account information
      */
-    public void testConnection() throws IOException, InterruptedException {
+    public cz.datesoft.stockAccounting.AccountSummary testConnection() throws IOException, InterruptedException {
         enforceRateLimit();
 
         String url = baseUrl + "/equity/account/summary";
@@ -171,9 +171,65 @@ public class Trading212ApiClient {
                 ": " + response.body());
         }
 
+        // Parse account summary from response
+        AccountSummary accountSummary = parseAccountSummary(response.body());
+
         // Store debug data for test connection
         Trading212DebugStorage.storeApiResponse(response.body(), 0, "test_connection");
 
-        logger.info("Trading 212 API connection test successful");
+        logger.info("Trading 212 API connection test successful: " + accountSummary);
+        return accountSummary;
+    }
+
+    /**
+     * Parse account summary from JSON response
+     */
+    private cz.datesoft.stockAccounting.AccountSummary parseAccountSummary(String jsonResponse) {
+        cz.datesoft.stockAccounting.AccountSummary summary = new cz.datesoft.stockAccounting.AccountSummary();
+        try {
+            org.json.JSONObject json = new org.json.JSONObject(jsonResponse);
+
+            // Basic account information
+            summary.accountId = String.valueOf(json.optLong("id", 0));
+            summary.currency = json.optString("currency", "N/A");
+            summary.totalValue = json.optDouble("totalValue", 0.0);
+
+            // Cash breakdown
+            if (json.has("cash")) {
+                org.json.JSONObject cash = json.getJSONObject("cash");
+                summary.availableToTrade = cash.optDouble("availableToTrade", 0.0);
+                summary.reservedForOrders = cash.optDouble("reservedForOrders", 0.0);
+                summary.cashInPies = cash.optDouble("inPies", 0.0);
+                summary.totalCash = summary.availableToTrade + summary.reservedForOrders + summary.cashInPies;
+            }
+
+            // Investment details
+            if (json.has("investments")) {
+                org.json.JSONObject investments = json.getJSONObject("investments");
+                summary.investmentsCurrentValue = investments.optDouble("currentValue", 0.0);
+                summary.investmentsTotalCost = investments.optDouble("totalCost", 0.0);
+                summary.realizedProfitLoss = investments.optDouble("realizedProfitLoss", 0.0);
+                summary.unrealizedProfitLoss = investments.optDouble("unrealizedProfitLoss", 0.0);
+            }
+
+            // Legacy fields for backward compatibility
+            summary.accountType = "Trading Account"; // Default type
+            summary.cashBalance = summary.availableToTrade; // Use available cash as balance
+            summary.accountStatus = "Active"; // Default status
+
+            logger.info("Parsed account summary: " + summary);
+        } catch (Exception e) {
+            logger.warning("Failed to parse account summary JSON: " + e.getMessage());
+            // Return basic summary if parsing fails
+            summary.accountId = "N/A";
+            summary.currency = "N/A";
+            summary.totalValue = 0.0;
+            summary.totalCash = 0.0;
+            summary.investmentsCurrentValue = 0.0;
+            summary.accountType = "N/A";
+            summary.cashBalance = 0.0;
+            summary.accountStatus = "Parse error";
+        }
+        return summary;
     }
 }

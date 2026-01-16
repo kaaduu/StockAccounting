@@ -20,6 +20,10 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - **Czech language translation**: Přeloženy všechny anglické texty do češtiny (tlačítka, zprávy, chybové hlášky, status indikátory)
 - **Import preview isolation**: Opraveno zobrazování dat z předchozího importu při přepínání formátů - náhled se nyní čistí při přechodu na API formát
 - **Progress dialog cancel functionality**: Opraveno kliknutí na "Zrušit" v progress dialogu - nyní skutečně zastaví API import místo pouhého zavření okna
+- **API permissions documentation**: Přidána informace o požadovaných API oprávněních v nastavení Trading 212 (Account data, History, Dividends, Orders, Transactions)
+- **Complete Czech localization**: Dokončena česká lokalizace nastavení Trading 212 API s ponecháním technických termínů v angličtině
+- **Enhanced connection test**: Test připojení nyní zobrazuje načtené údaje o účtu (Account ID, Type, Balance, Currency, Status)
+- **Structured account data display**: Test připojení zobrazuje kompletní strukturované údaje o účtu včetně rozepsané hotovosti a investičních detailů
 
 ## [Rozšířené debugování API import workflow] - 2026-01-16
 
