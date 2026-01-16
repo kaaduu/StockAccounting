@@ -1657,8 +1657,15 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     // Info label
     javax.swing.JLabel lblInfo = new javax.swing.JLabel();
-    lblInfo.setText("<html><small>Get your API credentials from Trading 212 app Settings → API<br>" +
-                   "Demo environment is recommended for testing.</small></html>");
+    lblInfo.setText("<html><small>Získejte své API přihlašovací údaje z aplikace Trading 212 Nastavení → API<br>" +
+                   "Pro testování se doporučuje demo prostředí.<br><br>" +
+                   "<b>Požadovaná API oprávnění (musí být zaškrtnuta/povolena):</b><br>" +
+                   "• Account data / Údaje o účtu<br>" +
+                   "• History / Historie<br>" +
+                   "• History - Dividends / Historie - Dividendy<br>" +
+                   "• History - Orders / Historie - Objednávky<br>" +
+                   "• History - Transactions / Historie - Transakce<br><br>" +
+                   "Bez těchto oprávnění se importní operace nezdaří.</small></html>");
     gbcTrading212.gridx = 0;
     gbcTrading212.gridy = 4;
     gbcTrading212.gridwidth = 2;
@@ -1715,16 +1722,32 @@ public class SettingsWindow extends javax.swing.JDialog {
       private String resultMessage;
       private boolean success;
       private Exception error;
+      private AccountSummary accountSummary;
 
       @Override
       protected Void doInBackground() throws Exception {
         try {
           Trading212ApiClient client = new Trading212ApiClient(apiKey, apiSecret, useDemo);
-          client.testConnection();
+          accountSummary = client.testConnection();
           success = true;
           resultMessage = "✅ Connection successful!\n\n" +
               "Your Trading 212 API credentials are working correctly.\n" +
-              "You can now import your trading data.";
+              "You can now import your trading data.\n\n" +
+              "📊 Account Information:\n" +
+              "• Account ID: " + accountSummary.accountId + "\n" +
+              "• Currency: " + accountSummary.currency + "\n" +
+              "• Total Account Value: " + String.format("%.2f", accountSummary.totalValue) + " " + accountSummary.currency + "\n\n" +
+              "💰 Cash Details:\n" +
+              "• Available to Trade: " + String.format("%.2f", accountSummary.availableToTrade) + " " + accountSummary.currency + "\n" +
+              "• Reserved for Orders: " + String.format("%.2f", accountSummary.reservedForOrders) + " " + accountSummary.currency + "\n" +
+              "• Invested in Pies: " + String.format("%.2f", accountSummary.cashInPies) + " " + accountSummary.currency + "\n" +
+              "• Total Cash: " + String.format("%.2f", accountSummary.totalCash) + " " + accountSummary.currency + "\n\n" +
+              "📈 Investment Summary:\n" +
+              "• Current Value: " + String.format("%.2f", accountSummary.investmentsCurrentValue) + " " + accountSummary.currency + "\n" +
+              "• Total Invested: " + String.format("%.2f", accountSummary.investmentsTotalCost) + " " + accountSummary.currency + "\n" +
+              "• Realized P/L: " + String.format("%.2f", accountSummary.realizedProfitLoss) + " " + accountSummary.currency + "\n" +
+              "• Unrealized P/L: " + String.format("%.2f", accountSummary.unrealizedProfitLoss) + " " + accountSummary.currency + "\n\n" +
+              "This data was fetched from your Trading 212 account.";
         } catch (Exception e) {
           success = false;
           error = e;
