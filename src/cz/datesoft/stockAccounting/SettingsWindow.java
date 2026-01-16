@@ -1239,8 +1239,8 @@ public class SettingsWindow extends javax.swing.JDialog {
     Settings.setMarkets(markets);
 
     // And save them
-    Settings.setUseDailyRates(cbUseDailyRates.isSelected());
-    Settings.save();
+     Settings.setUseDailyRates(cbUseDailyRates.isSelected());
+     saveTrading212Settings();
 
     // Close
     setVisible(false);
@@ -1591,8 +1591,222 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     jTabbedPane1.addTab("Denní kurzy", pDailyRates);
 
+    // Trading 212 API Settings Panel
+    javax.swing.JPanel pTrading212 = new javax.swing.JPanel();
+    pTrading212.setLayout(new java.awt.GridBagLayout());
+    java.awt.GridBagConstraints gbcTrading212 = new java.awt.GridBagConstraints();
+
+    // API Key label and field
+    javax.swing.JLabel lblApiKey = new javax.swing.JLabel();
+    lblApiKey.setText("Trading 212 API Key:");
+    gbcTrading212.gridx = 0;
+    gbcTrading212.gridy = 0;
+    gbcTrading212.anchor = java.awt.GridBagConstraints.WEST;
+    gbcTrading212.insets = new java.awt.Insets(5, 5, 5, 5);
+    pTrading212.add(lblApiKey, gbcTrading212);
+
+    tfTrading212ApiKey = new javax.swing.JTextField();
+    tfTrading212ApiKey.setPreferredSize(new java.awt.Dimension(300, 25));
+    gbcTrading212.gridx = 1;
+    gbcTrading212.gridy = 0;
+    gbcTrading212.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcTrading212.weightx = 1.0;
+    pTrading212.add(tfTrading212ApiKey, gbcTrading212);
+
+    // API Secret label and field
+    javax.swing.JLabel lblApiSecret = new javax.swing.JLabel();
+    lblApiSecret.setText("Trading 212 API Secret:");
+    gbcTrading212.gridx = 0;
+    gbcTrading212.gridy = 1;
+    gbcTrading212.fill = java.awt.GridBagConstraints.NONE;
+    gbcTrading212.weightx = 0.0;
+    pTrading212.add(lblApiSecret, gbcTrading212);
+
+    tfTrading212ApiSecret = new javax.swing.JPasswordField();
+    tfTrading212ApiSecret.setPreferredSize(new java.awt.Dimension(300, 25));
+    gbcTrading212.gridx = 1;
+    gbcTrading212.gridy = 1;
+    gbcTrading212.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcTrading212.weightx = 1.0;
+    pTrading212.add(tfTrading212ApiSecret, gbcTrading212);
+
+    // Demo mode checkbox
+    cbTrading212Demo = new javax.swing.JCheckBox();
+    cbTrading212Demo.setText("Použít demo prostředí (pro testování)");
+    cbTrading212Demo.setSelected(true);
+    gbcTrading212.gridx = 0;
+    gbcTrading212.gridy = 2;
+    gbcTrading212.gridwidth = 2;
+    gbcTrading212.anchor = java.awt.GridBagConstraints.WEST;
+    pTrading212.add(cbTrading212Demo, gbcTrading212);
+
+    // Test connection button
+    bTestTrading212Connection = new javax.swing.JButton();
+        bTestTrading212Connection.setText("Otestovat připojení");
+    bTestTrading212Connection.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            bTestTrading212ConnectionActionPerformed(evt);
+        }
+    });
+    gbcTrading212.gridx = 0;
+    gbcTrading212.gridy = 3;
+    gbcTrading212.gridwidth = 2;
+    gbcTrading212.anchor = java.awt.GridBagConstraints.CENTER;
+    gbcTrading212.insets = new java.awt.Insets(10, 5, 5, 5);
+    pTrading212.add(bTestTrading212Connection, gbcTrading212);
+
+    // Info label
+    javax.swing.JLabel lblInfo = new javax.swing.JLabel();
+    lblInfo.setText("<html><small>Získejte své API přihlašovací údaje z aplikace Trading 212 Nastavení → API<br>" +
+                   "Pro testování se doporučuje demo prostředí.<br><br>" +
+                   "<b>Požadovaná API oprávnění (musí být zaškrtnuta/povolena):</b><br>" +
+                   "• Account data / Údaje o účtu<br>" +
+                   "• History / Historie<br>" +
+                   "• History - Dividends / Historie - Dividendy<br>" +
+                   "• History - Orders / Historie - Objednávky<br>" +
+                   "• History - Transactions / Historie - Transakce<br><br>" +
+                   "Bez těchto oprávnění se importní operace nezdaří.</small></html>");
+    gbcTrading212.gridx = 0;
+    gbcTrading212.gridy = 4;
+    gbcTrading212.gridwidth = 2;
+    gbcTrading212.anchor = java.awt.GridBagConstraints.WEST;
+    gbcTrading212.insets = new java.awt.Insets(5, 5, 5, 5);
+    pTrading212.add(lblInfo, gbcTrading212);
+
+    // Add spacer
+    gbcTrading212.gridx = 0;
+    gbcTrading212.gridy = 5;
+    gbcTrading212.weighty = 1.0;
+    pTrading212.add(new javax.swing.JLabel(), gbcTrading212);
+
+    jTabbedPane1.addTab("Trading 212 API", pTrading212);
+
     // Populate table
     refreshDailyRatesTable();
+
+    // Load Trading 212 settings
+    loadTrading212Settings();
+  }
+
+  private void loadTrading212Settings() {
+    tfTrading212ApiKey.setText(Settings.getTrading212ApiKey() != null ? Settings.getTrading212ApiKey() : "");
+    tfTrading212ApiSecret.setText(Settings.getTrading212ApiSecret() != null ? Settings.getTrading212ApiSecret() : "");
+    cbTrading212Demo.setSelected(Settings.getTrading212UseDemo());
+  }
+
+  private void saveTrading212Settings() {
+    Settings.setTrading212ApiKey(tfTrading212ApiKey.getText().trim());
+    Settings.setTrading212ApiSecret(new String(tfTrading212ApiSecret.getPassword()).trim());
+    Settings.setTrading212UseDemo(cbTrading212Demo.isSelected());
+    Settings.save();
+  }
+
+  private void bTestTrading212ConnectionActionPerformed(java.awt.event.ActionEvent evt) {
+    String apiKey = tfTrading212ApiKey.getText().trim();
+    String apiSecret = new String(tfTrading212ApiSecret.getPassword()).trim();
+    boolean useDemo = cbTrading212Demo.isSelected();
+
+    if (apiKey.isEmpty() || apiSecret.isEmpty()) {
+      javax.swing.JOptionPane.showMessageDialog(this,
+          "Please enter both API Key and API Secret before testing.",
+          "Missing Credentials", javax.swing.JOptionPane.WARNING_MESSAGE);
+      return;
+    }
+
+    // Disable button and show progress
+    bTestTrading212Connection.setEnabled(false);
+    bTestTrading212Connection.setText("Testování...");
+
+    // Run test in background thread
+    javax.swing.SwingWorker<Void, Void> worker = new javax.swing.SwingWorker<Void, Void>() {
+      private String resultMessage;
+      private boolean success;
+      private Exception error;
+      private AccountSummary accountSummary;
+
+      @Override
+      protected Void doInBackground() throws Exception {
+        try {
+          Trading212ApiClient client = new Trading212ApiClient(apiKey, apiSecret, useDemo);
+          accountSummary = client.testConnection();
+          success = true;
+          resultMessage = "✅ Connection successful!\n\n" +
+              "Your Trading 212 API credentials are working correctly.\n" +
+              "You can now import your trading data.\n\n" +
+              "📊 Account Information:\n" +
+              "• Account ID: " + accountSummary.accountId + "\n" +
+              "• Currency: " + accountSummary.currency + "\n" +
+              "• Total Account Value: " + String.format("%.2f", accountSummary.totalValue) + " " + accountSummary.currency + "\n\n" +
+              "💰 Cash Details:\n" +
+              "• Available to Trade: " + String.format("%.2f", accountSummary.availableToTrade) + " " + accountSummary.currency + "\n" +
+              "• Reserved for Orders: " + String.format("%.2f", accountSummary.reservedForOrders) + " " + accountSummary.currency + "\n" +
+              "• Invested in Pies: " + String.format("%.2f", accountSummary.cashInPies) + " " + accountSummary.currency + "\n" +
+              "• Total Cash: " + String.format("%.2f", accountSummary.totalCash) + " " + accountSummary.currency + "\n\n" +
+              "📈 Investment Summary:\n" +
+              "• Current Value: " + String.format("%.2f", accountSummary.investmentsCurrentValue) + " " + accountSummary.currency + "\n" +
+              "• Total Invested: " + String.format("%.2f", accountSummary.investmentsTotalCost) + " " + accountSummary.currency + "\n" +
+              "• Realized P/L: " + String.format("%.2f", accountSummary.realizedProfitLoss) + " " + accountSummary.currency + "\n" +
+              "• Unrealized P/L: " + String.format("%.2f", accountSummary.unrealizedProfitLoss) + " " + accountSummary.currency + "\n\n" +
+              "This data was fetched from your Trading 212 account.";
+        } catch (Exception e) {
+          success = false;
+          error = e;
+          resultMessage = "❌ Connection failed";
+        }
+        return null;
+      }
+
+      @Override
+      protected void done() {
+        // Re-enable button
+        bTestTrading212Connection.setEnabled(true);
+    bTestTrading212Connection.setText("Otestovat připojení");
+
+        if (success) {
+          javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this, resultMessage,
+              "Test Successful", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        } else {
+          showDetailedErrorDialog("Connection Test Failed", resultMessage, error);
+        }
+      }
+    };
+    worker.execute();
+  }
+
+  private void showDetailedErrorDialog(String title, String userMessage, Exception error) {
+    javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout());
+
+    // Main error message
+    javax.swing.JLabel messageLabel = new javax.swing.JLabel("<html>" +
+        userMessage.replace("\n", "<br>") + "</html>");
+    messageLabel.setBorder(new javax.swing.border.EmptyBorder(10, 10, 10, 10));
+    panel.add(messageLabel, java.awt.BorderLayout.CENTER);
+
+    // Show details button
+    javax.swing.JButton detailsButton = new javax.swing.JButton("Show Technical Details");
+    detailsButton.addActionListener(e -> {
+      javax.swing.JTextArea textArea = new javax.swing.JTextArea();
+      textArea.setText(getFullStackTrace(error));
+      textArea.setEditable(false);
+      textArea.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12));
+
+      javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(textArea);
+      scrollPane.setPreferredSize(new java.awt.Dimension(600, 400));
+
+      javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this, scrollPane,
+          "Technical Details", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+    });
+
+    panel.add(detailsButton, java.awt.BorderLayout.SOUTH);
+
+    javax.swing.JOptionPane.showMessageDialog(this, panel, title, javax.swing.JOptionPane.ERROR_MESSAGE);
+  }
+
+  private String getFullStackTrace(Exception e) {
+    java.io.StringWriter sw = new java.io.StringWriter();
+    java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+    e.printStackTrace(pw);
+    return sw.toString();
   }
 
   private void refreshDailyRatesTable() {
@@ -1815,7 +2029,12 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JList lMarkets;
   private javax.swing.JPanel pHolidays;
   private javax.swing.JTable table;
-  private javax.swing.JTextField tfCurrency;
-  // End of variables declaration//GEN-END:variables
+   private javax.swing.JTextField tfCurrency;
+  // Trading 212 API components
+  private javax.swing.JTextField tfTrading212ApiKey;
+  private javax.swing.JPasswordField tfTrading212ApiSecret;
+  private javax.swing.JCheckBox cbTrading212Demo;
+  private javax.swing.JButton bTestTrading212Connection;
+   // End of variables declaration//GEN-END:variables
 
 }

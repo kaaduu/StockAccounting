@@ -9,6 +9,7 @@ package cz.datesoft.stockAccounting;
 import java.awt.Component;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
+import javax.swing.JTable;
 import com.toedter.calendar.JDateChooser;
 import java.util.Date;
 import java.io.File;
@@ -213,6 +214,7 @@ public class MainWindow extends javax.swing.JFrame {
     tfTicker = new javax.swing.JTextField();
     jLabel5 = new javax.swing.JLabel();
     tfMarket = new javax.swing.JTextField();
+    jLabel6 = new javax.swing.JLabel();
     jSeparator3 = new javax.swing.JSeparator();
     bDelete = new javax.swing.JButton();
     bSort = new javax.swing.JButton();
@@ -256,6 +258,10 @@ public class MainWindow extends javax.swing.JFrame {
 
     cbType.setModel(
         new javax.swing.DefaultComboBoxModel(new String[] { "CP", "Derivát", "Transformace", "Dividenda", "Cash" }));
+
+    cbTypeFilter = new javax.swing.JComboBox();
+    cbTypeFilter.setModel(
+        new javax.swing.DefaultComboBoxModel(new String[] { "", "CP", "Derivát", "Transformace", "Dividenda", "Cash" }));
 
     setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
     setTitle("Akciové účetnictví");
@@ -358,6 +364,20 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.gridy = 0;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(tfMarket, gridBagConstraints);
+
+    jLabel6.setText("Typ:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 10;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(jLabel6, gridBagConstraints);
+
+    cbTypeFilter.setMinimumSize(new java.awt.Dimension(80, 20));
+    cbTypeFilter.setPreferredSize(new java.awt.Dimension(80, 20));
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 11;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(cbTypeFilter, gridBagConstraints);
 
     jSeparator3.setOrientation(javax.swing.SwingConstants.VERTICAL);
     gridBagConstraints = new java.awt.GridBagConstraints();
@@ -621,6 +641,10 @@ public class MainWindow extends javax.swing.JFrame {
   public void initTableColumns() {
     // get list of tickers from current transactions (if new = empty)
     cbTickers.setModel(transactions.getTickersModel());
+
+    // Enable manual column resizing
+    table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+
     // Datum obchodu
     table.getColumnModel().getColumn(0).setPreferredWidth(100);
     table.getColumnModel().getColumn(0).setMaxWidth(100);
@@ -635,8 +659,8 @@ public class MainWindow extends javax.swing.JFrame {
     table.getColumnModel().getColumn(2).setMaxWidth(80);
     table.getColumnModel().getColumn(2).setCellEditor(new TransactionDirectionCellEditor(cbDirection));
     // Ticker
-    table.getColumnModel().getColumn(3).setPreferredWidth(50);
-    table.getColumnModel().getColumn(3).setMaxWidth(100);
+    table.getColumnModel().getColumn(3).setPreferredWidth(150);
+    table.getColumnModel().getColumn(3).setMaxWidth(300);
     table.getColumnModel().getColumn(3).setCellEditor(new javax.swing.DefaultCellEditor(cbTickers));
     table.getColumnModel().getColumn(6).setCellEditor(new javax.swing.DefaultCellEditor(cbCurrencies));
     table.getColumnModel().getColumn(4).setPreferredWidth(80);
@@ -742,33 +766,57 @@ public class MainWindow extends javax.swing.JFrame {
   }// GEN-LAST:event_miAccountStateActionPerformed
 
   private void miImportActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_miImportActionPerformed
-    FileDialog dialog = new FileDialog(this, "Importovat soubor", FileDialog.LOAD);
+    // Show format selection dialog first
+    String[] formats = {"<vyberte formát>", "Fio - obchody export", "BrokerJet - HTML export (legacy)",
+                       "IB - TradeLog", "IB - FlexQuery Trades only CSV", "T212 Invest  - csv  mena: USD",
+                       "T212 Invest  - csv  mena: CZK", "Revolut - csv", "Trading 212 API"};
 
-    String loc = Settings.getImportDirectory();
-    if (loc != null)
-      dialog.setDirectory(loc);
+    String selectedFormat = (String) javax.swing.JOptionPane.showInputDialog(
+        this, "Vyberte formát importu:", "Formát importu",
+        javax.swing.JOptionPane.QUESTION_MESSAGE, null, formats, formats[0]);
 
-    dialog.setVisible(true);
-
-    String fileName = dialog.getFile();
-    if (fileName != null) {
-      File selectedFile = new File(dialog.getDirectory(), fileName);
-      Settings.setImportDirectory(dialog.getDirectory());
-      Settings.save();
-
-      // Import file
-      Date startDate = transactions.getMaxDate();
-
-      if (startDate != null) {
-        // Add a day to start importing next day we have
-        GregorianCalendar cal = new GregorianCalendar();
-        cal.setTime(startDate);
-        cal.add(GregorianCalendar.DAY_OF_MONTH, 1);
-        startDate = cal.getTime();
-      }
-
-      importWindow.startImport(selectedFile, startDate);
+    if (selectedFormat == null || selectedFormat.equals("<vyberte formát>")) {
+      return; // User cancelled or didn't select format
     }
+
+    int formatIndex = java.util.Arrays.asList(formats).indexOf(selectedFormat);
+    boolean isApiFormat = (formatIndex == 8); // Trading 212 API
+
+    File selectedFile = null;
+    Date startDate = null;
+
+    if (!isApiFormat) {
+      // Show file dialog only for file-based formats
+      FileDialog dialog = new FileDialog(this, "Importovat soubor", FileDialog.LOAD);
+
+      String loc = Settings.getImportDirectory();
+      if (loc != null)
+        dialog.setDirectory(loc);
+
+      dialog.setVisible(true);
+
+      String fileName = dialog.getFile();
+      if (fileName != null) {
+        selectedFile = new File(dialog.getDirectory(), fileName);
+        Settings.setImportDirectory(dialog.getDirectory());
+        Settings.save();
+
+        // Get start date for file-based imports
+        startDate = transactions.getMaxDate();
+        if (startDate != null) {
+          // Add a day to start importing next day we have
+          GregorianCalendar cal = new GregorianCalendar();
+          cal.setTime(startDate);
+          cal.add(GregorianCalendar.DAY_OF_MONTH, 1);
+          startDate = cal.getTime();
+        }
+      } else {
+        return; // User cancelled file selection
+      }
+    }
+
+    // Open ImportWindow with the selected format and optional file
+    importWindow.startImport(selectedFile, startDate, formatIndex);
   }// GEN-LAST:event_miImportActionPerformed
 
   private void bDeleteActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bDeleteActionPerformed
@@ -895,21 +943,24 @@ public class MainWindow extends javax.swing.JFrame {
   /**
    * Apply filter to the transaction set
    */
-  private void applyFilter() {
+   private void applyFilter() {
     // Get ticker and market. Set them to NULL when they are not set.
     String ticker = tfTicker.getText();
     String market = tfMarket.getText();
+    String type = (String) cbTypeFilter.getSelectedItem();
     String note = tfNote.getText();
 
     if (ticker.length() == 0)
       ticker = null;
     if (market.length() == 0)
       market = null;
+    if (type != null && type.length() == 0)
+      type = null;
     if (note.length() == 0)
       note = null;
 
     // Apply filter
-    transactions.applyFilter(dcFrom.getDate(), dcTo.getDate(), ticker, market, note);
+    transactions.applyFilter(dcFrom.getDate(), dcTo.getDate(), ticker, market, type, note);
 
     // Enable clear filter button and save filtered
     bClearFilter.setEnabled(true);
@@ -920,6 +971,7 @@ public class MainWindow extends javax.swing.JFrame {
     transactions.clearFilter();
     bClearFilter.setEnabled(false);
     miSaveFiltered.setEnabled(false);
+    cbTypeFilter.setSelectedIndex(0); // Reset to empty selection
   }
 
   private void miSaveAsActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_miSaveAsActionPerformed
@@ -1125,6 +1177,14 @@ public class MainWindow extends javax.swing.JFrame {
     return transactions;
   }
 
+  /**
+   * Refresh the main table display
+   */
+  public void refreshTable() {
+    table.revalidate();
+    table.repaint();
+  }
+
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JButton bApplyFilter;
   private javax.swing.JButton bClearFilter;
@@ -1135,6 +1195,7 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JComboBox cbMarkets;
   private javax.swing.JComboBox cbTickers;
   private javax.swing.JComboBox cbType;
+  private javax.swing.JComboBox cbTypeFilter;
   private com.toedter.calendar.JDateChooser dcFrom;
   private com.toedter.calendar.JDateChooser dcTo;
   private javax.swing.JLabel jLabel1;
@@ -1142,6 +1203,7 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JLabel jLabel3;
   private javax.swing.JLabel jLabel4;
   private javax.swing.JLabel jLabel5;
+  private javax.swing.JLabel jLabel6;
   private javax.swing.JLabel jLabel7;
   private javax.swing.JMenu jMenu1;
   private javax.swing.JMenu jMenu2;
