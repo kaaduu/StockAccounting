@@ -4,6 +4,179 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Oprava headless Trading 212 API import] - 2026-01-16
+
+### Opraveno
+- **Headless CSV import**: Přidána podpora pro API import bez GUI dialogu pro CLI/headless prostředí
+- **Polling-based monitoring**: Implementováno pravidelné sledování stavu CSV reportů bez nutnosti GUI
+- **Fallback mechanism**: Automatické přepínání mezi GUI a headless módem podle dostupnosti okna
+- **Button text logic**: Opraveno zobrazování textu tlačítka "Importovat" vs "Sloučit do databáze"
+- **UI state updates**: Přidáno volání updateImportButtonText() po načtení preview dat
+- **Import workflow logic**: Opraveno dvojité volání API - nyní správně rozlišuje fetch vs merge režimy
+- **Transaction count accuracy**: Opraveno zobrazování počtu importovaných transakcí - nyní odpovídá skutečně přidaným řádkům v databázi
+- **Progress dialog restoration**: Obnoveno GUI okno s odpočtem pro sledování generování CSV reportů
+- **Parent frame passing**: Implementováno předávání parent okna pro správné zobrazování progress dialogu
+- **Button text localization**: Přejmenováno tlačítko z "Importovat" na "API stahnuti" pro Trading 212 API formát
+- **Czech language translation**: Přeloženy všechny anglické texty do češtiny (tlačítka, zprávy, chybové hlášky, status indikátory)
+- **Import preview isolation**: Opraveno zobrazování dat z předchozího importu při přepínání formátů - náhled se nyní čistí při přechodu na API formát
+- **Progress dialog cancel functionality**: Opraveno kliknutí na "Zrušit" v progress dialogu - nyní skutečně zastaví API import místo pouhého zavření okna
+
+## [Rozšířené debugování API import workflow] - 2026-01-16
+
+### Přidáno
+- **Strukturované debug logování**: Kompletní trasování execution flow s emoji markery a hierarchickou strukturou
+- **Fázové markery**: Jasné oddělení validačních, API, UI a dokončovacích fází
+- **Status indikátory**: ✅ ❌ ⏳ indikátory pro okamžité rozpoznání úspěchu/neúspěchu
+- **Časové značky**: Console timestamps umožňují sledování timing každého kroku
+- **Hierarchické formátování**: Indentace ukazuje call depth a vztahy mezi komponentami
+
+### Technické detaily
+- **Debug formát**: Standardizovaný výstup s [PHASE] markery a vizuálními indikátory
+- **Kompletní pokryti**: Logování od button click přes validace, API volání, až po UI updates
+- **Error tracing**: Podrobné logování všech exception scénářů s kontextem
+- **Performance**: Minimální overhead - jen console výstup bez vlivu na funkcionalitu
+- **Analytická hodnota**: Umožňuje okamžité diagnostikování kde execution zastaví
+
+## [Odstranění neimplementované background funkcionality] - 2026-01-16
+
+### Odebráno
+- **Background button**: Odstraněno tlačítko "Continue in Background" které nebylo implementováno
+- **Background option v timeout dialogu**: Zjednodušena timeout dialog z 3 na 2 možnosti (Continue/Cancel)
+- **switchToBackgroundMode() metoda**: Kompletní odstranění neimplementované metody
+
+### Změněno
+- **UI simplification**: Zjednodušeno rozhraní CsvReportProgressDialog - pouze Cancel tlačítko
+- **Timeout dialog**: Aktualizován text dialogu bez reference na background režim
+- **User experience**: Odstraněna zavádějící funkcionalita která slibovala background processing bez implementace
+
+### Technické detaily
+- **CsvReportProgressDialog**: Odstraněn backgroundButton field a související kód
+- **Timeout handling**: Změna z YES_NO_CANCEL_OPTION na YES_NO_OPTION
+- **Code cleanup**: Odstraněny všechny reference na neimplementovanou background funkcionalitu
+
+## [Kritická oprava timer leak v Trading 212 API importech] - 2026-01-16
+
+### Opraveno
+- **Timer leak po úspěšném importu**: Kritická chyba kde CsvReportProgressDialog nezastavoval timery po dokončení importu
+- **Background notifications**: Odstraněno nekonečné zobrazování timeout dialogů každých 30 minut po úspěšném importu
+- **GUI freeze**: Opraveno zamrzání aplikace vyžadující force-kill po úspěšných API importe
+- **Resource cleanup**: Zajištěno zastavení všech background timerů po dokončení importu
+
+### Technické detaily
+- **CsvReportProgressDialog.completeImport()**: Přidáno zastavení statusTimer a countdownTimer před logováním úspěchu
+- **Timer management**: Sjednoceno zastavování timerů ve všech completion path (success, error, cancel)
+- **Background thread cleanup**: Zabráněno zombie threads které způsobovaly GUI freeze na Linux platformě
+
+## [Kompletní oprava Trading 212 import workflow] - 2026-01-16
+
+### Opraveno
+- **Modal dialog closing**: Kritická chyba v zavírání ImportWindow po úspěšném API importu kvůli modal dialog konfliktům
+- **Resource cleanup**: Nahrazení setVisible(false) metodou dispose() pro správné uvolnění zdrojů modal dialogu
+- **UI responsiveness**: ImportWindow se nyní správně zavře po dokončení Trading 212 API importu bez zaseknutí
+- **Import state persistence**: Přidána persistentní správa stavu importu Trading 212 s ukládáním do Settings
+- **Year status display**: Roky nyní zobrazují správný stav importu místo placeholdru "(Not Imported)"
+- **Error handling**: Zajištěno zavírání dialogu i v případě chyb během importu
+
+### Přidáno
+- **Trading212ImportState persistence**: Import stavy se nyní ukládají do Preferences API a přežívají restart aplikace
+- **JSON serialization**: Import stavy jsou serializovány jako JSON pro persistentní ukládání
+- **Real-time status updates**: Rok selector se aktualizuje po úspěšném importu
+- **Settings integration**: Nové metody getTrading212ImportState/setTrading212ImportState v Settings
+
+### Technické detaily
+- **performTrading212Import()**: Změna JOptionPane parent z modal ImportWindow na MainWindow pro vyřešení modal konfliktů
+- **Trading212ImportState**: Přidány loadFromSettings()/saveToSettings() metody s JSON persistencí
+- **ImportWindow**: Přidána importState instance a refreshTrading212YearStatuses() metoda
+- **Settings.java**: Přidány trading212ImportState field a load/save logika
+- **dispose() usage**: Standardizace zavírání všech modal dialogů pomocí dispose() místo setVisible(false)
+
+## [Podmíněný tok importu pro API vs souborové importy] - 2026-01-16
+
+### Přidáno
+- **Format-first workflow**: Nový tok importu začínající výběrem formátu před výběrem souboru
+- **Podmíněné zobrazování UI**: Skrytí souborových prvků (kalendáře, náhled, tabulka) pro API importy
+- **Inteligentní zpracování importu**: Automatické přepínání mezi souborovým a API workflow na základě vybraného formátu
+- **Vylepšené UX pro API importy**: Přímý import bez nutnosti výběru souboru pro Trading 212 API
+
+### Změněno
+- **Import menu flow**: Změna z "soubor → formát" na "formát → soubor (pouze pro souborové formáty)"
+- **ImportWindow adaptivita**: Dynamické skrývání/zobrazování UI komponent na základě typu importu
+- **API import workflow**: Přímé provedení importu bez preview pro API metody (Trading 212)
+
+### Technické detaily
+- **MainWindow.java**: Přepsána miImportActionPerformed() pro format-first přístup s podmíněným file dialogem
+- **ImportWindow.java**: Přidána updateUiForFormat() metoda pro správu viditelnosti komponent
+- **Rozšířené startImport()**: Nová přetížená metoda s parametrem preselectedFormat
+- **API import handling**: Modifikováno performTrading212Import() pro přímé sloučení výsledků do hlavní databáze
+- **Backwards compatibility**: Zachování plné funkcionality pro všechny existující souborové importy
+
+## [Oprava cache expirace a kompilace Trading 212 integrace] - 2026-01-16
+
+### Opraveno
+- **Cache expirace**: Oprava kritické chyby v Trading212ReportCache, kde PROCESSING status byl cachován na 24 hodin, což bránilo aktualizaci stavu dlouhotrvajících reportů
+- **Chytrá expirace cache**: Implementace různých dob expirace - finální statusy (FINISHED/FAILED) cachovány na 24 hodin, nefinální statusy (QUEUED/PROCESSING) na 1 minutu
+- **Kompilační chyba**: Oprava typu parametru v Trading212Importer (apiClient → csvClient) pro CsvReportProgressDialog konstruktor
+- **Rate limiting**: Ověřeno správné fungování 65-sekundového intervalu pro status kontroly API
+
+### Technické detaily
+- **Trading212ReportCache**: Přidána metoda isFinalStatus() pro detekci finálních stavů reportů
+- **Cache strategie**: Zabránění zaseknutí na "PROCESSING" stavu během dlouhých reportů (81+ minut)
+- **Kompatibilita**: Oprava předávání správného typu klienta do progress dialogu
+- **Testování**: Úspěšná kompilace projektu s Java 17 kompatibilitou
+
+## [Kompletní Trading 212 CSV integrace s hybridním importem] - 2026-01-16
+
+### Přidáno
+- **CSV Report integrace**: Nový způsob importu pomocí Trading 212 CSV reportů pro přesné filtrování dat podle data
+- **Hybridní import strategie**: Automatický výběr mezi CSV (pro velké rozsahy >90 dní) a API (pro nedávné údaje)
+- **Asynchronní CSV generování**: Pozadí generování reportů s polling stavem a timeout ochranou (10 minut max)
+- **Kompletní Trading 212 API integrace**: Základní API klient pro objednávky s klient-side filtrováním
+- **Inteligentní správu importů**: Sledování stavu importu po jednotlivých rocích s podporou přírůstkových importů
+- **API klient s rate limiting**: Bezpečné volání Trading 212 API s dodržováním limitů (6 požadavků/minutu, 1 CSV/30s)
+- **Debug režim**: Ukládání surových API a CSV odpovědí do `/tmp/trading212_debug/` pro ladění
+- **Nastavení API přihlašovacích údajů**: Bezpečné uložení API klíče a tajemství s testováním připojení
+- **Rozšířené UI**: Test tlačítko, výběr roku s indikátory stavu, detailní chybové dialogy
+- **Automatické opakování**: Retry logika s exponenciálním backoff pro přechodné chyby
+- **Validace rozsahu dat**: Kontrola API omezení a uživatelsky přívětivé chybové hlášky
+
+### Opraveno
+- **Formátování datumů**: Oprava kritické chyby "Unsupported field: OffsetSeconds" v CSV requestech
+- **UTC timezone handling**: Vždy používá UTC s 'Z' suffixem pro kompatibilitu s Trading 212 API
+- **Validace rozsahu**: Klient-side kontrola rozsahu datumů (max 2 roky) před odesláním na API
+- **JSON parsing**: Přidání org.json knihovny pro správné parsování API odpovědí
+- **Rate limiting**: Implementace 65-sekundového intervalu pro status kontroly (1 req/minuta)
+- **Status caching**: Lokální cache pro dokončené reporty, aby se předešlo opakovaným API voláním
+- **Progress dialog**: Dialog s countdown timer a real-time status aktualizacemi
+- **30-min timeout**: Dialog po 30 minutách s možnostmi pokračování, zrušení nebo přepnutí do pozadí
+- **Pokrok zpětné vazby**: Detailní status aktualizace během generování CSV reportů
+- **Chybové hlášky**: Specifické rady pro různé typy chyb (timeout, credentials, range, network, rate limits)
+- **CSV parsing**: Kompletní implementace parseru pro Trading 212 CSV formát s podporou všech typů transakcí
+- **Debug logging**: Rozšířené ukládání API odpovědí pro troubleshooting
+
+### Změněno
+- **Rozšířené možnosti importu**: Přidána možnost "Trading 212 API" do seznamu formátů importu
+- **Architektura importu**: Rozšířena `TransactionSet` třída pro podporu API-based importů bez souborů
+
+### Technické detaily
+- **Komponenty**: `Trading212ApiClient`, `Trading212CsvClient`, `Trading212CsvParser`, `Trading212DataTransformer`, `Trading212Importer`, `Trading212ImportState`, `Trading212DebugStorage`
+- **CSV Workflow**: Asynchronní generování → polling stavu → stahování → parsování CSV
+- **Hybridní strategie**: CSV pro rozsahy >90 dní, API pro nedávné údaje s klient-side filtrováním
+- **Transformace dat**: Ruční parsování JSON a CSV odpovědí (kompatibilní s Java 8)
+- **Správa stavu**: Import stavu per rok s podporou pro plné a přírůstkové importy
+- **Bezpečnost**: API klíče a tajemství uložena šifrovaně v systémových preferencích
+- **Rate Limiting**: 6 API požadavků/minutu, 1 CSV požadavek/30 sekund
+- **Testování připojení**: Validace přes account summary endpoint s detailními chybami
+- **Rozšířené UI**: Test tlačítko, výběr roku s indikátory, asynchronní progress feedback
+- **Automatické opakování**: Exponenciální backoff pro síťové chyby a rate limiting
+- **Validace**: Kontrola datumů, délky rozsahu, API omezení s uživatelsky přívětivými hláškami
+- **Debug podpora**: Ukládání všech API a CSV odpovědí do `/tmp/trading212_debug/`
+- **Chybová odolnost**: Komplexní error handling s retry logikou a recovery options
+
+### Omezení
+- **Časové okno**: API umožňuje importovat maximálně 1 rok dat najednou
+- **Účetní typy**: Podporováno pouze pro "Invest and Stocks ISA" typy účtů
+- **Živé obchodování**: Pouze market objednávky jsou podporovány pro živé obchodování přes API
+
 ## [Filtrování podle typu transakce s přednastavenými hodnotami] - 2026-01-16
 
 ### Přidáno
