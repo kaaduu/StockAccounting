@@ -41,19 +41,18 @@ public class AboutWindow extends javax.swing.JDialog
      String javaInfo = getJavaInfo();
      String systemInfo = getSystemInfo();
 
-     String htmlContent = "<html>\n" +
-         "  <head>\n\n  </head>\n" +
-         "  <body>\n" +
-         "    <p style=\"margin-top: 0\">\n" +
-         "      Akciové účetnictví <strong>verze " + version + "</strong> " +
-         "      (<a href=\"http://lemming.ucw.cz/ucetnictvi/\">vychazi z puvodni verze 1.2.7</a> - Michal Kára)<br> \n" +
-         "     Zdrojove kody na <a href=\"https://github.com/kaaduu/StockAccounting\">githubu</a> - vydano pod <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">licencí GPL-3.0</a> (<a href=\"http://www.gnugpl.cz/v3/\">česky</a> / <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">english</a>)<br>\n" +
-         "     <br>\n" +
-         "     <strong>Java Runtime:</strong> " + javaInfo + "<br>\n" +
-         "     <strong>Operační systém:</strong> " + systemInfo + "\n" +
-         "    </p>\n" +
-         "  </body>\n" +
-         "</html>\n";
+      String htmlContent = "<html>\n" +
+          "  <head>\n\n  </head>\n" +
+          "  <body>\n" +
+          "    <p style=\"margin-top: 0\">\n" +
+          "      Akciové účetnictví <strong>verze " + version + "</strong> " +
+          "     Zdrojove kody na <a href=\"https://github.com/kaaduu/StockAccounting\">githubu</a> - vydano pod <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">licencí GPL-3.0</a> (<a href=\"http://www.gnugpl.cz/v3/\">česky</a> / <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">english</a>)<br>\n" +
+          "     <br>\n" +
+          "     <strong>Java Runtime:</strong> " + javaInfo + "<br>\n" +
+          "     <strong>Operační systém:</strong> " + systemInfo + "\n" +
+          "    </p>\n" +
+          "  </body>\n" +
+          "</html>\n";
 
      jEditorPane1.setText(htmlContent);
     
@@ -197,7 +196,7 @@ public class AboutWindow extends javax.swing.JDialog
         jEditorPane2.setBorder(null);
         jEditorPane2.setContentType("text/html"); // NOI18N
         jEditorPane2.setFont(new java.awt.Font("Tahoma", 2, 10)); // NOI18N
-        jEditorPane2.setText("<html>\n  <head>\n    <style type=\"text/css\">\n     .style1 { color: #000000; font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 8px;  }\n     .style2 { font-family: Verdana, Arial, Helvetica, sans-serif;\tcolor: red;\t font-size:0.9em; }\n  </style>  \n  </head>\n  <body>\n<div class=\"style2\">\nUpozornění: Použití tohoto programu je pouze na vlastní nebezpečí!\nAutor neručí za jeho metodickou ani výpočetní správnost!<br>\n</div>\n<div class=\"style1\">\nplna historie zmen na       <a href=\"https://github.com/kaaduu/StockAccounting\">githubu</a><br>\n<b>Podpora importu pro:<b><br>\n<ul>\n<li>Interactive Brokers - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Interactive-Brokers-tradelog\">TradeLog</a>  (tlg |)\n<li>Interactive Brokers - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Interactive-Brokers---FlexiQuery\">FlexQuery</a> (csv ,)\n<li>FIO - <a href=\"http://lemming.ucw.cz/ucetnictvi/importWindow.html\">csv obchodu</a> (csv ;) \n<li>Trading 212 Invest - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Trading-212-Invest-csv\">export csv</a>\n<li>Revolut - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Revolut-csv\">export csv</a>\n</ul>\n\n</div>\n</body>\n</html>\n");
+        jEditorPane2.setText("<html>\n  <head>\n    <style type=\"text/css\">\n     .style1 { color: #000000; font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 8px;  }\n     .style2 { font-family: Verdana, Arial, Helvetica, sans-serif;\tcolor: red;\t font-size:0.9em; }\n  </style>  \n  </head>\n  <body>\n<div class=\"style2\">\nUpozornění: Použití tohoto programu je pouze na vlastní nebezpečí!\nAutor neručí za jeho metodickou ani výpočetní správnost!<br>\n</div>\n<div class=\"style1\">\nPlná historie změn v <a href=\"https://github.com/kaaduu/StockAccounting/blob/master/CHANGES.md\">CHANGES.md na GitHubu</a><br>\n<b>Podpora importu pro:<b><br>\n<ul>\n<li>Interactive Brokers - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Interactive-Brokers-tradelog\">TradeLog</a>  (tlg |)\n<li>Interactive Brokers - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Interactive-Brokers---FlexiQuery\">FlexQuery</a> (csv ,)\n<li>FIO - <a href=\"http://lemming.ucw.cz/ucetnictvi/importWindow.html\">csv obchodu</a> (csv ;) \n<li>Trading 212 Invest - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Trading-212-Invest-csv\">export csv</a>\n<li>Revolut - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Revolut-csv\">export csv</a>\n</ul>\n\n</div>\n</body>\n</html>\n");
         jEditorPane2.setOpaque(false);
 
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(getContentPane());
