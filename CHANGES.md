@@ -21,6 +21,8 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 ### Implementace
 - Aktualizace `ImportWindow.java` pro dynamické titulky oken a zjednodušený layout
 - Aktualizace `Trading212CsvParser.java` pro nový formát poznámek s názvem společnosti a ISIN
+- Aktualizace `ImportT212.java` a `ImportT212CZK.java` pro konzistentní poznámky s názvy společností
+- Aktualizace `ImportIBTradeLog.java` pro rozšířené poznámky s Account ID, Transaction ID a status kódy
 - Oprava `setParentFrame()` volání pro správnou podporu progress dialogu
 - Odstranění nepotřebných cache funkcí (`bUseCached`, `bClearCache`)
 - Přepracování GridBagLayout pro horizontální uspořádání ovládacích prvků

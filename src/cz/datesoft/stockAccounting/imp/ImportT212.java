@@ -179,7 +179,9 @@ public class ImportT212 extends ImportBase
             
             //drow.market = a[marketIdx].toUpperCase();
             drow.market = "";
-            drow.note = a[noteIdx].replace("\"","")+"|Broker:T212";
+            // Enhanced note with company name and broker identifier
+            String companyName = a[noteIdx].replace("\"","").trim();
+            drow.note = companyName + "|Broker:T212";
             /* Get date */   /* "2021-05-28 13:34:53" */      
             String x = a[dateIdx];           
             drow.date = parseDate(x.substring(8,10)+"."+x.substring(5,7)+"."+x.substring(0,4)+" "+x.substring(11), null);

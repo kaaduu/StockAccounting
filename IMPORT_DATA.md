@@ -74,8 +74,8 @@ This document provides detailed technical specifications for all supported broke
 - Both empty: `"|Broker:T212|ISIN:"`
 
 ### Code Location
-- **Parser**: `Trading212CsvParser.java`
-- **Note Logic**: Lines 134-138
+- **API Parser**: `Trading212CsvParser.java` (lines 134-138)
+- **Local File Parser**: `ImportT212.java` & `ImportT212CZK.java` (enhanced to include company names)
 
 ## Interactive Brokers - TradeLog
 
@@ -131,15 +131,13 @@ ACT_INF|U393818|John Doe|Individual|123 Main St|Prague|CZ
 
 ### Note Construction Algorithm
 
-**Current Format**: `[Description]|Broker:IB` or `[Description]|Broker:IB|Code:[Status]`
-
-**Planned Enhanced Format**: `[Ticker]|Broker:IB|AccountID:[AccountID]|TxnID:[TxnID]|Code:[Status]`
+**Enhanced Format**: `[Ticker]|Broker:IB|AccountID:[AccountID]|TxnID:[TxnID]|Code:[Status]`
 
 **Logic**:
 1. Extract ticker from field 2
-2. Extract account ID from header ACT_INF line field 1
-3. Extract transaction ID from field 1
-4. Include status code from field 6
+2. Extract account ID from header ACT_INF line field 1 (e.g., U393818)
+3. Extract transaction ID from field 1 (e.g., 996706497)
+4. Include status code from field 6 (O, C, Ca, etc.)
 5. Use broker identifier "IB"
 
 **Examples**:
@@ -155,8 +153,8 @@ ACT_INF|U393818|John Doe|Individual|123 Main St|Prague|CZ
 
 ### Code Location
 - **Parser**: `ImportIBTradeLog.java`
-- **Note Logic**: Lines 73-76
-- **Enhancement**: Account ID extraction needed from header
+- **Note Logic**: Lines 75-78 (enhanced implementation)
+- **Account ID Extraction**: Lines 44-52
 
 ## Interactive Brokers - FlexQuery
 
