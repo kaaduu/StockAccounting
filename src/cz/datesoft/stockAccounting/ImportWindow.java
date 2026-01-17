@@ -109,6 +109,7 @@ public class ImportWindow extends javax.swing.JFrame {
     table.getColumnModel().getColumn(10).setCellRenderer(new CZDateRenderer());
 
     // niTable.setTableHeader(new JTableHeader());
+    updateWindowTitle(); // Set initial window title
   }
 
   /**
@@ -473,8 +474,6 @@ public class ImportWindow extends javax.swing.JFrame {
   private void setupTrading212YearSelection() {
     if (cbTrading212Year == null) {
       cbTrading212Year = new javax.swing.JComboBox<>();
-      bUseCached = new javax.swing.JButton("Použít data z cache");
-      bClearCache = new javax.swing.JButton("Vymazat cache");
       bClearPreview = new javax.swing.JButton("Vymazat náhled");
       lCacheStatus = new javax.swing.JLabel("Cache: None");
 
@@ -488,55 +487,38 @@ public class ImportWindow extends javax.swing.JFrame {
       });
 
       // Add action listeners for buttons
-      bUseCached.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-          loadCachedData();
-        }
-      });
-
-      bClearCache.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-          clearCacheData();
-        }
-      });
-
       bClearPreview.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
           clearPreview();
         }
       });
 
-      // Add to UI
+      // Add to UI - single horizontal row
       java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
-      gbc.gridx = 0;
       gbc.gridy = 12; // After existing controls
       gbc.gridwidth = 1;
       gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
       gbc.insets = new java.awt.Insets(5, 5, 5, 5);
 
-      jPanel2.add(new javax.swing.JLabel("Select Year:"), gbc);
+      // Year selection
+      gbc.gridx = 0;
+      gbc.weightx = 0.0;
+      jPanel2.add(new javax.swing.JLabel("Rok:"), gbc);
 
       gbc.gridx = 1;
       gbc.weightx = 1.0;
       jPanel2.add(cbTrading212Year, gbc);
 
-      // Add buttons row
-      gbc.gridx = 0;
-      gbc.gridy = 13;
-      gbc.gridwidth = 1;
-      gbc.weightx = 0.0;
-      jPanel2.add(bUseCached, gbc);
-
-      gbc.gridx = 1;
-      jPanel2.add(bClearCache, gbc);
-
+      // Clear preview button
       gbc.gridx = 2;
+      gbc.weightx = 0.0;
       jPanel2.add(bClearPreview, gbc);
 
-      // Add status label
+      // Add status label on next row
       gbc.gridx = 0;
-      gbc.gridy = 14;
-      gbc.gridwidth = 2;
+      gbc.gridy = 13;
+      gbc.gridwidth = 3;
+      gbc.weightx = 1.0;
       jPanel2.add(lCacheStatus, gbc);
 
       // Repack to show new components
@@ -545,8 +527,6 @@ public class ImportWindow extends javax.swing.JFrame {
 
     // Ensure visibility
     cbTrading212Year.setVisible(true);
-    bUseCached.setVisible(true);
-    bClearCache.setVisible(true);
     bClearPreview.setVisible(true);
     lCacheStatus.setVisible(true);
 
@@ -556,141 +536,57 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void updateCacheStatus() {
-    String selectedItem = (String) cbTrading212Year.getSelectedItem();
-    if (selectedItem == null) {
-      bUseCached.setEnabled(false);
-      bClearCache.setEnabled(false);
-      lCacheStatus.setText("Cache: -");
-      return;
-    }
-
-    try {
-      String yearStr = selectedItem.split(" ")[0];
-      int year = Integer.parseInt(yearStr);
-
-      if (importState.hasCachedTransactions(year)) {
-        int count = importState.getCachedTransactions(year).size();
-        bUseCached.setEnabled(true);
-        bClearCache.setEnabled(true);
-        lCacheStatus.setText("Cache: " + count + " trans. (Session only)");
-      } else {
-        bUseCached.setEnabled(false);
-        bClearCache.setEnabled(false);
-        lCacheStatus.setText("Cache: None (Click 'Import' to fetch)");
-      }
-    } catch (Exception e) {
-      // Ignore
-    }
-  }
-
-  private void loadCachedData() {
-    try {
+    if (lCacheStatus != null) {
       String selectedItem = (String) cbTrading212Year.getSelectedItem();
-      if (selectedItem == null)
-        return;
-
-      String yearStr = selectedItem.split(" ")[0];
-      int year = Integer.parseInt(yearStr);
-
-      if (importState.hasCachedTransactions(year)) {
-        java.util.Vector<Transaction> cached = importState.getCachedTransactions(year);
-
-        // Populate preview
-        transactions.clear();
-        for (Transaction tx : cached) {
-          transactions.addTransaction(tx.getDate(), tx.getDirection().intValue(), tx.getTicker(),
-              tx.getAmount().doubleValue(), tx.getPrice().doubleValue(), tx.getPriceCurrency(),
-              tx.getFee().doubleValue(), tx.getFeeCurrency(), tx.getMarket(), tx.getExecutionDate(), tx.getNote());
+      if (selectedItem != null) {
+        try {
+          int year = Integer.parseInt(selectedItem.split(" ")[0]);
+          if (importState.hasCachedTransactions(year)) {
+            int count = importState.getCachedTransactions(year).size();
+            lCacheStatus.setText("Cache: " + count + " transakcí (session)");
+          } else {
+            lCacheStatus.setText("Cache: Žádná data (klikněte na 'API stahnuti')");
+          }
+        } catch (NumberFormatException e) {
+          lCacheStatus.setText("Cache: Neplatný rok");
         }
-
-        // Update UI labels
-        lPreview.setText("Náhled (" + cached.size() + " záznamů) [Cached]:");
-        lUnimported.setText("Neimportované řádky (0 záznamů):");
-
-        // Update button text
-        bImport.setText("Merge to Database");
-
-        javax.swing.JOptionPane.showMessageDialog(this,
-            "Loaded " + cached.size() + " transactions from cache.",
-            "Cache Loaded", javax.swing.JOptionPane.INFORMATION_MESSAGE);
       }
-    } catch (Exception e) {
-      javax.swing.JOptionPane.showMessageDialog(this, "Chyba při načítání cache: " + e.getMessage());
     }
   }
 
-  private void clearCacheData() {
-    try {
-      String selectedItem = (String) cbTrading212Year.getSelectedItem();
-      if (selectedItem == null)
-        return;
 
-      String yearStr = selectedItem.split(" ")[0];
-      int year = Integer.parseInt(yearStr);
 
-      importState.clearCache(year);
-      updateCacheStatus();
 
-      javax.swing.JOptionPane.showMessageDialog(this,
-          "Cache cleared for year " + year,
-          "Cache Cleared", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-
-    } catch (Exception e) {
-      // Ignore
-    }
-  }
 
   private void hideTrading212YearSelection() {
     if (cbTrading212Year != null) {
       cbTrading212Year.setVisible(false);
-      if (bUseCached != null) {
-        bUseCached.setVisible(false);
-      }
-      if (bClearCache != null) {
-        bClearCache.setVisible(false);
-      }
-      if (bClearPreview != null) {
-        bClearPreview.setVisible(false);
-      }
-      if (lCacheStatus != null) {
-        lCacheStatus.setVisible(false);
-      }
+    }
+    if (bClearPreview != null) {
+      bClearPreview.setVisible(false);
+    }
+    if (lCacheStatus != null) {
+      lCacheStatus.setVisible(false);
     }
   }
 
   private void setInterfaceEnabled(boolean enabled) {
-    System.out.println("[UI-STATE:001] setInterfaceEnabled(" + enabled + ") called");
-
-    bImport.setEnabled(enabled);
-    System.out.println("[UI-STATE:002] Import button: " + (enabled ? "ENABLED" : "DISABLED"));
-
-    if (bUseCached != null) {
-      bUseCached.setEnabled(enabled);
-      System.out.println("[UI-STATE:003] Use Cached button: " + (enabled ? "ENABLED" : "DISABLED"));
-    }
-    if (bClearCache != null) {
-      bClearCache.setEnabled(enabled);
-      System.out.println("[UI-STATE:004] Clear Cache button: " + (enabled ? "ENABLED" : "DISABLED"));
+    if (bImport != null) {
+      bImport.setEnabled(enabled);
+      System.out.println("[UI-STATE:001] Import button: " + (enabled ? "ENABLED" : "DISABLED"));
     }
     if (bClearPreview != null) {
-      boolean previewEnabled = enabled && transactions.getRowCount() > 0;
-      bClearPreview.setEnabled(previewEnabled);
-      System.out.println("[UI-STATE:005] Clear Preview button: " + (previewEnabled ? "ENABLED" : "DISABLED"));
+      bClearPreview.setEnabled(enabled);
+      System.out.println("[UI-STATE:005] Clear Preview button: " + (enabled ? "ENABLED" : "DISABLED"));
     }
     if (cbTrading212Year != null) {
       cbTrading212Year.setEnabled(enabled);
-      System.out.println("[UI-STATE:006] Year dropdown set to: " + (enabled ? "ENABLED" : "DISABLED"));
-    }
-    if (cbFormat != null) {
-      cbFormat.setEnabled(enabled);
-      System.out.println("[UI-STATE:007] Format dropdown set to: " + (enabled ? "ENABLED" : "DISABLED"));
+      System.out.println("[UI-STATE:006] Year dropdown: " + (enabled ? "ENABLED" : "DISABLED"));
     }
     if (bCancel != null) {
       bCancel.setEnabled(enabled);
-      System.out.println("[UI-STATE:008] Cancel button set to: " + (enabled ? "ENABLED" : "DISABLED"));
+      System.out.println("[UI-STATE:007] Cancel button: " + (enabled ? "ENABLED" : "DISABLED"));
     }
-
-    System.out.println("[UI-STATE:009] All UI elements updated");
   }
 
   private void handleImportError(String errorMessage) {
@@ -837,7 +733,7 @@ public class ImportWindow extends javax.swing.JFrame {
         System.out.println("[API:001] Background thread started - doInBackground()");
         cz.datesoft.stockAccounting.Trading212Importer importer = new cz.datesoft.stockAccounting.Trading212Importer(
             apiKey, apiSecret, cz.datesoft.stockAccounting.Settings.getTrading212UseDemo());
-        importer.setParentFrame((java.awt.Frame) getOwner()); // Pass parent frame for progress dialogs
+        importer.setParentFrame(mainWindow); // Pass MainWindow reference for progress dialogs (more reliable than getOwner())
         cz.datesoft.stockAccounting.Trading212Importer.ImportResult result = importer.importYear(year, this);
         System.out.println("[API:005] importYear() completed");
         System.out.println("[API:006] Result object: " + (result != null ? "NOT NULL" : "NULL"));
@@ -1030,6 +926,17 @@ public class ImportWindow extends javax.swing.JFrame {
     }
   }
 
+  /**
+   * Update window title based on selected format
+   */
+  private void updateWindowTitle() {
+    if (isTrading212Format()) {
+      setTitle("Import z Trading 212 API");
+    } else {
+      setTitle("Import souboru");
+    }
+  }
+
   private void populateTrading212YearDropdown() {
     cbTrading212Year.removeAllItems();
 
@@ -1116,6 +1023,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
     if (cbFormat.getSelectedIndex() != 0) {
       updateUiForFormat(cbFormat.getSelectedIndex());
+      updateWindowTitle(); // Update window title based on format
 
       if (isTrading212Format()) {
         // For API format, just show the year selection UI
@@ -1156,8 +1064,6 @@ public class ImportWindow extends javax.swing.JFrame {
   private javax.swing.JLabel lUnimported;
   private javax.swing.JScrollPane niScrollPane;
   private javax.swing.JTable niTable;
-  private javax.swing.JButton bUseCached;
-  private javax.swing.JButton bClearCache;
   private javax.swing.JButton bClearPreview;
   private javax.swing.JLabel lCacheStatus;
   private javax.swing.JTable table;
