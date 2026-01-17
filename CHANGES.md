@@ -11,13 +11,16 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - **Dynamic window titles**: "Import z Trading 212 API" pro API importy místo generického "Import souboru"
 - **Streamlined UI layout**: Horizontální uspořádání ovládacích prvků pro lepší využití prostoru
 - **Simplified workflow**: Odstranění cache tlačítek pro zjednodušení pracovního postupu
+- **Enhanced note format**: Bohatší poznámky s názvem společnosti, broker identifikací a ISIN kódem
 
 ### Opraveno
 - **Progress bar parent frame**: Oprava reference na parent frame pro správné zobrazování progress dialogu
 - **UI consistency**: Sjednocení layoutu Trading 212 import okna s ostatními částmi aplikace
+- **Note field content**: Změna formátu poznámek z "Imported from Trading 212 CSV - [action]" na "[název společnosti]|Broker:T212|ISIN:[ISIN]"
 
 ### Implementace
 - Aktualizace `ImportWindow.java` pro dynamické titulky oken a zjednodušený layout
+- Aktualizace `Trading212CsvParser.java` pro nový formát poznámek s názvem společnosti a ISIN
 - Oprava `setParentFrame()` volání pro správnou podporu progress dialogu
 - Odstranění nepotřebných cache funkcí (`bUseCached`, `bClearCache`)
 - Přepracování GridBagLayout pro horizontální uspořádání ovládacích prvků
