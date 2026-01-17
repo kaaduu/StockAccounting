@@ -127,11 +127,8 @@ public class ImportWindow extends javax.swing.JFrame {
    * Load import from a file or prepare API import
    */
   private void loadImport() {
-    // Prevent multiple import triggers
-    if (importInProgress) {
-      System.out.println("[DUPE:003] Ignoring loadImport call - import already in progress");
-      return;
-    }
+    // Note: No importInProgress check here - internal method called from startImport()
+    // which already manages concurrency protection for external calls
 
     System.out.println("[IMPORT:002] loadImport() called - UI format: " + cbFormat.getSelectedIndex() + ", file: " + (currentFile != null ? currentFile.getName() : "null"));
 
@@ -638,11 +635,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void performTrading212Import(boolean mergeMode) {
-    // Prevent multiple import triggers
-    if (importInProgress) {
-      System.out.println("[DUPE:004] Ignoring performTrading212Import call - import already in progress");
-      return;
-    }
+    // Note: No importInProgress check here - internal method called from startImport()
+    // which already manages concurrency protection for external calls
 
     System.out.println("[VALIDATE:001] performTrading212Import called with mergeMode=" + mergeMode);
 
