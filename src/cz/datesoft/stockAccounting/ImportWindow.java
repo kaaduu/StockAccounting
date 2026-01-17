@@ -31,10 +31,13 @@ public class ImportWindow extends javax.swing.JFrame {
   // File we are importing
   File currentFile;
 
-  // Main window
-  MainWindow mainWindow;
+   // Main window
+   MainWindow mainWindow;
 
-  // Trading 212 specific components
+   // Flag to prevent multiple import triggers during file selection
+   private boolean importInProgress = false;
+
+   // Trading 212 specific components
   javax.swing.JComboBox<String> cbTrading212Year;
 
   // Trading 212 import state
@@ -128,6 +131,8 @@ public class ImportWindow extends javax.swing.JFrame {
    * Load import from a file or prepare API import
    */
   private void loadImport() {
+    System.out.println("[IMPORT:002] loadImport() called - UI format: " + cbFormat.getSelectedIndex() + ", file: " + (currentFile != null ? currentFile.getName() : "null"));
+
     // Clear not imported rows
     DefaultTableModel model = (DefaultTableModel) niTable.getModel();
     model.setNumRows(0);
@@ -256,39 +261,64 @@ public class ImportWindow extends javax.swing.JFrame {
    * imports
    */
   public void startImport(File file, Date startDateValue, int preselectedFormat) {
-    currentFile = file;
+    // Prevent multiple import triggers during file selection
+    if (importInProgress) {
+      System.out.println("[DUPE:001] Ignoring duplicate import trigger - import already in progress");
+      return;
+    }
+    importInProgress = true;
 
-    System.out.println("[FORMAT:001] startImport called with preselectedFormat=" + preselectedFormat + ", file=" + (file != null ? file.getName() : "null"));
+    try {
+      currentFile = file;
 
-    // Restore last selected format from settings (unless preselected format is specified)
-    if (preselectedFormat == 0) {
-      int savedFormat = cz.datesoft.stockAccounting.Settings.getLastImportFormat();
-      if (savedFormat > 0 && savedFormat < cbFormat.getModel().getSize()) {
-        cbFormat.setSelectedIndex(savedFormat);
-        updateUiForFormat(savedFormat);
+      System.out.println("[FORMAT:001] startImport called with preselectedFormat=" + preselectedFormat + ", file=" + (file != null ? file.getName() : "null"));
+
+      // Restore last selected format from settings (unless preselected format is specified)
+      if (preselectedFormat == 0) {
+        int savedFormat = cz.datesoft.stockAccounting.Settings.getLastImportFormat();
+        if (savedFormat > 0 && savedFormat < cbFormat.getModel().getSize()) {
+          cbFormat.setSelectedIndex(savedFormat);
+          updateUiForFormat(savedFormat);
+        }
       }
-    }
 
-    // Set dates for file-based imports
-    if (startDateValue != null) {
-      startDate.setDate(startDateValue);
-    }
-    endDate.setDate(null);
+      // Set dates for file-based imports
+      if (startDateValue != null) {
+        startDate.setDate(startDateValue);
+      }
+      endDate.setDate(null);
 
-    // FORCE reset format selection to ensure UI state matches import request
-    if (preselectedFormat > 0) {
-      System.out.println("[FORMAT:002] Force setting cbFormat to index " + preselectedFormat);
-      cbFormat.setSelectedIndex(preselectedFormat);
-      updateUiForFormat(preselectedFormat);
-      updateWindowTitle();
-      System.out.println("[FORMAT:003] UI state reset complete, cbFormat.getSelectedIndex()=" + cbFormat.getSelectedIndex());
-    }
+      // FORCE reset format selection SYNCHRONOUSLY to ensure UI state is stable
+      if (preselectedFormat > 0) {
+        System.out.println("[FORMAT:002] Force setting cbFormat to index " + preselectedFormat);
 
-    if (cbFormat.getSelectedIndex() != 0 && currentFile != null) {
-      loadImport(); // Only load if we have a file for file-based imports
-    }
+        // Use invokeAndWait to ensure synchronous completion before any import logic
+        try {
+          javax.swing.SwingUtilities.invokeAndWait(() -> {
+            cbFormat.setSelectedIndex(preselectedFormat);
+            updateUiForFormat(preselectedFormat);
+            updateWindowTitle();
+          });
+        } catch (Exception e) {
+          System.out.println("[FORMAT:ERR] Error during synchronous UI update: " + e.getMessage());
+        }
 
-    setVisible(true);
+        System.out.println("[FORMAT:003] UI state reset complete, cbFormat.getSelectedIndex()=" + cbFormat.getSelectedIndex());
+      }
+
+      // Single import trigger point - only when UI state is stable
+      if (cbFormat.getSelectedIndex() != 0 && currentFile != null) {
+        System.out.println("[IMPORT:001] Triggering single import attempt");
+        loadImport(); // Only load if we have a file for file-based imports
+      }
+
+      setVisible(true);
+
+    } finally {
+      // Always reset the flag, even if an exception occurs
+      importInProgress = false;
+      System.out.println("[DUPE:002] Import trigger flag reset, ready for next import");
+    }
   }
 
   /**
