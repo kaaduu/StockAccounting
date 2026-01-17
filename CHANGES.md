@@ -4,6 +4,22 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Inteligentní filtrování tickerů] - 2026-01-17
+
+### Přidáno
+- **Smart ticker filtering**: Automatická detekce transformačních vztahů mezi tickery (např. SSL→RGLD, TRXC→ASXC)
+- **TRANS operation analysis**: Detekce transformačních operací typu TRANS_SUB/TRANS_ADD ve stejném časovém okamžiku
+- **Transformation cache**: Optimalizovaný cache pro rychlé vyhledávání transformačních vztahů (40k+ záznamů <50ms)
+- **Bidirectional relationships**: Filtrování funguje obousměrně (SSL zobrazí i RGLD transakce, RGLD zobrazí i SSL)
+- **Enhanced debug logging**: Podrobné logování transformační analýzy s FINER úrovní
+
+### Implementace
+- `TransformationCache.java`: Nová třída pro správu transformačních vztahů s lazy loading
+- `TransactionSet.analyzeTransTransformations()`: Analýza TRANS operací pro detekci ticker změn
+- Aktualizace `applyFilter()` pro využití transformačních vztahů při filtrování
+- Oprava cache rebuild procesu pro zachování TRANS vztahů přes invalidace
+- Aktualizace stavového řádku pro zobrazení souvisejících tickerů
+
 ## [Detekce duplicitních transakcí] - 2026-01-17
 
 ### Přidáno
@@ -32,6 +48,13 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Optimalizace: Žádné manuální volání, aktualizace jen při skutečných změnách dat
 - Oprava: Správné počítání záznamů (vyloučení prázdného řádku pro přidávání)
 - Oprava: Status bar aktualizace při "Soubor/Nový" (opětovné připojení TableModelListener + explicitní aktualizace)
+- Nová funkce: Smart filtering pro ticker s transformacemi (automatické zahrnutí příbuzných tickerů při filtrování)
+  - TransformationCache třída pro cachování transformačních vztahů
+  - Automatická detekce tickerů přejmenovaných během obchodování
+  - Filtrování podle jednoho tickeru zobrazí transakce pro všechny příbuzné tickery
+  - Optimalizace výkonu pro velké datové sady (40k+ záznamů)
+  - Konfigurovatelné úrovně ladění přes systémové vlastnosti
+- Vylepšení: Status bar zobrazuje seznam zahrnutých tickerů při smart filtering ("Zahrnuje: AAPL, AAPL.NEW")
 
 #### Perzistentní výběr formátu importu
 - Uložení posledního vybraného import formátu do nastavení

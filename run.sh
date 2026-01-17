@@ -5,10 +5,64 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
 
 echo "Starting StockAccounting..."
+echo "Working directory: $(pwd)"
 
-# Run the application (checks for JAR first, then build folder)
-if [ -f "StockAccounting.jar" ]; then
-    java -cp "StockAccounting.jar:lib/*" cz.datesoft.stockAccounting.Main
+# Determine JAR location and lib directory
+if [ -f "dist/StockAccounting.jar" ]; then
+    # Running from project root, use dist directory
+    echo "Using JAR from dist/ directory"
+    cd dist
+    JAR_FILE="StockAccounting.jar"
+    LIB_DIR="lib"
+elif [ -f "StockAccounting.jar" ]; then
+    # JAR in current directory
+    echo "Using JAR from current directory"
+    JAR_FILE="StockAccounting.jar"
+    LIB_DIR="lib"
 else
-    java -cp "build:libjar/*" cz.datesoft.stockAccounting.Main
+    # Fallback to build directory
+    echo "No JAR found, trying build directory..."
+    java -cp "build:libjar/*" cz.datesoft.stockAccounting.Main 2>&1
+    exit $?
+fi
+
+# Verify lib directory exists
+if [ ! -d "$LIB_DIR" ]; then
+    echo "ERROR: Library directory '$LIB_DIR' not found"
+    exit 1
+fi
+
+echo "Library directory: $LIB_DIR ($(ls "$LIB_DIR"/*.jar 2>/dev/null | wc -l) JARs)"
+
+# Build explicit classpath
+CLASSPATH="$JAR_FILE"
+for jar in "$LIB_DIR"/*.jar; do
+    if [ -f "$jar" ]; then
+        CLASSPATH="$CLASSPATH:$jar"
+        echo "Including: $(basename "$jar")"
+    fi
+done
+
+echo "Final classpath: $CLASSPATH"
+echo ""
+
+# Check for debug flag
+DEBUG_ARGS=""
+if [ "$1" = "--debug" ] || [ "$1" = "-d" ]; then
+    echo "Debug mode enabled - setting FINER logging level"
+    DEBUG_ARGS="-Dcz.datesoft.stockAccounting.TransformationCache.level=FINER"
+fi
+
+# Run application with error capture
+java $DEBUG_ARGS -cp "$CLASSPATH" cz.datesoft.stockAccounting.Main 2>&1
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "ERROR: Application exited with code $EXIT_CODE"
+    echo "Common issues:"
+    echo "  - Missing dependencies in $LIB_DIR/"
+    echo "  - Java version compatibility"
+    echo "  - Classpath issues"
+    exit $EXIT_CODE
 fi

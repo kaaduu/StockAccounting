@@ -12,6 +12,11 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.Vector;
 import java.util.GregorianCalendar;
+import java.util.Map;
+import java.util.List;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Set;
 import java.io.File;
 import java.io.PrintWriter;
 import cz.datesoft.stockAccounting.imp.*;
@@ -45,8 +50,14 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     */
    protected Vector<Transaction> filteredRows;
 
-   /** Logger */
-   private static final Logger logger = Logger.getLogger(TransactionSet.class.getName());
+  /** Logger */
+  private static final Logger logger = Logger.getLogger(TransactionSet.class.getName());
+
+  /** Cache for ticker transformation relationships */
+  private TransformationCache transformationCache;
+
+  /** Stocks instance for transformation analysis (lazy initialized) */
+  private Stocks stocksInstance;
 
    /** Serial counter */
    protected int serialCounter;
@@ -85,6 +96,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     serialCounter = 1;
 
     cbmodel = new SortedSetComboBoxModel();
+
+    transformationCache = new TransformationCache();
   }
 
   /**
@@ -487,6 +500,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     cbmodel.removeAllElements();
     serialCounter = 1;
 
+    // Reset Stocks instance and transformation cache for new data
+    stocksInstance = null;
+    transformationCache.invalidate();
+
     a = readLine(ifl);
 
     if (a[0] == null) {
@@ -635,6 +652,151 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    */
   public SortedSetComboBoxModel getTickersModel() {
     return cbmodel;
+  }
+
+  /**
+   * Invalidates the transformation cache (called after imports/modifications)
+   */
+  public void invalidateTransformationCache() {
+    if (transformationCache != null) {
+      transformationCache.invalidate();
+    }
+  }
+
+  /**
+   * Gets the transformation cache for external access
+   */
+  public TransformationCache getTransformationCache() {
+    return transformationCache;
+  }
+
+  /**
+   * Gets all tickers related to the given ticker through transformations.
+   * This is a convenience method for external access to transformation relationships.
+   */
+  public Set<String> getRelatedTickers(String ticker) {
+    Stocks stocks = getStocksInstance();
+    return transformationCache.getRelatedTickers(ticker, stocks);
+  }
+
+  /**
+   * Gets or creates the Stocks instance for transformation analysis.
+   * Lazy initialization - created only when first needed.
+   */
+  private Stocks getStocksInstance() {
+    if (stocksInstance == null) {
+      // Create Stocks instance and populate with all transactions
+      // This builds the transformation history needed for smart filtering
+      stocksInstance = new Stocks();
+      try {
+        for (Transaction tx : rows) {
+          stocksInstance.applyTransaction(tx, false); // Don't throw on errors during filtering
+        }
+        logger.fine("Stocks instance created with " + rows.size() + " transactions for transformation analysis");
+
+        // After building Stocks, analyze for additional TRANS-based transformations
+        analyzeTransTransformations();
+
+      } catch (Exception e) {
+        logger.warning("Failed to build Stocks instance for transformations: " + e.getMessage());
+        // Continue with null stocks - filtering will work but without transformations
+      }
+    }
+    return stocksInstance;
+  }
+
+  /**
+   * Analyzes transaction data for TRANS-based transformations that might not be
+   * detected by the Stocks processing logic.
+   */
+  private void analyzeTransTransformations() {
+    // Debug output
+    java.util.logging.Logger logger = java.util.logging.Logger.getLogger("cz.datesoft.stockAccounting");
+    if (logger.isLoggable(java.util.logging.Level.FINER)) {
+      System.out.println("🔍 Starting TRANS transformation analysis for " + rows.size() + " transactions");
+    }
+
+    // Group transactions by date and time to find TRANS operation patterns
+    Map<String, List<Transaction>> transactionsByTime = new HashMap<>();
+
+    // Group transactions by timestamp only (not by ticker) to find related operations
+    int transOperationCount = 0;
+    for (Transaction tx : rows) {
+      if (tx.getDirection() == Transaction.DIRECTION_TRANS_ADD ||
+          tx.getDirection() == Transaction.DIRECTION_TRANS_SUB) {
+
+        String timeKey = String.valueOf(tx.getDate().getTime());  // Group by timestamp only
+        transactionsByTime.computeIfAbsent(timeKey, k -> new ArrayList<>()).add(tx);
+        transOperationCount++;
+
+        // Debug SSL/RGLD transactions specifically
+        if (logger.isLoggable(java.util.logging.Level.FINER) &&
+            (tx.getTicker().equalsIgnoreCase("SSL") || tx.getTicker().equalsIgnoreCase("RGLD"))) {
+          System.out.println("📊 Found SSL/RGLD TRANS operation: " +
+                             (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB ? "SUB" : "ADD") +
+                             " " + tx.getTicker() + " " + tx.getAmount() + " at " + tx.getDate());
+        }
+      }
+    }
+
+     if (logger.isLoggable(java.util.logging.Level.FINER)) {
+       System.out.println("📊 TRANS analysis: Found " + transOperationCount + " operations in " +
+                          transactionsByTime.size() + " time groups");
+     }
+
+     // Analyze groups for transformation patterns
+    for (Map.Entry<String, List<Transaction>> entry : transactionsByTime.entrySet()) {
+      List<Transaction> group = entry.getValue();
+
+       // Debug output for groups with SSL/RGLD
+       boolean hasSslRgld = group.stream().anyMatch(tx ->
+         tx.getTicker().equalsIgnoreCase("SSL") || tx.getTicker().equalsIgnoreCase("RGLD"));
+
+       if (logger.isLoggable(java.util.logging.Level.FINER) && hasSslRgld) {
+        System.out.println("🎯 Time group with SSL/RGLD: " + group.size() + " operations");
+        for (Transaction tx : group) {
+          System.out.println("   " +
+                             (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB ? "SUB" : "ADD") +
+                             " " + tx.getTicker() + " " + tx.getAmount());
+        }
+      }
+
+      // Look for TRANS_SUB followed by TRANS_ADD with different tickers
+      Transaction transSub = null;
+      Transaction transAdd = null;
+
+      for (Transaction tx : group) {
+        if (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB) {
+          transSub = tx;
+        } else if (tx.getDirection() == Transaction.DIRECTION_TRANS_ADD) {
+          transAdd = tx;
+        }
+      }
+
+      // If we found both SUB and ADD with different tickers, it's a transformation
+      if (transSub != null && transAdd != null &&
+          !transSub.getTicker().equalsIgnoreCase(transAdd.getTicker())) {
+
+        String fromTicker = transSub.getTicker().toUpperCase();
+        String toTicker = transAdd.getTicker().toUpperCase();
+
+        // Add the transformation relationship
+        transformationCache.addRelationshipDirectly(fromTicker, toTicker);
+
+        // Enhanced debug output for SSL->RGLD and general TRANS detections
+        if (logger.isLoggable(java.util.logging.Level.FINER)) {
+          System.out.println("🎯 DETECTED TRANS TRANSFORMATION: " + fromTicker + " → " + toTicker +
+                             " (SUB: " + transSub.getAmount() + ", ADD: " + transAdd.getAmount() + ")");
+
+          // Special highlighting for SSL->RGLD case
+          if ((fromTicker.equals("SSL") && toTicker.equals("RGLD")) ||
+              (fromTicker.equals("RGLD") && toTicker.equals("SSL"))) {
+            System.out.println("🎉 SSL-RGLD TRANSFORMATION SUCCESSFULLY DETECTED!");
+            System.out.println("   This will enable smart filtering for SSL ↔ RGLD");
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -1008,6 +1170,26 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    * @param note   note to filter (or null to filter all notes)
    */
   public void applyFilter(Date from, Date to, String ticker, String market, String type, String note) {
+    // DEFENSIVE: Handle null dates to prevent NullPointerException
+    if (from == null) {
+      GregorianCalendar cal = new GregorianCalendar();
+      cal.set(1900, 0, 1, 0, 0, 0); // 1900-01-01 00:00:00.000
+      cal.set(GregorianCalendar.MILLISECOND, 0);
+      from = cal.getTime();
+      logger.warning("applyFilter: 'from' date was null, using default 1900-01-01");
+    }
+
+    if (to == null) {
+      GregorianCalendar cal = new GregorianCalendar();
+      cal.setTime(new Date());
+      cal.set(GregorianCalendar.HOUR_OF_DAY, 23);
+      cal.set(GregorianCalendar.MINUTE, 59);
+      cal.set(GregorianCalendar.SECOND, 59);
+      cal.set(GregorianCalendar.MILLISECOND, 999);
+      to = cal.getTime();
+      logger.warning("applyFilter: 'to' date was null, using today end-of-day");
+    }
+
     /* Preprocess to date */
     GregorianCalendar gc = new GregorianCalendar();
     gc.setTime(to);
@@ -1073,8 +1255,20 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
             continue; // No match
         } else {
           if (ticker != null) {
-            if (!tx.ticker.equalsIgnoreCase(ticker))
-              continue; // Different ticker - does not pass filter
+            // Smart filtering: include transformation-related tickers
+            // Get all tickers related to the filter ticker through transformations
+            Stocks stocks = getStocksInstance();
+            Set<String> relatedTickers = transformationCache.getRelatedTickers(ticker, stocks);
+
+            // Debug output for filtering (only when debug enabled)
+            java.util.logging.Logger logger = java.util.logging.Logger.getLogger("cz.datesoft.stockAccounting");
+            if (logger.isLoggable(java.util.logging.Level.FINER)) {
+                System.out.println("SMART FILTER: '" + ticker + "' -> related tickers: " + relatedTickers);
+                System.out.println("SMART FILTER: Cache stats: " + transformationCache.getCacheStats());
+            }
+            if (!relatedTickers.contains(tx.ticker.toUpperCase())) {
+              continue; // No match with ticker or its transformation relatives
+            }
           }
         }
 
