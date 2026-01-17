@@ -56,26 +56,33 @@ This document provides detailed technical specifications for all supported broke
 
 ### Note Construction Algorithm
 
-**Format**: `[Company Name]|Broker:T212|ISIN:[ISIN Code]`
+**API Import Format**: `[Company Name]|Broker:T212|ISIN:[ISIN Code]|TxnID:[TransactionID]`
+
+**Local File Format**: `[Company Name]|Broker:T212|ISIN:[ISIN Code]|TxnID:[TransactionID]`
 
 **Logic**:
 1. Extract company name from column 4
 2. Extract ISIN from column 2
-3. Construct note with broker identifier
+3. Extract Transaction ID from column 6
+4. Construct note with broker identifier
 
-**Examples**:
-- `"APPLE INC.|Broker:T212|ISIN:US0378331005"`
-- `"TESLA INC|Broker:T212|ISIN:US88160R1014"`
-- `"MICROSOFT CORPORATION|Broker:T212|ISIN:US5949181045"`
+**API Examples**:
+- `"APPLE INC.|Broker:T212|ISIN:US0378331005|TxnID:12345678"`
+- `"TESLA INC|Broker:T212|ISIN:US88160R1014|TxnID:87654321"`
+
+**Local File Examples**:
+- `"APPLE INC.|Broker:T212|ISIN:US0378331005|TxnID:12345678"`
+- `"TESLA INC.|Broker:T212|ISIN:US88160R1014|TxnID:87654321"`
 
 **Edge Cases**:
-- Empty company name: `"|Broker:T212|ISIN:US0378331005"`
-- Empty ISIN: `"APPLE INC.|Broker:T212|ISIN:"`
-- Both empty: `"|Broker:T212|ISIN:"`
+- Empty company name: `"|Broker:T212|ISIN:US0378331005|TxnID:12345678"`
+- Empty ISIN: `"APPLE INC.|Broker:T212|ISIN:|TxnID:12345678"`
+- Empty Transaction ID: `"APPLE INC.|Broker:T212|ISIN:US0378331005|TxnID:"`
+- All empty: `"|Broker:T212|ISIN:|TxnID:"`
 
 ### Code Location
 - **API Parser**: `Trading212CsvParser.java` (lines 134-138)
-- **Local File Parser**: `ImportT212.java` & `ImportT212CZK.java` (enhanced to include company names)
+- **Local File Parser**: `ImportT212.java` & `ImportT212CZK.java` (enhanced with ISIN and Transaction ID)
 
 ## Interactive Brokers - TradeLog
 
@@ -272,7 +279,8 @@ ACT_INF|U393818|John Doe|Individual|123 Main St|Prague|CZ
 ## Version History
 
 ### v2026.01.17 - Smart Filtering & Note Enhancements
-- **Added**: T212 enhanced notes with company names and ISIN codes
+- **Added**: T212 enhanced notes with company names, ISIN codes, and Transaction IDs
+- **Added**: T212 local file imports now match API format with full note enhancement
 - **Added**: IB TradeLog account ID extraction capability
 - **Added**: Structured note formats with broker identifiers
 - **Added**: Comprehensive import data documentation

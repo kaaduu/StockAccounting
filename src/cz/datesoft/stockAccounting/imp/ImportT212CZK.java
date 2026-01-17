@@ -34,10 +34,12 @@ public class ImportT212CZK extends ImportBase
   private final int ID_DATE = 6;
   private final int ID_MARKET = 7;
   private final int ID_EXECUTION_DATE = 8;
-  private final int ID_NOTE = 9;
-  //private final int ID_FEE_CZK = 10;
-  //private final int ID_FEE_USD = 11;
-  //private final int ID_FEE_EUR = 12;
+   private final int ID_NOTE = 9;
+   private final int ID_ISIN = 10;
+   private final int ID_TRANSACTION_ID = 11;
+   //private final int ID_FEE_CZK = 12;
+   //private final int ID_FEE_USD = 13;
+   //private final int ID_FEE_EUR = 14;
   
   /**
    * Our data row with a bit more fields
@@ -61,12 +63,14 @@ public class ImportT212CZK extends ImportBase
     
     // Establish column names
     registerColumnName("Ticker", ID_TICKER);
-    registerColumnName("Action", ID_TYPE);    
-    registerColumnName("No. of shares", ID_AMOUNT);    
+    registerColumnName("Action", ID_TYPE);
+    registerColumnName("No. of shares", ID_AMOUNT);
     registerColumnName("Price / share", ID_PRICE);
-    registerColumnName("Currency (Price / share)", ID_CURRENCY);    
+    registerColumnName("Currency (Price / share)", ID_CURRENCY);
     registerColumnName("Time", ID_DATE);
     registerColumnName("Name", ID_NOTE);
+    registerColumnName("ISIN", ID_ISIN);
+    registerColumnName("ID", ID_TRANSACTION_ID);
     //registerColumnName("Trh", ID_MARKET);
     //registerColumnName("Množství", ID_AMOUNT);    
     final int ID_FEE1 = 13;
@@ -117,6 +121,8 @@ public class ImportT212CZK extends ImportBase
     int feeConversionIdx = getColumnNo(ID_FEE2);
     //int feeEURIdx = getColumnNo(ID_FEE_EUR);
     int noteIdx = getColumnNo(ID_NOTE);
+    int isinIdx = getColumnNo(ID_ISIN);
+    int transactionIdIdx = getColumnNo(ID_TRANSACTION_ID);
     //int depositIdx = getColumnNo(ID_CASH);
     //int depositfeeIdx = getColumnNo(ID_CASHFEE);
     
@@ -179,9 +185,11 @@ public class ImportT212CZK extends ImportBase
             
             //drow.market = a[marketIdx].toUpperCase();
             drow.market = "";
-            // Enhanced note with company name and broker identifier
+            // Enhanced note with company name, ISIN, transaction ID and broker identifier
             String companyName = a[noteIdx].replace("\"","").trim();
-            drow.note = companyName + "|Broker:T212";
+            String isin = (isinIdx >= 0 && isinIdx < a.length) ? a[isinIdx].trim() : "";
+            String transactionId = (transactionIdIdx >= 0 && transactionIdIdx < a.length) ? a[transactionIdIdx].trim() : "";
+            drow.note = companyName + "|Broker:T212|ISIN:" + isin + "|TxnID:" + transactionId;
             /* Get date */   /* "2021-05-28 13:34:53" */      
             String x = a[dateIdx];           
             drow.date = parseDate(x.substring(8,10)+"."+x.substring(5,7)+"."+x.substring(0,4)+" "+x.substring(11), null);
