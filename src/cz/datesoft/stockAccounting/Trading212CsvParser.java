@@ -130,6 +130,11 @@ public class Trading212CsvParser {
             LocalDateTime tradeTime = parseDateTime(timeStr);
             java.util.Date date = Timestamp.valueOf(tradeTime);
 
+            // Create note with company name, broker, and ISIN
+            String companyName = fields[COL_NAME].trim();
+            String isin = fields[COL_ISIN].trim();
+            String note = companyName + "|Broker:T212|ISIN:" + isin;
+
             // Create transaction
             Transaction transaction = new Transaction(
                 0, // serial will be set later
@@ -143,7 +148,7 @@ public class Trading212CsvParser {
                 "USD",
                 "TRADING212",
                 date,                         // execution date same as order date
-                "Imported from Trading 212 CSV - " + fields[COL_ACTION]
+                note
             );
 
             return transaction;
@@ -172,6 +177,11 @@ public class Trading212CsvParser {
             LocalDateTime tradeTime = parseDateTime(timeStr);
             java.util.Date date = Timestamp.valueOf(tradeTime);
 
+            // Create note with company name, broker, and ISIN
+            String companyName = fields[COL_NAME].trim();
+            String isin = fields[COL_ISIN].trim();
+            String note = companyName + "|Broker:T212|ISIN:" + isin;
+
             // Create transaction
             Transaction transaction = new Transaction(
                 0, // serial will be set later
@@ -185,7 +195,7 @@ public class Trading212CsvParser {
                 "USD",
                 "TRADING212",
                 date,                         // execution date same as order date
-                "Imported from Trading 212 CSV - " + fields[COL_ACTION]
+                note
             );
 
             return transaction;
