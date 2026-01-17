@@ -1,0 +1,7 @@
+Issue 1:
+In main window with trades I would like to add at the bottom status bar that shows some statistics like: Number of records but can be used for any other in future
+
+Issue 2: Menu Soubor/Import od Brokera opends Format importu but don't remember last selection (should be app restart persistent) 
+
+Issue 3: In Import Souboru preview window there is only close window I would like to add also maximize icon there
+

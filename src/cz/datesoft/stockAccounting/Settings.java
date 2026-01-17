@@ -164,6 +164,11 @@ public class Settings {
   private static boolean useDailyRates;
 
   /**
+   * Last selected import format index
+   */
+  private static int lastImportFormat = 0;
+
+  /**
    * Daily exchange rates map (currency|YYYY-MM-DD => ratio map)
    */
   private static HashMap<String, Double> dailyRates;
@@ -392,6 +397,17 @@ public class Settings {
   }
 
   /**
+   * Last import format getter/setter
+   */
+  public static int getLastImportFormat() {
+    return lastImportFormat;
+  }
+
+  public static void setLastImportFormat(int value) {
+    lastImportFormat = value;
+  }
+
+  /**
    * Get exchange rate for given currency and date.
    * If useDailyRates is enabled, tries to find daily rate, otherwise uses unified
    * rate.
@@ -580,6 +596,14 @@ public class Settings {
 
     /* Trading 212 import state */
     trading212ImportState = p.get("trading212ImportState", null);
+
+    /* Last import format */
+    s = p.get("lastImportFormat", "0");
+    try {
+      lastImportFormat = Integer.parseInt(s);
+    } catch (NumberFormatException e) {
+      lastImportFormat = 0; // Default to "select format"
+    }
   }
 
   /**
@@ -644,6 +668,9 @@ public class Settings {
     if (trading212ImportState != null) {
       p.put("trading212ImportState", trading212ImportState);
     }
+
+    // Last import format
+    p.put("lastImportFormat", Integer.toString(lastImportFormat));
   }
 
   /**

@@ -4,6 +4,54 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Detekce duplicitních transakcí] - 2026-01-17
+
+### Přidáno
+- **Duplicate detection**: Automatická detekce duplicitních transakcí při importu
+- **Preview filtering**: Duplikáty jsou filtrovány již v okně náhledu importu
+- **Business key comparison**: Detekce na základě klíčových obchodních polí (datum, směr, ticker, množství, cena, měna, trh)
+- **Tolerance for amounts**: Tolerance ±0.01 pro množství a ceny kvůli floating-point přesnosti
+- **UI feedback**: Zobrazení počtu vyfiltrovaných duplicit v náhledu importu
+- **Cache consistency**: Cache ukládá filtrované transakce pro konzistenci mezi náhledem a sloučením
+
+### Implementace
+- `TransactionSet.filterDuplicates()`: Filtrování duplicitních transakcí
+- `TransactionSet.isDuplicateTransaction()`: Porovnání transakcí podle business klíče
+- Aktualizace `ImportWindow` pro filtrování během načítání náhledu pro API i souborové importy
+- Oprava duplicitní detekce pro všechny formáty importu (IB TradeLog, FIO, Revolut, atd.)
+
+### Nové funkce z TODO seznamu
+#### Status bar v hlavním okně
+- Přidán status bar dole zobrazující počet záznamů
+- Automatická aktualizace při změnách v databázi
+- Změna layoutu z GridBagLayout na BorderLayout
+- Oprava: Bezpečná inicializace bez NullPointerException
+- Oprava: Aktualizace po souborových importech (FIO, IB, atd.)
+- Vylepšení: TableModelListener pro 100% spolehlivé automatické aktualizace
+- Vylepšení: Zobrazení filtrovaných záznamů ("Záznamů: 150 | Filtr: 25")
+- Optimalizace: Žádné manuální volání, aktualizace jen při skutečných změnách dat
+- Oprava: Správné počítání záznamů (vyloučení prázdného řádku pro přidávání)
+- Oprava: Status bar aktualizace při "Soubor/Nový" (opětovné připojení TableModelListener + explicitní aktualizace)
+
+#### Perzistentní výběr formátu importu
+- Uložení posledního vybraného import formátu do nastavení
+- Obnovení výběru při dalším spuštění aplikace i v menu "Import od brokera"
+- Použití Java Preferences API pro perzistenci
+- Pre-selekce uloženého formátu v dialogu výběru formátu
+
+#### Maximalizační tlačítko v okně importu
+- Převedeno ImportWindow z JDialog na JFrame pro spolehlivou podporu maximalizace
+- Odstraněno modální chování (okno nezablokuje hlavní okno)
+- Přidáno maximalizační tlačítko do title baru okna
+
+## [API Dokumentace] - 2026-01-17
+
+### Přidáno
+- **API.md**: Kompletní dokumentace všech externích API používaných aplikací
+- **Trading212 API dokumentace**: Detailní popis endpointů, autentifikace, rate limitů a integrace
+- **ČNB API dokumentace**: Dokumentace kurzů měn včetně výpočtu jednotného kurzu
+- **README.md odkaz**: Přidán odkaz na API dokumentaci v sekci funkcí aplikace
+
 ## [Oprava headless Trading 212 API import] - 2026-01-16
 
 ### Opraveno

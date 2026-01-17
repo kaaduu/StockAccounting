@@ -813,6 +813,127 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   /**
+   * Check if a transaction is a duplicate of any existing transaction
+   * Uses business key comparison (excludes note, fee, and other non-essential fields)
+   */
+  public boolean isDuplicate(Transaction candidate) {
+    for (Transaction existing : rows) {
+      if (isDuplicateTransaction(candidate, existing)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Filter duplicate transactions from a collection
+   * Returns only transactions that are not duplicates in this set
+   */
+  public Vector<Transaction> filterDuplicates(Vector<Transaction> candidates) {
+    Vector<Transaction> filtered = new Vector<>();
+    int duplicatesSkipped = 0;
+
+    for (Transaction candidate : candidates) {
+      if (!isDuplicate(candidate)) {
+        filtered.add(candidate);
+      } else {
+        duplicatesSkipped++;
+        logger.info("Skipping duplicate transaction: " + candidate.getTicker() + " " +
+                   candidate.getDate() + " " + candidate.getAmount());
+      }
+    }
+
+    logger.info("Filtered " + duplicatesSkipped + " duplicate transactions, keeping " + filtered.size());
+    return filtered;
+  }
+
+  /**
+   * Check if two transactions represent the same business transaction
+   * Compares key business fields, excludes notes, fees, and auto-generated fields
+   */
+  private boolean isDuplicateTransaction(Transaction tx1, Transaction tx2) {
+    // Compare dates (exact match, ignoring seconds/milliseconds)
+    if (!datesEqual(tx1.getDate(), tx2.getDate())) {
+      return false;
+    }
+
+    // Compare direction (buy/sell type)
+    if (tx1.getDirection() != tx2.getDirection()) {
+      return false;
+    }
+
+    // Compare ticker (case-insensitive)
+    if (!stringEqual(tx1.getTicker(), tx2.getTicker())) {
+      return false;
+    }
+
+    // Compare amount with tolerance (±0.01)
+    if (!amountsEqual(tx1.getAmount(), tx2.getAmount())) {
+      return false;
+    }
+
+    // Compare price with tolerance (±0.01)
+    if (!amountsEqual(tx1.getPrice(), tx2.getPrice())) {
+      return false;
+    }
+
+    // Compare currencies
+    if (!stringEqual(tx1.getPriceCurrency(), tx2.getPriceCurrency())) {
+      return false;
+    }
+
+    // Compare market (case-insensitive)
+    if (!stringEqual(tx1.getMarket(), tx2.getMarket())) {
+      return false;
+    }
+
+    // All key fields match - this is a duplicate
+    return true;
+  }
+
+  /**
+   * Compare dates for equality, ignoring seconds and milliseconds
+   */
+  private boolean datesEqual(Date d1, Date d2) {
+    if (d1 == null && d2 == null) return true;
+    if (d1 == null || d2 == null) return false;
+
+    GregorianCalendar cal1 = new GregorianCalendar();
+    GregorianCalendar cal2 = new GregorianCalendar();
+
+    cal1.setTime(d1);
+    cal2.setTime(d2);
+
+    // Clear seconds and milliseconds for comparison
+    cal1.set(GregorianCalendar.SECOND, 0);
+    cal1.set(GregorianCalendar.MILLISECOND, 0);
+    cal2.set(GregorianCalendar.SECOND, 0);
+    cal2.set(GregorianCalendar.MILLISECOND, 0);
+
+    return cal1.getTime().equals(cal2.getTime());
+  }
+
+  /**
+   * Compare strings for equality, handling null values
+   */
+  private boolean stringEqual(String s1, String s2) {
+    if (s1 == null && s2 == null) return true;
+    if (s1 == null || s2 == null) return false;
+    return s1.equalsIgnoreCase(s2);
+  }
+
+  /**
+   * Compare amounts with tolerance for floating point precision
+   */
+  private boolean amountsEqual(Double a1, Double a2) {
+    if (a1 == null && a2 == null) return true;
+    if (a1 == null || a2 == null) return false;
+
+    final double TOLERANCE = 0.01; // Allow ±1 cent/penny difference
+    return Math.abs(a1 - a2) <= TOLERANCE;
+  }
+
+  /**
    * Get iterator over transactions
    */
   public Iterator<Transaction> iterator() {
