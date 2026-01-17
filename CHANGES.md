@@ -4,6 +4,24 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Vylepšení UI Trading 212 API importu] - 2026-01-17
+
+### Přidáno
+- **Progress bar for API imports**: GUI progress dialog s countdown timer a možností zrušení během API stahování
+- **Dynamic window titles**: "Import z Trading 212 API" pro API importy místo generického "Import souboru"
+- **Streamlined UI layout**: Horizontální uspořádání ovládacích prvků pro lepší využití prostoru
+- **Simplified workflow**: Odstranění cache tlačítek pro zjednodušení pracovního postupu
+
+### Opraveno
+- **Progress bar parent frame**: Oprava reference na parent frame pro správné zobrazování progress dialogu
+- **UI consistency**: Sjednocení layoutu Trading 212 import okna s ostatními částmi aplikace
+
+### Implementace
+- Aktualizace `ImportWindow.java` pro dynamické titulky oken a zjednodušený layout
+- Oprava `setParentFrame()` volání pro správnou podporu progress dialogu
+- Odstranění nepotřebných cache funkcí (`bUseCached`, `bClearCache`)
+- Přepracování GridBagLayout pro horizontální uspořádání ovládacích prvků
+
 ## [Inteligentní filtrování tickerů] - 2026-01-17
 
 ### Přidáno
