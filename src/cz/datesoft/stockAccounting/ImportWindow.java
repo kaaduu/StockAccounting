@@ -288,20 +288,14 @@ public class ImportWindow extends javax.swing.JFrame {
       }
       endDate.setDate(null);
 
-      // FORCE reset format selection SYNCHRONOUSLY to ensure UI state is stable
+      // FORCE reset format selection - direct UI updates since we're already on EDT
       if (preselectedFormat > 0) {
         System.out.println("[FORMAT:002] Force setting cbFormat to index " + preselectedFormat);
 
-        // Use invokeAndWait to ensure synchronous completion before any import logic
-        try {
-          javax.swing.SwingUtilities.invokeAndWait(() -> {
-            cbFormat.setSelectedIndex(preselectedFormat);
-            updateUiForFormat(preselectedFormat);
-            updateWindowTitle();
-          });
-        } catch (Exception e) {
-          System.out.println("[FORMAT:ERR] Error during synchronous UI update: " + e.getMessage());
-        }
+        // Direct UI updates on EDT (we're already on EDT from menu click)
+        cbFormat.setSelectedIndex(preselectedFormat);
+        updateUiForFormat(preselectedFormat);
+        updateWindowTitle();
 
         System.out.println("[FORMAT:003] UI state reset complete, cbFormat.getSelectedIndex()=" + cbFormat.getSelectedIndex());
       }
