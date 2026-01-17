@@ -172,7 +172,9 @@ public class ImportWindow extends javax.swing.JFrame {
         endD = cal.getTime();
       }
 
-       transactions.importFile(currentFile, startD, endD, cbFormat.getSelectedIndex(), notImported);
+        int formatIndex = cbFormat.getSelectedIndex();
+        System.out.println("[FORMAT:004] About to call importFile with formatIndex=" + formatIndex + " for file: " + currentFile.getName());
+        transactions.importFile(currentFile, startD, endD, formatIndex, notImported);
 
        // Filter duplicate transactions that already exist in main database
        System.out.println("[DUPLICATE:001] Checking for duplicates in file import against main database");
@@ -253,28 +255,33 @@ public class ImportWindow extends javax.swing.JFrame {
    * Start import with preselected format - handles both file-based and API
    * imports
    */
-   public void startImport(File file, Date startDateValue, int preselectedFormat) {
-     currentFile = file;
+  public void startImport(File file, Date startDateValue, int preselectedFormat) {
+    currentFile = file;
 
-     // Restore last selected format from settings (unless preselected format is specified)
-     if (preselectedFormat == 0) {
-       int savedFormat = cz.datesoft.stockAccounting.Settings.getLastImportFormat();
-       if (savedFormat > 0 && savedFormat < cbFormat.getModel().getSize()) {
-         cbFormat.setSelectedIndex(savedFormat);
-         updateUiForFormat(savedFormat);
-       }
-     }
+    System.out.println("[FORMAT:001] startImport called with preselectedFormat=" + preselectedFormat + ", file=" + (file != null ? file.getName() : "null"));
 
-     // Set dates for file-based imports
-     if (startDateValue != null) {
-       startDate.setDate(startDateValue);
-     }
-     endDate.setDate(null);
+    // Restore last selected format from settings (unless preselected format is specified)
+    if (preselectedFormat == 0) {
+      int savedFormat = cz.datesoft.stockAccounting.Settings.getLastImportFormat();
+      if (savedFormat > 0 && savedFormat < cbFormat.getModel().getSize()) {
+        cbFormat.setSelectedIndex(savedFormat);
+        updateUiForFormat(savedFormat);
+      }
+    }
 
-    // Preselect format if specified
+    // Set dates for file-based imports
+    if (startDateValue != null) {
+      startDate.setDate(startDateValue);
+    }
+    endDate.setDate(null);
+
+    // FORCE reset format selection to ensure UI state matches import request
     if (preselectedFormat > 0) {
+      System.out.println("[FORMAT:002] Force setting cbFormat to index " + preselectedFormat);
       cbFormat.setSelectedIndex(preselectedFormat);
       updateUiForFormat(preselectedFormat);
+      updateWindowTitle();
+      System.out.println("[FORMAT:003] UI state reset complete, cbFormat.getSelectedIndex()=" + cbFormat.getSelectedIndex());
     }
 
     if (cbFormat.getSelectedIndex() != 0 && currentFile != null) {
