@@ -12,6 +12,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import com.toedter.calendar.JDateChooser;
 import java.util.Date;
+import java.util.Set;
 import java.io.File;
 import java.util.GregorianCalendar;
 import java.text.SimpleDateFormat;
@@ -106,38 +107,27 @@ public class MainWindow extends javax.swing.JFrame {
   public MainWindow() {
     initComponents();
 
+    System.out.println("DEBUG: miNewActionPerformed - creating new TransactionSet");
     transactions = new TransactionSet();
+    System.out.println("DEBUG: New TransactionSet rows.size() = " + transactions.rows.size());
 
-    cbTickers.setModel(transactions.getTickersModel());
-
-    this.setSize(1000, 550);
-    this.setLocationByPlatform(true);
-
-    dcFrom.setDateFormatString("dd.MM.yyyy");
-    try {
-      dcFrom.setDate(new java.text.SimpleDateFormat("yyyy-MM-dd").parse("1900-01-01"));
-    } catch (Exception e) {
-    }
-    dcFrom.getDateEditor().getUiComponent().addKeyListener(new java.awt.event.KeyAdapter() {
-      public void keyPressed(java.awt.event.KeyEvent evt) {
-        if (evt.getKeyCode() == KeyEvent.VK_ENTER)
-          applyFilter();
-      }
-    });
-
-    dcTo.setDateFormatString("dd.MM.yyyy");
-    dcTo.setDate(new java.util.Date());
-    dcTo.getDateEditor().getUiComponent().addKeyListener(new java.awt.event.KeyAdapter() {
-      public void keyPressed(java.awt.event.KeyEvent evt) {
-        if (evt.getKeyCode() == KeyEvent.VK_ENTER)
-          applyFilter();
-      }
+    // Re-add the TableModelListener for automatic status bar updates
+    transactions.addTableModelListener(new javax.swing.event.TableModelListener() {
+        @Override
+        public void tableChanged(javax.swing.event.TableModelEvent e) {
+            System.out.println("DEBUG: TableModelEvent received, type: " + e.getType());
+            updateStatusBar();
+        }
     });
 
     table.setModel(transactions);
-
+    System.out.println("DEBUG: Table model set, calling initTableColumns");
     // Call mainwindow table initialization - helpers, column setting
     initTableColumns();
+
+    // Force immediate status bar update for initial empty state
+    System.out.println("DEBUG: Forcing status bar update after Nový");
+    updateStatusBar();
 
     // Create dialogs
     importWindow = new ImportWindow(this, true);
@@ -274,7 +264,7 @@ public class MainWindow extends javax.swing.JFrame {
         formWindowOpened(evt);
       }
     });
-    getContentPane().setLayout(new java.awt.GridBagLayout());
+    getContentPane().setLayout(new java.awt.BorderLayout());
 
     jPanel2.setLayout(new java.awt.GridBagLayout());
 
@@ -438,10 +428,7 @@ public class MainWindow extends javax.swing.JFrame {
     jPanel2.add(tfNote, gridBagConstraints);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridy = 0;
-    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-    gridBagConstraints.weightx = 1.0;
-    getContentPane().add(jPanel2, gridBagConstraints);
+    getContentPane().add(jPanel2, java.awt.BorderLayout.NORTH);
 
     table.setModel(new javax.swing.table.DefaultTableModel(
         new Object[][] {
@@ -466,28 +453,17 @@ public class MainWindow extends javax.swing.JFrame {
     table.setSurrendersFocusOnKeystroke(true);
     jScrollPane1.setViewportView(table);
 
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
-    gridBagConstraints.weightx = 1.0;
-    gridBagConstraints.weighty = 1.0;
-    getContentPane().add(jScrollPane1, gridBagConstraints);
+    getContentPane().add(jScrollPane1, java.awt.BorderLayout.CENTER);
 
-    jLabel1.setText("   ");
+    // Create status bar layout
+    jLabel1.setText("Záznamů: 0");
+    jLabel1.setBorder(javax.swing.BorderFactory.createEmptyBorder(2, 5, 2, 5));
 
-    org.jdesktop.layout.GroupLayout jPanel1Layout = new org.jdesktop.layout.GroupLayout(jPanel1);
-    jPanel1.setLayout(jPanel1Layout);
-    jPanel1Layout.setHorizontalGroup(
-        jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(jLabel1));
-    jPanel1Layout.setVerticalGroup(
-        jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(jLabel1));
+    jPanel1.setLayout(new java.awt.BorderLayout());
+    jPanel1.setBorder(javax.swing.BorderFactory.createEtchedBorder());
+    jPanel1.add(jLabel1, java.awt.BorderLayout.WEST);
 
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridy = 2;
-    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
-    getContentPane().add(jPanel1, gridBagConstraints);
+    getContentPane().add(jPanel1, java.awt.BorderLayout.SOUTH);
 
     jMenu1.setText("Soubor");
 
@@ -699,10 +675,27 @@ public class MainWindow extends javax.swing.JFrame {
    // opravit budu jen rad\n", "Upozorneni", JOptionPane.OK_CANCEL_OPTION,
    // JOptionPane.WARNING_MESSAGE) != JOptionPane.OK_OPTION) return;
 
+    System.out.println("DEBUG: miNewActionPerformed - creating new TransactionSet");
     transactions = new TransactionSet();
+    System.out.println("DEBUG: New TransactionSet rows.size() = " + transactions.rows.size());
+
+    // Re-add the TableModelListener for automatic status bar updates
+    transactions.addTableModelListener(new javax.swing.event.TableModelListener() {
+        @Override
+        public void tableChanged(javax.swing.event.TableModelEvent e) {
+            System.out.println("DEBUG: TableModelEvent received, type: " + e.getType());
+            updateStatusBar();
+        }
+    });
+
     table.setModel(transactions);
+    System.out.println("DEBUG: Table model set, calling initTableColumns");
     // Call mainwindow table initialization - helpers, column setting
     initTableColumns();
+
+    // Force immediate status bar update for initial empty state
+    System.out.println("DEBUG: Forcing status bar update after Nový");
+    updateStatusBar();
 
     // Clear results of computing
     computeWindow.clearComputeResults();
@@ -750,8 +743,8 @@ public class MainWindow extends javax.swing.JFrame {
 
   private void formWindowOpened(java.awt.event.WindowEvent evt)// GEN-FIRST:event_formWindowOpened
   {// GEN-HEADEREND:event_formWindowOpened
-   // Show about dialog
-    aboutWindow.setVisible(true);
+    // Show about dialog
+     aboutWindow.setVisible(true);
   }// GEN-LAST:event_formWindowOpened
 
   private void miReportActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_miReportActionPerformed
@@ -771,9 +764,12 @@ public class MainWindow extends javax.swing.JFrame {
                        "IB - TradeLog", "IB - FlexQuery Trades only CSV", "T212 Invest  - csv  mena: USD",
                        "T212 Invest  - csv  mena: CZK", "Revolut - csv", "Trading 212 API"};
 
+    int savedFormatIndex = cz.datesoft.stockAccounting.Settings.getLastImportFormat();
+    String defaultSelection = (savedFormatIndex >= 0 && savedFormatIndex < formats.length) ? formats[savedFormatIndex] : formats[0];
+
     String selectedFormat = (String) javax.swing.JOptionPane.showInputDialog(
         this, "Vyberte formát importu:", "Formát importu",
-        javax.swing.JOptionPane.QUESTION_MESSAGE, null, formats, formats[0]);
+        javax.swing.JOptionPane.QUESTION_MESSAGE, null, formats, defaultSelection);
 
     if (selectedFormat == null || selectedFormat.equals("<vyberte formát>")) {
       return; // User cancelled or didn't select format
@@ -959,6 +955,9 @@ public class MainWindow extends javax.swing.JFrame {
     if (note.length() == 0)
       note = null;
 
+    // Track current ticker filter for status bar display
+    currentTickerFilter = ticker;
+
     // Apply filter
     transactions.applyFilter(dcFrom.getDate(), dcTo.getDate(), ticker, market, type, note);
 
@@ -1029,16 +1028,25 @@ public class MainWindow extends javax.swing.JFrame {
       Settings.setDataDirectory(dialog.getDirectory());
       Settings.save();
 
-      try {
-        // Load file
-        transactions.load(selectedFile);
+       try {
+         // Load file
+         transactions.load(selectedFile);
 
-        // Clear results of computing to avoid confusion
-        computeWindow.clearComputeResults();
+         // Initialize date range to show all loaded data (1900-01-01 to today)
+         java.util.GregorianCalendar startCal = new java.util.GregorianCalendar(1900, 0, 1); // 1900-01-01
+         dcFrom.setDate(startCal.getTime());
+         dcTo.setDate(new java.util.Date()); // Today
 
-        // Clear filter
-        clearFilter();
-      } catch (Exception e) {
+         // Invalidate transformation cache for loaded data
+         System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
+         transactions.invalidateTransformationCache();
+
+         // Clear results of computing to avoid confusion
+         computeWindow.clearComputeResults();
+
+         // Clear filter
+         clearFilter();
+       } catch (Exception e) {
         JOptionPane.showMessageDialog(this, "Při načítání souboru nastala chyba: " + e);
       }
     }
@@ -1178,12 +1186,54 @@ public class MainWindow extends javax.swing.JFrame {
   }
 
   /**
+   * Update status bar with current statistics
+   */
+  private void updateStatusBar() {
+    TransactionSet db = getTransactionDatabase();
+    int totalRecords = db.rows.size();  // Actual transaction count (excludes empty row)
+
+    // For filtered count, check if filtering is active and exclude empty row
+    int visibleRecords;
+    if (db.filteredRows != null) {
+        visibleRecords = db.filteredRows.size();  // Actual filtered transactions
+    } else {
+        visibleRecords = db.rows.size();  // All transactions when no filter
+    }
+
+    String status = "Záznamů: " + totalRecords;
+    if (visibleRecords != totalRecords) {
+        status += " | Filtr: " + visibleRecords;
+
+        // Show related tickers if smart filtering was used
+        if (currentTickerFilter != null && !currentTickerFilter.isEmpty()) {
+            try {
+                Set<String> relatedTickers = db.getRelatedTickers(currentTickerFilter);
+                if (relatedTickers.size() > 1) {
+                    // Sort for consistent display
+                    java.util.List<String> sortedRelated = new java.util.ArrayList<>(relatedTickers);
+                    java.util.Collections.sort(sortedRelated);
+                    status += " | Zahrnuje: " + String.join(", ", sortedRelated);
+                }
+            } catch (Exception e) {
+                // Ignore errors in status bar display
+                System.err.println("Error getting related tickers for status bar: " + e.getMessage());
+            }
+        }
+    }
+
+    jLabel1.setText(status);
+  }
+
+  /**
    * Refresh the main table display
    */
   public void refreshTable() {
     table.revalidate();
     table.repaint();
   }
+
+  /** Current ticker filter for status bar display */
+  private String currentTickerFilter = null;
 
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JButton bApplyFilter;

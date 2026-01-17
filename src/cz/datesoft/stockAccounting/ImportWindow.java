@@ -20,7 +20,7 @@ import java.util.GregorianCalendar;
  *
  * @author lemming2
  */
-public class ImportWindow extends javax.swing.JDialog {
+public class ImportWindow extends javax.swing.JFrame {
   // Start / end date
   JDateChooser startDate;
   JDateChooser endDate;
@@ -42,13 +42,16 @@ public class ImportWindow extends javax.swing.JDialog {
 
   /** Creates new form ImportWindow */
   public ImportWindow(java.awt.Frame parent, boolean modal) {
-    super(parent, modal);
+    super("Import souboru");
     initComponents();
 
     mainWindow = (MainWindow) parent;
 
+    // Set window properties
+    this.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
     this.setLocationByPlatform(true);
     this.setSize(800, 550);
+    this.setResizable(true); // Enable maximize button
 
     // Initialize import state (constructor automatically loads from Settings)
     importState = new Trading212ImportState();
@@ -168,11 +171,30 @@ public class ImportWindow extends javax.swing.JDialog {
         endD = cal.getTime();
       }
 
-      transactions.importFile(currentFile, startD, endD, cbFormat.getSelectedIndex(), notImported);
+       transactions.importFile(currentFile, startD, endD, cbFormat.getSelectedIndex(), notImported);
 
-      // Set labels
-      int n = transactions.getRowCount();
-      lPreview.setText("Náhled (" + n + " " + getRecordsWord(n) + "):");
+       // Filter duplicate transactions that already exist in main database
+       System.out.println("[DUPLICATE:001] Checking for duplicates in file import against main database");
+       Vector<Transaction> originalTransactions = new Vector<>(transactions.rows); // Copy before filtering
+       Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase().filterDuplicates(originalTransactions);
+       int duplicatesFiltered = originalTransactions.size() - filteredTransactions.size();
+
+       // Replace preview table with filtered transactions
+       if (duplicatesFiltered > 0) {
+         transactions.rows.clear();
+         transactions.rows.addAll(filteredTransactions);
+         transactions.fireTableDataChanged();
+         System.out.println("[DUPLICATE:002] Filtered " + duplicatesFiltered + " duplicates from file import");
+       }
+
+       // Set labels
+       int n = transactions.getRowCount();
+       String previewText = "Náhled (" + n + " " + getRecordsWord(n) + ")";
+       if (duplicatesFiltered > 0) {
+         previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
+       }
+       previewText += ":";
+       lPreview.setText(previewText);
       int rowCount = notImported.size();
       lUnimported.setText("Neimportované řádky (" + rowCount + " " + getRecordsWord(rowCount) + "):");
 
@@ -230,14 +252,23 @@ public class ImportWindow extends javax.swing.JDialog {
    * Start import with preselected format - handles both file-based and API
    * imports
    */
-  public void startImport(File file, Date startDateValue, int preselectedFormat) {
-    currentFile = file;
+   public void startImport(File file, Date startDateValue, int preselectedFormat) {
+     currentFile = file;
 
-    // Set dates for file-based imports
-    if (startDateValue != null) {
-      startDate.setDate(startDateValue);
-    }
-    endDate.setDate(null);
+     // Restore last selected format from settings (unless preselected format is specified)
+     if (preselectedFormat == 0) {
+       int savedFormat = cz.datesoft.stockAccounting.Settings.getLastImportFormat();
+       if (savedFormat > 0 && savedFormat < cbFormat.getModel().getSize()) {
+         cbFormat.setSelectedIndex(savedFormat);
+         updateUiForFormat(savedFormat);
+       }
+     }
+
+     // Set dates for file-based imports
+     if (startDateValue != null) {
+       startDate.setDate(startDateValue);
+     }
+     endDate.setDate(null);
 
     // Preselect format if specified
     if (preselectedFormat > 0) {
@@ -280,7 +311,6 @@ public class ImportWindow extends javax.swing.JDialog {
 
     setTitle("Import souboru");
     setMaximumSize(new java.awt.Dimension(1024, 1024));
-    setModal(true);
     getContentPane().setLayout(new java.awt.GridBagLayout());
 
     jLabel1.setText("Importovat od:");
@@ -699,6 +729,10 @@ public class ImportWindow extends javax.swing.JDialog {
 
             transactions.mergeTo(mainWindow.getTransactionDatabase());
 
+            // Invalidate transformation cache after import (new transactions may have transformations)
+            System.out.println("DEBUG: Invalidating transformation cache after API import");
+            mainWindow.getTransactionDatabase().invalidateTransformationCache();
+
             // Calculate actual transactions added
             int finalTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
             int transactionsAdded = finalTransactionCount - initialTransactionCount;
@@ -829,30 +863,41 @@ public class ImportWindow extends javax.swing.JDialog {
           System.out.println("[RESULT:004] get() succeeded - result retrieved");
           System.out.println("[RESULT:005] Processing result - success: " + result.success);
 
-          if (result.success) {
-            System.out.println("[RESULT:006] ✅ API fetch successful - processing " + result.transactions.size() + " transactions");
+           if (result.success) {
+             System.out.println("[RESULT:006] ✅ API fetch successful - processing " + result.transactions.size() + " transactions");
 
-            // PREVIEW MODE: Populate transactions table for display
-            System.out.println("[UI:001] Clearing existing transactions from preview table");
-            transactions.clear();
+             // PREVIEW MODE: Filter duplicates and populate transactions table for display
+             System.out.println("[UI:001] Clearing existing transactions from preview table");
+             transactions.clear();
 
-            System.out.println("[UI:002] Adding " + result.transactions.size() + " transactions to preview table");
-            for (Transaction tx : result.transactions) {
-              transactions.addTransaction(tx.getDate(), tx.getDirection().intValue(), tx.getTicker(),
-                  tx.getAmount().doubleValue(), tx.getPrice().doubleValue(), tx.getPriceCurrency(),
-                  tx.getFee().doubleValue(), tx.getFeeCurrency(), tx.getMarket(), tx.getExecutionDate(), tx.getNote());
-            }
-            System.out.println("[UI:003] All transactions added to table");
+             // Filter out duplicate transactions that already exist in main database
+             System.out.println("[DUPLICATE:001] Checking for duplicates against main database");
+             Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase().filterDuplicates(result.transactions);
+             int duplicatesFiltered = result.transactions.size() - filteredTransactions.size();
 
-            // Update UI labels to show preview
-            System.out.println("[UI:004] Updating UI labels");
-            lPreview.setText("Náhled (" + result.transactionsImported + " záznamů):");
-            lUnimported.setText("Neimportované řádky (0 záznamů):");
-            System.out.println("[UI:005] UI labels updated");
+             System.out.println("[DUPLICATE:002] Filtered " + duplicatesFiltered + " duplicates, adding " + filteredTransactions.size() + " new transactions to preview table");
+             for (Transaction tx : filteredTransactions) {
+               transactions.addTransaction(tx.getDate(), tx.getDirection().intValue(), tx.getTicker(),
+                   tx.getAmount().doubleValue(), tx.getPrice().doubleValue(), tx.getPriceCurrency(),
+                   tx.getFee().doubleValue(), tx.getFeeCurrency(), tx.getMarket(), tx.getExecutionDate(), tx.getNote());
+             }
+             System.out.println("[UI:003] All new transactions added to table");
 
-            // Cache the fetched transactions for this year (session-only)
-            System.out.println("[CACHE:001] Caching " + result.transactions.size() + " transactions for year " + year);
-            importState.cacheTransactions(year, result.transactions);
+             // Update UI labels to show preview with duplicate count
+             System.out.println("[UI:004] Updating UI labels");
+             String previewText = "Náhled (" + filteredTransactions.size() + " záznamů)";
+             if (duplicatesFiltered > 0) {
+               previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
+             }
+             previewText += ":";
+             lPreview.setText(previewText);
+             lUnimported.setText("Neimportované řádky (0 záznamů):");
+             System.out.println("[UI:005] UI labels updated");
+
+            // Cache the filtered transactions for this year (session-only)
+            // This ensures merge mode uses the same filtered set as preview
+            System.out.println("[CACHE:001] Caching " + filteredTransactions.size() + " filtered transactions for year " + year);
+            importState.cacheTransactions(year, filteredTransactions);
 
             // Update cache status UI
             System.out.println("[CACHE:002] Updating cache status display");
@@ -1043,6 +1088,11 @@ public class ImportWindow extends javax.swing.JDialog {
       } else {
         // Handle regular file-based import
         transactions.mergeTo(mainWindow.getTransactionDatabase());
+
+        // Invalidate transformation cache after import
+        System.out.println("DEBUG: Invalidating transformation cache after file import");
+        mainWindow.getTransactionDatabase().invalidateTransformationCache();
+
         dispose(); // Close window after file import
       }
     } catch (Exception e) {
@@ -1070,10 +1120,14 @@ public class ImportWindow extends javax.swing.JDialog {
       if (isTrading212Format()) {
         // For API format, just show the year selection UI
         // Don't auto-fetch - wait for user to select year and click Import button
-      } else {
-        loadImport(); // For file-based formats
-      }
-    }
+       } else {
+         loadImport(); // For file-based formats
+       }
+     }
+
+     // Save the selected format for persistence across app restarts
+     cz.datesoft.stockAccounting.Settings.setLastImportFormat(cbFormat.getSelectedIndex());
+     cz.datesoft.stockAccounting.Settings.save();
 
   }// GEN-LAST:event_cbFormatActionPerformed
 
