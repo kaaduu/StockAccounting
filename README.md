@@ -66,6 +66,9 @@ Project Properties → Libraries → Compile classpath:
 - **Hierarchická správa**: Stromová struktura Měna → Roky s počtem kurzů
 - **CSV export/import**: Externí správa kurzů v tabulkových editorech
 
+### Externí API
+Podrobná dokumentace všech používaných API (Trading212, ČNB) viz [API.md](API.md).
+
 ### Výpočty daní
 - **Komplexní přehledy**: Zisky, ztráty, dividendy s daňovou optimalizací
 - **Frakční akcie**: Plná podpora částečných akcií
