@@ -148,9 +148,9 @@ ACT_INF|U393818|John Doe|Individual|123 Main St|Prague|CZ
 5. Use broker identifier "IB"
 
 **Examples**:
-- `"GE|Broker:IB|AccountID:U393818|TxnID:996706497|Code:O"`
-- `"AAPL|Broker:IB|AccountID:U393818|TxnID:1002441731|Code:C"`
-- `"SHAK|Broker:IB|AccountID:U393818|TxnID:997854933|Code:Ca"`
+- `"GENERAL ELECTRIC CO|Broker:IB|AccountID:U393818|TxnID:996706497|Code:O"`
+- `"APPLE INC|Broker:IB|AccountID:U393818|TxnID:1002441731|Code:C"`
+- `"SHAKE SHACK INC - CLASS A|Broker:IB|AccountID:U393818|TxnID:997854933|Code:Ca"`
 
 **Status Code Meanings**:
 - `O`: Open (opening trade/position)
