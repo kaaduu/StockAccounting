@@ -729,6 +729,10 @@ public class ImportWindow extends javax.swing.JFrame {
 
             transactions.mergeTo(mainWindow.getTransactionDatabase());
 
+            // Invalidate transformation cache after import (new transactions may have transformations)
+            System.out.println("DEBUG: Invalidating transformation cache after API import");
+            mainWindow.getTransactionDatabase().invalidateTransformationCache();
+
             // Calculate actual transactions added
             int finalTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
             int transactionsAdded = finalTransactionCount - initialTransactionCount;
@@ -1084,6 +1088,11 @@ public class ImportWindow extends javax.swing.JFrame {
       } else {
         // Handle regular file-based import
         transactions.mergeTo(mainWindow.getTransactionDatabase());
+
+        // Invalidate transformation cache after import
+        System.out.println("DEBUG: Invalidating transformation cache after file import");
+        mainWindow.getTransactionDatabase().invalidateTransformationCache();
+
         dispose(); // Close window after file import
       }
     } catch (Exception e) {

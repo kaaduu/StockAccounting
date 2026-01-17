@@ -12,6 +12,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import com.toedter.calendar.JDateChooser;
 import java.util.Date;
+import java.util.Set;
 import java.io.File;
 import java.util.GregorianCalendar;
 import java.text.SimpleDateFormat;
@@ -106,46 +107,27 @@ public class MainWindow extends javax.swing.JFrame {
   public MainWindow() {
     initComponents();
 
+    System.out.println("DEBUG: miNewActionPerformed - creating new TransactionSet");
     transactions = new TransactionSet();
+    System.out.println("DEBUG: New TransactionSet rows.size() = " + transactions.rows.size());
 
-    // Add automatic status bar updates for all table changes
+    // Re-add the TableModelListener for automatic status bar updates
     transactions.addTableModelListener(new javax.swing.event.TableModelListener() {
         @Override
         public void tableChanged(javax.swing.event.TableModelEvent e) {
+            System.out.println("DEBUG: TableModelEvent received, type: " + e.getType());
             updateStatusBar();
         }
     });
 
-    cbTickers.setModel(transactions.getTickersModel());
-
-    this.setSize(1000, 550);
-    this.setLocationByPlatform(true);
-
-    dcFrom.setDateFormatString("dd.MM.yyyy");
-    try {
-      dcFrom.setDate(new java.text.SimpleDateFormat("yyyy-MM-dd").parse("1900-01-01"));
-    } catch (Exception e) {
-    }
-    dcFrom.getDateEditor().getUiComponent().addKeyListener(new java.awt.event.KeyAdapter() {
-      public void keyPressed(java.awt.event.KeyEvent evt) {
-        if (evt.getKeyCode() == KeyEvent.VK_ENTER)
-          applyFilter();
-      }
-    });
-
-    dcTo.setDateFormatString("dd.MM.yyyy");
-    dcTo.setDate(new java.util.Date());
-    dcTo.getDateEditor().getUiComponent().addKeyListener(new java.awt.event.KeyAdapter() {
-      public void keyPressed(java.awt.event.KeyEvent evt) {
-        if (evt.getKeyCode() == KeyEvent.VK_ENTER)
-          applyFilter();
-      }
-    });
-
     table.setModel(transactions);
-
+    System.out.println("DEBUG: Table model set, calling initTableColumns");
     // Call mainwindow table initialization - helpers, column setting
     initTableColumns();
+
+    // Force immediate status bar update for initial empty state
+    System.out.println("DEBUG: Forcing status bar update after Nový");
+    updateStatusBar();
 
     // Create dialogs
     importWindow = new ImportWindow(this, true);
@@ -973,6 +955,9 @@ public class MainWindow extends javax.swing.JFrame {
     if (note.length() == 0)
       note = null;
 
+    // Track current ticker filter for status bar display
+    currentTickerFilter = ticker;
+
     // Apply filter
     transactions.applyFilter(dcFrom.getDate(), dcTo.getDate(), ticker, market, type, note);
 
@@ -1043,16 +1028,25 @@ public class MainWindow extends javax.swing.JFrame {
       Settings.setDataDirectory(dialog.getDirectory());
       Settings.save();
 
-      try {
-        // Load file
-        transactions.load(selectedFile);
+       try {
+         // Load file
+         transactions.load(selectedFile);
 
-        // Clear results of computing to avoid confusion
-        computeWindow.clearComputeResults();
+         // Initialize date range to show all loaded data (1900-01-01 to today)
+         java.util.GregorianCalendar startCal = new java.util.GregorianCalendar(1900, 0, 1); // 1900-01-01
+         dcFrom.setDate(startCal.getTime());
+         dcTo.setDate(new java.util.Date()); // Today
 
-        // Clear filter
-        clearFilter();
-      } catch (Exception e) {
+         // Invalidate transformation cache for loaded data
+         System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
+         transactions.invalidateTransformationCache();
+
+         // Clear results of computing to avoid confusion
+         computeWindow.clearComputeResults();
+
+         // Clear filter
+         clearFilter();
+       } catch (Exception e) {
         JOptionPane.showMessageDialog(this, "Při načítání souboru nastala chyba: " + e);
       }
     }
@@ -1209,6 +1203,22 @@ public class MainWindow extends javax.swing.JFrame {
     String status = "Záznamů: " + totalRecords;
     if (visibleRecords != totalRecords) {
         status += " | Filtr: " + visibleRecords;
+
+        // Show related tickers if smart filtering was used
+        if (currentTickerFilter != null && !currentTickerFilter.isEmpty()) {
+            try {
+                Set<String> relatedTickers = db.getRelatedTickers(currentTickerFilter);
+                if (relatedTickers.size() > 1) {
+                    // Sort for consistent display
+                    java.util.List<String> sortedRelated = new java.util.ArrayList<>(relatedTickers);
+                    java.util.Collections.sort(sortedRelated);
+                    status += " | Zahrnuje: " + String.join(", ", sortedRelated);
+                }
+            } catch (Exception e) {
+                // Ignore errors in status bar display
+                System.err.println("Error getting related tickers for status bar: " + e.getMessage());
+            }
+        }
     }
 
     jLabel1.setText(status);
@@ -1221,6 +1231,9 @@ public class MainWindow extends javax.swing.JFrame {
     table.revalidate();
     table.repaint();
   }
+
+  /** Current ticker filter for status bar display */
+  private String currentTickerFilter = null;
 
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JButton bApplyFilter;
