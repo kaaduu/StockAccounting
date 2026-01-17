@@ -77,11 +77,7 @@ public class ImportWindow extends javax.swing.JFrame {
     // niTable.setTableHeader(null);
     // niScrollPane.setColumnHeaderView(null);
 
-    startDate.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
-      public void propertyChange(java.beans.PropertyChangeEvent evt) {
-        loadImport();
-      }
-    });
+    // Removed automatic import trigger on date change - import should only happen on explicit user action
 
     endDate = new JDateChooser();
     endDate.setPreferredSize(new Dimension(100, 20));
@@ -131,6 +127,12 @@ public class ImportWindow extends javax.swing.JFrame {
    * Load import from a file or prepare API import
    */
   private void loadImport() {
+    // Prevent multiple import triggers
+    if (importInProgress) {
+      System.out.println("[DUPE:003] Ignoring loadImport call - import already in progress");
+      return;
+    }
+
     System.out.println("[IMPORT:002] loadImport() called - UI format: " + cbFormat.getSelectedIndex() + ", file: " + (currentFile != null ? currentFile.getName() : "null"));
 
     // Clear not imported rows
@@ -636,6 +638,12 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void performTrading212Import(boolean mergeMode) {
+    // Prevent multiple import triggers
+    if (importInProgress) {
+      System.out.println("[DUPE:004] Ignoring performTrading212Import call - import already in progress");
+      return;
+    }
+
     System.out.println("[VALIDATE:001] performTrading212Import called with mergeMode=" + mergeMode);
 
     if (!isTrading212Format()) {
