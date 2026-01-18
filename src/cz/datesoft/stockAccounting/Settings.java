@@ -169,6 +169,11 @@ public class Settings {
   private static int lastImportFormat = 0;
 
   /**
+   * Update duplicates on import checkbox state
+   */
+  private static boolean updateDuplicatesOnImport = false;
+
+  /**
    * Daily exchange rates map (currency|YYYY-MM-DD => ratio map)
    */
   private static HashMap<String, Double> dailyRates;
@@ -408,6 +413,20 @@ public class Settings {
   }
 
   /**
+   * Get update duplicates on import checkbox state
+   */
+  public static boolean getUpdateDuplicatesOnImport() {
+    return updateDuplicatesOnImport;
+  }
+
+  /**
+   * Set update duplicates on import checkbox state
+   */
+  public static void setUpdateDuplicatesOnImport(boolean value) {
+    updateDuplicatesOnImport = value;
+  }
+
+  /**
    * Get exchange rate for given currency and date.
    * If useDailyRates is enabled, tries to find daily rate, otherwise uses unified
    * rate.
@@ -604,6 +623,9 @@ public class Settings {
     } catch (NumberFormatException e) {
       lastImportFormat = 0; // Default to "select format"
     }
+
+    /* Update duplicates on import */
+    updateDuplicatesOnImport = p.getBoolean("updateDuplicatesOnImport", false);
   }
 
   /**
@@ -671,6 +693,9 @@ public class Settings {
 
     // Last import format
     p.put("lastImportFormat", Integer.toString(lastImportFormat));
+
+    // Update duplicates on import
+    p.putBoolean("updateDuplicatesOnImport", updateDuplicatesOnImport);
   }
 
   /**

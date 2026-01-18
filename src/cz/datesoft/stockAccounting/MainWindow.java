@@ -36,6 +36,64 @@ public class MainWindow extends javax.swing.JFrame {
 
   // <editor-fold defaultstate="collapsed" desc="Class: DateChooserCellEditor">
   /**
+   * Custom cell renderer that highlights recently updated rows with light yellow background
+   */
+  private class HighlightedCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
+    @Override
+    public java.awt.Component getTableCellRendererComponent(
+        javax.swing.JTable table, Object value, boolean isSelected,
+        boolean hasFocus, int row, int column) {
+      java.awt.Component c = super.getTableCellRendererComponent(
+          table, value, isSelected, hasFocus, row, column);
+      
+      // Check if this row was recently updated
+      if (!isSelected) {
+        try {
+          if (transactions.isRecentlyUpdated(row)) {
+            c.setBackground(new java.awt.Color(255, 255, 200)); // Light yellow
+          } else {
+            c.setBackground(java.awt.Color.WHITE);
+          }
+        } catch (Exception e) {
+          // Safety: if checking fails, just use white background
+          c.setBackground(java.awt.Color.WHITE);
+        }
+      }
+      
+      return c;
+    }
+  }
+
+  /**
+   * Date renderer with highlighting support
+   */
+  private class HighlightedDateRenderer extends CZDateRenderer {
+    @Override
+    public java.awt.Component getTableCellRendererComponent(
+        javax.swing.JTable table, Object value, boolean isSelected,
+        boolean hasFocus, int row, int column) {
+      java.awt.Component c = super.getTableCellRendererComponent(
+          table, value, isSelected, hasFocus, row, column);
+      
+      // Check if this row was recently updated
+      if (!isSelected) {
+        try {
+          if (transactions.isRecentlyUpdated(row)) {
+            c.setBackground(new java.awt.Color(255, 255, 200)); // Light yellow
+          } else {
+            c.setBackground(java.awt.Color.WHITE);
+          }
+        } catch (Exception e) {
+          // Safety: if checking fails, just use white background
+          c.setBackground(java.awt.Color.WHITE);
+        }
+      }
+      
+      return c;
+    }
+  }
+
+  /**
    * Date cell editor using JCalendar. We do not use JCalendar builtin date
    * editor,
    * since it is not configurable. And we need some "specialities" (like
@@ -621,10 +679,14 @@ public class MainWindow extends javax.swing.JFrame {
     // Enable manual column resizing
     table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 
+    // Create renderers for highlighting
+    HighlightedDateRenderer dateRenderer = new HighlightedDateRenderer();
+    HighlightedCellRenderer highlightRenderer = new HighlightedCellRenderer();
+
     // Datum obchodu
     table.getColumnModel().getColumn(0).setPreferredWidth(100);
     table.getColumnModel().getColumn(0).setMaxWidth(100);
-    table.getColumnModel().getColumn(0).setCellRenderer(new CZDateRenderer());
+    table.getColumnModel().getColumn(0).setCellRenderer(dateRenderer);
     table.getColumnModel().getColumn(0).setCellEditor(new DateChooserCellEditor());
     // Typ
     table.getColumnModel().getColumn(1).setPreferredWidth(100);
@@ -658,12 +720,18 @@ public class MainWindow extends javax.swing.JFrame {
     // Datum vyporadani
     table.getColumnModel().getColumn(10).setPreferredWidth(100);
     table.getColumnModel().getColumn(10).setMaxWidth(100);
-    table.getColumnModel().getColumn(10).setCellRenderer(new CZDateRenderer());
+    table.getColumnModel().getColumn(10).setCellRenderer(dateRenderer);
     table.getColumnModel().getColumn(10).setCellEditor(new DateChooserCellEditor());
     // Poznamka (Note)
     table.getColumnModel().getColumn(11).setPreferredWidth(200);
     table.getColumnModel().getColumn(11).setMaxWidth(500);
 
+    // Apply highlighted cell renderer to all non-date columns
+    for (int i = 1; i <= 11; i++) {
+      if (i != 0 && i != 10) { // Skip date columns
+        table.getColumnModel().getColumn(i).setCellRenderer(highlightRenderer);
+      }
+    }
   }
 
   private void miNewActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_miNewActionPerformed

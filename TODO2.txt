@@ -1,0 +1,2 @@
+Issue 1:
+When re-importing and records already exist offer ability to re-update them instead of filter them out - as we updated note that would be benefitial to have all details there

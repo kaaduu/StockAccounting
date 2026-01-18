@@ -525,6 +525,18 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   { this.note = note; }
   
   /**
+   * Update fields from another transaction (used for re-import updates)
+   * Updates: Note, Fee, FeeCurrency, ExecutionDate
+   * Does NOT update business key fields: Date, Direction, Ticker, Amount, Price, PriceCurrency, Market
+   */
+  public void updateFromTransaction(Transaction source) {
+    this.setNote(source.getNote());
+    this.setFee(source.getFee());
+    this.setFeeCurrency(source.getFeeCurrency());
+    this.setExecutionDate(source.getExecutionDate());
+  }
+  
+  /**
    * Compare function
    */
   public int compareTo(Object o)

@@ -4,6 +4,63 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Aktualizace duplikátních záznamů při re-importu] - 2026-01-18
+
+### Přidáno
+- **Checkbox "Aktualizovat duplikáty"**: Nová možnost v importním dialogu pro re-import existujících záznamů
+- **Aktualizace poznámek**: Při re-importu se aktualizují Poznámky, Poplatky, Měna poplatku a Datum vypořádání
+- **Vizuální zvýraznění**: Aktualizované řádky jsou zvýrazněny světle žlutou barvou v hlavním okně
+- **Persistence nastavení**: Stav checkboxu se ukládá a obnovuje mezi relacemi
+- **Univerzální podpora**: Funguje pro všechny typy importu (IB TradeLog, Fio, BrokerJet, Trading212 API, atd.)
+
+### Použití
+1. Při importu souboru s duplikáty se zobrazí počet nalezených duplikátů
+2. Zaškrtněte "Aktualizovat duplikáty" pro přepsání existujících záznamů
+3. Text se změní z "X duplikátů vyfiltrováno" na "X duplikátů k aktualizaci"
+4. Po importu jsou aktualizované řádky zvýrazněny žlutě
+5. Zvýraznění zůstává až do restartu aplikace
+
+### Technické detaily
+- **Transaction.java**: Přidána metoda `updateFromTransaction()` pro aktualizaci vybraných polí
+- **TransactionSet.java**: 
+  - Metoda `findDuplicateTransaction()` pro nalezení existujícího záznamu
+  - Metoda `updateDuplicateTransaction()` pro aktualizaci a označení
+  - HashSet `updatedTransactionSerials` pro sledování aktualizovaných záznamů
+  - Metoda `isRecentlyUpdated()` pro kontrolu zvýraznění
+- **ImportWindow.java**: 
+  - Checkbox UI s event handlerem
+  - Logika pro sledování duplikátů určených k aktualizaci
+  - Integrováno do file-based i API importů
+- **MainWindow.java**: 
+  - `HighlightedCellRenderer` pro obecné buňky
+  - `HighlightedDateRenderer` pro datumové sloupce
+  - Aplikováno na všechny sloupce tabulky
+- **Settings.java**: 
+  - Pole `updateDuplicatesOnImport` pro persistenci
+  - Gettery/settery a ukládání/načítání z preferences
+
+### Důvod změny
+- Po změně formátu sloupce Poznámky byly staré záznamy v původním formátu
+- Re-import duplikátů byl blokován, takže poznámky nemohly být aktualizovány
+- Tato funkce umožňuje selektivní aktualizaci existujících záznamů novými daty
+
+## [Oprava synchronizace formátu importu] - 2026-01-18
+
+### Opraveno
+- **Kritická chyba synchronizace formátu**: Opraveno selhávání parseru při programových importe (např. IB TradeLog s formátem 3) kvůli nesprávnému používání UI stavu místo přednastaveného formátu
+- **Mechanismus programového přepisu**: Implementován `currentImportFormat` pro spolehlivé přepsání UI stavu při programových importe
+- **Robustní správa stavu**: Automatické vymazání programového formátu po dokončení importu nebo při manuálních změnách
+- **Vylepšené ladění**: Rozšířené logování zobrazující jak programový tak UI formát pro diagnostiku problémů
+- **Kritická chyba časování**: Opraveno předčasné volání `loadImport()` při nastavování datumů, které používalo starý formát
+
+### Technické detaily
+- **ImportWindow.java**: Přidána instance proměnná `currentImportFormat` s prioritou před UI stavem
+- **loadImport()**: Používá `currentImportFormat > 0 ? currentImportFormat : cbFormat.getSelectedIndex()`
+- **startImport()**: Nastavuje programový formát PŘED nastavením datumů, aby se zabránilo předčasným voláním
+- **Vymazání stavu**: Automatické vymazání při úspěchu, neúspěchu nebo manuálních změnách
+- **Rozšířené logování**: Přidáno logování časování pro sledování sekvence operací
+- **Zpětná kompatibilita**: Žádný vliv na existující UI-based import workflow
+
 ## [Vylepšení UI Trading 212 API importu] - 2026-01-17
 
 ### Přidáno

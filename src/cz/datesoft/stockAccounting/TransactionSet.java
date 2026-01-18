@@ -50,6 +50,9 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     */
    protected Vector<Transaction> filteredRows;
 
+  /** Set of serials for recently updated transactions (for highlighting) */
+  protected java.util.Set<Integer> updatedTransactionSerials = new java.util.HashSet<>();
+
   /** Logger */
   private static final Logger logger = Logger.getLogger(TransactionSet.class.getName());
 
@@ -1007,6 +1010,56 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
     logger.info("Filtered " + duplicatesSkipped + " duplicate transactions, keeping " + filtered.size());
     return filtered;
+  }
+
+  /**
+   * Find existing transaction that matches the candidate
+   * Returns the matching transaction or null if no duplicate exists
+   */
+  public Transaction findDuplicateTransaction(Transaction candidate) {
+    for (Transaction existing : rows) {
+      if (isDuplicateTransaction(candidate, existing)) {
+        return existing;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Update existing transaction with data from candidate
+   * Returns true if transaction was found and updated
+   * Marks the transaction as recently updated for highlighting
+   */
+  public boolean updateDuplicateTransaction(Transaction candidate) {
+    Transaction existing = findDuplicateTransaction(candidate);
+    if (existing != null) {
+      existing.updateFromTransaction(candidate);
+      updatedTransactionSerials.add(existing.getSerial());
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if a transaction was recently updated (for highlighting)
+   */
+  public boolean isRecentlyUpdated(int row) {
+    // Check if row is within bounds of actual data (excluding empty row)
+    if (row < 0 || row >= rows.size()) {
+      return false; // Out of bounds or empty row
+    }
+    
+    Transaction tx = getRowAt(row);
+    if (tx == null) return false;
+    return updatedTransactionSerials.contains(tx.getSerial());
+  }
+
+  /**
+   * Clear the recently updated set (called on app restart or explicit clear)
+   */
+  public void clearUpdatedHighlights() {
+    updatedTransactionSerials.clear();
+    fireTableDataChanged();
   }
 
   /**
