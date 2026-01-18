@@ -524,20 +524,129 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   public void setNote(String note)
   { this.note = note; }
   
-  /**
-   * Update fields from another transaction (used for re-import updates)
-   * Updates: Note, Fee, FeeCurrency, ExecutionDate
-   * Does NOT update business key fields: Date, Direction, Ticker, Amount, Price, PriceCurrency, Market
-   */
-  public void updateFromTransaction(Transaction source) {
-    this.setNote(source.getNote());
-    this.setFee(source.getFee());
-    this.setFeeCurrency(source.getFeeCurrency());
-    this.setExecutionDate(source.getExecutionDate());
-  }
-  
-  /**
-   * Compare function
+   /**
+    * Update fields from another transaction (used for re-import updates)
+    * Updates: Note, Fee, FeeCurrency, ExecutionDate
+    * Does NOT update business key fields: Date, Direction, Ticker, Amount, Price, PriceCurrency, Market
+    */
+   public void updateFromTransaction(Transaction source) {
+     this.setNote(source.getNote());
+     this.setFee(source.getFee());
+     this.setFeeCurrency(source.getFeeCurrency());
+     this.setExecutionDate(source.getExecutionDate());
+   }
+
+   /**
+    * Parse structured note field and extract metadata
+    * Format: Description|Broker:VALUE|AccountID:VALUE|TxnID:VALUE|Code:VALUE
+    * Returns map with keys: broker, accountId, txnId, code
+    */
+   public static java.util.Map<String, String> parseNoteMetadata(String note) {
+     java.util.Map<String, String> metadata = new java.util.HashMap<>();
+
+     if (note == null || note.isEmpty()) {
+       return metadata;
+     }
+
+     // Split by pipe delimiter
+     String[] parts = note.split("\\|");
+
+     for (String part : parts) {
+       if (part.contains(":")) {
+         String[] keyValue = part.split(":", 2);
+         String key = keyValue[0].trim().toLowerCase();
+         String value = keyValue.length > 1 ? keyValue[1].trim() : "";
+
+         switch (key) {
+           case "broker":
+             metadata.put("broker", value);
+             break;
+           case "accountid":
+             metadata.put("accountId", value);
+             break;
+           case "txnid":
+             metadata.put("txnId", value);
+             break;
+           case "code":
+             metadata.put("code", value);
+             break;
+         }
+       }
+     }
+
+     return metadata;
+   }
+
+   /**
+    * Get broker from note field
+    */
+   public String getBroker() {
+     return parseNoteMetadata(note).getOrDefault("broker", "");
+   }
+
+   /**
+    * Get account ID from note field
+    */
+   public String getAccountId() {
+     return parseNoteMetadata(note).getOrDefault("accountId", "");
+   }
+
+   /**
+    * Get transaction ID from note field
+    */
+   public String getTxnId() {
+     return parseNoteMetadata(note).getOrDefault("txnId", "");
+   }
+
+    /**
+     * Get effect description for derivatives based on code
+     * A = Assignment, Ex = Exercise, Ep = Expired
+     * Supports multiple codes separated by commas
+     * Only applies to derivative transactions (DIRECTION_DBUY, DIRECTION_DSELL)
+     */
+    public String getEffect() {
+      // Only show effect for derivatives
+      if (direction != DIRECTION_DBUY && direction != DIRECTION_DSELL) {
+        return "";
+      }
+
+      String codeString = parseNoteMetadata(note).getOrDefault("code", "");
+      if (codeString.isEmpty()) {
+        return "";
+      }
+
+      // Split by semicolon and process each code (format: Code:A;C or Code:C;Ep)
+      String[] codes = codeString.split(";");
+      java.util.List<String> effects = new java.util.ArrayList<>();
+
+      for (String code : codes) {
+        String trimmedCode = code.trim();
+        String effect = "";
+        switch (trimmedCode) {
+          case "A":
+            effect = "Assignment";
+            break;
+          case "Ex":
+            effect = "Exercise";
+            break;
+          case "Ep":
+            effect = "Expired";
+            break;
+          default:
+            // Ignore unknown codes
+            continue;
+        }
+        if (!effect.isEmpty()) {
+          effects.add(effect);
+        }
+      }
+
+      // Return comma-separated effects or empty string
+      return String.join(", ", effects);
+    }
+
+   /**
+    * Compare function
    */
   public int compareTo(Object o)
   {
@@ -594,7 +703,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   public void export(PrintWriter ofl) throws java.io.IOException
   {
     //ofl.println(getStringDate()+";"+getStringType()+";"+getStringDirection()+";"+ticker+";"+amount+";"+ff.format(price)+";"+priceCurrency+";"+ff.format(fee)+";"+feeCurrency+";"+market+";"+getStringExecutionDate()+";"+note);
-      ofl.println(getStringDate()+";"+getStringType()+";"+getStringDirection()+";"+ticker+";"+amount+";"+price+";"+priceCurrency+";"+fee+";"+feeCurrency+";"+market+";"+getStringExecutionDate()+";"+note);
+      ofl.println(getStringDate()+";"+getStringType()+";"+getStringDirection()+";"+ticker+";"+amount+";"+price+";"+priceCurrency+";"+fee+";"+feeCurrency+";"+market+";"+getStringExecutionDate()+";"+getBroker()+";"+getAccountId()+";"+getTxnId()+";"+getEffect()+";"+note);
   }
   
     public void exportFIO(PrintWriter ofl) throws java.io.IOException

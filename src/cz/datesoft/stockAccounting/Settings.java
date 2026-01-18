@@ -174,6 +174,11 @@ public class Settings {
   private static boolean updateDuplicatesOnImport = false;
 
   /**
+   * Show metadata columns (Broker, AccountID, TxnID, Effect) visibility
+   */
+  private static boolean showMetadataColumns = true;
+
+  /**
    * Daily exchange rates map (currency|YYYY-MM-DD => ratio map)
    */
   private static HashMap<String, Double> dailyRates;
@@ -413,6 +418,20 @@ public class Settings {
   }
 
   /**
+   * Get show metadata columns setting
+   */
+  public static boolean getShowMetadataColumns() {
+    return showMetadataColumns;
+  }
+
+  /**
+   * Set show metadata columns setting
+   */
+  public static void setShowMetadataColumns(boolean value) {
+    showMetadataColumns = value;
+  }
+
+  /**
    * Get update duplicates on import checkbox state
    */
   public static boolean getUpdateDuplicatesOnImport() {
@@ -608,6 +627,9 @@ public class Settings {
     /* Load daily rates */
     loadDailyRates();
 
+    /* Show metadata columns */
+    showMetadataColumns = p.getBoolean("showMetadataColumns", true);
+
     /* Trading 212 API settings */
     trading212ApiKey = p.get("trading212ApiKey", null);
     trading212ApiSecret = p.get("trading212ApiSecret", null);
@@ -676,6 +698,9 @@ public class Settings {
 
     // Save daily rates
     saveDailyRates();
+
+    // Show metadata columns
+    p.putBoolean("showMetadataColumns", showMetadataColumns);
 
     // Trading 212 API settings
     if (trading212ApiKey != null) {

@@ -764,6 +764,10 @@ public class ImportWindow extends javax.swing.JFrame {
             System.out.println("DEBUG: Invalidating transformation cache after API import");
             mainWindow.getTransactionDatabase().invalidateTransformationCache();
 
+            // Refresh metadata filter dropdowns after API import
+            System.out.println("DEBUG: Refreshing metadata filters after API import");
+            mainWindow.refreshMetadataFilters();
+
             // Calculate actual transactions added
             int finalTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
             int transactionsAdded = finalTransactionCount - initialTransactionCount;
@@ -1206,6 +1210,10 @@ public class ImportWindow extends javax.swing.JFrame {
         // Invalidate transformation cache after import
         System.out.println("DEBUG: Invalidating transformation cache after file import");
         mainWindow.getTransactionDatabase().invalidateTransformationCache();
+
+        // Refresh metadata filter dropdowns after import
+        System.out.println("DEBUG: Refreshing metadata filters after import");
+        mainWindow.refreshMetadataFilters();
 
         dispose(); // Close window after file import
       }
