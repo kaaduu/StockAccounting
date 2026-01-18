@@ -132,6 +132,15 @@ public class ImportWindow extends javax.swing.JFrame {
 
     System.out.println("[IMPORT:002] loadImport() called - UI format: " + cbFormat.getSelectedIndex() + ", file: " + (currentFile != null ? currentFile.getName() : "null"));
 
+    // Log preview table state before clearing
+    System.out.println("[IMPORT:PREVIEW] Preview table before clear: " + (transactions != null ? transactions.getRowCount() : "null") + " rows");
+
+    // Clear not imported rows
+    DefaultTableModel niTableModel = (DefaultTableModel) niTable.getModel();
+    niTableModel.setNumRows(0);
+
+    System.out.println("[IMPORT:PREVIEW] Preview table after clear: " + (transactions != null ? transactions.getRowCount() : "null") + " rows");
+
     // Clear not imported rows
     DefaultTableModel model = (DefaultTableModel) niTable.getModel();
     model.setNumRows(0);
@@ -194,16 +203,24 @@ public class ImportWindow extends javax.swing.JFrame {
          System.out.println("[DUPLICATE:002] Filtered " + duplicatesFiltered + " duplicates from file import");
        }
 
-       // Set labels
-       int n = transactions.getRowCount();
-       String previewText = "Náhled (" + n + " " + getRecordsWord(n) + ")";
-       if (duplicatesFiltered > 0) {
-         previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
-       }
-       previewText += ":";
-       lPreview.setText(previewText);
-      int rowCount = notImported.size();
-      lUnimported.setText("Neimportované řádky (" + rowCount + " " + getRecordsWord(rowCount) + "):");
+        // Set labels
+        int n = transactions.getRowCount();
+        String previewText = "Náhled (" + n + " " + getRecordsWord(n) + ")";
+        if (duplicatesFiltered > 0) {
+          previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
+        }
+        previewText += ":";
+        lPreview.setText(previewText);
+        int rowCount = notImported.size();
+        lUnimported.setText("Neimportované řádky (" + rowCount + " " + getRecordsWord(rowCount) + "):");
+
+        // Log successful import completion
+        System.out.println("[IMPORT:SUCCESS] Import completed successfully:");
+        System.out.println("[IMPORT:SUCCESS]   - Preview transactions: " + n);
+        System.out.println("[IMPORT:SUCCESS]   - Duplicates filtered: " + duplicatesFiltered);
+        System.out.println("[IMPORT:SUCCESS]   - Not imported rows: " + rowCount);
+        System.out.println("[IMPORT:SUCCESS]   - Final UI state:");
+        logUIComponentStates();
 
       /* Fill in data model for not imported rows */
 
@@ -215,9 +232,9 @@ public class ImportWindow extends javax.swing.JFrame {
           colCount = n;
       }
 
-      if (rowCount > 0) {
-        model.setRowCount(rowCount);
-        model.setColumnCount(colCount);
+       if (rowCount > 0) {
+         niTableModel.setRowCount(rowCount);
+         niTableModel.setColumnCount(colCount);
 
         // Make columns
         for (n = 0; n < colCount; n++) {
@@ -232,17 +249,22 @@ public class ImportWindow extends javax.swing.JFrame {
           }
           // Set nulls for not used columns
           for (; n < colCount; n++) {
-            model.setValueAt(null, i, n);
+            niTableModel.setValueAt(null, i, n);
           }
         }
       } else {
-        model.setRowCount(0);
+        niTableModel.setRowCount(0);
       }
     } catch (java.io.FileNotFoundException e) {
+      System.out.println("[IMPORT:ERROR] FileNotFoundException during import: " + e.getMessage());
       JOptionPane.showMessageDialog(this, "Soubor nenalezen!");
     } catch (java.io.IOException e) {
+      System.out.println("[IMPORT:ERROR] IOException during import: " + e.getMessage());
       JOptionPane.showMessageDialog(this, "Chyba čtení: " + e.getLocalizedMessage());
     } catch (cz.datesoft.stockAccounting.imp.ImportException e) {
+      System.out.println("[IMPORT:ERROR] ImportException during import: " + e.getMessage());
+      System.out.println("[IMPORT:ERROR] UI state at time of error:");
+      logUIComponentStates();
       JOptionPane.showMessageDialog(this, "Chyba při importu: " + e.getMessage());
     }
   }
@@ -270,7 +292,11 @@ public class ImportWindow extends javax.swing.JFrame {
     try {
       currentFile = file;
 
+      System.out.println("[IMPORT:SESSION] ===== STARTING NEW IMPORT SESSION =====");
       System.out.println("[FORMAT:001] startImport called with preselectedFormat=" + preselectedFormat + ", file=" + (file != null ? file.getName() : "null"));
+
+      // Log initial state before any changes
+      logUIComponentStates();
 
       // Restore last selected format from settings (unless preselected format is specified)
       if (preselectedFormat == 0) {
@@ -970,6 +996,21 @@ public class ImportWindow extends javax.swing.JFrame {
     }
   }
 
+  /**
+   * Log current UI component states for debugging format switching issues
+   */
+  private void logUIComponentStates() {
+    System.out.println("[UI:STATE] Current UI component states:");
+    System.out.println("[UI:STATE]   - Format dropdown: " + cbFormat.getSelectedIndex() + " (" + cbFormat.getSelectedItem() + ")");
+    System.out.println("[UI:STATE]   - Window title: '" + getTitle() + "'");
+    System.out.println("[UI:STATE]   - T212 year selector visible: " + (cbTrading212Year != null ? cbTrading212Year.isVisible() : "null"));
+    System.out.println("[UI:STATE]   - Clear preview button visible: " + (bClearPreview != null ? bClearPreview.isVisible() : "null"));
+    System.out.println("[UI:STATE]   - Cache status label visible: " + (lCacheStatus != null ? lCacheStatus.isVisible() : "null"));
+    System.out.println("[UI:STATE]   - Preview table row count: " + (transactions != null ? transactions.getRowCount() : "null"));
+    System.out.println("[UI:STATE]   - Import in progress flag: " + importInProgress);
+    System.out.println("[UI:STATE]   - Current file: " + (currentFile != null ? currentFile.getName() : "null"));
+  }
+
   private void populateTrading212YearDropdown() {
     cbTrading212Year.removeAllItems();
 
@@ -1054,9 +1095,15 @@ public class ImportWindow extends javax.swing.JFrame {
 
   private void cbFormatActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_cbFormatActionPerformed
 
+    System.out.println("[FORMAT:SWITCH] cbFormatActionPerformed triggered - new format index: " + cbFormat.getSelectedIndex());
+
     if (cbFormat.getSelectedIndex() != 0) {
+      System.out.println("[FORMAT:SWITCH] Updating UI for format: " + cbFormat.getSelectedIndex());
       updateUiForFormat(cbFormat.getSelectedIndex());
       updateWindowTitle(); // Update window title based on format
+
+      // Log UI component states after format change
+      logUIComponentStates();
 
       if (isTrading212Format()) {
         // For API format, just show the year selection UI
