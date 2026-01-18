@@ -27,7 +27,10 @@ public class Trading212Importer {
     private final Trading212DataTransformer transformer;
     private final Trading212ImportState importState;
     private final Trading212ReportCache reportCache;
+    private final Trading212CsvCache csvCache;
     private java.awt.Frame parentFrame; // Parent frame for progress dialogs
+    private String cachedAccountId = null; // Cached account ID from API
+    private boolean forceRefresh = false; // Force download even if cache exists
 
     /**
      * Set the parent frame for progress dialogs
@@ -47,6 +50,44 @@ public class Trading212Importer {
         this.transformer = new Trading212DataTransformer();
         this.importState = new Trading212ImportState(); // In production, load from settings
         this.reportCache = new Trading212ReportCache();
+        this.csvCache = new Trading212CsvCache();
+    }
+    
+    /**
+     * Set force refresh flag to bypass cache
+     */
+    public void setForceRefresh(boolean forceRefresh) {
+        this.forceRefresh = forceRefresh;
+        logger.info("Force refresh set to: " + forceRefresh);
+    }
+    
+    /**
+     * Get account ID (fetch from API if not cached)
+     */
+    public String getAccountId() throws Exception {
+        if (cachedAccountId != null) {
+            return cachedAccountId;
+        }
+        
+        try {
+            logger.info("Fetching account ID from Trading 212 API...");
+            AccountSummary summary = apiClient.testConnection();
+            cachedAccountId = summary.accountId;
+            logger.info("Account ID: " + cachedAccountId);
+            return cachedAccountId;
+        } catch (Exception e) {
+            logger.warning("Failed to fetch account ID: " + e.getMessage() + ", using fallback");
+            // Fallback to generic ID based on environment
+            cachedAccountId = useDemo ? "demo" : "live";
+            return cachedAccountId;
+        }
+    }
+    
+    /**
+     * Get CSV cache instance
+     */
+    public Trading212CsvCache getCsvCache() {
+        return csvCache;
     }
 
     /**
@@ -165,13 +206,33 @@ public class Trading212Importer {
     }
 
     /**
-     * Import large date ranges using CSV reports
+     * Import large date ranges using CSV reports (with caching support)
      */
     private Vector<Transaction> importCsvBulkImport(LocalDateTime fromDate, LocalDateTime toDate, javax.swing.SwingWorker worker)
             throws Exception {
 
         logger.info("Using CSV bulk import for date range: " + fromDate + " to " + toDate);
 
+        // Get account ID for cache lookup
+        String accountId = getAccountId();
+        int year = fromDate.getYear();
+        
+        // Check if we can use cached CSV
+        if (!forceRefresh && csvCache.hasCachedCsv(accountId, year)) {
+            logger.info("✓ Using cached CSV for year " + year + " (account: " + accountId + ")");
+            try {
+                String cachedCsv = csvCache.loadCsv(accountId, year);
+                Trading212CsvParser csvParser = new Trading212CsvParser();
+                Vector<Transaction> transactions = csvParser.parseCsvReport(cachedCsv);
+                logger.info("✓ Loaded " + transactions.size() + " transactions from cache (no API call needed)");
+                return transactions;
+            } catch (Exception e) {
+                logger.warning("Failed to load from cache: " + e.getMessage() + ", downloading from API");
+                // Fall through to API download
+            }
+        }
+        
+        // Download from API
         Trading212CsvClient csvClient = new Trading212CsvClient(apiKey, apiSecret, useDemo);
         Trading212CsvParser csvParser = new Trading212CsvParser();
 
@@ -194,14 +255,18 @@ public class Trading212Importer {
             logger.info("Using GUI progress dialog for status monitoring (recommended for user feedback)");
             CsvReportProgressDialog progressDialog = new CsvReportProgressDialog(
                     this.parentFrame, reportId, csvClient, csvParser, reportCache, worker);
+            
+            // Enable CSV caching in the dialog
+            progressDialog.setCacheParameters(csvCache, accountId, year);
+            
             transactions = progressDialog.waitForCompletion();
+            logger.info("CSV bulk import completed via GUI: " + transactions.size() + " transactions imported");
         } else {
             // Headless mode: Poll status directly (fallback when no GUI available)
             logger.info("Using headless polling for status monitoring (no GUI available)");
-            transactions = importCsvBulkImportHeadless(reportId, csvClient, csvParser);
+            transactions = importCsvBulkImportHeadless(reportId, csvClient, csvParser, accountId, year);
         }
 
-        logger.info("CSV bulk import completed: " + transactions.size() + " transactions imported");
         return transactions;
     }
 
@@ -209,7 +274,7 @@ public class Trading212Importer {
      * Headless CSV bulk import that polls status without GUI dialog
      */
     private Vector<Transaction> importCsvBulkImportHeadless(long reportId,
-            Trading212CsvClient csvClient, Trading212CsvParser csvParser) throws Exception {
+            Trading212CsvClient csvClient, Trading212CsvParser csvParser, String accountId, int year) throws Exception {
 
         logger.info("Starting headless CSV report monitoring for report ID: " + reportId);
 
@@ -238,6 +303,14 @@ public class Trading212Importer {
 
                     logger.info("Parsing CSV data...");
                     Vector<Transaction> transactions = csvParser.parseCsvReport(csvData);
+                    
+                    // Save CSV to cache for future use
+                    try {
+                        csvCache.saveCsv(accountId, year, csvData);
+                        logger.info("✓ Saved CSV to cache for future use (account: " + accountId + ", year: " + year + ")");
+                    } catch (Exception cacheError) {
+                        logger.warning("Failed to save CSV to cache: " + cacheError.getMessage());
+                    }
 
                     logger.info("Headless CSV import completed successfully: " + transactions.size() + " transactions");
                     return transactions;
