@@ -55,6 +55,8 @@ Project Properties → Libraries → Compile classpath:
 - **FIO**: CSV export obchodů
 - **BrokerJet**: HTML export (legacy)
 
+**Podrobná dokumentace formátů a poznámek**: [IMPORT_DATA.md](IMPORT_DATA.md)
+
 ### Export výsledků
 - **CSV export** s oddělením měny do samostatného sloupce
 - **FIO formát** pro import na kacka.baldsoft.com
