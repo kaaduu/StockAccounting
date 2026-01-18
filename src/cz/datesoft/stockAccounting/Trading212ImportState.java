@@ -6,6 +6,9 @@
 
 package cz.datesoft.stockAccounting;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -19,10 +22,27 @@ public class Trading212ImportState {
 
     // Import status for each year
     private Map<Integer, YearImportStatus> yearStatuses;
+    
+    // Account ID for this import state (used in cache lookups)
+    private String accountId;
 
     public Trading212ImportState() {
         this.yearStatuses = new HashMap<>();
         loadFromSettings();
+    }
+    
+    /**
+     * Get account ID associated with this import state
+     */
+    public String getAccountId() {
+        return accountId;
+    }
+    
+    /**
+     * Set account ID for this import state
+     */
+    public void setAccountId(String accountId) {
+        this.accountId = accountId;
     }
 
     /**
@@ -180,6 +200,140 @@ public class Trading212ImportState {
         for (YearImportStatus status : yearStatuses.values()) {
             status.cachedTransactions = null;
         }
+    }
+    
+    // ========== File-Based Load/Save Methods ==========
+    
+    /**
+     * Load import state from sidecar file next to .dat file
+     * File format: <datfile>.t212state
+     */
+    public static Trading212ImportState loadFromFile(File datFile) {
+        Trading212ImportState state = new Trading212ImportState();
+        state.yearStatuses = new HashMap<>(); // Clear default loaded state
+        
+        if (datFile == null || !datFile.exists()) {
+            return state;
+        }
+        
+        File stateFile = getSidecarFile(datFile);
+        if (!stateFile.exists()) {
+            // Try to migrate from global settings
+            state.loadFromSettings();
+            return state;
+        }
+        
+        try {
+            String json = Files.readString(stateFile.toPath());
+            if (json == null || json.trim().isEmpty()) {
+                return state;
+            }
+            
+            org.json.JSONObject root = new org.json.JSONObject(json);
+            
+            // Load account ID if present
+            if (root.has("accountId")) {
+                state.accountId = root.getString("accountId");
+            }
+            
+            // Load year statuses
+            if (root.has("years")) {
+                org.json.JSONObject yearsObj = root.getJSONObject("years");
+                
+                for (String yearStr : yearsObj.keySet()) {
+                    int year = Integer.parseInt(yearStr);
+                    org.json.JSONObject yearData = yearsObj.getJSONObject(yearStr);
+                    
+                    YearImportStatus status = new YearImportStatus();
+                    status.fullyImported = yearData.getBoolean("fullyImported");
+                    status.recordsImported = yearData.optInt("transactionCount", 0);
+                    
+                    if (yearData.has("lastImportDate")) {
+                        status.lastImportDate = LocalDateTime.parse(
+                            yearData.getString("lastImportDate"),
+                            DateTimeFormatter.ISO_LOCAL_DATE_TIME
+                        );
+                    }
+                    
+                    state.yearStatuses.put(year, status);
+                }
+            }
+            
+            System.out.println("Loaded Trading 212 import state from file: " + stateFile.getAbsolutePath() + 
+                             " (accountId=" + state.accountId + ", years=" + state.yearStatuses.size() + ")");
+            
+        } catch (Exception e) {
+            System.err.println("Failed to load Trading 212 import state from file " + 
+                             stateFile.getAbsolutePath() + ": " + e.getMessage());
+            // Fall back to global settings
+            state.loadFromSettings();
+        }
+        
+        return state;
+    }
+    
+    /**
+     * Save import state to sidecar file next to .dat file
+     */
+    public void saveToFile(File datFile) {
+        if (datFile == null) {
+            return;
+        }
+        
+        File stateFile = getSidecarFile(datFile);
+        
+        try {
+            org.json.JSONObject root = new org.json.JSONObject();
+            
+            // Save account ID
+            if (accountId != null && !accountId.isEmpty()) {
+                root.put("accountId", accountId);
+            }
+            
+            // Save year statuses
+            org.json.JSONObject yearsObj = new org.json.JSONObject();
+            for (Map.Entry<Integer, YearImportStatus> entry : yearStatuses.entrySet()) {
+                org.json.JSONObject yearData = new org.json.JSONObject();
+                yearData.put("fullyImported", entry.getValue().fullyImported);
+                yearData.put("transactionCount", entry.getValue().recordsImported);
+                
+                if (entry.getValue().lastImportDate != null) {
+                    yearData.put("lastImportDate", 
+                        entry.getValue().lastImportDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                }
+                
+                yearsObj.put(String.valueOf(entry.getKey()), yearData);
+            }
+            root.put("years", yearsObj);
+            
+            // Write to file
+            Files.writeString(stateFile.toPath(), root.toString(2)); // Pretty print
+            
+            System.out.println("Saved Trading 212 import state to file: " + stateFile.getAbsolutePath() + 
+                             " (accountId=" + accountId + ", years=" + yearStatuses.size() + ")");
+            
+        } catch (Exception e) {
+            System.err.println("Failed to save Trading 212 import state to file " + 
+                             stateFile.getAbsolutePath() + ": " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Get sidecar state file for a .dat file
+     */
+    private static File getSidecarFile(File datFile) {
+        String datPath = datFile.getAbsolutePath();
+        return new File(datPath + ".t212state");
+    }
+    
+    /**
+     * Check if sidecar state file exists for a .dat file
+     */
+    public static boolean hasSidecarFile(File datFile) {
+        if (datFile == null) {
+            return false;
+        }
+        return getSidecarFile(datFile).exists();
     }
 
     /**

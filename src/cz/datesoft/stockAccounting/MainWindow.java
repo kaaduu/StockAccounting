@@ -147,9 +147,15 @@ public class MainWindow extends javax.swing.JFrame {
 
   // Transaction database
   private TransactionSet transactions;
-
+  
   // Import window
   private ImportWindow importWindow;
+  
+  // Current file for .t212state tracking
+  private File currentFile;
+  
+  // Current Trading 212 import state for this file
+  private Trading212ImportState currentFileImportState;
 
   // Compute window
   private ComputeWindow computeWindow;
@@ -1083,16 +1089,26 @@ public class MainWindow extends javax.swing.JFrame {
    */
   private boolean saveTransactions(File fl) {
     try {
-      transactions.save(fl);
-    } catch (Exception e) {
-      e.printStackTrace();
-      JOptionPane.showMessageDialog(this, "Při ukládání souboru nastala chyba: " + e);
+       transactions.save(fl);
+       
+       // Save Trading 212 import state to sidecar file if exists
+       if (currentFileImportState != null && currentFile != null) {
+         try {
+           currentFileImportState.saveToFile(currentFile);
+           System.out.println("Saved Trading 212 import state to .t212state file: " + currentFile.getAbsolutePath());
+         } catch (Exception e) {
+           System.err.println("Failed to save Trading 212 import state: " + e.getMessage());
+         }
+       }
+       } catch (Exception e) {
+       e.printStackTrace();
+       JOptionPane.showMessageDialog(this, "Při ukládání souboru nastala chyba: " + e);
 
-      return false;
-    }
+       return false;
+     }
 
-    return true;
-  }
+     return true;
+   }
 
   /**
    * Save transactions to different file.
@@ -1111,6 +1127,14 @@ public class MainWindow extends javax.swing.JFrame {
     String fileName = dialog.getFile();
     if (fileName != null) {
       File file = new File(dialog.getDirectory(), fileName);
+      
+      // If saving to a different file, reset currentFile and import state
+      if (!file.equals(currentFile)) {
+        currentFile = file;
+        currentFileImportState = null;
+        System.out.println("Saved to different file, reset currentFileImportState");
+      }
+      
       if (file.exists()) {
         if (JOptionPane.showConfirmDialog(this,
             "Soubor " + file.getAbsolutePath() + " již existuje, chcete jej přepsat?", "Přepsat soubor?",
@@ -1283,27 +1307,34 @@ public class MainWindow extends javax.swing.JFrame {
       Settings.setDataDirectory(dialog.getDirectory());
       Settings.save();
 
-       try {
-         // Load file
-          transactions.load(selectedFile);
+        try {
+          // Load file
+           transactions.load(selectedFile);
+           
+           // Load Trading 212 import state from sidecar file if exists
+           currentFile = selectedFile;
+           currentFileImportState = Trading212ImportState.loadFromFile(selectedFile);
+           if (currentFileImportState != null) {
+             System.out.println("Loaded Trading 212 import state from .t212state file for: " + selectedFile.getAbsolutePath());
+           }
 
-          // Initialize date range to show all loaded data (1900-01-01 to today)
-          java.util.GregorianCalendar startCal = new java.util.GregorianCalendar(1900, 0, 1); // 1900-01-01
-          dcFrom.setDate(startCal.getTime());
-          dcTo.setDate(new java.util.Date()); // Today
+           // Initialize date range to show all loaded data (1900-01-01 to today)
+           java.util.GregorianCalendar startCal = new java.util.GregorianCalendar(1900, 0, 1); // 1900-01-01
+           dcFrom.setDate(startCal.getTime());
+           dcTo.setDate(new java.util.Date()); // Today
 
-          // Invalidate transformation cache for loaded data
-          System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
-          transactions.invalidateTransformationCache();
+           // Invalidate transformation cache for loaded data
+           System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
+           transactions.invalidateTransformationCache();
 
-          // Refresh metadata filter dropdowns with loaded data
-          refreshMetadataFilters();
+           // Refresh metadata filter dropdowns with loaded data
+           refreshMetadataFilters();
 
-          // Clear results of computing to avoid confusion
-          computeWindow.clearComputeResults();
+           // Clear results of computing to avoid confusion
+           computeWindow.clearComputeResults();
 
-          // Clear filter
-          clearFilter();
+           // Clear filter
+           clearFilter();
        } catch (Exception e) {
         JOptionPane.showMessageDialog(this, "Při načítání souboru nastala chyba: " + e);
       }
@@ -1444,6 +1475,27 @@ public class MainWindow extends javax.swing.JFrame {
    */
   public TransactionSet getTransactionDatabase() {
     return transactions;
+  }
+  
+  /**
+   * Get current file for .t212state tracking
+   */
+  public File getCurrentFile() {
+    return currentFile;
+  }
+  
+  /**
+   * Get current Trading 212 import state for this file
+   */
+  public Trading212ImportState getCurrentFileImportState() {
+    return currentFileImportState;
+  }
+  
+  /**
+   * Set current Trading 212 import state for this file
+   */
+  public void setCurrentFileImportState(Trading212ImportState state) {
+    this.currentFileImportState = state;
   }
 
   /**

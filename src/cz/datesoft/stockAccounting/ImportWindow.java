@@ -48,6 +48,10 @@ public class ImportWindow extends javax.swing.JFrame {
 
   // Trading 212 import state
   private Trading212ImportState importState;
+  
+  // Trading 212 UI components for cache/refresh
+  private javax.swing.JButton bRefreshFromApi;
+  private javax.swing.JLabel lblCacheStatus;
 
   /** Creates new form ImportWindow */
   public ImportWindow(java.awt.Frame parent, boolean modal) {
@@ -581,21 +585,109 @@ public class ImportWindow extends javax.swing.JFrame {
   }// </editor-fold>//GEN-END:initComponents
 
   private boolean isTrading212Format() {
-    return cbFormat.getSelectedIndex() == 8; // Trading 212 API is index 8
+    return cbFormat != null && cbFormat.getSelectedIndex() == 8; // Trading 212 API is index 8
+  }
+  
+  /**
+   * Check if valid API credentials are configured
+   */
+  private boolean hasValidApiCredentials() {
+    String apiKey = cz.datesoft.stockAccounting.Settings.getTrading212ApiKey();
+    String apiSecret = cz.datesoft.stockAccounting.Settings.getTrading212ApiSecret();
+    return apiKey != null && !apiKey.trim().isEmpty() 
+        && apiSecret != null && !apiSecret.trim().isEmpty();
+  }
+  
+  /**
+   * Open settings window to Trading 212 API tab
+   */
+  private void openSettings_Trading212Tab() {
+    SettingsWindow settingsWindow = new SettingsWindow(mainWindow, true);
+    
+    // Re-check credentials and update UI after settings window closes
+    settingsWindow.addWindowListener(new java.awt.event.WindowAdapter() {
+      public void windowClosed(java.awt.event.WindowEvent e) {
+        updateImportButtonState();
+        updateRefreshButtonState();
+      }
+    });
+    
+    // Open settings - user can navigate to Trading 212 tab manually
+    // Note: setSelectedTab() could be added to SettingsWindow for automatic navigation
+    settingsWindow.showDialog();
+  }
+  
+  /**
+   * Update import button state based on API credentials
+   */
+  private void updateImportButtonState() {
+    if (isTrading212Format()) {
+      if (!hasValidApiCredentials()) {
+        bImport.setText("⚙ Nastavit Trading 212 API...");
+        bImport.setToolTipText("Klikněte pro nastavení API přístupu k Trading 212");
+      } else {
+        // Check if we have preview data
+        boolean hasPreviewData = !transactions.rows.isEmpty();
+        if (hasPreviewData) {
+          bImport.setText("Sloučit do databáze");
+          bImport.setToolTipText("Sloučit načtené transakce do hlavní databáze");
+        } else {
+          bImport.setText("API stažení");
+          bImport.setToolTipText("Stáhnout data z Trading 212 API");
+        }
+      }
+    } else {
+      bImport.setText("Importovat");
+      bImport.setToolTipText("Importovat data do databáze");
+    }
+  }
+  
+  /**
+   * Update refresh button state based on cache availability
+   */
+  private void updateRefreshButtonState() {
+    if (bRefreshFromApi == null || !isTrading212Format()) {
+      return;
+    }
+    
+    // Enable only if we have credentials and cached data for selected year
+    boolean hasCredentials = hasValidApiCredentials();
+    boolean hasCachedData = false;
+    
+    if (hasCredentials && cbTrading212Year != null) {
+      String selectedItem = (String) cbTrading212Year.getSelectedItem();
+      if (selectedItem != null) {
+        try {
+          String yearStr = selectedItem.split(" ")[0];
+          int year = Integer.parseInt(yearStr);
+          
+          // Check cache (need account ID first)
+          // For now, just check if status shows "Cached"
+          hasCachedData = selectedItem.contains("Cached");
+        } catch (Exception e) {
+          // Ignore parsing errors
+        }
+      }
+    }
+    
+    bRefreshFromApi.setEnabled(hasCachedData);
   }
 
   private void setupTrading212YearSelection() {
     if (cbTrading212Year == null) {
       cbTrading212Year = new javax.swing.JComboBox<>();
       bClearPreview = new javax.swing.JButton("Vymazat náhled");
+      bRefreshFromApi = new javax.swing.JButton("🔄 Obnovit z API");
+      bRefreshFromApi.setEnabled(false); // Initially disabled until cache is available
       lCacheStatus = new javax.swing.JLabel("Cache: None");
 
       populateTrading212YearDropdown();
 
-      // Add selection listener to update cache status
+      // Add selection listener to update cache status and button state
       cbTrading212Year.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
           updateCacheStatus();
+          updateRefreshButtonState();
         }
       });
 
@@ -603,6 +695,12 @@ public class ImportWindow extends javax.swing.JFrame {
       bClearPreview.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
           clearPreview();
+        }
+      });
+      
+      bRefreshFromApi.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          refreshFromApiClicked();
         }
       });
 
@@ -626,11 +724,16 @@ public class ImportWindow extends javax.swing.JFrame {
       gbc.gridx = 2;
       gbc.weightx = 0.0;
       jPanel2.add(bClearPreview, gbc);
+      
+      // Refresh from API button
+      gbc.gridx = 3;
+      gbc.weightx = 0.0;
+      jPanel2.add(bRefreshFromApi, gbc);
 
       // Add status label on next row
       gbc.gridx = 0;
       gbc.gridy = 13;
-      gbc.gridwidth = 3;
+      gbc.gridwidth = 4; // Span across all columns
       gbc.weightx = 1.0;
       jPanel2.add(lCacheStatus, gbc);
 
@@ -648,6 +751,48 @@ public class ImportWindow extends javax.swing.JFrame {
     updateClearButtonState();
   }
 
+  /**
+   * Handle "Refresh from API" button click
+   */
+  private void refreshFromApiClicked() {
+    if (!isTrading212Format() || cbTrading212Year == null) {
+      return;
+    }
+    
+    String selectedItem = (String) cbTrading212Year.getSelectedItem();
+    if (selectedItem == null) {
+      return;
+    }
+    
+    try {
+      String yearStr = selectedItem.split(" ")[0];
+      int year = Integer.parseInt(yearStr);
+      
+      // Confirm with user
+      int confirm = javax.swing.JOptionPane.showConfirmDialog(this,
+          "Znovu stáhnout data pro rok " + year + " z Trading 212?\n" +
+          "Tato operace přepíše cache data.",
+          "Potvrdit obnovení", javax.swing.JOptionPane.YES_NO_OPTION);
+      
+      if (confirm != javax.swing.JOptionPane.YES_OPTION) {
+        return;
+      }
+      
+      // Clear preview first
+      clearPreview();
+      
+      // Perform import with force refresh flag
+      System.out.println("[REFRESH:001] Forcing refresh from API for year " + year);
+      performTrading212Import(false, true); // fetch mode, force refresh
+      
+    } catch (Exception e) {
+      System.err.println("Failed to parse year from selection: " + e.getMessage());
+      javax.swing.JOptionPane.showMessageDialog(this,
+          "Chyba při obnovení: " + e.getMessage(),
+          "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);
+    }
+  }
+  
   private void updateCacheStatus() {
     if (lCacheStatus != null) {
       String selectedItem = (String) cbTrading212Year.getSelectedItem();
@@ -677,6 +822,9 @@ public class ImportWindow extends javax.swing.JFrame {
     }
     if (bClearPreview != null) {
       bClearPreview.setVisible(false);
+    }
+    if (bRefreshFromApi != null) {
+      bRefreshFromApi.setVisible(false);
     }
     if (lCacheStatus != null) {
       lCacheStatus.setVisible(false);
@@ -718,10 +866,14 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void performTrading212Import(boolean mergeMode) {
+    performTrading212Import(mergeMode, false); // Default: no force refresh
+  }
+  
+  private void performTrading212Import(boolean mergeMode, boolean forceRefresh) {
     // Note: No importInProgress check here - internal method called from startImport()
     // which already manages concurrency protection for external calls
 
-    System.out.println("[VALIDATE:001] performTrading212Import called with mergeMode=" + mergeMode);
+    System.out.println("[VALIDATE:001] performTrading212Import called with mergeMode=" + mergeMode + ", forceRefresh=" + forceRefresh);
 
     if (!isTrading212Format()) {
         System.out.println("[VALIDATE:002] ❌ Format check: FAIL (not Trading212 format)");
@@ -881,6 +1033,7 @@ public class ImportWindow extends javax.swing.JFrame {
         cz.datesoft.stockAccounting.Trading212Importer importer = new cz.datesoft.stockAccounting.Trading212Importer(
             apiKey, apiSecret, cz.datesoft.stockAccounting.Settings.getTrading212UseDemo());
         importer.setParentFrame(mainWindow); // Pass MainWindow reference for progress dialogs (more reliable than getOwner())
+        importer.setForceRefresh(forceRefresh); // Set force refresh flag to bypass cache if requested
         cz.datesoft.stockAccounting.Trading212Importer.ImportResult result = importer.importYear(year, this);
         System.out.println("[API:005] importYear() completed");
         System.out.println("[API:006] Result object: " + (result != null ? "NOT NULL" : "NULL"));
@@ -1008,6 +1161,7 @@ public class ImportWindow extends javax.swing.JFrame {
     lPreview.setText("Náhled (0 záznamů):");
     lUnimported.setText("Neimportované řádky (0 záznamů):");
     updateImportButtonText();
+    updateImportButtonState();
     updateClearButtonState();
   }
 
@@ -1020,6 +1174,7 @@ public class ImportWindow extends javax.swing.JFrame {
     lPreview.setText("Náhled (0 záznamů):");
     lUnimported.setText("Neimportované řádky (0 záznamů):");
     updateImportButtonText();
+    updateImportButtonState();
     updateClearButtonState();
     System.out.println("[CLEAR:002] Preview cleared successfully");
   }
@@ -1058,8 +1213,9 @@ public class ImportWindow extends javax.swing.JFrame {
       hideTrading212YearSelection();
     }
 
-    // Update button text based on current state
+    // Update button text and state based on current state
     updateImportButtonText();
+    updateImportButtonState(); // Check API credentials
 
     // Repack to adjust window size
     pack();
@@ -1139,9 +1295,25 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private String getTrading212YearStatus(int year) {
-    if (importState.isYearFullyImported(year)) {
+    boolean imported = importState.isYearFullyImported(year);
+    boolean partial = importState.getLastImportDate(year) != null;
+    
+    // Check if cached (requires account ID, which we get from importState)
+    boolean cached = false;
+    String accountId = importState.getAccountId();
+    if (accountId != null && !accountId.isEmpty()) {
+      Trading212CsvCache csvCache = new Trading212CsvCache();
+      cached = csvCache.hasCachedCsv(accountId, year);
+    }
+    
+    // Build status string
+    if (imported && cached) {
+      return "(Imported • Cached)";
+    } else if (imported) {
       return "(Imported)";
-    } else if (importState.getLastImportDate(year) != null) {
+    } else if (cached) {
+      return "(Cached)";
+    } else if (partial) {
       return "(Partial)";
     } else {
       return "(Not Imported)";
@@ -1154,6 +1326,13 @@ public class ImportWindow extends javax.swing.JFrame {
     System.out.println("[BUTTON:001] Importovat button clicked");
     try {
       if (isTrading212Format()) {
+        // Check if API credentials are configured
+        if (!hasValidApiCredentials()) {
+          System.out.println("[BUTTON:002] No API credentials - opening settings");
+          openSettings_Trading212Tab();
+          return; // Don't proceed with import
+        }
+        
         System.out.println("[BUTTON:002] Trading212 format detected");
         System.out.println("[BUTTON:003] Current transactions count: " + transactions.rows.size());
 

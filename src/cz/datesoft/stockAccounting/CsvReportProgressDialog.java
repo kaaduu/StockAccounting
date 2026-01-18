@@ -22,6 +22,11 @@ public class CsvReportProgressDialog extends JDialog {
     private final Trading212CsvParser csvParser;
     private final Trading212ReportCache reportCache;
     private final javax.swing.SwingWorker importWorker; // Reference to worker for cancellation
+    
+    // Cache support (optional)
+    private Trading212CsvCache csvCache = null;
+    private String cacheAccountId = null;
+    private int cacheYear = 0;
 
     private JLabel statusLabel;
     private JLabel countdownLabel;
@@ -49,6 +54,15 @@ public class CsvReportProgressDialog extends JDialog {
         initComponents();
         startCountdownTimer();
         startStatusMonitoring();
+    }
+    
+    /**
+     * Set cache parameters to enable CSV caching
+     */
+    public void setCacheParameters(Trading212CsvCache csvCache, String accountId, int year) {
+        this.csvCache = csvCache;
+        this.cacheAccountId = accountId;
+        this.cacheYear = year;
     }
 
     /**
@@ -206,6 +220,17 @@ public class CsvReportProgressDialog extends JDialog {
             @Override
             protected Vector<Transaction> doInBackground() throws Exception {
                 String csvContent = csvClient.downloadCsvReport(downloadUrl);
+                
+                // Save CSV to cache if parameters are set
+                if (csvCache != null && cacheAccountId != null && cacheYear > 0) {
+                    try {
+                        csvCache.saveCsv(cacheAccountId, cacheYear, csvContent);
+                        System.out.println("✓ Saved CSV to cache (account: " + cacheAccountId + ", year: " + cacheYear + ")");
+                    } catch (Exception cacheError) {
+                        System.err.println("Failed to save CSV to cache: " + cacheError.getMessage());
+                    }
+                }
+                
                 return csvParser.parseCsvReport(csvContent);
             }
 

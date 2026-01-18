@@ -4,6 +4,87 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Vylepšený Trading 212 import s CSV cache a per-file stavem] - 2026-01-18
+
+### Opraveno
+- **NullPointerException při ukládání Settings**: Opravena chyba, kdy kliknutí na OK ve Settings okně způsobovalo pád aplikace. Problém byl v inicializaci modelu (RTableModel), který nebyl vytvořen pokud bylo okno otevřeno přes setVisible() místo showDialog().
+
+### Přidáno
+- **CSV Cache systém**: Lokální ukládání stažených CSV exportů z Trading 212 pro rychlejší re-import bez API volání
+  - Cache umístěná v `~/.trading212/csv_cache/{accountId}/{year}.csv`
+  - Automatické ukládání při stažení z API
+  - Automatické použití cache při příštím importu stejného roku
+  - Metadata soubor s informacemi o velikosti a času stažení
+- **Tlačítko "🔄 Obnovit z API"**: Možnost vynutit nové stažení i když existuje cache
+  - Aktivní pouze když je cache k dispozici
+  - Potvrzovací dialog před přepsáním cache dat
+- **Per-file import stav**: Stav importu (.t212state soubor) vázaný na konkrétní .dat soubor místo globálního nastavení
+  - Každý .dat soubor má vlastní .t212state sidecar soubor
+  - Obsahuje accountId a historii importovaných roků
+  - Řeší problém kdy "(Imported)" status byl zavádějící při otevření jiného .dat souboru
+- **Rozšířené statusy roků**: Rok dropdown nyní zobrazuje kombinované statusy
+  - `(Not Imported)` - Rok ještě nebyl importován
+  - `(Cached)` - Rok má cache ale nebyl importován do tohoto .dat souboru
+  - `(Imported)` - Rok byl importován (bez cache)
+  - `(Imported • Cached)` - Rok byl importován a má cache
+  - `(Partial)` - Částečný import (pouze běžný rok)
+- **Kontrola API přihlašovacích údajů**: Automatická detekce chybějících API credentials
+  - Import tlačítko se mění na "⚙ Nastavit Trading 212 API..." pokud credentials chybí
+  - Kliknutí otevře přímo Settings okno (v budoucnu na Trading 212 tab)
+  - Po zavření Settings okna se automaticky znovu zkontroluje dostupnost credentials
+- **Account ID tracking**: Automatické získání account ID z API pro správné cache a state ukládání
+  - Fallback na "demo"/"live" pokud API volání selže
+
+### Změněno
+- **Trading212Importer.java**: 
+  - Integrován CSV cache check před API voláním
+  - Přidán `forceRefresh` flag pro vynucení stažení
+  - Přidána metoda `getAccountId()` pro získání account ID z API
+  - Cache se ukládá automaticky po úspěšném stažení CSV (GUI i headless režim)
+- **ImportWindow.java**:
+  - Přidáno tlačítko "🔄 Obnovit z API" vedle year dropdownu
+  - Implementována logika `hasValidApiCredentials()` a `openSettings_Trading212Tab()`
+  - Aktualizace import tlačítka textu podle stavu credentials
+  - `getTrading212YearStatus()` nyní kontroluje cache existence
+  - `performTrading212Import()` přijímá `forceRefresh` parametr
+- **Trading212ImportState.java**:
+  - Přidány metody `loadFromFile()` a `saveToFile()` pro per-file stav
+  - Přidáno `accountId` pole
+  - Metoda `getSidecarFile()` pro získání .t212state souboru
+- **CsvReportProgressDialog.java**:
+  - Přidána metoda `setCacheParameters()` pro předání cache info
+  - Automatické ukládání CSV při stažení v GUI dialogu
+
+### Technické detaily
+- **Cache struktura**:
+  ```
+  ~/.trading212/
+  ├── csv_cache/
+  │   ├── {accountId}/
+  │   │   ├── 2021.csv
+  │   │   ├── 2022.csv
+  │   │   ├── metadata.json
+  ```
+- **Sidecar soubor formát** (.t212state):
+  ```json
+  {
+    "accountId": "U15493818",
+    "years": {
+      "2021": {"fullyImported": true, "lastImportDate": "...", "transactionCount": 145}
+    }
+  }
+  ```
+- **Cache výhody**:
+  - Instant import z cache (žádné čekání na API)
+  - Offline import možnost když je cache k dispozici
+  - Snížení API rate limit problémů
+  - Per-account izolace (demo vs live)
+
+### Pozn ámky
+- Cache se **nemazá automaticky** - zůstává uložena navždy nebo dokud uživatel nevymaže ručně
+- **Žádný limit velikosti cache** - může růst neomezeně
+- SettingsWindow integrace (setSelectedTab, cache management UI) bude dokončena v další verzi
+
 ## [Rozšířené parsování poznámek a filtrování metadat] - 2026-01-18
 
 ### Opraveno
