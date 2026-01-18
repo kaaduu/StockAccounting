@@ -34,11 +34,17 @@ public class ImportWindow extends javax.swing.JFrame {
    // Main window
    MainWindow mainWindow;
 
-   // Flag to prevent multiple import triggers during file selection
-   private boolean importInProgress = false;
+    // Flag to prevent multiple import triggers during file selection
+    private boolean importInProgress = false;
 
-   // Trading 212 specific components
-  javax.swing.JComboBox<String> cbTrading212Year;
+    // Current import format (0 = none selected, overrides UI state when set programmatically)
+    private int currentImportFormat = 0;
+
+    // Store duplicates that will be updated if checkbox is checked
+    private Vector<Transaction> duplicatesToUpdate = new Vector<>();
+
+    // Trading 212 specific components
+   javax.swing.JComboBox<String> cbTrading212Year;
 
   // Trading 212 import state
   private Trading212ImportState importState;
@@ -108,6 +114,10 @@ public class ImportWindow extends javax.swing.JFrame {
     table.getColumnModel().getColumn(10).setCellRenderer(new CZDateRenderer());
 
     // niTable.setTableHeader(new JTableHeader());
+    
+    // Restore last checkbox state from settings
+    cbUpdateDuplicates.setSelected(cz.datesoft.stockAccounting.Settings.getUpdateDuplicatesOnImport());
+    
     updateWindowTitle(); // Set initial window title
   }
 
@@ -185,8 +195,9 @@ public class ImportWindow extends javax.swing.JFrame {
         endD = cal.getTime();
       }
 
-        int formatIndex = cbFormat.getSelectedIndex();
-        System.out.println("[FORMAT:004] About to call importFile with formatIndex=" + formatIndex + " for file: " + currentFile.getName());
+        // Get format - prefer programmatic override, fallback to UI state
+        int formatIndex = (currentImportFormat > 0) ? currentImportFormat : cbFormat.getSelectedIndex();
+        System.out.println("[FORMAT:004] About to call importFile with formatIndex=" + formatIndex + " (programmatic: " + currentImportFormat + ", UI: " + cbFormat.getSelectedIndex() + ") for file: " + currentFile.getName());
         transactions.importFile(currentFile, startD, endD, formatIndex, notImported);
 
        // Filter duplicate transactions that already exist in main database
@@ -195,28 +206,46 @@ public class ImportWindow extends javax.swing.JFrame {
        Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase().filterDuplicates(originalTransactions);
        int duplicatesFiltered = originalTransactions.size() - filteredTransactions.size();
 
-       // Replace preview table with filtered transactions
+       // Clear previous duplicates list
+       duplicatesToUpdate.clear();
+
+       // If update checkbox is checked, store duplicates for later update
+       if (cbUpdateDuplicates.isSelected() && duplicatesFiltered > 0) {
+         for (Transaction candidate : originalTransactions) {
+           if (!filteredTransactions.contains(candidate)) {
+             duplicatesToUpdate.add(candidate);
+           }
+         }
+         System.out.println("[DUPLICATE:002] " + duplicatesToUpdate.size() + " duplicates marked for update");
+       }
+
+       // Replace preview table with filtered transactions (only new ones)
        if (duplicatesFiltered > 0) {
          transactions.rows.clear();
          transactions.rows.addAll(filteredTransactions);
          transactions.fireTableDataChanged();
-         System.out.println("[DUPLICATE:002] Filtered " + duplicatesFiltered + " duplicates from file import");
+         System.out.println("[DUPLICATE:003] Filtered " + duplicatesFiltered + " duplicates from preview");
        }
 
         // Set labels
         int n = transactions.getRowCount();
         String previewText = "Náhled (" + n + " " + getRecordsWord(n) + ")";
         if (duplicatesFiltered > 0) {
-          previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
+          if (cbUpdateDuplicates.isSelected()) {
+            previewText += " - " + duplicatesFiltered + " duplikátů k aktualizaci";
+          } else {
+            previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
+          }
         }
         previewText += ":";
         lPreview.setText(previewText);
         int rowCount = notImported.size();
         lUnimported.setText("Neimportované řádky (" + rowCount + " " + getRecordsWord(rowCount) + "):");
 
-        // Reset import flag immediately on successful completion
-        importInProgress = false;
-        System.out.println("[IMPORT:SUCCESS] Import completed successfully - flag reset to false");
+         // Reset import flag immediately on successful completion
+         importInProgress = false;
+         currentImportFormat = 0; // Clear programmatic override
+         System.out.println("[IMPORT:SUCCESS] Import completed successfully - flags reset to false");
 
         // Log successful import completion
         System.out.println("[IMPORT:SUCCESS] Import completed successfully:");
@@ -259,18 +288,21 @@ public class ImportWindow extends javax.swing.JFrame {
       } else {
         niTableModel.setRowCount(0);
       }
-    } catch (java.io.FileNotFoundException e) {
-      System.out.println("[IMPORT:ERROR] FileNotFoundException during import: " + e.getMessage());
-      JOptionPane.showMessageDialog(this, "Soubor nenalezen!");
-    } catch (java.io.IOException e) {
-      System.out.println("[IMPORT:ERROR] IOException during import: " + e.getMessage());
-      JOptionPane.showMessageDialog(this, "Chyba čtení: " + e.getLocalizedMessage());
-    } catch (cz.datesoft.stockAccounting.imp.ImportException e) {
-      System.out.println("[IMPORT:ERROR] ImportException during import: " + e.getMessage());
-      System.out.println("[IMPORT:ERROR] UI state at time of error:");
-      logUIComponentStates();
-      JOptionPane.showMessageDialog(this, "Chyba při importu: " + e.getMessage());
-    }
+     } catch (java.io.FileNotFoundException e) {
+       System.out.println("[IMPORT:ERROR] FileNotFoundException during import: " + e.getMessage());
+       JOptionPane.showMessageDialog(this, "Soubor nenalezen!");
+       currentImportFormat = 0; // Clear programmatic override on error
+     } catch (java.io.IOException e) {
+       System.out.println("[IMPORT:ERROR] IOException during import: " + e.getMessage());
+       JOptionPane.showMessageDialog(this, "Chyba čtení: " + e.getLocalizedMessage());
+       currentImportFormat = 0; // Clear programmatic override on error
+     } catch (cz.datesoft.stockAccounting.imp.ImportException e) {
+       System.out.println("[IMPORT:ERROR] ImportException during import: " + e.getMessage());
+       System.out.println("[IMPORT:ERROR] UI state at time of error:");
+       logUIComponentStates();
+       JOptionPane.showMessageDialog(this, "Chyba při importu: " + e.getMessage());
+       currentImportFormat = 0; // Clear programmatic override on error
+     }
   }
 
   /**
@@ -311,23 +343,28 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       }
 
-      // Set dates for file-based imports
+       // FORCE reset format selection FIRST - before setting dates to avoid premature loadImport() calls
+       if (preselectedFormat > 0) {
+         System.out.println("[FORMAT:002] Force setting cbFormat to index " + preselectedFormat);
+
+         // Set programmatic format override
+         currentImportFormat = preselectedFormat;
+
+         // Direct UI updates on EDT (we're already on EDT from menu click)
+         cbFormat.setSelectedIndex(preselectedFormat);
+         updateUiForFormat(preselectedFormat);
+         updateWindowTitle();
+
+         System.out.println("[FORMAT:003] UI state reset complete, cbFormat.getSelectedIndex()=" + cbFormat.getSelectedIndex() + ", programmatic=" + currentImportFormat);
+       }
+
+      // Set dates for file-based imports (AFTER format is set to avoid triggering premature loadImport)
+      System.out.println("[TIMING:001] About to set dates - programmatic format: " + currentImportFormat + ", UI format: " + cbFormat.getSelectedIndex());
       if (startDateValue != null) {
         startDate.setDate(startDateValue);
       }
       endDate.setDate(null);
-
-      // FORCE reset format selection - direct UI updates since we're already on EDT
-      if (preselectedFormat > 0) {
-        System.out.println("[FORMAT:002] Force setting cbFormat to index " + preselectedFormat);
-
-        // Direct UI updates on EDT (we're already on EDT from menu click)
-        cbFormat.setSelectedIndex(preselectedFormat);
-        updateUiForFormat(preselectedFormat);
-        updateWindowTitle();
-
-        System.out.println("[FORMAT:003] UI state reset complete, cbFormat.getSelectedIndex()=" + cbFormat.getSelectedIndex());
-      }
+      System.out.println("[TIMING:002] Dates set, about to trigger loadImport");
 
       // Single import trigger point - only when UI state is stable
       if (cbFormat.getSelectedIndex() != 0 && currentFile != null) {
@@ -472,7 +509,7 @@ public class ImportWindow extends javax.swing.JFrame {
     jScrollPane1.setViewportView(table);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridy = 3;
+    gridBagConstraints.gridy = 4;
     gridBagConstraints.gridwidth = 6;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.weightx = 1.0;
@@ -484,12 +521,28 @@ public class ImportWindow extends javax.swing.JFrame {
     gridBagConstraints.gridy = 2;
     gridBagConstraints.gridwidth = 6;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 5);
     getContentPane().add(lPreview, gridBagConstraints);
+
+    cbUpdateDuplicates = new javax.swing.JCheckBox();
+    cbUpdateDuplicates.setText("Aktualizovat duplikáty");
+    cbUpdateDuplicates.setToolTipText("Přepíše Poznámky, Poplatky a Datum vypořádání u existujících záznamů");
+    cbUpdateDuplicates.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbUpdateDuplicatesActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 3;
+    gridBagConstraints.gridwidth = 2;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+    gridBagConstraints.insets = new java.awt.Insets(0, 5, 5, 5);
+    getContentPane().add(cbUpdateDuplicates, gridBagConstraints);
 
     lUnimported.setText("Neimportované řádky (0 záznamů):");
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridy = 4;
+    gridBagConstraints.gridy = 5;
     gridBagConstraints.gridwidth = 6;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
@@ -517,7 +570,7 @@ public class ImportWindow extends javax.swing.JFrame {
     niScrollPane.setViewportView(niTable);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridy = 5;
+    gridBagConstraints.gridy = 6;
     gridBagConstraints.gridwidth = 6;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.weightx = 1.0;
@@ -688,6 +741,25 @@ public class ImportWindow extends javax.swing.JFrame {
 
             transactions.mergeTo(mainWindow.getTransactionDatabase());
 
+            // Update duplicates if checkbox is checked
+            int updatedCount = 0;
+            if (cbUpdateDuplicates.isSelected() && !duplicatesToUpdate.isEmpty()) {
+              TransactionSet mainDb = mainWindow.getTransactionDatabase();
+              
+              System.out.println("[UPDATE:001] Updating " + duplicatesToUpdate.size() + " duplicate transactions");
+              
+              for (Transaction candidate : duplicatesToUpdate) {
+                if (mainDb.updateDuplicateTransaction(candidate)) {
+                  updatedCount++;
+                }
+              }
+              
+              System.out.println("[UPDATE:002] Successfully updated " + updatedCount + " transactions");
+            }
+
+            // Clear duplicates list
+            duplicatesToUpdate.clear();
+
             // Invalidate transformation cache after import (new transactions may have transformations)
             System.out.println("DEBUG: Invalidating transformation cache after API import");
             mainWindow.getTransactionDatabase().invalidateTransformationCache();
@@ -720,10 +792,18 @@ public class ImportWindow extends javax.swing.JFrame {
             }
 
             // Show success message with accurate count
+            String message = "Úspěšně importováno " + transactionsAdded + " transakcí!\n";
+            if (updatedCount > 0) {
+              message += "Aktualizováno: " + updatedCount + " existujících záznamů\n\n";
+              message += "Aktualizované řádky jsou zvýrazněny žlutě v hlavním okně.\n\n";
+            } else {
+              message += "\n";
+            }
+            message += "Metoda importu: CSV Report (komplexní data včetně objednávek, dividend a úroků)\n\n";
+            message += "Nyní můžete importovat další rok nebo zavřít toto okno.";
+            
             javax.swing.JOptionPane.showMessageDialog(mainWindow,
-                "Úspěšně importováno " + transactionsAdded + " transakcí!\n\n" +
-                    "Metoda importu: CSV Report (komplexní data včetně objednávek, dividend a úroků)\n\n" +
-                    "Nyní můžete importovat další rok nebo zavřít toto okno.",
+                message,
                 "Import dokončen", javax.swing.JOptionPane.INFORMATION_MESSAGE);
 
             // Clear preview for next import
@@ -834,7 +914,20 @@ public class ImportWindow extends javax.swing.JFrame {
              Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase().filterDuplicates(result.transactions);
              int duplicatesFiltered = result.transactions.size() - filteredTransactions.size();
 
-             System.out.println("[DUPLICATE:002] Filtered " + duplicatesFiltered + " duplicates, adding " + filteredTransactions.size() + " new transactions to preview table");
+             // Clear previous duplicates list
+             duplicatesToUpdate.clear();
+
+             // If update checkbox is checked, store duplicates for later update
+             if (cbUpdateDuplicates.isSelected() && duplicatesFiltered > 0) {
+               for (Transaction candidate : result.transactions) {
+                 if (!filteredTransactions.contains(candidate)) {
+                   duplicatesToUpdate.add(candidate);
+                 }
+               }
+               System.out.println("[DUPLICATE:002] " + duplicatesToUpdate.size() + " duplicates marked for update");
+             }
+
+             System.out.println("[DUPLICATE:003] Filtered " + duplicatesFiltered + " duplicates, adding " + filteredTransactions.size() + " new transactions to preview table");
              for (Transaction tx : filteredTransactions) {
                transactions.addTransaction(tx.getDate(), tx.getDirection().intValue(), tx.getTicker(),
                    tx.getAmount().doubleValue(), tx.getPrice().doubleValue(), tx.getPriceCurrency(),
@@ -846,7 +939,11 @@ public class ImportWindow extends javax.swing.JFrame {
              System.out.println("[UI:004] Updating UI labels");
              String previewText = "Náhled (" + filteredTransactions.size() + " záznamů)";
              if (duplicatesFiltered > 0) {
-               previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
+               if (cbUpdateDuplicates.isSelected()) {
+                 previewText += " - " + duplicatesFiltered + " duplikátů k aktualizaci";
+               } else {
+                 previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
+               }
              }
              previewText += ":";
              lPreview.setText(previewText);
@@ -1074,6 +1171,38 @@ public class ImportWindow extends javax.swing.JFrame {
         // Handle regular file-based import
         transactions.mergeTo(mainWindow.getTransactionDatabase());
 
+        // Update duplicates if checkbox is checked
+        if (cbUpdateDuplicates.isSelected() && !duplicatesToUpdate.isEmpty()) {
+          int updatedCount = 0;
+          TransactionSet mainDb = mainWindow.getTransactionDatabase();
+          
+          System.out.println("[UPDATE:001] Updating " + duplicatesToUpdate.size() + " duplicate transactions");
+          
+          for (Transaction candidate : duplicatesToUpdate) {
+            if (mainDb.updateDuplicateTransaction(candidate)) {
+              updatedCount++;
+            }
+          }
+          
+          // Notify table of changes
+          mainDb.fireTableDataChanged();
+          
+          System.out.println("[UPDATE:002] Successfully updated " + updatedCount + " transactions");
+          
+          // Show success message to user
+          if (updatedCount > 0) {
+            JOptionPane.showMessageDialog(this, 
+              "Importováno: " + transactions.getRowCount() + " nových záznamů\n" +
+              "Aktualizováno: " + updatedCount + " existujících záznamů\n\n" +
+              "Aktualizované řádky jsou zvýrazněny žlutě v hlavním okně.",
+              "Import dokončen", 
+              JOptionPane.INFORMATION_MESSAGE);
+          }
+        }
+
+        // Clear duplicates list
+        duplicatesToUpdate.clear();
+
         // Invalidate transformation cache after import
         System.out.println("DEBUG: Invalidating transformation cache after file import");
         mainWindow.getTransactionDatabase().invalidateTransformationCache();
@@ -1097,9 +1226,12 @@ public class ImportWindow extends javax.swing.JFrame {
     dispose();
   }// GEN-LAST:event_bCancelActionPerformed
 
-  private void cbFormatActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_cbFormatActionPerformed
+   private void cbFormatActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_cbFormatActionPerformed
 
-    System.out.println("[FORMAT:SWITCH] cbFormatActionPerformed triggered - new format index: " + cbFormat.getSelectedIndex());
+     System.out.println("[FORMAT:SWITCH] cbFormatActionPerformed triggered - new format index: " + cbFormat.getSelectedIndex());
+
+     // Clear programmatic format override when user manually changes format
+     currentImportFormat = 0;
 
     if (cbFormat.getSelectedIndex() != 0) {
       System.out.println("[FORMAT:SWITCH] Updating UI for format: " + cbFormat.getSelectedIndex());
@@ -1123,6 +1255,17 @@ public class ImportWindow extends javax.swing.JFrame {
 
   }// GEN-LAST:event_cbFormatActionPerformed
 
+  private void cbUpdateDuplicatesActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_cbUpdateDuplicatesActionPerformed
+    // Save checkbox state to settings
+    cz.datesoft.stockAccounting.Settings.setUpdateDuplicatesOnImport(cbUpdateDuplicates.isSelected());
+    cz.datesoft.stockAccounting.Settings.save();
+    
+    // Update preview label to reflect current mode if there are duplicates
+    if (!duplicatesToUpdate.isEmpty() || transactions.getRowCount() > 0) {
+      loadImport(); // Reload to update the label text
+    }
+  }// GEN-LAST:event_cbUpdateDuplicatesActionPerformed
+
   /**
    * @param args the command line arguments
    */
@@ -1139,6 +1282,7 @@ public class ImportWindow extends javax.swing.JFrame {
   private javax.swing.JButton bImport;
   private javax.swing.JButton bRefresh;
   private javax.swing.JComboBox cbFormat;
+  private javax.swing.JCheckBox cbUpdateDuplicates;
   private javax.swing.JLabel jLabel1;
   private javax.swing.JLabel jLabel2;
   private javax.swing.JLabel jLabel4;
