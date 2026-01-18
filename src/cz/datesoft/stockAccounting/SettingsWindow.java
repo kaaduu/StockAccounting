@@ -602,10 +602,24 @@ public class SettingsWindow extends javax.swing.JDialog {
     jPanel4Layout.setVerticalGroup(
         jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(0, 100, Short.MAX_VALUE));
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridy = 2;
-    gridBagConstraints.weighty = 1.0;
-    jPanel1.add(jPanel4, gridBagConstraints);
+     cbShowMetadataColumns = new javax.swing.JCheckBox("Zobrazovat sloupce metadat (Broker, ID účtu, ID transakce, Efekt)");
+     cbShowMetadataColumns.setSelected(Settings.getShowMetadataColumns());
+     cbShowMetadataColumns.setToolTipText("Zobrazí nebo skryje sloupce s metadaty parsovanými z poznámek transakcí");
+     cbShowMetadataColumns.addActionListener(new java.awt.event.ActionListener() {
+       public void actionPerformed(java.awt.event.ActionEvent evt) {
+         cbShowMetadataColumnsActionPerformed(evt);
+       }
+     });
+     gridBagConstraints = new java.awt.GridBagConstraints();
+     gridBagConstraints.gridy = 2;
+     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+     gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
+     jPanel1.add(cbShowMetadataColumns, gridBagConstraints);
+
+     gridBagConstraints = new java.awt.GridBagConstraints();
+     gridBagConstraints.gridy = 3;
+     gridBagConstraints.weighty = 1.0;
+     jPanel1.add(jPanel4, gridBagConstraints);
 
     jPanel6.setLayout(new java.awt.GridBagLayout());
 
@@ -1534,8 +1548,9 @@ public class SettingsWindow extends javax.swing.JDialog {
   /* Daily Rates Tab Implementation */
   private javax.swing.JPanel pDailyRates;
   private javax.swing.JTable dailyRatesTable;
-  private javax.swing.JCheckBox cbUseDailyRates;
-  private javax.swing.JButton bFetchDailyRates;
+   private javax.swing.JCheckBox cbUseDailyRates;
+   private javax.swing.JCheckBox cbShowMetadataColumns;
+   private javax.swing.JButton bFetchDailyRates;
   private javax.swing.table.DefaultTableModel dailyRatesModel;
 
   private void initDailyRatesTab() {
@@ -1699,9 +1714,19 @@ public class SettingsWindow extends javax.swing.JDialog {
     Settings.setTrading212ApiSecret(new String(tfTrading212ApiSecret.getPassword()).trim());
     Settings.setTrading212UseDemo(cbTrading212Demo.isSelected());
     Settings.save();
-  }
+   }
 
-  private void bTestTrading212ConnectionActionPerformed(java.awt.event.ActionEvent evt) {
+   private void cbShowMetadataColumnsActionPerformed(java.awt.event.ActionEvent evt) {
+     boolean showColumns = cbShowMetadataColumns.isSelected();
+     Settings.setShowMetadataColumns(showColumns);
+
+     // Notify main window to update column visibility
+     if (mainWindow != null) {
+       mainWindow.updateColumnVisibility();
+     }
+   }
+
+   private void bTestTrading212ConnectionActionPerformed(java.awt.event.ActionEvent evt) {
     String apiKey = tfTrading212ApiKey.getText().trim();
     String apiSecret = new String(tfTrading212ApiSecret.getPassword()).trim();
     boolean useDemo = cbTrading212Demo.isSelected();

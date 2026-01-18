@@ -4,6 +4,66 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Rozšířené parsování poznámek a filtrování metadat] - 2026-01-18
+
+### Opraveno
+- **Automatické filtrování Effect selectboxu**: Opraveno chybějící automatické aplikování filtru při změně výběru v Effect selectboxu (nyní konzistentní s Broker a AccountID selectboxy)
+- **Automatické filtrování Typ selectboxu**: Opraveno chybějící automatické aplikování filtru při změně výběru v Typ selectboxu
+
+### Přidáno
+- **Parsování metadat z poznámek**: Automatické extrahování Broker, AccountID, TxnID a Code z poznámek ve formátu "Description|Broker:VALUE|AccountID:VALUE|TxnID:VALUE|Code:VALUE"
+- **Nové sloupce v tabulce**: Přidány sloupce Broker, ID účtu, ID transakce a Efekt před sloupcem Note
+- **Podpora více kódů efektů**: Code pole může obsahovat více hodnot oddělených středníky (např. "Code:A;C" → "Assignment", "Code:C;Ep" → "Expired")
+- **Rozšířené filtrování**: Nové filtry pro Broker (selectbox s existujícími hodnotami), AccountID (selectbox s existujícími hodnotami) a Effect (selectbox s možnostmi Assignment, Exercise, Expired)
+- **Inteligentní filtrování efektů**: Filtrování podle efektu funguje i pro kombinované efekty
+- **Viditelnost sloupců**: Možnost skrýt/zobrazit metadata sloupce v Nastavení (výchozí: zobrazené)
+
+### Implementace
+- **Transaction.java**: Rozšířena metoda `getEffect()` pro zpracování více kódů se středníkem jako oddělovačem
+- **TransactionSet.java**: 
+  - Aktualizována metoda `applyFilter()` s parametry pro broker, accountId a effect
+  - Přidány metody `getBrokersModel()` a `getAccountIdsModel()` pro dynamické naplnění selectboxů
+  - Selectboxy se automaticky aktualizují po načtení souboru nebo importu dat
+- **MainWindow.java**: 
+  - Broker a AccountID nyní jako JComboBox (selectbox) místo textových polí
+  - Selectboxy se automaticky naplní jedinečnými hodnotami z načtených transakcí
+  - Metoda `refreshMetadataFilters()` volána po načtení/importu dat
+  - Dvouřádkové uspořádání filtrů (řádek 0: hlavní filtry, řádek 1: metadata filtry)
+  - Metadata filtry vizuálně odsazeny vlevo pro hierarchii
+  - Tlačítka a separátor přes oba řádky pro čistší vzhled
+  - Minimální velikost okna 1200x600px
+  - Checkbox "Show Metadata" přímo v řádku 1 pro rychlý přístup
+- **ImportWindow.java**: Volá `mainWindow.refreshMetadataFilters()` po dokončení importu
+- **SettingsWindow.java**: Přidán checkbox pro zobrazení/skrytí metadata sloupců (též dostupný v hlavním okně)
+- **Form layout**: Aktualizován MainWindow.form pro nové filtry v GridBagLayout
+
+### Podporované formáty poznámek
+- **Plný formát**: "AAPL 20DEC24 240 C|Broker:IB|AccountID:U15493818|TxnID:3452118503|Code:A;C"
+- **Částečný formát**: "TSLA 16FEB18 350.0 C|Broker:IB|Code:C;Ep" (chybějící pole = prázdná hodnota)
+- **Rozpoznané kódy efektů**: A=Assignment, Ex=Exercise, Ep=Expired
+- **Ignorované kódy**: C (Closing), O (Opening) a další jsou ignorovány
+
+### Příklady parsování efektů
+- **"Code:A;C"** → "Assignment" (C ignorováno)
+- **"Code:C;Ep"** → "Expired" (C ignorováno)
+- **"Code:A;Ex"** → "Assignment, Exercise" (oba zobrazeny)
+- **"Code:C;O"** → "" (oba ignorovány, prázdná hodnota)
+- **Bez Code pole** → "" (prázdná hodnota)
+
+### Pouze pro deriváty
+- Sloupec Efekt se vyplňuje pouze pro derivátové transakce (DIRECTION_DBUY, DIRECTION_DSELL)
+- Běžné akcie nemají efekty, zobrazují prázdnou hodnotu
+
+### Uživatelské rozhraní
+- **Dvouřádkové uspořádání filtrů**: 
+  - Řádek 0: Filtrovat, Zrušit, Od, Do, Ticker, Trh, Typ, tlačítka
+  - Řádek 1: Note, Broker, Account ID, Effect, Show Metadata (vizuálně odsazeno)
+- **Note pole**: Zvětšeno na 150px pro delší poznámky
+- **Tlačítka akce**: Smazat řádek a Seřadit centrované přes oba řádky
+- **Velikost okna**: Minimální 1200x600px (vhodné pro běžné monitory)
+- **Selectbox filtry**: Broker a Account ID nyní jako rozbalovací seznamy s existujícími hodnotami
+- **Checkbox viditelnosti**: "Show Metadata" v řádku 1 pro rychlé skrytí/zobrazení metadata sloupců
+
 ## [Aktualizace duplikátních záznamů při re-importu] - 2026-01-18
 
 ### Přidáno
