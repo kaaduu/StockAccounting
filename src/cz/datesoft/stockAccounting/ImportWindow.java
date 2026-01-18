@@ -214,6 +214,10 @@ public class ImportWindow extends javax.swing.JFrame {
         int rowCount = notImported.size();
         lUnimported.setText("Neimportované řádky (" + rowCount + " " + getRecordsWord(rowCount) + "):");
 
+        // Reset import flag immediately on successful completion
+        importInProgress = false;
+        System.out.println("[IMPORT:SUCCESS] Import completed successfully - flag reset to false");
+
         // Log successful import completion
         System.out.println("[IMPORT:SUCCESS] Import completed successfully:");
         System.out.println("[IMPORT:SUCCESS]   - Preview transactions: " + n);
