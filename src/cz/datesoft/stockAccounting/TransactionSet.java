@@ -50,6 +50,9 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     */
    protected Vector<Transaction> filteredRows;
 
+  /** Set of serials for recently updated transactions (for highlighting) */
+  protected java.util.Set<Integer> updatedTransactionSerials = new java.util.HashSet<>();
+
   /** Logger */
   private static final Logger logger = Logger.getLogger(TransactionSet.class.getName());
 
@@ -72,7 +75,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
   /** Column names */
   private String[] columnNames = { "Datum", "Typ", "Směr", "Ticker", "Množství", "Kurs", "Měna kursu", "Poplatky",
-      "Měna poplatků", "Trh", "Datum vypořádání", "Note" };
+      "Měna poplatků", "Trh", "Datum vypořádání", "Broker", "ID účtu", "ID transakce", "Efekt", "Note" };
 
   /**
    * File we are stored in
@@ -236,6 +239,14 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       case 10:
         return tx.getExecutionDate();
       case 11:
+        return tx.getBroker();
+      case 12:
+        return tx.getAccountId();
+      case 13:
+        return tx.getTxnId();
+      case 14:
+        return tx.getEffect();
+      case 15:
         return tx.getNote();
       default:
         return null;
@@ -324,9 +335,20 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         tx.setExecutionDate((Date) value);
         fireTableCellUpdated(row, col);
         break;
-      case 11:
+      case 11: // Broker - read-only
+      case 12: // AccountID - read-only
+      case 13: // TxnID - read-only
+      case 14: // Effect - read-only
+        // These columns are derived from Note, cannot be edited directly
+        return;
+      case 15: // Note (moved from case 11)
         tx.setNote((String) value);
         fireTableCellUpdated(row, col);
+        // Also notify derived columns to refresh
+        fireTableCellUpdated(row, 11); // Broker
+        fireTableCellUpdated(row, 12); // AccountID
+        fireTableCellUpdated(row, 13); // TxnID
+        fireTableCellUpdated(row, 14); // Effect
         break;
     }
 
@@ -385,6 +407,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    */
   @Override
   public boolean isCellEditable(int row, int column) {
+    // Columns 11-14 are read-only (derived from Note)
+    if (column >= 11 && column <= 14) {
+      return false;
+    }
     return true;
   }
 
@@ -652,6 +678,38 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    */
   public SortedSetComboBoxModel getTickersModel() {
     return cbmodel;
+  }
+
+  /**
+   * Get combo box model containing unique broker names from all transactions
+   */
+  public SortedSetComboBoxModel getBrokersModel() {
+    SortedSetComboBoxModel model = new SortedSetComboBoxModel();
+    model.addElement(""); // Empty option for "no filter"
+    
+    for (Transaction tx : rows) {
+      String broker = tx.getBroker();
+      if (broker != null && !broker.isEmpty()) {
+        model.putItem(broker);
+      }
+    }
+    return model;
+  }
+
+  /**
+   * Get combo box model containing unique account IDs from all transactions
+   */
+  public SortedSetComboBoxModel getAccountIdsModel() {
+    SortedSetComboBoxModel model = new SortedSetComboBoxModel();
+    model.addElement(""); // Empty option for "no filter"
+    
+    for (Transaction tx : rows) {
+      String accountId = tx.getAccountId();
+      if (accountId != null && !accountId.isEmpty()) {
+        model.putItem(accountId);
+      }
+    }
+    return model;
   }
 
   /**
@@ -1010,6 +1068,56 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   /**
+   * Find existing transaction that matches the candidate
+   * Returns the matching transaction or null if no duplicate exists
+   */
+  public Transaction findDuplicateTransaction(Transaction candidate) {
+    for (Transaction existing : rows) {
+      if (isDuplicateTransaction(candidate, existing)) {
+        return existing;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Update existing transaction with data from candidate
+   * Returns true if transaction was found and updated
+   * Marks the transaction as recently updated for highlighting
+   */
+  public boolean updateDuplicateTransaction(Transaction candidate) {
+    Transaction existing = findDuplicateTransaction(candidate);
+    if (existing != null) {
+      existing.updateFromTransaction(candidate);
+      updatedTransactionSerials.add(existing.getSerial());
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if a transaction was recently updated (for highlighting)
+   */
+  public boolean isRecentlyUpdated(int row) {
+    // Check if row is within bounds of actual data (excluding empty row)
+    if (row < 0 || row >= rows.size()) {
+      return false; // Out of bounds or empty row
+    }
+    
+    Transaction tx = getRowAt(row);
+    if (tx == null) return false;
+    return updatedTransactionSerials.contains(tx.getSerial());
+  }
+
+  /**
+   * Clear the recently updated set (called on app restart or explicit clear)
+   */
+  public void clearUpdatedHighlights() {
+    updatedTransactionSerials.clear();
+    fireTableDataChanged();
+  }
+
+  /**
    * Check if two transactions represent the same business transaction
    * Compares key business fields, excludes notes, fees, and auto-generated fields
    */
@@ -1109,7 +1217,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file));
 
     // Write header
-    ofl.println("Datum;Typ;Směr;Ticker;Množství;Kurs;Měna kursu;Poplatky;Měna poplatků;Trh;Vyporadani;Poznamka");
+    ofl.println("Datum;Typ;Směr;Ticker;Množství;Kurs;Měna kursu;Poplatky;Měna poplatků;Trh;Vyporadani;Broker;ID účtu;ID transakce;Efekt;Poznamka");
 
     // Start writing rows
     for (Transaction t : rows) {
@@ -1169,7 +1277,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    * @param type   Type to filter (or null to filter all types)
    * @param note   note to filter (or null to filter all notes)
    */
-  public void applyFilter(Date from, Date to, String ticker, String market, String type, String note) {
+  public void applyFilter(Date from, Date to, String ticker, String market, String type, String note, String broker, String accountId, String effect) {
     // DEFENSIVE: Handle null dates to prevent NullPointerException
     if (from == null) {
       GregorianCalendar cal = new GregorianCalendar();
@@ -1295,6 +1403,42 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
             // and null notes lines also skip via continue
           } else
             continue;
+        }
+
+        // Check broker
+        if (broker != null && !broker.isEmpty()) {
+          String txBroker = tx.getBroker();
+          if (txBroker == null || !txBroker.equalsIgnoreCase(broker)) {
+            continue; // Broker doesn't match
+          }
+        }
+
+        // Check account ID
+        if (accountId != null && !accountId.isEmpty()) {
+          String txAccountId = tx.getAccountId();
+          if (txAccountId == null || !txAccountId.equalsIgnoreCase(accountId)) {
+            continue; // Account ID doesn't match
+          }
+        }
+
+        // Check effect
+        if (effect != null && !effect.isEmpty()) {
+          String txEffect = tx.getEffect();
+          if (txEffect == null || txEffect.isEmpty()) {
+            continue; // No effect to match against
+          }
+          // Check if the filter effect appears in the comma-separated effect string
+          boolean effectMatches = false;
+          String[] txEffects = txEffect.split(", ");
+          for (String txEff : txEffects) {
+            if (txEff.trim().equalsIgnoreCase(effect)) {
+              effectMatches = true;
+              break;
+            }
+          }
+          if (!effectMatches) {
+            continue; // Effect doesn't match
+          }
         }
 
         // OK, add

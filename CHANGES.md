@@ -4,6 +4,123 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Rozšířené parsování poznámek a filtrování metadat] - 2026-01-18
+
+### Opraveno
+- **Automatické filtrování Effect selectboxu**: Opraveno chybějící automatické aplikování filtru při změně výběru v Effect selectboxu (nyní konzistentní s Broker a AccountID selectboxy)
+- **Automatické filtrování Typ selectboxu**: Opraveno chybějící automatické aplikování filtru při změně výběru v Typ selectboxu
+
+### Přidáno
+- **Parsování metadat z poznámek**: Automatické extrahování Broker, AccountID, TxnID a Code z poznámek ve formátu "Description|Broker:VALUE|AccountID:VALUE|TxnID:VALUE|Code:VALUE"
+- **Nové sloupce v tabulce**: Přidány sloupce Broker, ID účtu, ID transakce a Efekt před sloupcem Note
+- **Podpora více kódů efektů**: Code pole může obsahovat více hodnot oddělených středníky (např. "Code:A;C" → "Assignment", "Code:C;Ep" → "Expired")
+- **Rozšířené filtrování**: Nové filtry pro Broker (selectbox s existujícími hodnotami), AccountID (selectbox s existujícími hodnotami) a Effect (selectbox s možnostmi Assignment, Exercise, Expired)
+- **Inteligentní filtrování efektů**: Filtrování podle efektu funguje i pro kombinované efekty
+- **Viditelnost sloupců**: Možnost skrýt/zobrazit metadata sloupce v Nastavení (výchozí: zobrazené)
+
+### Implementace
+- **Transaction.java**: Rozšířena metoda `getEffect()` pro zpracování více kódů se středníkem jako oddělovačem
+- **TransactionSet.java**: 
+  - Aktualizována metoda `applyFilter()` s parametry pro broker, accountId a effect
+  - Přidány metody `getBrokersModel()` a `getAccountIdsModel()` pro dynamické naplnění selectboxů
+  - Selectboxy se automaticky aktualizují po načtení souboru nebo importu dat
+- **MainWindow.java**: 
+  - Broker a AccountID nyní jako JComboBox (selectbox) místo textových polí
+  - Selectboxy se automaticky naplní jedinečnými hodnotami z načtených transakcí
+  - Metoda `refreshMetadataFilters()` volána po načtení/importu dat
+  - Dvouřádkové uspořádání filtrů (řádek 0: hlavní filtry, řádek 1: metadata filtry)
+  - Metadata filtry vizuálně odsazeny vlevo pro hierarchii
+  - Tlačítka a separátor přes oba řádky pro čistší vzhled
+  - Minimální velikost okna 1200x600px
+  - Checkbox "Show Metadata" přímo v řádku 1 pro rychlý přístup
+- **ImportWindow.java**: Volá `mainWindow.refreshMetadataFilters()` po dokončení importu
+- **SettingsWindow.java**: Přidán checkbox pro zobrazení/skrytí metadata sloupců (též dostupný v hlavním okně)
+- **Form layout**: Aktualizován MainWindow.form pro nové filtry v GridBagLayout
+
+### Podporované formáty poznámek
+- **Plný formát**: "AAPL 20DEC24 240 C|Broker:IB|AccountID:U15493818|TxnID:3452118503|Code:A;C"
+- **Částečný formát**: "TSLA 16FEB18 350.0 C|Broker:IB|Code:C;Ep" (chybějící pole = prázdná hodnota)
+- **Rozpoznané kódy efektů**: A=Assignment, Ex=Exercise, Ep=Expired
+- **Ignorované kódy**: C (Closing), O (Opening) a další jsou ignorovány
+
+### Příklady parsování efektů
+- **"Code:A;C"** → "Assignment" (C ignorováno)
+- **"Code:C;Ep"** → "Expired" (C ignorováno)
+- **"Code:A;Ex"** → "Assignment, Exercise" (oba zobrazeny)
+- **"Code:C;O"** → "" (oba ignorovány, prázdná hodnota)
+- **Bez Code pole** → "" (prázdná hodnota)
+
+### Pouze pro deriváty
+- Sloupec Efekt se vyplňuje pouze pro derivátové transakce (DIRECTION_DBUY, DIRECTION_DSELL)
+- Běžné akcie nemají efekty, zobrazují prázdnou hodnotu
+
+### Uživatelské rozhraní
+- **Dvouřádkové uspořádání filtrů**: 
+  - Řádek 0: Filtrovat, Zrušit, Od, Do, Ticker, Trh, Typ, tlačítka
+  - Řádek 1: Note, Broker, Account ID, Effect, Show Metadata (vizuálně odsazeno)
+- **Note pole**: Zvětšeno na 150px pro delší poznámky
+- **Tlačítka akce**: Smazat řádek a Seřadit centrované přes oba řádky
+- **Velikost okna**: Minimální 1200x600px (vhodné pro běžné monitory)
+- **Selectbox filtry**: Broker a Account ID nyní jako rozbalovací seznamy s existujícími hodnotami
+- **Checkbox viditelnosti**: "Show Metadata" v řádku 1 pro rychlé skrytí/zobrazení metadata sloupců
+
+## [Aktualizace duplikátních záznamů při re-importu] - 2026-01-18
+
+### Přidáno
+- **Checkbox "Aktualizovat duplikáty"**: Nová možnost v importním dialogu pro re-import existujících záznamů
+- **Aktualizace poznámek**: Při re-importu se aktualizují Poznámky, Poplatky, Měna poplatku a Datum vypořádání
+- **Vizuální zvýraznění**: Aktualizované řádky jsou zvýrazněny světle žlutou barvou v hlavním okně
+- **Persistence nastavení**: Stav checkboxu se ukládá a obnovuje mezi relacemi
+- **Univerzální podpora**: Funguje pro všechny typy importu (IB TradeLog, Fio, BrokerJet, Trading212 API, atd.)
+
+### Použití
+1. Při importu souboru s duplikáty se zobrazí počet nalezených duplikátů
+2. Zaškrtněte "Aktualizovat duplikáty" pro přepsání existujících záznamů
+3. Text se změní z "X duplikátů vyfiltrováno" na "X duplikátů k aktualizaci"
+4. Po importu jsou aktualizované řádky zvýrazněny žlutě
+5. Zvýraznění zůstává až do restartu aplikace
+
+### Technické detaily
+- **Transaction.java**: Přidána metoda `updateFromTransaction()` pro aktualizaci vybraných polí
+- **TransactionSet.java**: 
+  - Metoda `findDuplicateTransaction()` pro nalezení existujícího záznamu
+  - Metoda `updateDuplicateTransaction()` pro aktualizaci a označení
+  - HashSet `updatedTransactionSerials` pro sledování aktualizovaných záznamů
+  - Metoda `isRecentlyUpdated()` pro kontrolu zvýraznění
+- **ImportWindow.java**: 
+  - Checkbox UI s event handlerem
+  - Logika pro sledování duplikátů určených k aktualizaci
+  - Integrováno do file-based i API importů
+- **MainWindow.java**: 
+  - `HighlightedCellRenderer` pro obecné buňky
+  - `HighlightedDateRenderer` pro datumové sloupce
+  - Aplikováno na všechny sloupce tabulky
+- **Settings.java**: 
+  - Pole `updateDuplicatesOnImport` pro persistenci
+  - Gettery/settery a ukládání/načítání z preferences
+
+### Důvod změny
+- Po změně formátu sloupce Poznámky byly staré záznamy v původním formátu
+- Re-import duplikátů byl blokován, takže poznámky nemohly být aktualizovány
+- Tato funkce umožňuje selektivní aktualizaci existujících záznamů novými daty
+
+## [Oprava synchronizace formátu importu] - 2026-01-18
+
+### Opraveno
+- **Kritická chyba synchronizace formátu**: Opraveno selhávání parseru při programových importe (např. IB TradeLog s formátem 3) kvůli nesprávnému používání UI stavu místo přednastaveného formátu
+- **Mechanismus programového přepisu**: Implementován `currentImportFormat` pro spolehlivé přepsání UI stavu při programových importe
+- **Robustní správa stavu**: Automatické vymazání programového formátu po dokončení importu nebo při manuálních změnách
+- **Vylepšené ladění**: Rozšířené logování zobrazující jak programový tak UI formát pro diagnostiku problémů
+- **Kritická chyba časování**: Opraveno předčasné volání `loadImport()` při nastavování datumů, které používalo starý formát
+
+### Technické detaily
+- **ImportWindow.java**: Přidána instance proměnná `currentImportFormat` s prioritou před UI stavem
+- **loadImport()**: Používá `currentImportFormat > 0 ? currentImportFormat : cbFormat.getSelectedIndex()`
+- **startImport()**: Nastavuje programový formát PŘED nastavením datumů, aby se zabránilo předčasným voláním
+- **Vymazání stavu**: Automatické vymazání při úspěchu, neúspěchu nebo manuálních změnách
+- **Rozšířené logování**: Přidáno logování časování pro sledování sekvence operací
+- **Zpětná kompatibilita**: Žádný vliv na existující UI-based import workflow
+
 ## [Vylepšení UI Trading 212 API importu] - 2026-01-17
 
 ### Přidáno
@@ -11,13 +128,18 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - **Dynamic window titles**: "Import z Trading 212 API" pro API importy místo generického "Import souboru"
 - **Streamlined UI layout**: Horizontální uspořádání ovládacích prvků pro lepší využití prostoru
 - **Simplified workflow**: Odstranění cache tlačítek pro zjednodušení pracovního postupu
+- **Enhanced note format**: Bohatší poznámky s názvem společnosti, broker identifikací a ISIN kódem
 
 ### Opraveno
 - **Progress bar parent frame**: Oprava reference na parent frame pro správné zobrazování progress dialogu
 - **UI consistency**: Sjednocení layoutu Trading 212 import okna s ostatními částmi aplikace
+- **Note field content**: Změna formátu poznámek z "Imported from Trading 212 CSV - [action]" na "[název společnosti]|Broker:T212|ISIN:[ISIN]"
 
 ### Implementace
 - Aktualizace `ImportWindow.java` pro dynamické titulky oken a zjednodušený layout
+- Aktualizace `Trading212CsvParser.java` pro nový formát poznámek s názvem společnosti a ISIN
+- Aktualizace `ImportT212.java` a `ImportT212CZK.java` pro konzistentní poznámky s názvy společností
+- Aktualizace `ImportIBTradeLog.java` pro rozšířené poznámky s Account ID, Transaction ID a status kódy
 - Oprava `setParentFrame()` volání pro správnou podporu progress dialogu
 - Odstranění nepotřebných cache funkcí (`bUseCached`, `bClearCache`)
 - Přepracování GridBagLayout pro horizontální uspořádání ovládacích prvků

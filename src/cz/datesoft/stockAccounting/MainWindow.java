@@ -27,6 +27,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import javax.swing.Action;
+import javax.swing.table.TableColumn;
+import javax.swing.table.TableColumnModel;
 
 /**
  *
@@ -35,6 +37,64 @@ import javax.swing.Action;
 public class MainWindow extends javax.swing.JFrame {
 
   // <editor-fold defaultstate="collapsed" desc="Class: DateChooserCellEditor">
+  /**
+   * Custom cell renderer that highlights recently updated rows with light yellow background
+   */
+  private class HighlightedCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
+    @Override
+    public java.awt.Component getTableCellRendererComponent(
+        javax.swing.JTable table, Object value, boolean isSelected,
+        boolean hasFocus, int row, int column) {
+      java.awt.Component c = super.getTableCellRendererComponent(
+          table, value, isSelected, hasFocus, row, column);
+      
+      // Check if this row was recently updated
+      if (!isSelected) {
+        try {
+          if (transactions.isRecentlyUpdated(row)) {
+            c.setBackground(new java.awt.Color(255, 255, 200)); // Light yellow
+          } else {
+            c.setBackground(java.awt.Color.WHITE);
+          }
+        } catch (Exception e) {
+          // Safety: if checking fails, just use white background
+          c.setBackground(java.awt.Color.WHITE);
+        }
+      }
+      
+      return c;
+    }
+  }
+
+  /**
+   * Date renderer with highlighting support
+   */
+  private class HighlightedDateRenderer extends CZDateRenderer {
+    @Override
+    public java.awt.Component getTableCellRendererComponent(
+        javax.swing.JTable table, Object value, boolean isSelected,
+        boolean hasFocus, int row, int column) {
+      java.awt.Component c = super.getTableCellRendererComponent(
+          table, value, isSelected, hasFocus, row, column);
+      
+      // Check if this row was recently updated
+      if (!isSelected) {
+        try {
+          if (transactions.isRecentlyUpdated(row)) {
+            c.setBackground(new java.awt.Color(255, 255, 200)); // Light yellow
+          } else {
+            c.setBackground(java.awt.Color.WHITE);
+          }
+        } catch (Exception e) {
+          // Safety: if checking fails, just use white background
+          c.setBackground(java.awt.Color.WHITE);
+        }
+      }
+      
+      return c;
+    }
+  }
+
   /**
    * Date cell editor using JCalendar. We do not use JCalendar builtin date
    * editor,
@@ -210,6 +270,13 @@ public class MainWindow extends javax.swing.JFrame {
     bSort = new javax.swing.JButton();
     jLabel7 = new javax.swing.JLabel();
     tfNote = new javax.swing.JTextField();
+    jLabel8 = new javax.swing.JLabel();
+    cbBrokerFilter = new javax.swing.JComboBox();
+    jLabel9 = new javax.swing.JLabel();
+    cbAccountIdFilter = new javax.swing.JComboBox();
+    jLabel10 = new javax.swing.JLabel();
+    cbEffectFilter = new javax.swing.JComboBox();
+    cbShowMetadata = new javax.swing.JCheckBox();
     jScrollPane1 = new javax.swing.JScrollPane();
     table = new javax.swing.JTable();
     jPanel1 = new javax.swing.JPanel();
@@ -252,6 +319,50 @@ public class MainWindow extends javax.swing.JFrame {
     cbTypeFilter = new javax.swing.JComboBox();
     cbTypeFilter.setModel(
         new javax.swing.DefaultComboBoxModel(new String[] { "", "CP", "Derivát", "Transformace", "Dividenda", "Cash" }));
+
+    cbEffectFilter = new javax.swing.JComboBox();
+    cbEffectFilter.setModel(
+        new javax.swing.DefaultComboBoxModel(new String[] { "", "Assignment", "Exercise", "Expired" }));
+
+    // Set sizes and handlers for filter combo boxes
+    cbBrokerFilter.setMinimumSize(new java.awt.Dimension(80, 20));
+    cbBrokerFilter.setPreferredSize(new java.awt.Dimension(80, 20));
+    cbBrokerFilter.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        applyFilter(); // Apply filter on selection change
+      }
+    });
+
+    cbAccountIdFilter.setMinimumSize(new java.awt.Dimension(100, 20));
+    cbAccountIdFilter.setPreferredSize(new java.awt.Dimension(100, 20));
+    cbAccountIdFilter.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        applyFilter(); // Apply filter on selection change
+      }
+    });
+
+    cbEffectFilter.setMinimumSize(new java.awt.Dimension(100, 20));
+    cbEffectFilter.setPreferredSize(new java.awt.Dimension(100, 20));
+    cbEffectFilter.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        applyFilter(); // Apply filter on selection change
+      }
+    });
+
+    // Column visibility checkbox
+    cbShowMetadata.setText("Show Metadata");
+    cbShowMetadata.setSelected(Settings.getShowMetadataColumns());
+    cbShowMetadata.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        Settings.setShowMetadataColumns(cbShowMetadata.isSelected());
+        updateColumnVisibility();
+      }
+    });
+
+    // Set labels for filter components
+    jLabel8.setText("Broker:");
+    jLabel9.setText("Account ID:");
+    jLabel10.setText("Effect:");
 
     setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
     setTitle("Akciové účetnictví");
@@ -363,22 +474,30 @@ public class MainWindow extends javax.swing.JFrame {
 
     cbTypeFilter.setMinimumSize(new java.awt.Dimension(80, 20));
     cbTypeFilter.setPreferredSize(new java.awt.Dimension(80, 20));
+    cbTypeFilter.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        applyFilter(); // Apply filter on selection change
+      }
+    });
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 11;
     gridBagConstraints.gridy = 0;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(cbTypeFilter, gridBagConstraints);
 
+    // Separator spanning both rows
     jSeparator3.setOrientation(javax.swing.SwingConstants.VERTICAL);
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 15;
+    gridBagConstraints.gridx = 12;
     gridBagConstraints.gridy = 0;
+    gridBagConstraints.gridheight = 2;  // Span both rows
     gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.EAST;
     gridBagConstraints.weightx = 1.0;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(jSeparator3, gridBagConstraints);
 
+    // Delete button spanning both rows
     bDelete.setText("Smazat řádek");
     bDelete.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -386,11 +505,14 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 16;
+    gridBagConstraints.gridx = 13;
     gridBagConstraints.gridy = 0;
+    gridBagConstraints.gridheight = 2;  // Span both rows
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(bDelete, gridBagConstraints);
 
+    // Sort button spanning both rows
     bSort.setText("Seřadit");
     bSort.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -398,19 +520,25 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 17;
+    gridBagConstraints.gridx = 14;
     gridBagConstraints.gridy = 0;
+    gridBagConstraints.gridheight = 2;  // Span both rows
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
     jPanel2.add(bSort, gridBagConstraints);
 
+    // ===== ROW 1: Metadata Filters (with left indentation for visual hierarchy) =====
+    
+    // Row 1: Note filter
     jLabel7.setText("Note:");
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 10;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 20, 5, 0);  // 20px left indent
     jPanel2.add(jLabel7, gridBagConstraints);
 
-    tfNote.setMinimumSize(new java.awt.Dimension(60, 20));
-    tfNote.setPreferredSize(new java.awt.Dimension(60, 20));
+    tfNote.setMinimumSize(new java.awt.Dimension(150, 20));
+    tfNote.setPreferredSize(new java.awt.Dimension(150, 20));
     tfNote.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         tfNoteActionPerformed(evt);
@@ -422,10 +550,60 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 11;
-    gridBagConstraints.gridy = 0;
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.gridwidth = 2;  // Span 2 columns for wider note field
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(tfNote, gridBagConstraints);
+
+    // Row 1: Broker filter
+    jLabel8.setText("Broker:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 3;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(jLabel8, gridBagConstraints);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 4;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(cbBrokerFilter, gridBagConstraints);
+
+    // Row 1: Account ID filter
+    jLabel9.setText("Account ID:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 5;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(jLabel9, gridBagConstraints);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 6;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(cbAccountIdFilter, gridBagConstraints);
+
+    // Row 1: Effect filter
+    jLabel10.setText("Effect:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 7;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(jLabel10, gridBagConstraints);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 8;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(cbEffectFilter, gridBagConstraints);
+
+    // Add column visibility checkbox
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 9;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 15, 5, 0);  // Extra left padding
+    jPanel2.add(cbShowMetadata, gridBagConstraints);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     getContentPane().add(jPanel2, java.awt.BorderLayout.NORTH);
@@ -601,6 +779,9 @@ public class MainWindow extends javax.swing.JFrame {
     setJMenuBar(jMenuBar1);
 
     pack();
+    
+    // Set reasonable minimum size for two-row filter layout
+    setMinimumSize(new java.awt.Dimension(1200, 600));
   }// </editor-fold>//GEN-END:initComponents
 
   private void formWindowClosing(java.awt.event.WindowEvent evt)// GEN-FIRST:event_formWindowClosing
@@ -617,14 +798,22 @@ public class MainWindow extends javax.swing.JFrame {
   public void initTableColumns() {
     // get list of tickers from current transactions (if new = empty)
     cbTickers.setModel(transactions.getTickersModel());
+    
+    // Populate metadata filter combo boxes
+    cbBrokerFilter.setModel(transactions.getBrokersModel());
+    cbAccountIdFilter.setModel(transactions.getAccountIdsModel());
 
     // Enable manual column resizing
     table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 
+    // Create renderers for highlighting
+    HighlightedDateRenderer dateRenderer = new HighlightedDateRenderer();
+    HighlightedCellRenderer highlightRenderer = new HighlightedCellRenderer();
+
     // Datum obchodu
     table.getColumnModel().getColumn(0).setPreferredWidth(100);
     table.getColumnModel().getColumn(0).setMaxWidth(100);
-    table.getColumnModel().getColumn(0).setCellRenderer(new CZDateRenderer());
+    table.getColumnModel().getColumn(0).setCellRenderer(dateRenderer);
     table.getColumnModel().getColumn(0).setCellEditor(new DateChooserCellEditor());
     // Typ
     table.getColumnModel().getColumn(1).setPreferredWidth(100);
@@ -658,12 +847,66 @@ public class MainWindow extends javax.swing.JFrame {
     // Datum vyporadani
     table.getColumnModel().getColumn(10).setPreferredWidth(100);
     table.getColumnModel().getColumn(10).setMaxWidth(100);
-    table.getColumnModel().getColumn(10).setCellRenderer(new CZDateRenderer());
+    table.getColumnModel().getColumn(10).setCellRenderer(dateRenderer);
     table.getColumnModel().getColumn(10).setCellEditor(new DateChooserCellEditor());
+    // Broker
+    table.getColumnModel().getColumn(11).setPreferredWidth(80);
+    table.getColumnModel().getColumn(11).setMaxWidth(150);
+    // ID účtu (Account ID)
+    table.getColumnModel().getColumn(12).setPreferredWidth(100);
+    table.getColumnModel().getColumn(12).setMaxWidth(150);
+    // ID transakce (Txn ID)
+    table.getColumnModel().getColumn(13).setPreferredWidth(120);
+    table.getColumnModel().getColumn(13).setMaxWidth(200);
+    // Efekt (Effect)
+    table.getColumnModel().getColumn(14).setPreferredWidth(120);
+    table.getColumnModel().getColumn(14).setMaxWidth(200);
     // Poznamka (Note)
-    table.getColumnModel().getColumn(11).setPreferredWidth(200);
-    table.getColumnModel().getColumn(11).setMaxWidth(500);
+    table.getColumnModel().getColumn(15).setPreferredWidth(200);
+    table.getColumnModel().getColumn(15).setMaxWidth(500);
 
+    // Apply highlighted cell renderer to all non-date columns
+    for (int i = 1; i <= 15; i++) {
+      if (i != 0 && i != 10) { // Skip date columns
+        table.getColumnModel().getColumn(i).setCellRenderer(highlightRenderer);
+      }
+    }
+
+    // Apply column visibility settings
+    updateColumnVisibility();
+  }
+
+  /**
+   * Refresh metadata filter combo boxes with current transaction data
+   */
+  public void refreshMetadataFilters() {
+    cbBrokerFilter.setModel(transactions.getBrokersModel());
+    cbAccountIdFilter.setModel(transactions.getAccountIdsModel());
+    
+    // Reset selections to empty (no filter)
+    cbBrokerFilter.setSelectedIndex(0);
+    cbAccountIdFilter.setSelectedIndex(0);
+  }
+
+  /**
+   * Update visibility of metadata columns based on settings
+   */
+  public void updateColumnVisibility() {
+    boolean showColumns = Settings.getShowMetadataColumns();
+    TableColumnModel columnModel = table.getColumnModel();
+
+    // Metadata columns are 11-14: Broker, AccountID, TxnID, Effect
+    for (int i = 11; i <= 14; i++) {
+      TableColumn column = columnModel.getColumn(i);
+      column.setMinWidth(showColumns ? 1 : 0);
+      column.setMaxWidth(showColumns ? Integer.MAX_VALUE : 0);
+      column.setPreferredWidth(showColumns ? (i == 11 ? 80 : i == 12 ? 100 : i == 13 ? 120 : 120) : 0);
+      column.setWidth(showColumns ? column.getPreferredWidth() : 0);
+    }
+
+    // Force table layout update
+    table.revalidate();
+    table.repaint();
   }
 
   private void miNewActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_miNewActionPerformed
@@ -945,6 +1188,9 @@ public class MainWindow extends javax.swing.JFrame {
     String market = tfMarket.getText();
     String type = (String) cbTypeFilter.getSelectedItem();
     String note = tfNote.getText();
+    String broker = (String) cbBrokerFilter.getSelectedItem();
+    String accountId = (String) cbAccountIdFilter.getSelectedItem();
+    String effect = (String) cbEffectFilter.getSelectedItem();
 
     if (ticker.length() == 0)
       ticker = null;
@@ -954,12 +1200,18 @@ public class MainWindow extends javax.swing.JFrame {
       type = null;
     if (note.length() == 0)
       note = null;
+    if (broker != null && broker.length() == 0)
+      broker = null;
+    if (accountId != null && accountId.length() == 0)
+      accountId = null;
+    if (effect != null && effect.length() == 0)
+      effect = null;
 
     // Track current ticker filter for status bar display
     currentTickerFilter = ticker;
 
     // Apply filter
-    transactions.applyFilter(dcFrom.getDate(), dcTo.getDate(), ticker, market, type, note);
+    transactions.applyFilter(dcFrom.getDate(), dcTo.getDate(), ticker, market, type, note, broker, accountId, effect);
 
     // Enable clear filter button and save filtered
     bClearFilter.setEnabled(true);
@@ -971,6 +1223,9 @@ public class MainWindow extends javax.swing.JFrame {
     bClearFilter.setEnabled(false);
     miSaveFiltered.setEnabled(false);
     cbTypeFilter.setSelectedIndex(0); // Reset to empty selection
+    cbBrokerFilter.setSelectedIndex(0); // Reset to empty option
+    cbAccountIdFilter.setSelectedIndex(0); // Reset to empty option
+    cbEffectFilter.setSelectedIndex(0);
   }
 
   private void miSaveAsActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_miSaveAsActionPerformed
@@ -1030,22 +1285,25 @@ public class MainWindow extends javax.swing.JFrame {
 
        try {
          // Load file
-         transactions.load(selectedFile);
+          transactions.load(selectedFile);
 
-         // Initialize date range to show all loaded data (1900-01-01 to today)
-         java.util.GregorianCalendar startCal = new java.util.GregorianCalendar(1900, 0, 1); // 1900-01-01
-         dcFrom.setDate(startCal.getTime());
-         dcTo.setDate(new java.util.Date()); // Today
+          // Initialize date range to show all loaded data (1900-01-01 to today)
+          java.util.GregorianCalendar startCal = new java.util.GregorianCalendar(1900, 0, 1); // 1900-01-01
+          dcFrom.setDate(startCal.getTime());
+          dcTo.setDate(new java.util.Date()); // Today
 
-         // Invalidate transformation cache for loaded data
-         System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
-         transactions.invalidateTransformationCache();
+          // Invalidate transformation cache for loaded data
+          System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
+          transactions.invalidateTransformationCache();
 
-         // Clear results of computing to avoid confusion
-         computeWindow.clearComputeResults();
+          // Refresh metadata filter dropdowns with loaded data
+          refreshMetadataFilters();
 
-         // Clear filter
-         clearFilter();
+          // Clear results of computing to avoid confusion
+          computeWindow.clearComputeResults();
+
+          // Clear filter
+          clearFilter();
        } catch (Exception e) {
         JOptionPane.showMessageDialog(this, "Při načítání souboru nastala chyba: " + e);
       }
@@ -1118,11 +1376,11 @@ public class MainWindow extends javax.swing.JFrame {
     }
   }// GEN-LAST:event_miExportFIOActionPerformed
 
-  private void tfNoteActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_tfNoteActionPerformed
-    // TODO add your handling code here:
-  }// GEN-LAST:event_tfNoteActionPerformed
+   private void tfNoteActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_tfNoteActionPerformed
+     // TODO add your handling code here:
+   }// GEN-LAST:event_tfNoteActionPerformed
 
-  private void miOpenAddActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_miOpenAddActionPerformed
+   private void miOpenAddActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_miOpenAddActionPerformed
 
     // Show open dialog
     FileDialog dialog = new FileDialog(this, "Otevřít soubor", FileDialog.LOAD);
@@ -1142,6 +1400,9 @@ public class MainWindow extends javax.swing.JFrame {
       try {
         // Load file
         transactions.loadAdd(selectedFile);
+
+        // Refresh metadata filter dropdowns with loaded data
+        refreshMetadataFilters();
 
         // Clear results of computing to avoid confusion
         computeWindow.clearComputeResults();
@@ -1252,9 +1513,12 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JLabel jLabel2;
   private javax.swing.JLabel jLabel3;
   private javax.swing.JLabel jLabel4;
-  private javax.swing.JLabel jLabel5;
-  private javax.swing.JLabel jLabel6;
-  private javax.swing.JLabel jLabel7;
+   private javax.swing.JLabel jLabel5;
+   private javax.swing.JLabel jLabel6;
+   private javax.swing.JLabel jLabel7;
+   private javax.swing.JLabel jLabel8;
+   private javax.swing.JLabel jLabel9;
+   private javax.swing.JLabel jLabel10;
   private javax.swing.JMenu jMenu1;
   private javax.swing.JMenu jMenu2;
   private javax.swing.JMenu jMenu3;
@@ -1280,9 +1544,13 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JMenuItem miSaveFiltered;
   private javax.swing.JMenuItem miSettings;
   private javax.swing.JTable table;
-  private javax.swing.JTextField tfMarket;
-  private javax.swing.JTextField tfNote;
-  private javax.swing.JTextField tfTicker;
-  // End of variables declaration//GEN-END:variables
+   private javax.swing.JTextField tfMarket;
+   private javax.swing.JTextField tfNote;
+   private javax.swing.JTextField tfTicker;
+   private javax.swing.JComboBox cbBrokerFilter;
+   private javax.swing.JComboBox cbAccountIdFilter;
+   private javax.swing.JComboBox cbEffectFilter;
+   private javax.swing.JCheckBox cbShowMetadata;
+   // End of variables declaration//GEN-END:variables
 
 }

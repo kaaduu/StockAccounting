@@ -39,12 +39,20 @@ public class ImportIBTradeLog extends ImportBase
     int neededLen = 0;
     boolean startFound = false;
     s = ifl.readLine();
-    if (s.equals("ACCOUNT_INFORMATION"))  startFound = true;             
-    
+    if (s.equals("ACCOUNT_INFORMATION"))  startFound = true;
+
     if (!startFound) throw new ImportException("IB FlexQuery Trades CSV: Nemohu najít začátek dat - je soubor ve správném formátu? Prvni radka ACCOUNT_INFORAMTION chybi");
-    
-    
-   
+
+    // Extract Account ID from ACT_INF line
+    String accountId = "UNKNOWN";
+    s = ifl.readLine();
+    if (s != null && s.startsWith("ACT_INF|")) {
+        String[] actFields = s.split("\\|");
+        if (actFields.length > 1) {
+            accountId = actFields[1].trim();
+        }
+    }
+
     // Process data rows
     while((s = ifl.readLine()) != null) {
       boolean imported = false;
@@ -56,26 +64,26 @@ public class ImportIBTradeLog extends ImportBase
         boolean derivate = (a[0].equals("FUT_TRD") || a[0].equals("OPT_TRD") ||  a[0].equals("FOP_TRD"));
         boolean stock = a[0].equals("STK_TRD");
         if (derivate || stock || cash) {
-          try {
-            // Known trades
-            DataRow drow = new DataRow();
-            // IB have cancelled codes as "Ca" those needs to be filtered out too
-            String statusCode = a[6];
-            
-            drow.ticker = a[2];
-            drow.market = a[4];
+           try {
+             // Known trades
+             DataRow drow = new DataRow();
 
-            //note will contain close code if interesting
-            // filtering O,C (Open,Close)
-            switch(statusCode) {
-                case "O":
-                case "C":
-                       drow.note   = a[3]+"|Broker:IB";
-                       break;
-                default:
-                       drow.note   = a[3]+"|Broker:IB|Code:"+a[6];
-                       break;                
-            }
+             // Extract field values for clarity
+             String tradeType = a[0];           // STK_TRD, FUT_TRD, etc.
+             String transactionId = a[1];       // IB transaction identifier
+             String ticker = a[2];              // Stock symbol
+             String description = a[3];         // Company description
+             String exchange = a[4];            // Trading venue
+             String action = a[5];              // BUYTOOPEN, SELLTOCLOSE, etc.
+             String statusCode = a[6];          // O, C, Ca, etc.
+
+             // IB have cancelled codes as "Ca" those needs to be filtered out too
+             drow.ticker = ticker;
+             drow.market = exchange;
+
+             // Enhanced note format with Account ID, Transaction ID, and status code
+             drow.note = description + "|Broker:IB|AccountID:" + accountId +
+                        "|TxnID:" + transactionId + "|Code:" + statusCode;
             
           
             drow.direction = 0;

@@ -169,6 +169,16 @@ public class Settings {
   private static int lastImportFormat = 0;
 
   /**
+   * Update duplicates on import checkbox state
+   */
+  private static boolean updateDuplicatesOnImport = false;
+
+  /**
+   * Show metadata columns (Broker, AccountID, TxnID, Effect) visibility
+   */
+  private static boolean showMetadataColumns = true;
+
+  /**
    * Daily exchange rates map (currency|YYYY-MM-DD => ratio map)
    */
   private static HashMap<String, Double> dailyRates;
@@ -408,6 +418,34 @@ public class Settings {
   }
 
   /**
+   * Get show metadata columns setting
+   */
+  public static boolean getShowMetadataColumns() {
+    return showMetadataColumns;
+  }
+
+  /**
+   * Set show metadata columns setting
+   */
+  public static void setShowMetadataColumns(boolean value) {
+    showMetadataColumns = value;
+  }
+
+  /**
+   * Get update duplicates on import checkbox state
+   */
+  public static boolean getUpdateDuplicatesOnImport() {
+    return updateDuplicatesOnImport;
+  }
+
+  /**
+   * Set update duplicates on import checkbox state
+   */
+  public static void setUpdateDuplicatesOnImport(boolean value) {
+    updateDuplicatesOnImport = value;
+  }
+
+  /**
    * Get exchange rate for given currency and date.
    * If useDailyRates is enabled, tries to find daily rate, otherwise uses unified
    * rate.
@@ -589,6 +627,9 @@ public class Settings {
     /* Load daily rates */
     loadDailyRates();
 
+    /* Show metadata columns */
+    showMetadataColumns = p.getBoolean("showMetadataColumns", true);
+
     /* Trading 212 API settings */
     trading212ApiKey = p.get("trading212ApiKey", null);
     trading212ApiSecret = p.get("trading212ApiSecret", null);
@@ -604,6 +645,9 @@ public class Settings {
     } catch (NumberFormatException e) {
       lastImportFormat = 0; // Default to "select format"
     }
+
+    /* Update duplicates on import */
+    updateDuplicatesOnImport = p.getBoolean("updateDuplicatesOnImport", false);
   }
 
   /**
@@ -655,6 +699,9 @@ public class Settings {
     // Save daily rates
     saveDailyRates();
 
+    // Show metadata columns
+    p.putBoolean("showMetadataColumns", showMetadataColumns);
+
     // Trading 212 API settings
     if (trading212ApiKey != null) {
       p.put("trading212ApiKey", trading212ApiKey);
@@ -671,6 +718,9 @@ public class Settings {
 
     // Last import format
     p.put("lastImportFormat", Integer.toString(lastImportFormat));
+
+    // Update duplicates on import
+    p.putBoolean("updateDuplicatesOnImport", updateDuplicatesOnImport);
   }
 
   /**
