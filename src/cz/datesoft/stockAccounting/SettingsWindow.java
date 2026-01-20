@@ -1255,6 +1255,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     // And save them
      Settings.setUseDailyRates(cbUseDailyRates.isSelected());
      saveTrading212Settings();
+     saveIbkrFlexSettings();
 
     // Close
     setVisible(false);
@@ -1648,11 +1649,10 @@ public class SettingsWindow extends javax.swing.JDialog {
     // Demo mode checkbox
     cbTrading212Demo = new javax.swing.JCheckBox();
     cbTrading212Demo.setText("Použít demo prostředí (pro testování)");
-    cbTrading212Demo.setSelected(true);
     gbcTrading212.gridx = 0;
     gbcTrading212.gridy = 2;
-    gbcTrading212.gridwidth = 2;
-    gbcTrading212.anchor = java.awt.GridBagConstraints.WEST;
+    gbcTrading212.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcTrading212.weightx = 1.0;
     pTrading212.add(cbTrading212Demo, gbcTrading212);
 
     // Test connection button
@@ -1696,11 +1696,73 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     jTabbedPane1.addTab("Trading 212 API", pTrading212);
 
+    // IBKR Flex Settings Panel
+    javax.swing.JPanel pIbkrFlex = new javax.swing.JPanel();
+    pIbkrFlex.setLayout(new java.awt.GridBagLayout());
+    java.awt.GridBagConstraints gbcIbkrFlex = new java.awt.GridBagConstraints();
+
+    // IBKR Flex Query ID field
+    javax.swing.JLabel lblIbkrQueryId = new javax.swing.JLabel("IBKR Query ID:");
+    tfIbkrQueryId = new javax.swing.JTextField(40);
+    tfIbkrQueryId.setText(Settings.getIbkrFlexQueryId());
+    gbcIbkrFlex.gridx = 0;
+    gbcIbkrFlex.gridy = 0;
+    gbcIbkrFlex.anchor = java.awt.GridBagConstraints.WEST;
+    gbcIbkrFlex.insets = new java.awt.Insets(5, 5, 5, 5);
+    pIbkrFlex.add(lblIbkrQueryId, gbcIbkrFlex);
+
+    gbcIbkrFlex.gridx = 1;
+    gbcIbkrFlex.gridy = 0;
+    gbcIbkrFlex.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcIbkrFlex.weightx = 1.0;
+    tfIbkrQueryId.setPreferredSize(new java.awt.Dimension(300, 25));
+    pIbkrFlex.add(tfIbkrQueryId, gbcIbkrFlex);
+
+    // IBKR Flex Token field
+    javax.swing.JLabel lblIbkrFlexToken = new javax.swing.JLabel("IBKR Flex Token:");
+    tfIbkrFlexToken = new javax.swing.JPasswordField(40);
+    String savedToken = Settings.getIbkrFlexToken();
+    if (savedToken != null && !savedToken.isEmpty()) {
+        tfIbkrFlexToken.setText(savedToken);
+    }
+    gbcIbkrFlex.gridx = 0;
+    gbcIbkrFlex.gridy = 1;
+    gbcIbkrFlex.fill = java.awt.GridBagConstraints.NONE;
+    gbcIbkrFlex.weightx = 0.0;
+    pIbkrFlex.add(lblIbkrFlexToken, gbcIbkrFlex);
+
+    gbcIbkrFlex.gridx = 1;
+    gbcIbkrFlex.gridy = 1;
+    gbcIbkrFlex.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcIbkrFlex.weightx = 1.0;
+    tfIbkrFlexToken.setPreferredSize(new java.awt.Dimension(300, 25));
+    pIbkrFlex.add(tfIbkrFlexToken, gbcIbkrFlex);
+
+    // Test connection button for IBKR
+    javax.swing.JButton bTestIbkrConnection = new javax.swing.JButton();
+    bTestIbkrConnection.setText("Otestovat připojení");
+    bTestIbkrConnection.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            bTestIbkrConnectionActionPerformed(evt);
+        }
+    });
+    gbcIbkrFlex.gridx = 0;
+    gbcIbkrFlex.gridy = 2;
+    gbcIbkrFlex.gridwidth = 2;
+    gbcIbkrFlex.fill = java.awt.GridBagConstraints.NONE;
+    gbcIbkrFlex.anchor = java.awt.GridBagConstraints.CENTER;
+    gbcIbkrFlex.insets = new java.awt.Insets(15, 5, 5, 5);
+    pIbkrFlex.add(bTestIbkrConnection, gbcIbkrFlex);
+
+    jTabbedPane1.addTab("IBKR Flex", pIbkrFlex);
+
     // Populate table
     refreshDailyRatesTable();
 
     // Load Trading 212 settings
     loadTrading212Settings();
+    loadIbkrFlexSettings();
+    loadIbkrFlexSettings();
   }
 
   private void loadTrading212Settings() {
@@ -1709,14 +1771,36 @@ public class SettingsWindow extends javax.swing.JDialog {
     cbTrading212Demo.setSelected(Settings.getTrading212UseDemo());
   }
 
-  private void saveTrading212Settings() {
-    Settings.setTrading212ApiKey(tfTrading212ApiKey.getText().trim());
-    Settings.setTrading212ApiSecret(new String(tfTrading212ApiSecret.getPassword()).trim());
-    Settings.setTrading212UseDemo(cbTrading212Demo.isSelected());
-    Settings.save();
+   private void saveTrading212Settings() {
+     Settings.setTrading212ApiKey(tfTrading212ApiKey.getText().trim());
+     Settings.setTrading212ApiSecret(new String(tfTrading212ApiSecret.getPassword()).trim());
+     Settings.setTrading212UseDemo(cbTrading212Demo.isSelected());
+     Settings.save();
    }
 
-   private void cbShowMetadataColumnsActionPerformed(java.awt.event.ActionEvent evt) {
+   private void loadIbkrFlexSettings() {
+       if (tfIbkrQueryId != null) {
+           tfIbkrQueryId.setText(Settings.getIbkrFlexQueryId());
+       }
+       if (tfIbkrFlexToken != null) {
+           String savedToken = Settings.getIbkrFlexToken();
+           if (savedToken != null && !savedToken.isEmpty()) {
+               tfIbkrFlexToken.setText(savedToken);
+           }
+       }
+   }
+
+   private void saveIbkrFlexSettings() {
+       if (tfIbkrQueryId != null) {
+           Settings.setIbkrFlexQueryId(tfIbkrQueryId.getText().trim());
+       }
+       if (tfIbkrFlexToken != null) {
+           Settings.setIbkrFlexToken(new String(tfIbkrFlexToken.getPassword()).trim());
+       }
+       Settings.save();
+    }
+
+    private void cbShowMetadataColumnsActionPerformed(java.awt.event.ActionEvent evt) {
      boolean showColumns = cbShowMetadataColumns.isSelected();
      Settings.setShowMetadataColumns(showColumns);
 
@@ -1798,34 +1882,106 @@ public class SettingsWindow extends javax.swing.JDialog {
     worker.execute();
   }
 
-  private void showDetailedErrorDialog(String title, String userMessage, Exception error) {
-    javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout());
+   private void showDetailedErrorDialog(String title, String userMessage, Exception error) {
+     javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout());
 
-    // Main error message
-    javax.swing.JLabel messageLabel = new javax.swing.JLabel("<html>" +
-        userMessage.replace("\n", "<br>") + "</html>");
-    messageLabel.setBorder(new javax.swing.border.EmptyBorder(10, 10, 10, 10));
-    panel.add(messageLabel, java.awt.BorderLayout.CENTER);
+     // Main error message
+     javax.swing.JLabel messageLabel = new javax.swing.JLabel("<html>" +
+         userMessage.replace("\n", "<br>") + "</html>");
+     messageLabel.setBorder(new javax.swing.border.EmptyBorder(10, 10, 10, 10));
+     panel.add(messageLabel, java.awt.BorderLayout.CENTER);
 
-    // Show details button
-    javax.swing.JButton detailsButton = new javax.swing.JButton("Show Technical Details");
-    detailsButton.addActionListener(e -> {
-      javax.swing.JTextArea textArea = new javax.swing.JTextArea();
-      textArea.setText(getFullStackTrace(error));
-      textArea.setEditable(false);
-      textArea.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12));
+     javax.swing.JOptionPane.showMessageDialog(this, panel, title, javax.swing.JOptionPane.ERROR_MESSAGE);
+   }
 
-      javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(textArea);
-      scrollPane.setPreferredSize(new java.awt.Dimension(600, 400));
+   private void bTestIbkrConnectionActionPerformed(java.awt.event.ActionEvent evt) {
+     String queryId = tfIbkrQueryId.getText().trim();
+     String flexToken = new String(tfIbkrFlexToken.getPassword()).trim();
 
-      javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this, scrollPane,
-          "Technical Details", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-    });
+     if (queryId.isEmpty() || flexToken.isEmpty()) {
+       javax.swing.JOptionPane.showMessageDialog(this,
+           "Prosím zadejte Query ID a Flex Token před testováním.",
+           "Chybějící pověření", javax.swing.JOptionPane.WARNING_MESSAGE);
+       return;
+     }
 
-    panel.add(detailsButton, java.awt.BorderLayout.SOUTH);
+     // Disable button and show progress
+     javax.swing.JButton sourceButton = (javax.swing.JButton) evt.getSource();
+     sourceButton.setEnabled(false);
+     sourceButton.setText("Testování...");
 
-    javax.swing.JOptionPane.showMessageDialog(this, panel, title, javax.swing.JOptionPane.ERROR_MESSAGE);
-  }
+     // Run test in background thread
+     javax.swing.SwingWorker<Void, Void> worker = new javax.swing.SwingWorker<Void, Void>() {
+       private String resultMessage;
+       private boolean success;
+       private Exception error;
+
+       @Override
+       protected Void doInBackground() throws Exception {
+          try {
+            IBKRFlexClient client = new IBKRFlexClient(flexToken);
+            // Test basic connectivity by requesting a report (will fail if credentials are wrong)
+            // Note: Per API docs, no date parameters - dates are in Flex Query template
+            IBKRFlexClient.FlexRequestResult result = client.requestReport(queryId);
+            if (result.success) {
+              success = true;
+              resultMessage = "✅ IBKR Flex připojení úspěšné!\n\n" +
+                  "Vaše IBKR Flex pověření fungují správně.\n" +
+                  "Můžete nyní importovat vaše obchodní data.\n\n" +
+                  "📋 Reference Code: " + result.referenceCode + "\n\n" +
+                  "✅ Query ID validní\n" +
+                  "✅ Flex Token validní\n" +
+                  "✅ Síťové připojení funguje\n\n" +
+                  "Report byl požadován a bude zpracováván asynchronně.\n" +
+                  "Můžete nyní použít funkci importu IBKR Flex dat.\n\n" +
+                  "POZNÁMKA: Rozsah dat je určen konfigurací\n" +
+                  "Flex Query šablony v Client Portal.";
+            } else {
+              success = false;
+              String errorDetail = "";
+              if (result.errorCode != null) {
+                errorDetail = "\n\nKód chyby: " + result.errorCode + "\n" + result.errorMessage;
+              }
+              resultMessage = "❌ Neplatné pověření nebo chyba konfigurace\n\n" +
+                  "Zkontrolujte Query ID a Flex Token." + errorDetail;
+            }
+         } catch (Exception e) {
+           success = false;
+           error = e;
+           String errorMsg = e.getMessage() != null ? e.getMessage() : "Neznámá chyba";
+           if (errorMsg.contains("401") || errorMsg.contains("authentication") || errorMsg.contains("Unauthorized")) {
+             resultMessage = "❌ Neplatné pověření\n\n" +
+                 "Zkontrolujte Query ID a Flex Token v IBKR Client Portal.";
+           } else if (errorMsg.contains("403") || errorMsg.contains("forbidden") || errorMsg.contains("Forbidden")) {
+             resultMessage = "❌ Nedostatečná oprávnění\n\n" +
+                 "Flex Token nemá dostatečná oprávnění pro tento Query.";
+           } else if (errorMsg.contains("404") || errorMsg.contains("Not Found")) {
+             resultMessage = "❌ Query ID nenalezen\n\n" +
+                 "Zkontrolujte, že Query ID existuje v IBKR Client Portal.";
+           } else {
+             resultMessage = "❌ Chyba připojení: " + errorMsg + "\n\n" +
+                 "Zkontrolujte síťové připojení nebo IBKR server status.";
+           }
+         }
+         return null;
+       }
+
+       @Override
+       protected void done() {
+         // Re-enable button
+         sourceButton.setEnabled(true);
+         sourceButton.setText("Otestovat připojení");
+
+         if (success) {
+           javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this, resultMessage,
+               "Test úspěšný", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+         } else {
+           showDetailedErrorDialog("Test připojení selhal", resultMessage, error);
+         }
+       }
+     };
+     worker.execute();
+   }
 
   private String getFullStackTrace(Exception e) {
     java.io.StringWriter sw = new java.io.StringWriter();
@@ -2059,6 +2215,10 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JTextField tfTrading212ApiKey;
   private javax.swing.JPasswordField tfTrading212ApiSecret;
   private javax.swing.JCheckBox cbTrading212Demo;
+
+  // IBKR Flex components
+  private javax.swing.JTextField tfIbkrQueryId;
+  private javax.swing.JPasswordField tfIbkrFlexToken;
   private javax.swing.JButton bTestTrading212Connection;
    // End of variables declaration//GEN-END:variables
 

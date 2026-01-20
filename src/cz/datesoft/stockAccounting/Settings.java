@@ -332,16 +332,56 @@ public class Settings {
     return trading212UseDemo;
   }
 
-  // Trading 212 import state
-  private static String trading212ImportState = null;
+   // Trading 212 import state
+   private static String trading212ImportState = null;
 
-  public static String getTrading212ImportState() {
-    return trading212ImportState;
-  }
+   public static String getTrading212ImportState() {
+     return trading212ImportState;
+   }
 
-  public static void setTrading212ImportState(String state) {
-    trading212ImportState = state;
-  }
+   public static void setTrading212ImportState(String state) {
+     trading212ImportState = state;
+   }
+
+   // IBKR Flex settings
+   private static String ibkrFlexQueryId = null;
+   private static String ibkrFlexToken = null;
+
+   public static String getIbkrFlexQueryId() {
+     if (ibkrFlexQueryId == null) {
+       java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+       ibkrFlexQueryId = p.get("IBKR_FLEX_QUERY_ID", "");
+     }
+     return ibkrFlexQueryId;
+   }
+
+   public static String getIbkrFlexToken() {
+     if (ibkrFlexToken == null) {
+       java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+       ibkrFlexToken = p.get("IBKR_FLEX_TOKEN", "");
+     }
+     return ibkrFlexToken;
+   }
+
+   public static void setIbkrFlexQueryId(String queryId) {
+     ibkrFlexQueryId = queryId;
+     java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+     if (queryId != null && !queryId.isEmpty()) {
+       p.put("IBKR_FLEX_QUERY_ID", queryId);
+     } else {
+       p.remove("IBKR_FLEX_QUERY_ID");
+     }
+   }
+
+   public static void setIbkrFlexToken(String token) {
+     ibkrFlexToken = token;
+     java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+     if (token != null && !token.isEmpty()) {
+       p.put("IBKR_FLEX_TOKEN", token);
+     } else {
+       p.remove("IBKR_FLEX_TOKEN");
+     }
+   }
 
   /* Setters */
   public static void setOverTaxFreeDuration(int value) {

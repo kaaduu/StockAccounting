@@ -1,3 +1,0 @@
-Issue 1:
-Jednotny kurz is loaded when app starts and is persistent but Denni kurzy after fetching seems to not be persistend when start app again they are not present in Settings. Invetigate why and how to fix it.
-

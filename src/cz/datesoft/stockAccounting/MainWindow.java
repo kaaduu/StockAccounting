@@ -727,6 +727,17 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
     jMenu1.add(miExportFIO);
+    javax.swing.JMenuItem miImportIBKR = new javax.swing.JMenuItem("Import z IBKR Flex...");
+    miImportIBKR.addActionListener(e -> {
+        IBKRFlexImportWindow importWindow = new IBKRFlexImportWindow(
+                MainWindow.this, MainWindow.this);
+        importWindow.setVisible(true);
+
+        if (importWindow.isImportCompleted()) {
+            refreshTable();
+        }
+    });
+    jMenu1.add(miImportIBKR);
     jMenu1.add(jSeparator2);
 
     miExit.setAccelerator(

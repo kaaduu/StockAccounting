@@ -4,6 +4,221 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Oprava IBKR Flex Web Service - implementace podle oficiální API dokumentace] - 2026-01-20
+
+### Opraveno - Kritické chyby API integrace
+- **ZLOMENÁ FUNKČNOST OPRAVENA**: IBKR import nyní funguje správně podle oficiální API specifikace
+- **Neexistující endpoint**: Odstraněno volání `/GetStatus` endpointu, který ve Flex Web Service API neexistuje
+  - Nahrazeno správným endpointem `/GetStatement` podle dokumentace
+  - Toto způsobovalo 10minutové timeouty s "Report status: RUNNING"
+  
+- **Neplatné parametry požadavku**: Odstraněny nepodporované parametry `startDate` a `endDate` z `/SendRequest`
+  - API akceptuje pouze: `t` (token), `q` (queryID), `v` (version=3)
+  - Rozsah dat musí být nakonfigurován v šabloně Flex Query v Client Portal
+  
+- **Nesprávný workflow**: Implementován správný 2-krokový proces podle IBKR dokumentace
+  - **Před** (3 kroky - ŠPATNĚ):
+    1. Zavolat `/SendRequest` s daty → ReferenceCode
+    2. Pollovat `/GetStatus` v smyčce → čekat na "Finished"
+    3. Zavolat `/downloadCsvReport` → získat CSV
+  - **Po** (2 kroky - SPRÁVNĚ):
+    1. Zavolat `/SendRequest` → ReferenceCode
+    2. Počkat 20s a pollovat `/GetStatement` → získat CSV (nebo error 1019 pokud není hotovo)
+
+### Vylepšeno - Zpracování chyb
+- **Parsování chybových odpovědí**: Přidáno zpracování `<Status>Fail</Status>` XML odpovědí
+  - Extrahuje `ErrorCode` a `ErrorMessage` z API odpovědí
+  - Podporuje všech 21 chybových kódů (1001-1021) dokumentovaných v IBKR API
+  
+- **Specializované výjimky**: Přidána `ReportNotReadyException` pro error 1019
+  - Error 1019 ("Statement generation in progress") je očekávaný - způsobí retry
+  - Ostatní errory jsou fatální a propagují se jako výjimky
+  
+- **Rate limit handling**: Detekce error 1018 ("Too many requests")
+  - API limity: 1 požadavek/s, 10 požadavků/min na token
+  - Automatická detekce a informativní chybové hlášky
+
+### Změněno - Konfigurace
+- **Rozsah dat**: Datumy již NELZE zadávat v API voláních
+  - **DŮLEŽITÉ**: Rozsah dat musí být nakonfigurován v šabloně Flex Query v Client Portal
+  - Podporované rozsahy v šabloně: "Last Year", "Last Month", "Last 7 Days", "Custom Range", atd.
+  - Pokud importujete data za konkrétní rok, vytvořte v Client Portal šablonu s příslušným rozsahem
+  
+- **Polling strategie**: Optimalizováno podle IBKR doporučení
+  - Počáteční čekání: 20 sekund (dle příkladu v dokumentaci)
+  - Retry interval: 10 sekund
+  - Maximum pokusů: 60 (celkem 10 minut)
+
+### Technické detaily - API specifikace
+- **Base URL**: `https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService`
+- **Endpointy**:
+  - `/SendRequest?t={token}&q={queryID}&v=3` → vrací ReferenceCode
+  - `/GetStatement?t={token}&q={referenceCode}&v=3` → vrací CSV nebo error
+- **Povinné hlavičky**: `User-Agent: StockAccounting/1.0`
+- **Timeouty**: Connect 10s, Read 30s, Request 60s
+- **Chybové kódy** (kompletní seznam v kódu):
+  - 1001: Dočasná chyba generování
+  - 1012: Token expiroval
+  - 1014: Neplatné Query ID
+  - 1015: Neplatný token
+  - 1018: Rate limit překročen
+  - 1019: Report se stále generuje (retry)
+  - 1021: Dočasná chyba retrievalu
+
+### Dokumentace použita
+- IBKR Flex Web Service API: https://www.interactivebrokers.com/campus/ibkr-api-page/flex-web-service/
+- Oficiální Python příklady a workflow z IBKR dokumentace
+
+### Soubory změněny
+- `src/cz/datesoft/stockAccounting/IBKRFlexClient.java`
+  - Odstraněn `checkReportStatus()` a `/GetStatus` endpoint
+  - Přidán `downloadReport()` s `/GetStatement` endpointem
+  - Kompletně přepsán `requestAndDownloadReport()` podle API specifikace
+  - Vylepšen `parseReferenceCode()` s plnou podporou error stavů
+  - Přidána třída `ReportNotReadyException` pro retry logic
+  - Odstraněna třída `FlexReportStatus` (již není potřeba)
+  - Rozšířena třída `FlexRequestResult` o `errorCode` a `errorMessage`
+- `src/cz/datesoft/stockAccounting/IBKRFlexImporter.java`
+  - Odstraněno předávání `startDate` a `endDate` do API
+  - Přidány informativní logy o konfiguraci rozsahu dat
+- `src/cz/datesoft/stockAccounting/SettingsWindow.java`
+  - Aktualizován test připojení bez date parametrů
+  - Vylepšeno zobrazení chybových kódů z API
+
+## [Kritické opravy IBKR API importu] - 2026-01-20
+
+### Opraveno - Kritické chyby
+- **Nesprávný formát data pro aktuální rok**: Opraven chybný formát data v `IBKRFlexImporter.java:134`, který způsoboval selhání importu dat z aktuálního roku
+  - **Před**: `String.format("%02d%02d%04d", měsíc, den, rok)` generoval "01202026" (MMddyyyy)
+  - **Po**: `String.format("%04d%02d%02d", rok, měsíc, den)` generuje "20260120" (yyyyMMdd)
+  - **Dopad**: IBKR API vyžaduje formát yyyyMMdd - všechny importy aktuálního roku selhávaly s neplatným parametrem
+  
+- **Thread leak z ExecutorService**: Opraven únik vláken v `IBKRFlexClient.java` - ExecutorService nikdy nebyl vypnutý
+  - Přidána robustní metoda `shutdown()` s graceful termination (5s timeout)
+  - Přidána metoda `cleanup()` v `IBKRFlexImporter` volaná v finally bloku
+  - **Dopad**: Při každém importu zůstávala vlákna běžící na pozadí, což vedlo k únikům paměti
+
+### Vylepšeno - Zvýšená spolehlivost
+- **Validace CSV sloupců**: Přidána kontrola, zda byly detekovány všechny požadované sloupce (Date, Symbol, Quantity, Price)
+  - Loguje varování pokud chybí povinné sloupce a používají se výchozí indexy
+  - Pomáhá odhalit problémy při změně formátu IBKR CSV
+
+- **Rozšířené mapování typů transakcí**: Vylepšeno rozpoznávání typů transakcí z IBKR
+  - Přidáno: interest, withholding tax, deposits/withdrawals, options, corporate actions
+  - Přidáno logování pro neznámé typy transakcí vyžadující manuální kontrolu
+  - **Před**: Pouze základní buy/sell/dividend/fee
+  - **Po**: Kompletní pokrytí běžných IBKR transakcí s detailním logováním
+
+### Změněno - Technické vylepšení
+- **Zjednodušeno timeout zpracování**: Odstraněn redundantní wrapper okolo HttpClient timeoutů
+  - HttpClient již má vestavěné timeouty (connect: 10s, read: 30s, request: 60s)
+  - Odstraněno duplicitní ExecutorService wrapping každého HTTP požadavku
+  - Lepší error zprávy pro různé typy timeoutů (connect vs read)
+
+- **Nahrazeno debug logování**: Všechny `System.out.println("DEBUG: ...")` nahrazeny standardním loggingem
+  - **IBKRFlexClient**: 6 debug příkazů → `logger.info()` / `logger.fine()`
+  - **IBKRFlexImporter**: 8 debug příkazů → `logger.info()` / `logger.fine()` / `logger.warning()`
+  - **IBKRFlexProgressDialog**: 16 debug příkazů → `logger.info()` / `logger.fine()`
+  - Celkem odstraněno 36 debug výpisů z produkčního kódu
+
+### Technické detaily
+- **Formát data IBKR API**: API očekává formát `yyyyMMdd` pro parametry `startDate` a `endDate`
+- **Resource management**: Všechny importy nyní korektně uvolňují zdroje pomocí try-finally bloků
+- **Logging levels**: 
+  - `logger.info()` pro důležité události (úspěšný import, chyby)
+  - `logger.fine()` pro detailní trasování (pro debugging s -verbose)
+  - `logger.warning()` pro chybové stavy a neznámé typy transakcí
+
+### Soubory změněny
+- `src/cz/datesoft/stockAccounting/IBKRFlexImporter.java` - oprava formátu data, přidán cleanup
+- `src/cz/datesoft/stockAccounting/IBKRFlexClient.java` - zlepšený shutdown, zjednodušené timeouty
+- `src/cz/datesoft/stockAccounting/IBKRFlexParser.java` - validace sloupců, rozšířené mapování typů
+- `src/cz/datesoft/stockAccounting/IBKRFlexProgressDialog.java` - nahrazeno debug logování
+
+## [Oprava EDT blokování v IBKR Flex Progress Dialog] - 2026-01-19
+
+### Opraveno
+- **EDT blokování**: Kritická chyba kde progress dialog se zobrazoval prázdný (bez progress baru a tlačítek) a aplikace se zasekávala. Problém byl v pořadí operací v `waitForCompletion()`:
+  1. `setVisible(true)` na non-modal dialog vracel okamžitě (dialog ještě nebyl vykreslen)
+  2. `latch.await()` blokoval EDT vlákno
+  3. Dialog nikdy nedostal šanci se vykreslit
+
+### Změněno
+- **IBKRFlexProgressDialog.java**:
+  - Změněno z non-modal (`false`) na modal (`true`) dialog pro správné blokování
+  - Přesunuto volání `startImport()` PŘED `setVisible(true)` v volajícím kódu
+  - Import se spustí jako background worker, pak se zobrazí modal dialog
+  - Dialog se zavře až po dokončení importu (CountDownLatch)
+  - Přidáno rozsáhlé debug logování pro sledování flow: constructor, startImport, doInBackground, process, done
+  - Změněna tlačítko "Zrušit" na "Zavřít" po dokončení/chybě
+  - Přidáno `setResizable(false)` pro konzistenci
+
+- **IBKRFlexImportWindow.java**:
+  - Aktualizováno volání `IBKRFlexProgressDialog`: odstraněn `importWorker` parametr
+  - Nyní volá `progressDialog.startImport()` PŘED `progressDialog.waitForCompletion()`
+
+### Technické detaily
+- **Původní problém**: `setVisible(true)` na non-modal JDialog vrací okamžitě, i když dialog není vykreslen
+- **Řešení**: Modal dialog blokuje volání kód dokud není `setVisible(false)`, import běží na pozadí přes SwingWorker
+- **Flow**: startImport() → execute worker → setVisible(true) → čeká na done() → setVisible(false)
+- **Debug výstup**:
+  ```
+  DEBUG: ProgressDialog.startImport() - creating worker
+  DEBUG: ProgressDialog.startImport() - executing worker
+  DEBUG: SwingWorker.doInBackground() - starting
+  DEBUG: SwingWorker.process() - chunks=...
+  DEBUG: SwingWorker.done() - called
+  ```
+
+## [Striktní timeout enforcement pro IBKR Flex HTTP požadavky] - 2026-01-19
+
+## [Oprava EDT blokování v IBKR Flex Progress Dialog] - 2026-01-19
+
+### Opraveno
+- **EDT blokování**: Kritická chyba kde progress dialog vypadal zamrzlý s prázdným obsahem. Problém byl v `waitForCompletion()` metodě, která používala busy-wait smyčku s `Thread.sleep(100)` přímo na EDT vlákně, což blokovalo veškeré UI aktualizace.
+
+### Změněno
+- **IBKRFlexProgressDialog.java**:
+  - Nahrazen busy-wait loop (`while (!completed) { Thread.sleep(100); }`) za Swing Timer (`javax.swing.Timer`)
+  - Použit `CountDownLatch` pro čekání na dokončení bez blokování EDT
+  - Přidán debug výstup do konstruktoru pro diagnostiku UI komponent
+  - Debug logování ověřuje vytvoření `progressBar`, `statusLabel` a `cancelButton` komponent
+
+### Technické detaily
+- **Původní problém**: `Thread.sleep(100)` na EDT vlákně zabraňovalo repaint() a validaci() volání
+- **Řešení**: Swing Timer běží na EDT a pravidelně kontroluje `completed` flag bez blokování
+- **Přínos**: Progress dialog se nyní správně zobrazuje a reaguje na uživatelské interakce
+
+## [Diagnostika a oprava zaseknutí IBKR Flex importu] - 2026-01-19
+
+### Opraveno
+- **HTTP timeout**: Přidán konečný timeout na HTTP požadavky (30s connect, 60s read) pro zabránění nekonečného blokování při nedostupnosti IBKR API
+- **Cache bug**: Opravena chyba v `IBKRFlexCache.loadCacheFromDisk()` kde `if (csvFiles != null) return;` způsobovalo přeskočení načítání cache
+
+### Přidáno
+- **Debug logging**: Rozsáhlé debug logování do `importYear()` metody pro identifikaci přesného místa zaseknutí
+  - Loguje: start, check cache, použití cache, stahování z API, parsování, dokončení
+  - Zobrazuje počet transakcí při úspěšném importu
+- **Validace credentials**: Přidána validace Flex Token a Query ID před zahájením importu
+  - Metoda `getValidationError()` vrací uživatelsky přívětivou chybovou zprávu
+  - Kontrola před API voláním zobrazí dialog s instrukcemi k nastavení
+- **Detailní logování API**: Rozšířené logování v `requestAndDownloadReport()` pro sledování každého poll kroku
+
+### Změněno
+- **IBKRFlexClient.java**:
+  - Přidány konstanty `CONNECT_TIMEOUT_SECONDS=30` a `READ_TIMEOUT_SECONDS=60`
+  - HttpClient nyní používá `HttpClient.newBuilder()` s `connectTimeout()`
+  - Detailní logování průběhu report request/polling/download
+- **IBKRFlexImporter.java**:
+  - Přidána metoda `validateCredentials()` pro kontrolu nastavení
+  - Přidána metoda `getValidationError()` pro uživatelsky přívětivé chybové zprávy
+  - Debug `System.out.println()` v `importYear()` pro diagnostiku
+- **IBKRFlexCache.java**:
+  - Opravena podmínka z `if (csvFiles != null) return;` na `if (csvFiles == null) return;`
+- **IBKRFlexImportWindow.java**:
+  - Přidána validace credentials před zahájením importu
+  - Zobrazení chybového dialogu s instrukcemi při chybějícím nastavení
+
 ## [Vylepšený Trading 212 import s CSV cache a per-file stavem] - 2026-01-18
 
 ### Opraveno

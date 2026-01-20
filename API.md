@@ -218,3 +218,200 @@ Datum|1 AUD|1 BGN|1 BRL|1 CAD|...|100 HUF|...
 - **Trading212 API chyby**: Kontrola API klíčů a rate limitů
 - **CNB API nedostupnost**: Automatické opakování s předchozími dny
 - **Debug informace**: Trading212 odpovědi se ukládají do `Trading212DebugStorage`
+
+## Interactive Brokers (IBKR) Flex Web Service
+
+### Účel
+Načítání kompletních historických obchodních dat z Interactive Brokers účtu přes Flex Web Service API pro daňové účely. Umožňuje import dat za libovolný počet let zpětně.
+
+### Autentifikace
+- **Metoda**: Token-based autentifikace
+- **Token**: Vygenerováno v IBKR Client Portal → Settings → Flex Web Service Configuration
+- **Prostředí**: Cloud (není vyžadován lokální Gateway ani TWS)
+- **Verze API**: Flex Web Service v3
+
+### Základní URL
+```
+https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService
+```
+
+### Endpointy
+
+#### SendRequest - Generování reportu
+**Účel**: Požadavek o vygenerování Flex Query reportu pro specifické datumové rozsahy.
+
+**Parametry**:
+- `t` (vyžadováno): Flex Token vytvořený v Client Portal
+- `q` (vyžadováno): Query ID - identifikátor předkonfigurovaného Flex Query
+- `v` (vyžadováno): Verze Flex Web Service - vždy hodnota `3`
+- `startDate` (volitelné): Počáteční datum ve formátu `YYYYMMDD`
+- `endDate` (volitelné): Koncové datum ve formátu `YYYYMMDD`
+
+**Příklad URL**:
+```
+https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService/SendRequest?t={Token}&q={QueryID}&v=3&startDate=20210101&endDate=20211231
+```
+
+**Příklad odpovědi**:
+```xml
+<FlexStatementResponse timestamp='19 January, 2026 09:41 AM EST'>
+<Status>Success</Status>
+<ReferenceCode>123456789012345</ReferenceCode>
+<Url>https://gdcdyn.interactivebrokers.com/AccountManagement/FlexWebService/GetStatement</Url>
+</FlexStatementResponse>
+```
+
+**Poznámka**: IBKR může vracet odpověď v XML formátu (novější) nebo plain text formátu (starší). Aplikace podporuje oba formáty.
+
+#### GetStatement - Stažení reportu
+**Účel**: Stažení vygenerovaného reportu ve formátu CSV nebo XML.
+
+**Parametry**:
+- `ref` (vyžadováno): Reference Code získaný z endpointu SendRequest
+- `t` (vyžadováno): Flex Token (shodný jako u SendRequest)
+
+**Příklad URL**:
+```
+https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService/GetStatement?ref={ReferenceCode}&t={Token}
+```
+
+**Příklad odpovědi**: CSV soubor obsahující sekce:
+- **Trades**: Historie obchodů (nákupy, prodeje, deriváty)
+- **Transaction Fees**: Poplatky za transakce
+- **Cash Transactions**: Vklady, výběry, převody
+- **Dividends**: Dividendové výplaty (pokud zahrnuto v query)
+
+**Formát CSV**:
+```
+DateOfTrade,SettlementDate,TransactionType,Symbol,Name,Quantity,Price,Currency,Proceeds,Commission,NetProceeds,Code,Exchange
+20210115,20210118,Buy,AAPL,Apple Inc.,100,150.25,USD,-15025.00,1.00,-15026.00,,NASDAQ
+20210322,20210323,sell,AAPL,Apple Inc.,-100,175.50,USD,17550.00,1.00,17549.00,,NASDAQ
+```
+
+### Nastavení Flex Query (jednorázový setup v IBKR Client Portal)
+
+**Povinné kroky před prvním importem**:
+
+1. **Přihlášení do IBKR Client Portal**:
+   - Otevřete: https://www.interactivebrokers.com/sso/Login
+   - Přihlaste se svým účtem
+
+2. **Nastavení Flex Web Service**:
+   - Navigate: Menu → Settings → Flex Web Service Configuration
+   - Klikněte na "Create a new Flex Web Service Token"
+   - Zadejte popis tokenu (např. "StockAccounting Import")
+   - Uložte a zkopírujte vygenerovaný token
+   - ⚠️ Tento token je vyžadován v aplikaci pro každé API volání
+
+3. **Vytvoření Flex Query**:
+   - Navigate: Performance & Reports → Flex Queries
+   - Klikněte na "Custom Flex Queries"
+   - Klikněte na "+" v sekci "Trade Confirmation Flex Query Templates"
+   - Zadejte název query (např. "StockAccounting Import")
+   - V sekci "Sections" vyberte:
+     - ✅ **Trades** (povinné)
+     - ✅ **Transaction Fees** (doporučeno)
+     - ✅ **Cash Transactions** (doporučeno)
+     - ℹ️ **Dividends** (volitelné pro daňové účely)
+     - ℹ️ **Corporate Actions** (volitelné)
+
+4. **Konfigurace polí**:
+   - U každě sekce klikněte na úroveň detailu:
+     - **Basic**: Základní pole
+     - **Detail**: Další pole (pro kompletní data)
+   - Vyberte konkrétní pole:
+     - Date Of Trade (datum obchodu)
+     - Settlement Date (datum vyřízení)
+     - Transaction Type (typ transakce)
+     - Symbol (ticker)
+     - Name (název instrumentu)
+     - Quantity (množství)
+     - Price (cena)
+     - Currency (měna)
+     - Proceeds (hrubá částka pro prodeje)
+     - Commission (poplatek)
+     - Net Proceeds (čistá částka)
+     - Code (kód pro deriváty - Assignment, Exercise, Expired)
+     - Exchange (burza)
+   - Drag & Drop pro přesun polí v požadovaném pořadí
+
+5. **Formát a výstup**:
+   - Format: **CSV** (vyžadováno aplikací)
+   - Period: **Custom** (umožňuje specifikovat přesné datumové rozsahy)
+   - Uložte query → Získat **Query ID** (např. `6789012345`)
+   - ⚠️ Toto Query ID je vyžadováno v aplikaci
+
+### Omezení
+- **Rate limiting**: Asynchronní generování reportů
+  - Max. doba čekání: 10 minut
+  - Intervál kontroly stavu: 5 sekund
+- **Rozsah dat**: Neomezený historie (libovolná minulost)
+- **Formát**: Podpora pouze CSV a XML
+- **Požadované sekce**: Minimálně "Trades" pro import obchodů
+
+### Použití v aplikaci
+- `IBKRFlexClient.java`: HTTP klient pro komunikaci s Flex Web Service
+  - requestReport(): Požadavek o vygenerování reportu
+  - checkReportStatus(): Kontrola stavu generování
+  - downloadCsvReport(): Stažení vygenerovaného reportu
+  - requestAndDownloadReport(): Plný workflow s pollingem
+- `IBKRFlexParser.java`: Parser IBKR Flex CSV do Transaction objektů
+  - Podpora všech 5 sekcí (Trades, Transaction Fees, Cash Transactions, Dividends, Corporate Actions)
+  - Flexibilní detekce sloupců v CSV hlavičce
+- `IBKRFlexImporter.java`: Hlavní orchestrátor importu
+  - Podpora víceletního importu s checkboxy pro výběr let
+  - Caching importovaných let (uložení do `~/.ibkr_flex`)
+  - Automatické načítání z cache při opětovném importu
+- `IBKRFlexCache.java`: Správa cache importovaných CSV souborů
+  - Per-year CSV soubory: `ibkr_flex_{year}.csv`
+  - Automatické vytvoření cache adresáře
+- `IBKRFlexImportWindow.java`: Dialog pro import IBKR Flex dat
+  - Checkboxy pro jednotlivé roky (2021-2025, automaticky přidávány nové)
+  - Pro současný rok: import od začátku roku do dnešního data
+  - Pole pro Query ID a Flex Token
+  - Integrace s Settings pro uložení pověření
+- `IBKRFlexProgressDialog.java`: Progress monitoring (similar to Trading212)
+  - Countdown timer: "Čekání: X s (Y s zbývá)"
+  - Real-time status aktualizace
+  - Zrušitelné tlačítko
+  - Automatické ukládání do cache po stažení
+- `IBKRFlexPreviewTable.java`: Preview transakcí před importem
+  - Read-only tabulka souborými transakcemi
+  - Checkboxy pro řádkové vybření
+  - Tlačítka "Importovat vybrané" a "Importovat vše"
+  - Filtr dle typu transakce (Nákup/Prodej, Dividenda, Poplatek, Převod)
+
+### UI integrace
+- **SettingsWindow.java**: Samostatná karta "IBKR Flex" pro IBKR pověření
+  - Pole pro Query ID a Flex Token
+  - Uložení přes Preferences API (`IBKR_FLEX_QUERY_ID`, `IBKR_FLEX_TOKEN`)
+  - Password field pro Flex Token (z bezpečnostních důvodů)
+  - Tlačítko "Otestovat připojení" pro validaci pověření
+  - Validace při ukládání
+- **MainWindow.java**: Položka menu "Import z IBKR Flex..."
+  - Otevření IBKRFlexImportWindow
+  - Předání importovaných transakcí do hlavní tabulky
+  - Aktualizace UI po importu
+
+### Chybové situace
+- **Chybějící Token**: Aplikace vyzve k zadání tokenu v nastavení
+  - **Neplatný Query ID**: Ověřte správnost Query ID v Client Portal
+  - **Timeout požadavku**: Report se negeneroval do 10 minut (zkuste znovu)
+  - **Prázdný CSV**: Report neobsahuje žádná data pro zadaný rozsah
+  - **Nesprávné datumové formáty**: IBKR používá formát `YYYYMMDD`
+
+### Troubleshooting
+- **Token nefunguje**: Zkontrolujte, že byl vytvořen jako "Flex Web Service Token" (ne jako API token)
+- **Query ID nenalezen**: Ověřte, že query bylo uloženo v sekci "Trade Confirmation Flex Query Templates"
+- **Report se negeneruje**: Zkontrolujte IBKR status stránku pro případné výpadky
+- **CSV se nenačítá**: Zkontrolujte správnost Reference Code a Token
+
+## Integrace v nastaveních (manuální úprava)
+
+Aplikace má samostatnou kartu "IBKR Flex" v nastaveních (Tools → Settings) obsahující:
+
+- **IBKR Query ID**: Textové pole pro zadání Query ID z Client Portal
+- **IBKR Flex Token**: Password pole pro zadání Flex Token (z bezpečnostních důvodů skryté)
+- **Otestovat připojení**: Tlačítko pro validaci pověření před importem
+
+Nastavení se ukládají automaticky při použití aplikace a jsou dostupná ve všech importních dialozích.
