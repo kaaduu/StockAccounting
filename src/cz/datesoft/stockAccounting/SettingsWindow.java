@@ -628,11 +628,6 @@ public class SettingsWindow extends javax.swing.JDialog {
          cbShowSecondsInDatesActionPerformed(evt);
        }
      });
-     gridBagConstraints = new java.awt.GridBagConstraints();
-     gridBagConstraints.gridy = 3;
-     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-     gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
-     jPanel1.add(cbShowSecondsInDates, gridBagConstraints);
 
      // Build System tab (last)
      pSystem.setLayout(new java.awt.GridBagLayout());
@@ -649,13 +644,20 @@ public class SettingsWindow extends javax.swing.JDialog {
      gridBagConstraints.gridy = 0;
      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-     pSystem.add(cbShowRowNumberColumn, gridBagConstraints);
+      pSystem.add(cbShowRowNumberColumn, gridBagConstraints);
+
+      gridBagConstraints = new java.awt.GridBagConstraints();
+      gridBagConstraints.gridx = 0;
+      gridBagConstraints.gridy = 1;
+      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+      gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+      pSystem.add(cbShowSecondsInDates, gridBagConstraints);
 
      gridBagConstraints = new java.awt.GridBagConstraints();
-     gridBagConstraints.gridx = 0;
-     gridBagConstraints.gridy = 1;
-     gridBagConstraints.weighty = 1.0;
-     pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
+      gridBagConstraints.gridx = 0;
+      gridBagConstraints.gridy = 2;
+      gridBagConstraints.weighty = 1.0;
+      pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
 
      gridBagConstraints = new java.awt.GridBagConstraints();
      gridBagConstraints.gridy = 3;
