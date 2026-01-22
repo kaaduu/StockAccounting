@@ -35,6 +35,7 @@ Poznámka: Pro Interactive Brokers se používá společná složka `~/.stockacc
 ### Přidáno
 - Čas transakcí nyní podporuje přesnost na sekundy (import, ukládání/načítání, porovnání duplicit). Ukládá se zpětně kompatibilně: sekundy se do souboru zapisují jen pokud jsou nenulové.
 - IBKR Flex: časové posuny pro korporátní akce se nyní dělají po sekundách (+N s) místo po minutách.
+- IBKR import: interní posun času při řešení kolizí duplicit se nyní dělá po sekundách (+N s).
 
 ## [Oprava IBKR Flex Web Service - implementace podle oficiální API dokumentace] - 2026-01-20
 

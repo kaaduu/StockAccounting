@@ -463,3 +463,6 @@ Omezení a kompatibilita:
 - Pro robustní spárování tickerů se zkouší běžné varianty (např. `BRK.B` vs `BRK B`, tečka/mezera/pomlčka).
 - IB TWS API od verze 10.42 používá Protobuf; aplikace vyžaduje runtime knihovnu `protobuf-java`.
   - Použitá verze v projektu: `libjar/protobuf-java-4.33.4.jar`.
+
+Poznámka k časům:
+- Import podporuje přesnost na sekundy. Do interních souborů se sekundy zapisují jen pokud jsou nenulové.
