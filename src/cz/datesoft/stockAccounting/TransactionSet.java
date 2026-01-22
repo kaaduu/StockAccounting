@@ -430,6 +430,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   public Class<?> getColumnClass(int c) {
     switch (c) {
       case 0:
+        return java.util.Date.class;
       case 1:
       case 2:
       case 3:
@@ -437,8 +438,9 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       case 8:
       case 9:
       case 11:
-      case 10:
         return String.class;
+      case 10:
+        return java.util.Date.class;
       case 5:
       case 7:
       case 4:
