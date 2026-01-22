@@ -45,6 +45,7 @@ Poznámka: Pro Interactive Brokers se používá společná složka `~/.stockacc
 - Hlavní okno: přidáno tlačítko „Vyčistit barvy“ pro zrušení zvýraznění.
 - IBKR Flex: přidán výběr typů transformací (RS/TC/IC/TO), výchozí je importovat RS+TC a ignorovat IC+TO.
 - Import: při shodě podle `TxnID` se při „Aktualizovat duplikáty“ doplní i přesný čas v poli Datum (sekundy), aby historická data bez sekund šla postupně zpřesnit.
+- Import: u aktualizovaných řádků se tučně zvýrazní konkrétní změněné sloupce (Datum, Poplatky, Vypořádání, Note) a „Vyčistit barvy“ odstraní jak barvy, tak tučné písmo.
 
 ## [Oprava IBKR Flex Web Service - implementace podle oficiální API dokumentace] - 2026-01-20
 

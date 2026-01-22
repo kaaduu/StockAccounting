@@ -67,6 +67,9 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   /** Set of serials for recently updated transactions (for highlighting) */
   protected java.util.Set<Integer> updatedTransactionSerials = new java.util.HashSet<>();
 
+  /** Per-transaction set of model columns that changed during updateDuplicateTransaction() */
+  protected java.util.Map<Integer, java.util.Set<Integer>> updatedColumnsBySerial = new java.util.HashMap<>();
+
   /** Set of serials for recently inserted (imported) transactions (for highlighting) */
   protected java.util.Set<Integer> insertedTransactionSerials = new java.util.HashSet<>();
 
@@ -1272,6 +1275,13 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         batchUpdatedTransactionSerials.add(serial);
       }
 
+      // Snapshot before values so we can highlight changed columns.
+      java.util.Date oldDate = existing.getDate();
+      java.util.Date oldExDate = existing.getExecutionDate();
+      Double oldFee = existing.getFee();
+      String oldFeeCur = existing.getFeeCurrency();
+      String oldNote = existing.getNote();
+
       // If TxnID match is available, allow updating timestamp too (to add missing seconds).
       String txnExisting = nullToEmpty(existing.getTxnId());
       String txnCandidate = nullToEmpty(candidate.getTxnId());
@@ -1282,10 +1292,59 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         existing.updateFromTransaction(candidate);
       }
 
+      java.util.Set<Integer> changedCols = new java.util.HashSet<>();
+      if (!objectsEqualDate(oldDate, existing.getDate())) {
+        changedCols.add(0); // Datum
+      }
+      if (!objectsEqualDate(oldExDate, existing.getExecutionDate())) {
+        changedCols.add(10); // Datum vypořádání
+      }
+      if (!doubleEqual(oldFee, existing.getFee())) {
+        changedCols.add(7); // Poplatky
+      }
+      if (!stringEqualExact(oldFeeCur, existing.getFeeCurrency())) {
+        changedCols.add(8); // Měna poplatků
+      }
+      if (!stringEqualExact(oldNote, existing.getNote())) {
+        changedCols.add(15); // Note
+      }
+      if (!changedCols.isEmpty()) {
+        updatedColumnsBySerial.put(existing.getSerial(), changedCols);
+      } else {
+        updatedColumnsBySerial.remove(existing.getSerial());
+      }
+
       updatedTransactionSerials.add(existing.getSerial());
       return true;
     }
     return false;
+  }
+
+  public boolean isRecentlyUpdatedColumn(int row, int modelCol) {
+    if (!isRecentlyUpdated(row)) return false;
+    Transaction tx = getRowAt(row);
+    if (tx == null) return false;
+    java.util.Set<Integer> cols = updatedColumnsBySerial.get(tx.getSerial());
+    if (cols == null) return false;
+    return cols.contains(modelCol);
+  }
+
+  private static boolean objectsEqualDate(java.util.Date d1, java.util.Date d2) {
+    if (d1 == null && d2 == null) return true;
+    if (d1 == null || d2 == null) return false;
+    return d1.equals(d2);
+  }
+
+  private static boolean stringEqualExact(String s1, String s2) {
+    if (s1 == null && s2 == null) return true;
+    if (s1 == null || s2 == null) return false;
+    return s1.equals(s2);
+  }
+
+  private static boolean doubleEqual(Double a, Double b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return Math.abs(a.doubleValue() - b.doubleValue()) < 0.0000001;
   }
 
   /**
@@ -1313,6 +1372,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   public void clearHighlights() {
     updatedTransactionSerials.clear();
     insertedTransactionSerials.clear();
+    updatedColumnsBySerial.clear();
     fireTableDataChanged();
   }
 
