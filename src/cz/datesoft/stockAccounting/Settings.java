@@ -177,6 +177,7 @@ public class Settings {
    * Show metadata columns (Broker, AccountID, TxnID, Effect) visibility
    */
   private static boolean showMetadataColumns = true;
+  private static boolean showSecondsInDateColumns = false;
 
   /**
    * Show row number column (#) in main table
@@ -593,6 +594,18 @@ public class Settings {
    */
   public static void setShowMetadataColumns(boolean value) {
     showMetadataColumns = value;
+  }
+
+  public static boolean getShowSecondsInDateColumns() {
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    showSecondsInDateColumns = p.getBoolean("showSecondsInDateColumns", false);
+    return showSecondsInDateColumns;
+  }
+
+  public static void setShowSecondsInDateColumns(boolean value) {
+    showSecondsInDateColumns = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.putBoolean("showSecondsInDateColumns", value);
   }
 
   public static boolean getShowRowNumberColumn() {

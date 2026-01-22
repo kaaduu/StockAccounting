@@ -40,7 +40,7 @@ public class CZDateRenderer extends javax.swing.table.DefaultTableCellRenderer
       java.util.Date d = (java.util.Date) value;
       java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
       cal.setTime(d);
-      if (cal.get(java.util.GregorianCalendar.SECOND) != 0) {
+      if (Settings.getShowSecondsInDateColumns() && cal.get(java.util.GregorianCalendar.SECOND) != 0) {
         super.setValue(_d3.format(d));
       } else {
         super.setValue(_d2.format(d));

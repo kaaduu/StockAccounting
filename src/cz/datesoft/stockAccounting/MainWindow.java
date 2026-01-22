@@ -827,9 +827,11 @@ public class MainWindow extends javax.swing.JFrame {
     HighlightedDateRenderer dateRenderer = new HighlightedDateRenderer();
     HighlightedCellRenderer highlightRenderer = new HighlightedCellRenderer();
 
+    int dateColWidth = Settings.getShowSecondsInDateColumns() ? 135 : 100;
+
     // Datum obchodu
-    table.getColumnModel().getColumn(0).setPreferredWidth(100);
-    table.getColumnModel().getColumn(0).setMaxWidth(100);
+    table.getColumnModel().getColumn(0).setPreferredWidth(dateColWidth);
+    table.getColumnModel().getColumn(0).setMaxWidth(dateColWidth);
     table.getColumnModel().getColumn(0).setCellRenderer(dateRenderer);
     table.getColumnModel().getColumn(0).setCellEditor(new DateChooserCellEditor());
     // Typ
@@ -862,8 +864,8 @@ public class MainWindow extends javax.swing.JFrame {
     table.getColumnModel().getColumn(9).setPreferredWidth(80);
     table.getColumnModel().getColumn(9).setMaxWidth(80);
     // Datum vyporadani
-    table.getColumnModel().getColumn(10).setPreferredWidth(100);
-    table.getColumnModel().getColumn(10).setMaxWidth(100);
+    table.getColumnModel().getColumn(10).setPreferredWidth(dateColWidth);
+    table.getColumnModel().getColumn(10).setMaxWidth(dateColWidth);
     table.getColumnModel().getColumn(10).setCellRenderer(dateRenderer);
     table.getColumnModel().getColumn(10).setCellEditor(new DateChooserCellEditor());
     // Broker
