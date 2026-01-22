@@ -271,6 +271,7 @@ public class AccountStateWindow extends javax.swing.JDialog {
   private java.util.Map<String, Double> _twsPositions = null;
   private java.util.Map<String, java.util.Map<String, Double>> _twsPositionsByAccount = null;
   private String _twsSelectedAccount = null;
+  private TwsCompareStats _twsLastStats = null;
 
   /** Creates new form AccountStateWindow */
   public AccountStateWindow(java.awt.Frame parent, boolean modal) {
@@ -362,6 +363,11 @@ public class AccountStateWindow extends javax.swing.JDialog {
       CompareCellRenderer r = new CompareCellRenderer();
       for (int i = 0; i < table.getColumnCount(); i++) {
         table.getColumnModel().getColumn(i).setCellRenderer(r);
+      }
+
+      // If we already loaded TWS, re-apply to the new model.
+      if (_twsPositionsByAccount != null) {
+        applyTwsToTable();
       }
     }
   }
@@ -609,7 +615,14 @@ public class AccountStateWindow extends javax.swing.JDialog {
 
   private void cbTwsAccountActionPerformed(java.awt.event.ActionEvent evt) {
     updateTwsSelectedAccount();
+    // Persist selection for next run (if not 'Součet všech')
+    if (_twsSelectedAccount == null) {
+      Settings.setTwsDefaultAccount("");
+    } else {
+      Settings.setTwsDefaultAccount(_twsSelectedAccount);
+    }
     applyTwsToTable();
+    updateTwsStatusSummary(null);
   }
 
   private void updateTwsSelectedAccount() {
@@ -637,7 +650,7 @@ public class AccountStateWindow extends javax.swing.JDialog {
       protected IbkrTwsPositionsClient.PositionsResult doInBackground() throws Exception {
         IbkrTwsPositionsClient c = new IbkrTwsPositionsClient();
         return c.fetchPositions(Settings.getTwsHost(), Settings.getTwsPort(), Settings.getTwsClientId(),
-            java.time.Duration.ofSeconds(15));
+            java.time.Duration.ofSeconds(Settings.getTwsTimeoutSeconds()));
       }
 
       @Override
@@ -656,18 +669,27 @@ public class AccountStateWindow extends javax.swing.JDialog {
             }
           }
 
+          // Preselect default account (if present)
+          String preferred = Settings.getTwsDefaultAccount();
+          if (preferred != null && !preferred.isBlank()) {
+            for (int i = 0; i < cbTwsAccount.getItemCount(); i++) {
+              Object it = cbTwsAccount.getItemAt(i);
+              if (it != null && preferred.trim().equals(it.toString().trim())) {
+                cbTwsAccount.setSelectedIndex(i);
+                break;
+              }
+            }
+          }
+
           updateTwsSelectedAccount();
           applyTwsToTable();
 
-          if (r.errors != null && !r.errors.isEmpty()) {
-            lTwsStatus.setText("Načteno, ale s varováním: " + r.errors.iterator().next());
-          } else {
-            lTwsStatus.setText("Pozice z TWS načteny");
-          }
+          updateTwsStatusSummary(r.errors);
         } catch (Exception e) {
           lTwsStatus.setText("Chyba: " + e.getMessage());
           _twsPositionsByAccount = null;
           _twsPositions = null;
+          _twsLastStats = null;
         } finally {
           bLoadTws.setEnabled(true);
           // Force repaint to apply renderer colors
@@ -705,16 +727,37 @@ public class AccountStateWindow extends javax.swing.JDialog {
     _twsPositions = merged;
 
     DefaultTableModel m = (DefaultTableModel) table.getModel();
+    int mismatch = 0;
+    int filled = 0;
+    int localCount = 0;
+
     java.util.Set<String> seen = new java.util.HashSet<>();
     for (int i = 0; i < m.getRowCount(); i++) {
       String ticker = (String) m.getValueAt(i, 0);
-      if (ticker != null) {
-        ticker = ticker.trim().toUpperCase();
+      String localKey = IbkrTwsPositionsClient.normalizeTicker(ticker);
+      if (localKey == null) continue;
+
+      localCount++;
+
+      Double tws = null;
+      for (String k : IbkrTwsPositionsClient.buildAlternateTickers(localKey)) {
+        tws = _twsPositions.get(k);
+        if (tws != null) {
+          break;
+        }
       }
-      if (ticker == null || ticker.isEmpty()) continue;
-      Double tws = _twsPositions.get(ticker);
       m.setValueAt(tws == null ? 0.0 : tws, i, 2);
-      seen.add(ticker);
+
+      // Compare only for local rows (before adding extras)
+      double local = parseDouble(m.getValueAt(i, 1));
+      double tv = tws == null ? 0.0 : tws;
+      if (!nearlyEqual(local, tv)) {
+        mismatch++;
+      }
+      filled++;
+
+      // Mark all alternates as seen so extras don't re-add.
+      seen.addAll(IbkrTwsPositionsClient.buildAlternateTickers(localKey));
     }
 
     // Add extra tickers from TWS not present in local
@@ -729,6 +772,39 @@ public class AccountStateWindow extends javax.swing.JDialog {
       Object[] row = { ticker, 0.0, _twsPositions.get(ticker) };
       m.addRow(row);
     }
+
+    _twsLastStats = new TwsCompareStats(localCount, _twsPositions.size(), mismatch, extra.size(), filled);
+  }
+
+  private static final class TwsCompareStats {
+    final int localTickers;
+    final int twsTickers;
+    final int mismatch;
+    final int onlyInTws;
+    final int compared;
+
+    TwsCompareStats(int localTickers, int twsTickers, int mismatch, int onlyInTws, int compared) {
+      this.localTickers = localTickers;
+      this.twsTickers = twsTickers;
+      this.mismatch = mismatch;
+      this.onlyInTws = onlyInTws;
+      this.compared = compared;
+    }
+  }
+
+  private void updateTwsStatusSummary(java.util.Set<String> errors) {
+    if (lTwsStatus == null) return;
+    if (_twsLastStats == null) return;
+
+    String base = "TWS: " + _twsLastStats.twsTickers + " tickerů";
+    String cmp = ", nesedí: " + _twsLastStats.mismatch + "/" + _twsLastStats.compared;
+    String extra = _twsLastStats.onlyInTws > 0 ? ", jen v TWS: " + _twsLastStats.onlyInTws : "";
+    String msg = base + cmp + extra;
+
+    if (errors != null && !errors.isEmpty()) {
+      msg += " (varování: " + errors.iterator().next() + ")";
+    }
+    lTwsStatus.setText(msg);
   }
 
   // Variables declaration - do not modify//GEN-BEGIN:variables

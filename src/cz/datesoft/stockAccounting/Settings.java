@@ -359,6 +359,8 @@ public class Settings {
   private static String twsHost = null;
   private static Integer twsPort = null;
   private static Integer twsClientId = null;
+  private static Integer twsTimeoutSeconds = null;
+  private static String twsDefaultAccount = null;
 
   private static String defaultCacheBaseDir() {
     return System.getProperty("user.home") + "/.stockaccounting/cache";
@@ -427,6 +429,46 @@ public class Settings {
     twsClientId = value;
     java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
     p.putInt("twsClientId", value);
+  }
+
+  public static int getTwsTimeoutSeconds() {
+    if (twsTimeoutSeconds == null) {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      twsTimeoutSeconds = p.getInt("twsTimeoutSeconds", 15);
+      if (twsTimeoutSeconds < 3) {
+        twsTimeoutSeconds = 3;
+      }
+      if (twsTimeoutSeconds > 120) {
+        twsTimeoutSeconds = 120;
+      }
+    }
+    return twsTimeoutSeconds;
+  }
+
+  public static void setTwsTimeoutSeconds(int value) {
+    if (value < 3) value = 3;
+    if (value > 120) value = 120;
+    twsTimeoutSeconds = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.putInt("twsTimeoutSeconds", value);
+  }
+
+  public static String getTwsDefaultAccount() {
+    if (twsDefaultAccount == null) {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      twsDefaultAccount = p.get("twsDefaultAccount", "");
+    }
+    return twsDefaultAccount;
+  }
+
+  public static void setTwsDefaultAccount(String value) {
+    twsDefaultAccount = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    if (value != null && !value.trim().isEmpty()) {
+      p.put("twsDefaultAccount", value.trim());
+    } else {
+      p.remove("twsDefaultAccount");
+    }
   }
 
    public static String getIbkrFlexQueryId() {

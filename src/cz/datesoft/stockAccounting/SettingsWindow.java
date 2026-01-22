@@ -1280,13 +1280,111 @@ public class SettingsWindow extends javax.swing.JDialog {
     Settings.setMarkets(markets);
 
     // And save them
-     Settings.setUseDailyRates(cbUseDailyRates.isSelected());
-     saveTrading212Settings();
-     saveIbkrFlexSettings();
+      Settings.setUseDailyRates(cbUseDailyRates.isSelected());
+      saveTrading212Settings();
+      saveIbkrFlexSettings();
+      saveTwsSettings();
 
     // Close
     setVisible(false);
   }// GEN-LAST:event_bOKActionPerformed
+
+   private void bTestTwsConnectionActionPerformed(java.awt.event.ActionEvent evt) {
+     // Validate inputs from fields (not yet saved)
+     String host = tfTwsHost != null ? tfTwsHost.getText().trim() : Settings.getTwsHost();
+     int port;
+     int clientId;
+     int timeoutSeconds;
+
+     try {
+       port = Integer.parseInt(tfTwsPort != null ? tfTwsPort.getText().trim() : String.valueOf(Settings.getTwsPort()));
+     } catch (Exception e) {
+       javax.swing.JOptionPane.showMessageDialog(this,
+           "Neplatný port.",
+           "Chyba", javax.swing.JOptionPane.WARNING_MESSAGE);
+       return;
+     }
+     try {
+       clientId = Integer.parseInt(tfTwsClientId != null ? tfTwsClientId.getText().trim() : String.valueOf(Settings.getTwsClientId()));
+     } catch (Exception e) {
+       javax.swing.JOptionPane.showMessageDialog(this,
+           "Neplatný ClientId.",
+           "Chyba", javax.swing.JOptionPane.WARNING_MESSAGE);
+       return;
+     }
+     try {
+       timeoutSeconds = Integer.parseInt(tfTwsTimeoutSeconds != null ? tfTwsTimeoutSeconds.getText().trim() : String.valueOf(Settings.getTwsTimeoutSeconds()));
+     } catch (Exception e) {
+       timeoutSeconds = Settings.getTwsTimeoutSeconds();
+     }
+
+     if (host == null || host.isEmpty()) {
+       host = "127.0.0.1";
+     }
+
+     javax.swing.JButton sourceButton = (javax.swing.JButton) evt.getSource();
+     sourceButton.setEnabled(false);
+     sourceButton.setText("Testování...");
+
+     final String fHost = host;
+     final int fPort = port;
+     final int fClientId = clientId;
+     final int fTimeout = timeoutSeconds;
+
+     javax.swing.SwingWorker<IbkrTwsPositionsClient.PositionsResult, Void> worker =
+         new javax.swing.SwingWorker<IbkrTwsPositionsClient.PositionsResult, Void>() {
+           private Exception error;
+
+           @Override
+           protected IbkrTwsPositionsClient.PositionsResult doInBackground() {
+             try {
+               IbkrTwsPositionsClient c = new IbkrTwsPositionsClient();
+               return c.fetchPositions(fHost, fPort, fClientId, java.time.Duration.ofSeconds(fTimeout));
+             } catch (Exception e) {
+               error = e;
+               return null;
+             }
+           }
+
+           @Override
+           protected void done() {
+             sourceButton.setEnabled(true);
+             sourceButton.setText("Otestovat připojení");
+
+             if (error != null) {
+               showDetailedErrorDialog("Test připojení selhal", "Nepodařilo se připojit k TWS: " + error.getMessage(), error);
+               return;
+             }
+             try {
+               IbkrTwsPositionsClient.PositionsResult r = get();
+               int accounts = r == null || r.positionsByAccount == null ? 0 : r.positionsByAccount.size();
+               int totalPos = 0;
+               if (r != null && r.positionsByAccount != null) {
+                 for (java.util.Map<String, Double> m : r.positionsByAccount.values()) {
+                   if (m != null) totalPos += m.size();
+                 }
+               }
+
+               String msg = "✅ Připojení k TWS je funkční.\n\n" +
+                   "Host: " + fHost + "\n" +
+                   "Port: " + fPort + "\n" +
+                   "ClientId: " + fClientId + "\n\n" +
+                   "Účty: " + accounts + "\n" +
+                   "Pozice (STK): " + totalPos;
+
+               if (r != null && r.errors != null && !r.errors.isEmpty()) {
+                 msg += "\n\nVarování: " + r.errors.iterator().next();
+               }
+
+               javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this, msg,
+                   "Test úspěšný", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+             } catch (Exception e) {
+               showDetailedErrorDialog("Test připojení selhal", "Neznámá chyba: " + e.getMessage(), e);
+             }
+           }
+         };
+     worker.execute();
+   }
 
   private void bCancelActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bCancelActionPerformed
   {// GEN-HEADEREND:event_bCancelActionPerformed
@@ -1841,61 +1939,134 @@ public class SettingsWindow extends javax.swing.JDialog {
     gbcIbkrFlex.insets = new java.awt.Insets(15, 5, 5, 5);
     pIbkrFlex.add(bTestIbkrConnection, gbcIbkrFlex);
 
-    // IBKR TWS API settings
+    jTabbedPane1.addTab("IBKR Flex", pIbkrFlex);
+
+    // IBKR TWS API Settings Panel
+    javax.swing.JPanel pTws = new javax.swing.JPanel();
+    pTws.setLayout(new java.awt.GridBagLayout());
+    java.awt.GridBagConstraints gbcTws = new java.awt.GridBagConstraints();
+
+    javax.swing.JLabel lblTwsInfo = new javax.swing.JLabel();
+    lblTwsInfo.setText("<html><small>Pro načítání pozic ze spuštěného TWS je potřeba povolit API přístup:<br>" +
+        "<b>Configure → Settings → API → Settings</b> → Enable ActiveX and Socket Clients.<br>" +
+        "Port typicky 7496 (live) / 7497 (paper). ClientId musí být unikátní.</small></html>");
+    gbcTws.gridx = 0;
+    gbcTws.gridy = 0;
+    gbcTws.gridwidth = 2;
+    gbcTws.anchor = java.awt.GridBagConstraints.WEST;
+    gbcTws.insets = new java.awt.Insets(5, 5, 10, 5);
+    pTws.add(lblTwsInfo, gbcTws);
+
     javax.swing.JLabel lblTwsHost = new javax.swing.JLabel("TWS Host:");
     tfTwsHost = new javax.swing.JTextField(30);
     tfTwsHost.setText(Settings.getTwsHost());
-    gbcIbkrFlex.gridx = 0;
-    gbcIbkrFlex.gridy = 3;
-    gbcIbkrFlex.gridwidth = 1;
-    gbcIbkrFlex.anchor = java.awt.GridBagConstraints.WEST;
-    gbcIbkrFlex.insets = new java.awt.Insets(15, 5, 5, 5);
-    pIbkrFlex.add(lblTwsHost, gbcIbkrFlex);
+    gbcTws.gridx = 0;
+    gbcTws.gridy = 1;
+    gbcTws.gridwidth = 1;
+    gbcTws.anchor = java.awt.GridBagConstraints.WEST;
+    gbcTws.insets = new java.awt.Insets(5, 5, 5, 5);
+    pTws.add(lblTwsHost, gbcTws);
 
-    gbcIbkrFlex.gridx = 1;
-    gbcIbkrFlex.gridy = 3;
-    gbcIbkrFlex.gridwidth = 1;
-    gbcIbkrFlex.fill = java.awt.GridBagConstraints.HORIZONTAL;
-    gbcIbkrFlex.weightx = 1.0;
+    gbcTws.gridx = 1;
+    gbcTws.gridy = 1;
+    gbcTws.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcTws.weightx = 1.0;
     tfTwsHost.setPreferredSize(new java.awt.Dimension(300, 25));
-    pIbkrFlex.add(tfTwsHost, gbcIbkrFlex);
+    pTws.add(tfTwsHost, gbcTws);
 
     javax.swing.JLabel lblTwsPort = new javax.swing.JLabel("TWS Port:");
     tfTwsPort = new javax.swing.JTextField(10);
     tfTwsPort.setText(String.valueOf(Settings.getTwsPort()));
-    gbcIbkrFlex.gridx = 0;
-    gbcIbkrFlex.gridy = 4;
-    gbcIbkrFlex.gridwidth = 1;
-    gbcIbkrFlex.fill = java.awt.GridBagConstraints.NONE;
-    gbcIbkrFlex.weightx = 0.0;
-    gbcIbkrFlex.insets = new java.awt.Insets(5, 5, 5, 5);
-    pIbkrFlex.add(lblTwsPort, gbcIbkrFlex);
+    gbcTws.gridx = 0;
+    gbcTws.gridy = 2;
+    gbcTws.gridwidth = 1;
+    gbcTws.fill = java.awt.GridBagConstraints.NONE;
+    gbcTws.weightx = 0.0;
+    gbcTws.insets = new java.awt.Insets(5, 5, 5, 5);
+    pTws.add(lblTwsPort, gbcTws);
 
-    gbcIbkrFlex.gridx = 1;
-    gbcIbkrFlex.gridy = 4;
-    gbcIbkrFlex.fill = java.awt.GridBagConstraints.HORIZONTAL;
-    gbcIbkrFlex.weightx = 1.0;
+    gbcTws.gridx = 1;
+    gbcTws.gridy = 2;
+    gbcTws.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcTws.weightx = 1.0;
     tfTwsPort.setPreferredSize(new java.awt.Dimension(120, 25));
-    pIbkrFlex.add(tfTwsPort, gbcIbkrFlex);
+    pTws.add(tfTwsPort, gbcTws);
 
     javax.swing.JLabel lblTwsClientId = new javax.swing.JLabel("TWS ClientId:");
     tfTwsClientId = new javax.swing.JTextField(10);
     tfTwsClientId.setText(String.valueOf(Settings.getTwsClientId()));
-    gbcIbkrFlex.gridx = 0;
-    gbcIbkrFlex.gridy = 5;
-    gbcIbkrFlex.fill = java.awt.GridBagConstraints.NONE;
-    gbcIbkrFlex.weightx = 0.0;
-    gbcIbkrFlex.insets = new java.awt.Insets(5, 5, 5, 5);
-    pIbkrFlex.add(lblTwsClientId, gbcIbkrFlex);
+    gbcTws.gridx = 0;
+    gbcTws.gridy = 3;
+    gbcTws.fill = java.awt.GridBagConstraints.NONE;
+    gbcTws.weightx = 0.0;
+    gbcTws.insets = new java.awt.Insets(5, 5, 5, 5);
+    pTws.add(lblTwsClientId, gbcTws);
 
-    gbcIbkrFlex.gridx = 1;
-    gbcIbkrFlex.gridy = 5;
-    gbcIbkrFlex.fill = java.awt.GridBagConstraints.HORIZONTAL;
-    gbcIbkrFlex.weightx = 1.0;
+    gbcTws.gridx = 1;
+    gbcTws.gridy = 3;
+    gbcTws.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcTws.weightx = 1.0;
     tfTwsClientId.setPreferredSize(new java.awt.Dimension(120, 25));
-    pIbkrFlex.add(tfTwsClientId, gbcIbkrFlex);
+    pTws.add(tfTwsClientId, gbcTws);
 
-    jTabbedPane1.addTab("IBKR Flex", pIbkrFlex);
+    javax.swing.JLabel lblTwsTimeout = new javax.swing.JLabel("TWS timeout (s):");
+    tfTwsTimeoutSeconds = new javax.swing.JTextField(10);
+    tfTwsTimeoutSeconds.setText(String.valueOf(Settings.getTwsTimeoutSeconds()));
+    gbcTws.gridx = 0;
+    gbcTws.gridy = 4;
+    gbcTws.gridwidth = 1;
+    gbcTws.fill = java.awt.GridBagConstraints.NONE;
+    gbcTws.weightx = 0.0;
+    gbcTws.insets = new java.awt.Insets(5, 5, 5, 5);
+    pTws.add(lblTwsTimeout, gbcTws);
+
+    gbcTws.gridx = 1;
+    gbcTws.gridy = 4;
+    gbcTws.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcTws.weightx = 1.0;
+    tfTwsTimeoutSeconds.setPreferredSize(new java.awt.Dimension(120, 25));
+    pTws.add(tfTwsTimeoutSeconds, gbcTws);
+
+    javax.swing.JLabel lblTwsDefaultAccount = new javax.swing.JLabel("TWS výchozí účet:");
+    tfTwsDefaultAccount = new javax.swing.JTextField(30);
+    tfTwsDefaultAccount.setText(Settings.getTwsDefaultAccount());
+    gbcTws.gridx = 0;
+    gbcTws.gridy = 5;
+    gbcTws.gridwidth = 1;
+    gbcTws.fill = java.awt.GridBagConstraints.NONE;
+    gbcTws.weightx = 0.0;
+    gbcTws.insets = new java.awt.Insets(5, 5, 5, 5);
+    pTws.add(lblTwsDefaultAccount, gbcTws);
+
+    gbcTws.gridx = 1;
+    gbcTws.gridy = 5;
+    gbcTws.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcTws.weightx = 1.0;
+    tfTwsDefaultAccount.setPreferredSize(new java.awt.Dimension(300, 25));
+    pTws.add(tfTwsDefaultAccount, gbcTws);
+
+    javax.swing.JButton bTestTwsConnection = new javax.swing.JButton();
+    bTestTwsConnection.setText("Otestovat připojení");
+    bTestTwsConnection.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            bTestTwsConnectionActionPerformed(evt);
+        }
+    });
+    gbcTws.gridx = 0;
+    gbcTws.gridy = 6;
+    gbcTws.gridwidth = 2;
+    gbcTws.fill = java.awt.GridBagConstraints.NONE;
+    gbcTws.anchor = java.awt.GridBagConstraints.CENTER;
+    gbcTws.insets = new java.awt.Insets(15, 5, 5, 5);
+    pTws.add(bTestTwsConnection, gbcTws);
+
+    // spacer
+    gbcTws.gridx = 0;
+    gbcTws.gridy = 7;
+    gbcTws.weighty = 1.0;
+    pTws.add(new javax.swing.JLabel(), gbcTws);
+
+    jTabbedPane1.addTab("IBKR TWS API", pTws);
 
     // System tab should be last
     jTabbedPane1.addTab("System", pSystem);
@@ -1906,6 +2077,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     // Load Trading 212 settings
     loadTrading212Settings();
     loadIbkrFlexSettings();
+    loadTwsSettings();
   }
 
   private void loadTrading212Settings() {
@@ -1931,16 +2103,6 @@ public class SettingsWindow extends javax.swing.JDialog {
                 tfIbkrFlexToken.setText(savedToken);
             }
         }
-
-        if (tfTwsHost != null) {
-            tfTwsHost.setText(Settings.getTwsHost());
-        }
-        if (tfTwsPort != null) {
-            tfTwsPort.setText(String.valueOf(Settings.getTwsPort()));
-        }
-        if (tfTwsClientId != null) {
-            tfTwsClientId.setText(String.valueOf(Settings.getTwsClientId()));
-        }
     }
 
     private void saveIbkrFlexSettings() {
@@ -1950,7 +2112,28 @@ public class SettingsWindow extends javax.swing.JDialog {
         if (tfIbkrFlexToken != null) {
             Settings.setIbkrFlexToken(new String(tfIbkrFlexToken.getPassword()).trim());
         }
+        Settings.save();
+     }
 
+    private void loadTwsSettings() {
+        if (tfTwsHost != null) {
+            tfTwsHost.setText(Settings.getTwsHost());
+        }
+        if (tfTwsPort != null) {
+            tfTwsPort.setText(String.valueOf(Settings.getTwsPort()));
+        }
+        if (tfTwsClientId != null) {
+            tfTwsClientId.setText(String.valueOf(Settings.getTwsClientId()));
+        }
+        if (tfTwsTimeoutSeconds != null) {
+            tfTwsTimeoutSeconds.setText(String.valueOf(Settings.getTwsTimeoutSeconds()));
+        }
+        if (tfTwsDefaultAccount != null) {
+            tfTwsDefaultAccount.setText(Settings.getTwsDefaultAccount());
+        }
+    }
+
+    private void saveTwsSettings() {
         if (tfTwsHost != null) {
             Settings.setTwsHost(tfTwsHost.getText().trim());
         }
@@ -1968,9 +2151,18 @@ public class SettingsWindow extends javax.swing.JDialog {
                 // Keep previous/default value
             }
         }
-
+        if (tfTwsTimeoutSeconds != null) {
+            try {
+                Settings.setTwsTimeoutSeconds(Integer.parseInt(tfTwsTimeoutSeconds.getText().trim()));
+            } catch (Exception e) {
+                // Keep previous/default value
+            }
+        }
+        if (tfTwsDefaultAccount != null) {
+            Settings.setTwsDefaultAccount(tfTwsDefaultAccount.getText().trim());
+        }
         Settings.save();
-     }
+    }
 
     private void cbShowMetadataColumnsActionPerformed(java.awt.event.ActionEvent evt) {
      boolean showColumns = cbShowMetadataColumns.isSelected();
@@ -2406,6 +2598,8 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JTextField tfTwsHost;
   private javax.swing.JTextField tfTwsPort;
   private javax.swing.JTextField tfTwsClientId;
+  private javax.swing.JTextField tfTwsTimeoutSeconds;
+  private javax.swing.JTextField tfTwsDefaultAccount;
   private javax.swing.JButton bTestTrading212Connection;
 
   // System tab components
