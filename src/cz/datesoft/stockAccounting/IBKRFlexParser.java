@@ -1553,7 +1553,7 @@ public class IBKRFlexParser {
      * 
      * Also ensures:
      * - TRANS_SUB (removals) always come before TRANS_ADD (additions)
-     * - Sequential +1 minute time offsets to prevent duplicate timestamps
+     * - Sequential +1 second time offsets to prevent duplicate timestamps
      * - Notes updated to indicate time adjustments
      * 
      * @param transactions All parsed transactions including corporate actions
@@ -1836,9 +1836,9 @@ public class IBKRFlexParser {
      * Apply time offsets to prevent duplicate timestamps.
      * 
      * First transaction keeps original time.
-     * Each subsequent transaction gets +1, +2, +3... minute offset.
+     * Each subsequent transaction gets +1, +2, +3... second offset.
      * 
-     * Note field is updated with "[Time: +N min]" to indicate adjustment.
+     * Note field is updated with "[Time: +N s]" to indicate adjustment.
      * 
      * @param transactions Transactions to apply time offsets (modified in-place)
      */
@@ -1853,10 +1853,10 @@ public class IBKRFlexParser {
         for (int i = 1; i < transactions.size(); i++) {
             Transaction t = transactions.get(i);
             
-            // Add i minutes to original time
+            // Add i seconds to original time
             java.util.Calendar cal = java.util.Calendar.getInstance();
             cal.setTime(originalTime);
-            cal.add(java.util.Calendar.MINUTE, i);
+            cal.add(java.util.Calendar.SECOND, i);
             
             // Update transaction date and execution date
             Date newTime = cal.getTime();
@@ -1868,9 +1868,9 @@ public class IBKRFlexParser {
             if (currentNote == null) {
                 currentNote = "";
             }
-            t.setNote(currentNote + " [Time: +" + i + " min]");
+            t.setNote(currentNote + " [Time: +" + i + " s]");
             
-            logger.fine("Applied +" + i + " min offset to " + t.getTicker() + 
+            logger.fine("Applied +" + i + " s offset to " + t.getTicker() + 
                        " transaction (new time: " + newTime + ")");
         }
     }
