@@ -18,7 +18,10 @@ import java.util.logging.Logger;
 public class IBKRFlexImporter {
 
     private static final Logger logger = Logger.getLogger(IBKRFlexImporter.class.getName());
+    // Legacy constants (no longer used, but keep for compatibility/migration if referenced elsewhere)
+    @SuppressWarnings("unused")
     private static final String CACHE_DIR = System.getProperty("user.home") + "/.ibkr_flex";
+    @SuppressWarnings("unused")
     private static final String CACHE_FILE = CACHE_DIR + "/year_cache.json";
 
     private final String flexToken;
@@ -29,12 +32,36 @@ public class IBKRFlexImporter {
     private java.awt.Frame parentFrame;
     private boolean forceRefresh = false;
 
+    // AssetClass filter for ExchTrade rows (null => all)
+    private java.util.Set<String> allowedAssetClasses = null;
+
+    // Corporate actions (transformations) inclusion
+    private boolean includeCorporateActions = true;
+
+    // Trades inclusion
+    private boolean includeTrades = true;
+
     public IBKRFlexImporter(String flexToken, String queryId) {
         this.flexToken = flexToken;
         this.queryId = queryId;
         this.apiClient = new IBKRFlexClient(flexToken);
         this.parser = new IBKRFlexParser();
         this.yearCache = new IBKRFlexCache();
+    }
+
+    public void setAllowedAssetClasses(java.util.Set<String> allowedAssetClasses) {
+        this.allowedAssetClasses = allowedAssetClasses;
+        this.parser.setAllowedAssetClasses(allowedAssetClasses);
+    }
+
+    public void setIncludeCorporateActions(boolean includeCorporateActions) {
+        this.includeCorporateActions = includeCorporateActions;
+        this.parser.setIncludeCorporateActions(includeCorporateActions);
+    }
+
+    public void setIncludeTrades(boolean includeTrades) {
+        this.includeTrades = includeTrades;
+        this.parser.setIncludeTrades(includeTrades);
     }
 
     public boolean validateCredentials() {
@@ -124,6 +151,7 @@ public class IBKRFlexImporter {
                 result.message = "Použit cache pro rok " + year;
                 result.transactions = transactions;
                 result.fromCache = true;
+                result.csvData = cachedCsv;
 
                 logger.info("Cache loaded for year " + year + ": " + transactions.size() + " transactions");
                 return result;
@@ -147,6 +175,14 @@ public class IBKRFlexImporter {
             Vector<Transaction> transactions = parser.parseCsvReport(csvData);
             yearCache.saveYear(year, csvData);
 
+            // Also archive into unified broker cache for debugging/reuse
+            try {
+                CacheManager.archiveString("ib", CacheManager.Source.API,
+                    "flex_api_single_" + year, ".csv", csvData);
+            } catch (Exception e) {
+                // Best effort
+            }
+
             ImportYearResult result = new ImportYearResult();
             result.year = year;
             result.success = true;
@@ -154,6 +190,7 @@ public class IBKRFlexImporter {
                         transactions.size(), year);
             result.transactions = transactions;
             result.fromCache = false;
+            result.csvData = csvData;
 
             logger.info("Import completed for year " + year + ": " + transactions.size() + " transactions");
             return result;
@@ -200,5 +237,6 @@ public class IBKRFlexImporter {
         public String message;
         public Vector<Transaction> transactions;
         public boolean fromCache;
+        public String csvData;
     }
 }

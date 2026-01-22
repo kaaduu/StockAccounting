@@ -17,8 +17,18 @@ import java.util.logging.Logger;
 public class IBKRFlexCache {
 
     private static final Logger logger = Logger.getLogger(IBKRFlexCache.class.getName());
-    private static final String CACHE_DIR = System.getProperty("user.home") + "/.ibkr_flex";
+    private static final String LEGACY_CACHE_DIR = System.getProperty("user.home") + "/.ibkr_flex";
     private Map<Integer, CachedYear> cache = new HashMap<>();
+
+    private static Path getUnifiedDir() {
+        // Keep everything for Interactive Brokers under a single broker folder.
+        return Paths.get(Settings.getCacheBaseDir(), "ib");
+    }
+
+    private static Path getUnifiedLegacyDir() {
+        // Previously used broker folder name.
+        return Paths.get(Settings.getCacheBaseDir(), "ibkr");
+    }
 
     public IBKRFlexCache() {
         ensureCacheDirectory();
@@ -46,9 +56,18 @@ public class IBKRFlexCache {
 
     public void saveYear(int year, String csvContent) throws IOException {
         String fileName = "ibkr_flex_" + year + ".csv";
-        Path filePath = Paths.get(CACHE_DIR, fileName);
+        Path filePath = getUnifiedDir().resolve(fileName);
 
+        Files.createDirectories(filePath.getParent());
+        
         Files.writeString(filePath, csvContent);
+
+        // Also archive the raw payload for debugging
+        try {
+            CacheManager.archiveString("ib", CacheManager.Source.API, "flex_single_" + year, ".csv", csvContent);
+        } catch (Exception e) {
+            // Best effort
+        }
 
         CachedYear cached = new CachedYear();
         cached.year = year;
@@ -72,7 +91,7 @@ public class IBKRFlexCache {
     }
 
     public void clearAll() throws IOException {
-        File cacheDir = new File(CACHE_DIR);
+        File cacheDir = getUnifiedDir().toFile();
         if (cacheDir.exists()) {
             File[] files = cacheDir.listFiles();
             for (File file : files) {
@@ -88,11 +107,11 @@ public class IBKRFlexCache {
     }
 
     private void ensureCacheDirectory() {
-        Path dirPath = Paths.get(CACHE_DIR);
+        Path dirPath = getUnifiedDir();
         if (!Files.exists(dirPath)) {
             try {
                 Files.createDirectories(dirPath);
-                logger.info("Created cache directory: " + CACHE_DIR);
+                logger.info("Created cache directory: " + dirPath);
             } catch (IOException e) {
                 logger.warning("Failed to create cache directory: " + e.getMessage());
             }
@@ -100,14 +119,53 @@ public class IBKRFlexCache {
     }
 
     private void loadCacheFromDisk() {
-        Path cacheIndexFile = Paths.get(CACHE_DIR, "cache_index.json");
+        // Migrate legacy cache directories if present
+        try {
+            Path legacy = Paths.get(LEGACY_CACHE_DIR);
+            if (Files.exists(legacy) && Files.isDirectory(legacy)) {
+                Files.createDirectories(getUnifiedDir());
+                // Copy csv files + cache index
+                Files.list(legacy).forEach(p -> {
+                    try {
+                        if (Files.isDirectory(p)) return;
+                        Path dst = getUnifiedDir().resolve(p.getFileName().toString());
+                        if (!Files.exists(dst)) {
+                            Files.copy(p, dst);
+                        }
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                });
+            }
+
+            // Also migrate from old unified folder name (cacheBaseDir/ibkr -> cacheBaseDir/ib)
+            Path legacyUnified = getUnifiedLegacyDir();
+            if (Files.exists(legacyUnified) && Files.isDirectory(legacyUnified)) {
+                Files.createDirectories(getUnifiedDir());
+                Files.list(legacyUnified).forEach(p -> {
+                    try {
+                        if (Files.isDirectory(p)) return;
+                        Path dst = getUnifiedDir().resolve(p.getFileName().toString());
+                        if (!Files.exists(dst)) {
+                            Files.copy(p, dst);
+                        }
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                });
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+
+        Path cacheIndexFile = getUnifiedDir().resolve("cache_index.json");
         if (!Files.exists(cacheIndexFile)) {
             return;
         }
 
         try {
             String content = Files.readString(cacheIndexFile);
-            File cacheDir = new File(CACHE_DIR);
+            File cacheDir = getUnifiedDir().toFile();
             File[] csvFiles = cacheDir.listFiles((dir, name) -> 
                     name.endsWith(".csv") && name.startsWith("ibkr_flex_"));
 

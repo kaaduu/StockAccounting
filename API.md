@@ -415,3 +415,30 @@ Aplikace má samostatnou kartu "IBKR Flex" v nastaveních (Tools → Settings) o
 - **Otestovat připojení**: Tlačítko pro validaci pověření před importem
 
 Nastavení se ukládají automaticky při použití aplikace a jsou dostupná ve všech importních dialozích.
+
+## Interactive Brokers (IBKR) TWS API (lokální TWS)
+
+### Účel
+Napojení na lokálně spuštěný Trader Workstation (TWS) přes TWS API (socket) pro načtení aktuálních pozic (portfolio holdings) a porovnání s vypočteným stavem v okně „Stav účtu“.
+
+### Požadavky
+- Spuštěný TWS na lokálním počítači
+- Povolený API přístup v TWS:
+  - `Configure → Settings → API → Settings`
+  - povolit „Enable ActiveX and Socket Clients“
+  - nastavit port (typicky 7496 live / 7497 paper)
+  - povolit lokální IP (127.0.0.1)
+
+### Konfigurace v aplikaci
+Nastavení se ukládá do Preferences:
+- `twsHost` (default `127.0.0.1`)
+- `twsPort` (default `7496`)
+- `twsClientId` (default `101`)
+
+### Použití v aplikaci
+- `AccountStateWindow.java`: tlačítko „Načíst z TWS“ a sloupec „TWS“ s porovnáním
+- `IbkrTwsPositionsClient.java`: klient pro `reqPositions()` (načítá pouze `STK` pozice)
+
+### Poznámky
+- `clientId` musí být unikátní (pokud je již používán jiným klientem, TWS připojení odmítne)
+- Pokud TWS vrátí více účtů, aplikace nabídne výběr účtu nebo „Součet všech“

@@ -106,13 +106,27 @@ public class AccountStateWindow extends javax.swing.JDialog {
       setRowCount(tickers.length);
       for (int i = 0; i < tickers.length; i++) {
         setValueAt(tickers[i], i, 0);
-        setValueAt(_stocks.getStockAmount(tickers[i]), i, 1);
+        setValueAt(formatAmount(_stocks.getStockAmount(tickers[i])), i, 1);
       }
+    }
+
+    private Object formatAmount(double v) {
+      // Display cleanup only: hide floating point artifacts.
+      if (Math.abs(v) < 0.000001) {
+        return 0;
+      }
+      double r = Math.rint(v);
+      if (Math.abs(v - r) < 0.000001) {
+        return (long) r;
+      }
+      // Show up to 6 decimals for real fractions
+      DecimalFormat nf = new DecimalFormat("0.######");
+      return nf.format(v);
     }
 
     @Override
     public int getColumnCount() {
-      return 2;
+      return 3;
     }
 
     @Override
@@ -122,12 +136,61 @@ public class AccountStateWindow extends javax.swing.JDialog {
           return "Ticker";
         case 1:
           return "Množství";
+        case 2:
+          return "TWS";
         default:
           return "???";
       }
     }
   }
   /// </editor-fold>
+
+  /// <editor-fold defaultstate="collapsed" desc="Class: CompareCellRenderer">
+  private class CompareCellRenderer extends DefaultTableCellRenderer {
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+        int row, int column) {
+      Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+      if (isSelected) {
+        return c;
+      }
+
+      if (_twsPositions == null) {
+        c.setBackground(Color.WHITE);
+        return c;
+      }
+
+      try {
+        double local = parseDouble(table.getValueAt(row, 1));
+        double tws = parseDouble(table.getValueAt(row, 2));
+        if (nearlyEqual(local, tws)) {
+          c.setBackground(new Color(200, 255, 200));
+        } else {
+          c.setBackground(new Color(255, 200, 200));
+        }
+      } catch (Exception e) {
+        c.setBackground(Color.WHITE);
+      }
+      return c;
+    }
+  }
+  /// </editor-fold>
+
+  private static boolean nearlyEqual(double a, double b) {
+    return Math.abs(a - b) < 0.000001;
+  }
+
+  private static double parseDouble(Object o) {
+    if (o == null) return 0.0;
+    if (o instanceof Number) return ((Number) o).doubleValue();
+    try {
+      String s = o.toString().trim().replace(',', '.');
+      if (s.isEmpty()) return 0.0;
+      return Double.parseDouble(s);
+    } catch (Exception e) {
+      return 0.0;
+    }
+  }
 
   /**
    * Table model with security, amount and date opened
@@ -203,6 +266,11 @@ public class AccountStateWindow extends javax.swing.JDialog {
 
   /** Last used stocks object **/
   private Stocks _stocks;
+
+  // TWS comparison data
+  private java.util.Map<String, Double> _twsPositions = null;
+  private java.util.Map<String, java.util.Map<String, Double>> _twsPositionsByAccount = null;
+  private String _twsSelectedAccount = null;
 
   /** Creates new form AccountStateWindow */
   public AccountStateWindow(java.awt.Frame parent, boolean modal) {
@@ -290,6 +358,11 @@ public class AccountStateWindow extends javax.swing.JDialog {
       table.getColumnModel().getColumn(2).setCellRenderer(new CustomDateRenderer(_stocks));
     } else {
       table.setModel(new StateTableModel(_stocks));
+      // Apply renderer for comparison coloring
+      CompareCellRenderer r = new CompareCellRenderer();
+      for (int i = 0; i < table.getColumnCount(); i++) {
+        table.getColumnModel().getColumn(i).setCellRenderer(r);
+      }
     }
   }
 
@@ -361,6 +434,10 @@ public class AccountStateWindow extends javax.swing.JDialog {
     jTextField1 = new javax.swing.JTextField();
     cbStateType = new javax.swing.JComboBox();
     bSaveTx = new javax.swing.JButton();
+    bLoadTws = new javax.swing.JButton();
+    lTwsAccount = new javax.swing.JLabel();
+    cbTwsAccount = new javax.swing.JComboBox();
+    lTwsStatus = new javax.swing.JLabel();
     jScrollPane1 = new javax.swing.JScrollPane();
     table = new javax.swing.JTable();
     cbOpenDetails = new javax.swing.JCheckBox();
@@ -413,6 +490,50 @@ public class AccountStateWindow extends javax.swing.JDialog {
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.insets = new java.awt.Insets(0, 5, 5, 5);
     getContentPane().add(bSaveTx, gridBagConstraints);
+
+    bLoadTws.setText("Načíst z TWS");
+    bLoadTws.setToolTipText("Načte pozice z lokálně běžícího TWS (API) a porovná s tabulkou");
+    bLoadTws.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bLoadTwsActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridy = 5;
+    gridBagConstraints.gridwidth = 3;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+    getContentPane().add(bLoadTws, gridBagConstraints);
+
+    lTwsAccount.setText("Účet:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridy = 6;
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.insets = new java.awt.Insets(0, 5, 5, 5);
+    getContentPane().add(lTwsAccount, gridBagConstraints);
+
+    cbTwsAccount.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Součet všech" }));
+    cbTwsAccount.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbTwsAccountActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridy = 6;
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridwidth = 2;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 5);
+    getContentPane().add(cbTwsAccount, gridBagConstraints);
+
+    lTwsStatus.setText(" ");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridy = 7;
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridwidth = 3;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.insets = new java.awt.Insets(0, 5, 5, 5);
+    getContentPane().add(lTwsStatus, gridBagConstraints);
 
     table.setModel(new javax.swing.table.DefaultTableModel(
         new Object[][] {
@@ -482,11 +603,143 @@ public class AccountStateWindow extends javax.swing.JDialog {
     recompute(_endDate.getDate()); // Call recompute
   }// GEN-LAST:event_cbOpenDetailsActionPerformed
 
+  private void bLoadTwsActionPerformed(java.awt.event.ActionEvent evt) {
+    loadFromTws();
+  }
+
+  private void cbTwsAccountActionPerformed(java.awt.event.ActionEvent evt) {
+    updateTwsSelectedAccount();
+    applyTwsToTable();
+  }
+
+  private void updateTwsSelectedAccount() {
+    if (cbTwsAccount == null) return;
+    Object sel = cbTwsAccount.getSelectedItem();
+    if (sel == null) {
+      _twsSelectedAccount = null;
+      return;
+    }
+    String s = sel.toString();
+    if ("Součet všech".equals(s)) {
+      _twsSelectedAccount = null;
+    } else {
+      _twsSelectedAccount = s;
+    }
+  }
+
+  private void loadFromTws() {
+    // Do not run in EDT
+    bLoadTws.setEnabled(false);
+    lTwsStatus.setText("Načítám pozice z TWS...");
+    
+    javax.swing.SwingWorker<IbkrTwsPositionsClient.PositionsResult, Void> w = new javax.swing.SwingWorker<>() {
+      @Override
+      protected IbkrTwsPositionsClient.PositionsResult doInBackground() throws Exception {
+        IbkrTwsPositionsClient c = new IbkrTwsPositionsClient();
+        return c.fetchPositions(Settings.getTwsHost(), Settings.getTwsPort(), Settings.getTwsClientId(),
+            java.time.Duration.ofSeconds(15));
+      }
+
+      @Override
+      protected void done() {
+        try {
+          IbkrTwsPositionsClient.PositionsResult r = get();
+          _twsPositionsByAccount = r.positionsByAccount;
+
+          // Fill account selector
+          java.util.Set<String> accounts = new java.util.TreeSet<>(_twsPositionsByAccount.keySet());
+          cbTwsAccount.removeAllItems();
+          cbTwsAccount.addItem("Součet všech");
+          for (String acc : accounts) {
+            if (acc != null && !acc.isBlank()) {
+              cbTwsAccount.addItem(acc);
+            }
+          }
+
+          updateTwsSelectedAccount();
+          applyTwsToTable();
+
+          if (r.errors != null && !r.errors.isEmpty()) {
+            lTwsStatus.setText("Načteno, ale s varováním: " + r.errors.iterator().next());
+          } else {
+            lTwsStatus.setText("Pozice z TWS načteny");
+          }
+        } catch (Exception e) {
+          lTwsStatus.setText("Chyba: " + e.getMessage());
+          _twsPositionsByAccount = null;
+          _twsPositions = null;
+        } finally {
+          bLoadTws.setEnabled(true);
+          // Force repaint to apply renderer colors
+          table.repaint();
+        }
+      }
+    };
+    w.execute();
+  }
+
+  private void applyTwsToTable() {
+    if (_stocks == null || cbOpenDetails.isSelected()) {
+      // Compare only supported in summary table
+      return;
+    }
+
+    // Build ticker->pos map
+    java.util.Map<String, Double> merged = new java.util.HashMap<>();
+    if (_twsPositionsByAccount != null) {
+      if (_twsSelectedAccount == null) {
+        // Sum all
+        for (java.util.Map<String, Double> m : _twsPositionsByAccount.values()) {
+          if (m == null) continue;
+          for (java.util.Map.Entry<String, Double> e : m.entrySet()) {
+            merged.put(e.getKey(), merged.getOrDefault(e.getKey(), 0.0) + (e.getValue() == null ? 0.0 : e.getValue()));
+          }
+        }
+      } else {
+        java.util.Map<String, Double> m = _twsPositionsByAccount.get(_twsSelectedAccount);
+        if (m != null) {
+          merged.putAll(m);
+        }
+      }
+    }
+    _twsPositions = merged;
+
+    DefaultTableModel m = (DefaultTableModel) table.getModel();
+    java.util.Set<String> seen = new java.util.HashSet<>();
+    for (int i = 0; i < m.getRowCount(); i++) {
+      String ticker = (String) m.getValueAt(i, 0);
+      if (ticker != null) {
+        ticker = ticker.trim().toUpperCase();
+      }
+      if (ticker == null || ticker.isEmpty()) continue;
+      Double tws = _twsPositions.get(ticker);
+      m.setValueAt(tws == null ? 0.0 : tws, i, 2);
+      seen.add(ticker);
+    }
+
+    // Add extra tickers from TWS not present in local
+    java.util.List<String> extra = new java.util.ArrayList<>();
+    for (String ticker : _twsPositions.keySet()) {
+      if (!seen.contains(ticker)) {
+        extra.add(ticker);
+      }
+    }
+    java.util.Collections.sort(extra);
+    for (String ticker : extra) {
+      Object[] row = { ticker, 0.0, _twsPositions.get(ticker) };
+      m.addRow(row);
+    }
+  }
+
   // Variables declaration - do not modify//GEN-BEGIN:variables
+  private javax.swing.JButton bLoadTws;
   private javax.swing.JButton bSaveTx;
   private javax.swing.JCheckBox cbOpenDetails;
   private javax.swing.JComboBox cbStateType;
+  private javax.swing.JComboBox cbTwsAccount;
   private javax.swing.JLabel jLabel1;
+  private javax.swing.JLabel lTwsAccount;
+  private javax.swing.JLabel lTwsStatus;
   private javax.swing.JScrollPane jScrollPane1;
   private javax.swing.JTextField jTextField1;
   private javax.swing.JTable table;

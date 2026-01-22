@@ -150,6 +150,9 @@ public class IBKRFlexProgressDialog extends JDialog {
                     cancelButton.addActionListener(e -> {
                         setVisible(false);
                     });
+
+                    // Auto-close: this is a modal progress dialog and should return control immediately.
+                    setVisible(false);
                 } catch (CancellationException e) {
                     logger.info("Import cancelled by user");
                     resultException = new Exception("Import cancelled by user");
@@ -162,6 +165,9 @@ public class IBKRFlexProgressDialog extends JDialog {
                     cancelButton.addActionListener(ev -> {
                         setVisible(false);
                     });
+
+                    // Auto-close on cancel
+                    setVisible(false);
                 } catch (Exception e) {
                     logger.warning("Import failed: " + e.getMessage());
                     resultException = e;
@@ -174,6 +180,9 @@ public class IBKRFlexProgressDialog extends JDialog {
                     cancelButton.addActionListener(ev -> {
                         setVisible(false);
                     });
+
+                    // Auto-close on error
+                    setVisible(false);
                 }
                 doneLatch.countDown();
             }

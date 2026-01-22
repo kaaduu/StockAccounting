@@ -26,6 +26,8 @@ import java.io.BufferedReader;
 import java.util.regex.Pattern;
 import java.util.logging.Logger;
 
+import cz.datesoft.stockAccounting.Settings;
+
 /**
  *
  * @author lemming2
@@ -87,10 +89,17 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    */
   boolean modified;
 
-  /**
-   * Combo box model we manage
-   */
-  SortedSetComboBoxModel cbmodel;
+   /**
+    * Combo box model we manage
+    */
+   SortedSetComboBoxModel cbmodel;
+
+   /** Whether to show a row-number column (UI feature; currently no-op in model). */
+   private boolean showRowNumberColumn = true;
+
+   /** Batch update mode for de-duplicating repeated updates. */
+   private boolean batchUpdateInProgress = false;
+   private java.util.Set<Integer> batchUpdatedTransactionSerials;
 
   /** Creates a new instance of TransactionSet */
   public TransactionSet() {
@@ -101,6 +110,39 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     cbmodel = new SortedSetComboBoxModel();
 
     transformationCache = new TransformationCache();
+
+    // Default follows global settings; can be overridden per instance.
+    showRowNumberColumn = Settings.getShowRowNumberColumn();
+  }
+
+  /**
+   * Controls whether a helper row-number column should be shown.
+   *
+   * Note: the table model currently does not expose a dedicated "#" column;
+   * this setter exists for compatibility with UI code.
+   */
+  public void setShowRowNumberColumn(boolean value) {
+    showRowNumberColumn = value;
+  }
+
+  public boolean getShowRowNumberColumn() {
+    return showRowNumberColumn;
+  }
+
+  /**
+   * Starts batch update mode. During batch updates, repeated updates of the
+   * same transaction (by serial) are ignored.
+   */
+  public void startBatchUpdate() {
+    batchUpdateInProgress = true;
+    batchUpdatedTransactionSerials = new java.util.HashSet<>();
+  }
+
+  /** Ends batch update mode and refreshes the table. */
+  public void endBatchUpdate() {
+    batchUpdateInProgress = false;
+    batchUpdatedTransactionSerials = null;
+    fireTableDataChanged();
   }
 
   /**
@@ -1088,6 +1130,13 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   public boolean updateDuplicateTransaction(Transaction candidate) {
     Transaction existing = findDuplicateTransaction(candidate);
     if (existing != null) {
+      if (batchUpdateInProgress && batchUpdatedTransactionSerials != null) {
+        int serial = existing.getSerial();
+        if (batchUpdatedTransactionSerials.contains(serial)) {
+          return false;
+        }
+        batchUpdatedTransactionSerials.add(serial);
+      }
       existing.updateFromTransaction(candidate);
       updatedTransactionSerials.add(existing.getSerial());
       return true;
