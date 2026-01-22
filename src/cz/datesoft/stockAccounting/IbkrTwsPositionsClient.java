@@ -27,6 +27,42 @@ import java.util.logging.Logger;
 public final class IbkrTwsPositionsClient implements EWrapper {
   private static final Logger logger = Logger.getLogger(IbkrTwsPositionsClient.class.getName());
 
+  public static String normalizeTicker(String s) {
+    if (s == null) return null;
+    String t = s.trim().toUpperCase();
+    if (t.isEmpty()) return null;
+    // Collapse multiple spaces
+    t = t.replaceAll("\\s+", " ");
+    return t;
+  }
+
+  public static Set<String> buildAlternateTickers(String ticker) {
+    Set<String> out = new HashSet<>();
+    String t = normalizeTicker(ticker);
+    if (t == null) return out;
+
+    out.add(t);
+
+    // Common variations: BRK.B vs BRK B
+    if (t.contains(".")) {
+      out.add(t.replace('.', ' '));
+      out.add(t.replace(".", ""));
+    }
+    if (t.contains(" ")) {
+      out.add(t.replace(' ', '.'));
+      out.add(t.replace(" ", ""));
+    }
+
+    // Dash variations
+    if (t.contains("-")) {
+      out.add(t.replace('-', ' '));
+      out.add(t.replace('-', '.'));
+      out.add(t.replace("-", ""));
+    }
+
+    return out;
+  }
+
   public static final class PositionsResult {
     public final Map<String, Map<String, Double>> positionsByAccount;
     public final Set<String> errors;
@@ -108,7 +144,9 @@ public final class IbkrTwsPositionsClient implements EWrapper {
 
     double p = pos == null ? 0.0 : pos.value().doubleValue();
     String acc = account == null ? "" : account;
-    positionsByAccount.computeIfAbsent(acc, k -> new HashMap<>()).put(symbol.trim().toUpperCase(), p);
+    String key = normalizeTicker(symbol);
+    if (key == null) return;
+    positionsByAccount.computeIfAbsent(acc, k -> new HashMap<>()).put(key, p);
   }
 
   @Override
