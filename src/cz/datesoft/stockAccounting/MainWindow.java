@@ -122,7 +122,8 @@ public class MainWindow extends javax.swing.JFrame {
 
       dateChooser.setDate(date);
       dateChooser.setFont(table.getFont()); // Ensure chooser uses same font as the table
-      dateChooser.setDateFormatString("dd. MM. yyyy HH:mm");
+      // Display seconds only when present (renderer does the same).
+      dateChooser.setDateFormatString("dd. MM. yyyy HH:mm:ss");
 
       return dateChooser;
     }
@@ -136,8 +137,7 @@ public class MainWindow extends javax.swing.JFrame {
 
       res.setTime(date);
 
-      // Clear seconds & miliseconds
-      res.set(GregorianCalendar.SECOND, 0);
+      // Clear milliseconds; keep seconds.
       res.set(GregorianCalendar.MILLISECOND, 0);
 
       return res.getTime();
