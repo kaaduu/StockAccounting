@@ -365,6 +365,18 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
 
+    cbShowSeconds = new javax.swing.JCheckBox();
+    cbShowSeconds.setText("Sekundy");
+    cbShowSeconds.setToolTipText("Zobrazit/skryt sekundy ve sloupcích Datum a Vypořádání");
+    cbShowSeconds.setSelected(Settings.getShowSecondsInDateColumns());
+    cbShowSeconds.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        Settings.setShowSecondsInDateColumns(cbShowSeconds.isSelected());
+        initTableColumns();
+        table.repaint();
+      }
+    });
+
     // Set labels for filter components
     jLabel8.setText("Broker:");
     jLabel9.setText("Account ID:");
@@ -610,6 +622,12 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.gridy = 1;
     gridBagConstraints.insets = new java.awt.Insets(5, 15, 5, 0);  // Extra left padding
     jPanel2.add(cbShowMetadata, gridBagConstraints);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 10;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 5, 0);
+    jPanel2.add(cbShowSeconds, gridBagConstraints);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     getContentPane().add(jPanel2, java.awt.BorderLayout.NORTH);
@@ -1576,6 +1594,7 @@ public class MainWindow extends javax.swing.JFrame {
    private javax.swing.JComboBox cbAccountIdFilter;
    private javax.swing.JComboBox cbEffectFilter;
    private javax.swing.JCheckBox cbShowMetadata;
+   private javax.swing.JCheckBox cbShowSeconds;
    // End of variables declaration//GEN-END:variables
 
 }

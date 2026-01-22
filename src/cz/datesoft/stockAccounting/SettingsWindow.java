@@ -620,14 +620,6 @@ public class SettingsWindow extends javax.swing.JDialog {
      gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
      jPanel1.add(cbShowMetadataColumns, gridBagConstraints);
 
-     cbShowSecondsInDates = new javax.swing.JCheckBox("Zobrazovat sekundy v datech (pokud jsou k dispozici)");
-     cbShowSecondsInDates.setSelected(Settings.getShowSecondsInDateColumns());
-     cbShowSecondsInDates.setToolTipText("Pokud je zapnuto, sloupce Datum a Vypořádání zobrazují HH:mm:ss, jinak HH:mm");
-     cbShowSecondsInDates.addActionListener(new java.awt.event.ActionListener() {
-       public void actionPerformed(java.awt.event.ActionEvent evt) {
-         cbShowSecondsInDatesActionPerformed(evt);
-       }
-     });
 
      // Build System tab (last)
      pSystem.setLayout(new java.awt.GridBagLayout());
@@ -646,12 +638,6 @@ public class SettingsWindow extends javax.swing.JDialog {
      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
       pSystem.add(cbShowRowNumberColumn, gridBagConstraints);
 
-      gridBagConstraints = new java.awt.GridBagConstraints();
-      gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 1;
-      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-      gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
-      pSystem.add(cbShowSecondsInDates, gridBagConstraints);
 
      gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 0;
@@ -1692,7 +1678,6 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JTable dailyRatesTable;
    private javax.swing.JCheckBox cbUseDailyRates;
     private javax.swing.JCheckBox cbShowMetadataColumns;
-    private javax.swing.JCheckBox cbShowSecondsInDates;
    private javax.swing.JButton bFetchDailyRates;
   private javax.swing.table.DefaultTableModel dailyRatesModel;
 
@@ -2273,9 +2258,6 @@ public class SettingsWindow extends javax.swing.JDialog {
     worker.execute();
   }
 
-  private void cbShowSecondsInDatesActionPerformed(java.awt.event.ActionEvent evt) {
-    Settings.setShowSecondsInDateColumns(cbShowSecondsInDates.isSelected());
-  }
 
    private void showDetailedErrorDialog(String title, String userMessage, Exception error) {
      javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout());
