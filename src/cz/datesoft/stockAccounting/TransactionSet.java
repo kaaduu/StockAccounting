@@ -1189,6 +1189,26 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    * Compares key business fields, excludes notes, fees, and auto-generated fields
    */
   private boolean isDuplicateTransaction(Transaction tx1, Transaction tx2) {
+    // Prefer TxnID match when available (stable across time precision changes).
+    // This prevents re-import from creating new rows when legacy data has :00 seconds
+    // but new imports contain real seconds.
+    String txn1 = nullToEmpty(tx1.getTxnId());
+    String txn2 = nullToEmpty(tx2.getTxnId());
+    if (!txn1.isEmpty() && txn1.equalsIgnoreCase(txn2)) {
+      // If broker/account are present, require them to match too.
+      String b1 = nullToEmpty(tx1.getBroker());
+      String b2 = nullToEmpty(tx2.getBroker());
+      if (!b1.isEmpty() && !b2.isEmpty() && !b1.equalsIgnoreCase(b2)) {
+        return false;
+      }
+      String a1 = nullToEmpty(tx1.getAccountId());
+      String a2 = nullToEmpty(tx2.getAccountId());
+      if (!a1.isEmpty() && !a2.isEmpty() && !a1.equalsIgnoreCase(a2)) {
+        return false;
+      }
+      return true;
+    }
+
     // Compare dates (exact match, ignoring seconds/milliseconds)
     if (!datesEqual(tx1.getDate(), tx2.getDate())) {
       return false;
@@ -1226,6 +1246,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
     // All key fields match - this is a duplicate
     return true;
+  }
+
+  private static String nullToEmpty(String s) {
+    return s == null ? "" : s.trim();
   }
 
   /**
