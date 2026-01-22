@@ -430,15 +430,36 @@ Napojení na lokálně spuštěný Trader Workstation (TWS) přes TWS API (socke
   - povolit lokální IP (127.0.0.1)
 
 ### Konfigurace v aplikaci
-Nastavení se ukládá do Preferences:
+Nastavení se ukládá do Preferences a nastavuje se v aplikaci v `Tools → Settings → IBKR TWS API`:
+
 - `twsHost` (default `127.0.0.1`)
 - `twsPort` (default `7496`)
 - `twsClientId` (default `101`)
+- `twsTimeoutSeconds` (default `15`)
+- `twsDefaultAccount` (default prázdné = „Součet všech“)
+
+Součástí karty je i tlačítko **„Otestovat připojení“**, které provede krátký dotaz `reqPositions()` a ověří, že aplikace umí z TWS načíst pozice.
 
 ### Použití v aplikaci
 - `AccountStateWindow.java`: tlačítko „Načíst z TWS“ a sloupec „TWS“ s porovnáním
 - `IbkrTwsPositionsClient.java`: klient pro `reqPositions()` (načítá pouze `STK` pozice)
 
+Workflow:
+1. Otevřete `Stav účtu`.
+2. Klikněte na **„Načíst z TWS“**.
+3. Aplikace načte pozice z TWS a doplní sloupec **„TWS“** (množství).
+4. Řádky se barevně zvýrazní:
+   - zeleně = množství sedí
+   - červeně = množství nesedí
+5. Pokud TWS vrátí více účtů, lze vybrat konkrétní účet nebo „Součet všech“.
+6. Ve spodním řádku se zobrazí krátké shrnutí (počet tickerů, počet nesouladů, tickery pouze v TWS).
+
 ### Poznámky
 - `clientId` musí být unikátní (pokud je již používán jiným klientem, TWS připojení odmítne)
 - Pokud TWS vrátí více účtů, aplikace nabídne výběr účtu nebo „Součet všech“
+
+Omezení a kompatibilita:
+- Porovnání je implementované pouze pro akcie (`STK`) a porovnává pouze množství (žádné ceny/avgCost/PNL).
+- Pro robustní spárování tickerů se zkouší běžné varianty (např. `BRK.B` vs `BRK B`, tečka/mezera/pomlčka).
+- IB TWS API od verze 10.42 používá Protobuf; aplikace vyžaduje runtime knihovnu `protobuf-java`.
+  - Použitá verze v projektu: `libjar/protobuf-java-4.33.4.jar`.
