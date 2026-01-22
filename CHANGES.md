@@ -43,6 +43,7 @@ Poznámka: Pro Interactive Brokers se používá společná složka `~/.stockacc
 - Hlavní okno: „Smazat řádek“ podporuje multivýběr a je doplněno o „Zpět“ (obnova posledního smazání); při obnově se vždy zruší všechny filtry.
 - Nastavení: přidána volba barvy a zapnutí/vypnutí zvýraznění nových a aktualizovaných řádků po importu, včetně náhledu.
 - Hlavní okno: přidáno tlačítko „Vyčistit barvy“ pro zrušení zvýraznění.
+- IBKR Flex: přidán výběr typů transformací (RS/TC/IC/TO), výchozí je importovat RS+TC a ignorovat IC+TO.
 
 ## [Oprava IBKR Flex Web Service - implementace podle oficiální API dokumentace] - 2026-01-20
 
