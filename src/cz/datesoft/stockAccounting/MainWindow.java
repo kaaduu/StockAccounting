@@ -48,11 +48,13 @@ public class MainWindow extends javax.swing.JFrame {
       java.awt.Component c = super.getTableCellRendererComponent(
           table, value, isSelected, hasFocus, row, column);
       
-      // Check if this row was recently updated
+      // Check if this row was recently inserted/updated (import highlighting)
       if (!isSelected) {
         try {
-          if (transactions.isRecentlyUpdated(row)) {
-            c.setBackground(new java.awt.Color(255, 255, 200)); // Light yellow
+          if (Settings.getHighlightInsertedEnabled() && transactions.isRecentlyInserted(row)) {
+            c.setBackground(Settings.getHighlightInsertedColor());
+          } else if (Settings.getHighlightUpdatedEnabled() && transactions.isRecentlyUpdated(row)) {
+            c.setBackground(Settings.getHighlightUpdatedColor());
           } else {
             c.setBackground(java.awt.Color.WHITE);
           }
@@ -77,11 +79,13 @@ public class MainWindow extends javax.swing.JFrame {
       java.awt.Component c = super.getTableCellRendererComponent(
           table, value, isSelected, hasFocus, row, column);
       
-      // Check if this row was recently updated
+      // Check if this row was recently inserted/updated (import highlighting)
       if (!isSelected) {
         try {
-          if (transactions.isRecentlyUpdated(row)) {
-            c.setBackground(new java.awt.Color(255, 255, 200)); // Light yellow
+          if (Settings.getHighlightInsertedEnabled() && transactions.isRecentlyInserted(row)) {
+            c.setBackground(Settings.getHighlightInsertedColor());
+          } else if (Settings.getHighlightUpdatedEnabled() && transactions.isRecentlyUpdated(row)) {
+            c.setBackground(Settings.getHighlightUpdatedColor());
           } else {
             c.setBackground(java.awt.Color.WHITE);
           }
@@ -373,7 +377,28 @@ public class MainWindow extends javax.swing.JFrame {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         Settings.setShowSecondsInDateColumns(cbShowSeconds.isSelected());
         initTableColumns();
+        // Ensure widths are recalculated and applied immediately.
+        table.doLayout();
+        table.revalidate();
         table.repaint();
+      }
+    });
+
+    bCopy = new javax.swing.JButton();
+    bCopy.setText("Kopírovat");
+    bCopy.setToolTipText("Zkopíruje vybrané řádky do schránky jako TSV (tabulátory + nové řádky)");
+    bCopy.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bCopyActionPerformed(evt);
+      }
+    });
+
+    bClearColors = new javax.swing.JButton();
+    bClearColors.setText("Vyčistit barvy");
+    bClearColors.setToolTipText("Zruší zvýraznění nových/aktualizovaných řádků");
+    bClearColors.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bClearColorsActionPerformed(evt);
       }
     });
 
@@ -530,6 +555,24 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(bDelete, gridBagConstraints);
 
+    // Undo delete button spanning both rows
+    bUndoDelete = new javax.swing.JButton();
+    bUndoDelete.setText("Zpět");
+    bUndoDelete.setEnabled(false);
+    bUndoDelete.setToolTipText("Vrátí poslední smazání řádků (zruší všechny filtry)");
+    bUndoDelete.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bUndoDeleteActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 14;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.gridheight = 2;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(bUndoDelete, gridBagConstraints);
+
     // Sort button spanning both rows
     bSort.setText("Seřadit");
     bSort.addActionListener(new java.awt.event.ActionListener() {
@@ -538,7 +581,7 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 14;
+    gridBagConstraints.gridx = 15;
     gridBagConstraints.gridy = 0;
     gridBagConstraints.gridheight = 2;  // Span both rows
     gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
@@ -628,6 +671,18 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.gridy = 1;
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 5, 0);
     jPanel2.add(cbShowSeconds, gridBagConstraints);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 11;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 5, 0);
+    jPanel2.add(bCopy, gridBagConstraints);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 12;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 5, 0);
+    jPanel2.add(bClearColors, gridBagConstraints);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     getContentPane().add(jPanel2, java.awt.BorderLayout.NORTH);
@@ -845,7 +900,8 @@ public class MainWindow extends javax.swing.JFrame {
     HighlightedDateRenderer dateRenderer = new HighlightedDateRenderer();
     HighlightedCellRenderer highlightRenderer = new HighlightedCellRenderer();
 
-    int dateColWidth = Settings.getShowSecondsInDateColumns() ? 135 : 100;
+    // Compute packed width for date columns based on a worst-case sample string.
+    int dateColWidth = computePackedDateColumnWidth();
 
     // Datum obchodu
     table.getColumnModel().getColumn(0).setPreferredWidth(dateColWidth);
@@ -911,6 +967,131 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Apply column visibility settings
     updateColumnVisibility();
+  }
+
+  private int computePackedDateColumnWidth() {
+    try {
+      boolean showSeconds = Settings.getShowSecondsInDateColumns();
+      String sample = showSeconds ? "28.12.2026 23:59:59" : "28.12.2026 23:59";
+
+      javax.swing.table.TableColumn col0 = table.getColumnModel().getColumn(0);
+      javax.swing.table.TableColumn col10 = table.getColumnModel().getColumn(10);
+
+      int w0 = computeColumnWidthForSample(0, col0.getHeaderValue(), sample);
+      int w10 = computeColumnWidthForSample(10, col10.getHeaderValue(), sample);
+
+      return Math.max(w0, w10);
+    } catch (Exception e) {
+      // Fallback to previous fixed widths
+      return Settings.getShowSecondsInDateColumns() ? 150 : 100;
+    }
+  }
+
+  private int computeColumnWidthForSample(int viewColumnIndex, Object headerValue, String sample) {
+    int padding = 18;
+
+    int headerWidth = 0;
+    try {
+      javax.swing.table.JTableHeader th = table.getTableHeader();
+      if (th != null) {
+        javax.swing.table.TableCellRenderer hr = th.getDefaultRenderer();
+        java.awt.Component c = hr.getTableCellRendererComponent(table, headerValue, false, false, -1, viewColumnIndex);
+        if (c != null) {
+          headerWidth = c.getPreferredSize().width;
+        }
+      }
+    } catch (Exception e) {
+      headerWidth = 0;
+    }
+
+    int sampleWidth = 0;
+    try {
+      java.awt.FontMetrics fm = table.getFontMetrics(table.getFont());
+      sampleWidth = fm.stringWidth(sample);
+    } catch (Exception e) {
+      sampleWidth = 0;
+    }
+
+    return Math.max(headerWidth, sampleWidth) + padding;
+  }
+
+  private void bCopyActionPerformed(java.awt.event.ActionEvent evt) {
+    if (table == null) return;
+
+    int[] selected = table.getSelectedRows();
+    if (selected == null || selected.length == 0) {
+      JOptionPane.showMessageDialog(this, "Nejsou vybrané žádné řádky.", "Kopírovat", JOptionPane.INFORMATION_MESSAGE);
+      return;
+    }
+
+    javax.swing.table.TableColumnModel cm = table.getColumnModel();
+    java.util.List<Integer> visibleViewCols = new java.util.ArrayList<>();
+    for (int i = 0; i < cm.getColumnCount(); i++) {
+      javax.swing.table.TableColumn col = cm.getColumn(i);
+      if (col == null) continue;
+      // Hidden columns in this app are represented by width/maxWidth == 0.
+      if (col.getWidth() == 0 || col.getMaxWidth() == 0) continue;
+      visibleViewCols.add(i);
+    }
+
+    boolean showSeconds = Settings.getShowSecondsInDateColumns();
+    java.text.SimpleDateFormat df2 = new java.text.SimpleDateFormat("dd.MM.yyyy HH:mm");
+    java.text.SimpleDateFormat df3 = new java.text.SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
+
+    StringBuilder sb = new StringBuilder();
+    for (int r = 0; r < selected.length; r++) {
+      int viewRow = selected[r];
+      for (int c = 0; c < visibleViewCols.size(); c++) {
+        int viewCol = visibleViewCols.get(c);
+        Object v = table.getValueAt(viewRow, viewCol);
+
+        String cell;
+        if (v == null) {
+          cell = "";
+        } else if (v instanceof java.util.Date) {
+          java.util.Date d = (java.util.Date) v;
+          if (showSeconds) {
+            java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+            cal.setTime(d);
+            if (cal.get(java.util.GregorianCalendar.SECOND) != 0) {
+              cell = df3.format(d);
+            } else {
+              cell = df2.format(d);
+            }
+          } else {
+            cell = df2.format(d);
+          }
+        } else {
+          cell = String.valueOf(v);
+        }
+
+        // Keep TSV stable: no tabs/newlines inside a cell.
+        cell = cell.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
+
+        if (c > 0) sb.append('\t');
+        sb.append(cell);
+      }
+      if (r < selected.length - 1) sb.append('\n');
+    }
+
+    try {
+      java.awt.datatransfer.StringSelection sel = new java.awt.datatransfer.StringSelection(sb.toString());
+      java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, null);
+    } catch (Exception e) {
+      JOptionPane.showMessageDialog(this, "Nepodařilo se zkopírovat do schránky: " + e.getMessage(),
+          "Kopírovat", JOptionPane.ERROR_MESSAGE);
+    }
+  }
+
+  private void bClearColorsActionPerformed(java.awt.event.ActionEvent evt) {
+    try {
+      transactions.clearHighlights();
+      lastStatusMessage = " | Barvy vyčištěny";
+      updateStatusBar();
+      table.repaint();
+    } catch (Exception e) {
+      // ignore
+    }
   }
 
   /**
@@ -1057,15 +1238,62 @@ public class MainWindow extends javax.swing.JFrame {
 
   private void bDeleteActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bDeleteActionPerformed
   {// GEN-HEADEREND:event_bDeleteActionPerformed
-   // Store selected row
-    int selectedRow = table.getSelectedRow();
+    int[] selectedRows = table.getSelectedRows();
+    if (selectedRows == null || selectedRows.length == 0) {
+      JOptionPane.showMessageDialog(this, "Nejsou vybrané žádné řádky.", "Smazat", JOptionPane.INFORMATION_MESSAGE);
+      return;
+    }
 
-    // Reset editting, if active
+    int deleted = transactions.deleteRows(selectedRows);
+
+    // Reset selection/editing
     table.clearSelection();
 
-    // Delete current row
-    transactions.deleteRow(selectedRow);
+    if (deleted > 0) {
+      bUndoDelete.setEnabled(true);
+      lastStatusMessage = " | Smazáno: " + deleted;
+      updateStatusBar();
+    }
   }// GEN-LAST:event_bDeleteActionPerformed
+
+  private void bUndoDeleteActionPerformed(java.awt.event.ActionEvent evt) {
+    int restored = transactions.undoLastDelete();
+    if (restored <= 0) {
+      bUndoDelete.setEnabled(false);
+      JOptionPane.showMessageDialog(this, "Není co vrátit.", "Zpět", JOptionPane.INFORMATION_MESSAGE);
+      return;
+    }
+
+    clearAllFiltersAndInputs();
+    bUndoDelete.setEnabled(false);
+    lastStatusMessage = " | Obnoveno: " + restored;
+    updateStatusBar();
+  }
+
+  private void clearAllFiltersAndInputs() {
+    // Clear model filter + UI controls
+    transactions.clearFilter();
+
+    if (tfTicker != null) tfTicker.setText("");
+    if (tfMarket != null) tfMarket.setText("");
+    if (tfNote != null) tfNote.setText("");
+    if (dcFrom != null) dcFrom.setDate(null);
+    if (dcTo != null) dcTo.setDate(null);
+    if (cbTypeFilter != null) cbTypeFilter.setSelectedIndex(0);
+    if (cbBrokerFilter != null) cbBrokerFilter.setSelectedIndex(0);
+    if (cbAccountIdFilter != null) cbAccountIdFilter.setSelectedIndex(0);
+    if (cbEffectFilter != null) cbEffectFilter.setSelectedIndex(0);
+
+    // Disable filter-related actions
+    if (bClearFilter != null) bClearFilter.setEnabled(false);
+    if (miSaveFiltered != null) miSaveFiltered.setEnabled(false);
+
+    // Track current ticker filter for status bar
+    currentTickerFilter = null;
+
+    table.revalidate();
+    table.repaint();
+  }
 
   private void bSortActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bSortActionPerformed
   {// GEN-HEADEREND:event_bSortActionPerformed
@@ -1525,6 +1753,11 @@ public class MainWindow extends javax.swing.JFrame {
         }
     }
 
+    if (lastStatusMessage != null && !lastStatusMessage.isEmpty()) {
+      status += lastStatusMessage;
+      lastStatusMessage = null;
+    }
+
     jLabel1.setText(status);
   }
 
@@ -1539,10 +1772,14 @@ public class MainWindow extends javax.swing.JFrame {
   /** Current ticker filter for status bar display */
   private String currentTickerFilter = null;
 
+  /** One-shot status bar message appended once */
+  private String lastStatusMessage = null;
+
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JButton bApplyFilter;
   private javax.swing.JButton bClearFilter;
   private javax.swing.JButton bDelete;
+  private javax.swing.JButton bUndoDelete;
   private javax.swing.JButton bSort;
   private javax.swing.JComboBox cbCurrencies;
   private javax.swing.JComboBox cbDirection;
@@ -1595,6 +1832,8 @@ public class MainWindow extends javax.swing.JFrame {
    private javax.swing.JComboBox cbEffectFilter;
    private javax.swing.JCheckBox cbShowMetadata;
    private javax.swing.JCheckBox cbShowSeconds;
+   private javax.swing.JButton bCopy;
+   private javax.swing.JButton bClearColors;
    // End of variables declaration//GEN-END:variables
 
 }

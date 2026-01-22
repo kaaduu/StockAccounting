@@ -179,6 +179,12 @@ public class Settings {
   private static boolean showMetadataColumns = true;
   private static boolean showSecondsInDateColumns = false;
 
+  // Import highlight settings
+  private static boolean highlightInsertedEnabled = true;
+  private static boolean highlightUpdatedEnabled = true;
+  private static java.awt.Color highlightInsertedColor = null;
+  private static java.awt.Color highlightUpdatedColor = null;
+
   /**
    * Show row number column (#) in main table
    */
@@ -606,6 +612,82 @@ public class Settings {
     showSecondsInDateColumns = value;
     java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
     p.putBoolean("showSecondsInDateColumns", value);
+  }
+
+  public static boolean getHighlightInsertedEnabled() {
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    highlightInsertedEnabled = p.getBoolean("highlightInsertedEnabled", true);
+    return highlightInsertedEnabled;
+  }
+
+  public static void setHighlightInsertedEnabled(boolean value) {
+    highlightInsertedEnabled = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.putBoolean("highlightInsertedEnabled", value);
+  }
+
+  public static boolean getHighlightUpdatedEnabled() {
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    highlightUpdatedEnabled = p.getBoolean("highlightUpdatedEnabled", true);
+    return highlightUpdatedEnabled;
+  }
+
+  public static void setHighlightUpdatedEnabled(boolean value) {
+    highlightUpdatedEnabled = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.putBoolean("highlightUpdatedEnabled", value);
+  }
+
+  public static java.awt.Color getHighlightInsertedColor() {
+    if (highlightInsertedColor == null) {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      String hex = p.get("highlightInsertedColor", "#C8FFC8"); // light green
+      highlightInsertedColor = parseColorHex(hex, new java.awt.Color(200, 255, 200));
+    }
+    return highlightInsertedColor;
+  }
+
+  public static void setHighlightInsertedColor(java.awt.Color c) {
+    if (c == null) return;
+    highlightInsertedColor = c;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.put("highlightInsertedColor", colorToHex(c));
+  }
+
+  public static java.awt.Color getHighlightUpdatedColor() {
+    if (highlightUpdatedColor == null) {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      String hex = p.get("highlightUpdatedColor", "#FFFFC8"); // light yellow
+      highlightUpdatedColor = parseColorHex(hex, new java.awt.Color(255, 255, 200));
+    }
+    return highlightUpdatedColor;
+  }
+
+  public static void setHighlightUpdatedColor(java.awt.Color c) {
+    if (c == null) return;
+    highlightUpdatedColor = c;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.put("highlightUpdatedColor", colorToHex(c));
+  }
+
+  private static java.awt.Color parseColorHex(String hex, java.awt.Color fallback) {
+    try {
+      if (hex == null) return fallback;
+      String s = hex.trim();
+      if (s.startsWith("#")) s = s.substring(1);
+      if (s.length() != 6) return fallback;
+      int rgb = Integer.parseInt(s, 16);
+      return new java.awt.Color((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+    } catch (Exception e) {
+      return fallback;
+    }
+  }
+
+  private static String colorToHex(java.awt.Color c) {
+    String r = String.format("%02X", c.getRed());
+    String g = String.format("%02X", c.getGreen());
+    String b = String.format("%02X", c.getBlue());
+    return "#" + r + g + b;
   }
 
   public static boolean getShowRowNumberColumn() {

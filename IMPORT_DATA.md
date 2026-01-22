@@ -902,6 +902,23 @@ DIRECTION_TRANS_ADD = +2   // Transformation IN (new security received)
 - **Asset class variations**: TC can apply to STK, ADR, RIGHT, WAR - all use same TRANS_ADD/SUB
 - **Complex conversions**: One security can convert to multiple (e.g., stock + warrants)
 
+### Corporate Action Types: RS / TC / IC / TO
+
+IBKR Corporate Actions section contains a `Type` field that identifies the corporate action category.
+
+Common types observed in real Flex reports:
+
+| Type | Meaning | Typical Description Text | Recommendation |
+| ---- | ------- | ------------------------ | -------------- |
+| RS   | Reverse split / split | `SPLIT 1 FOR N` | ✅ Import (default) |
+| TC   | Ticker change / merger / acquisition | `MERGED(Acquisition) WITH ...` | ✅ Import (default) |
+| IC   | CUSIP/ISIN change (identifier change) | `CUSIP/ISIN CHANGE TO ...` | ❌ Ignore by default |
+| TO   | Tender offer / tendered to new instrument or election | `TENDERED TO ...` / `RNDUP ELECTION` | ❌ Ignore by default |
+
+Notes:
+- `IC` and `TO` often create confusing transformations (or extra placeholder instruments) and are therefore recommended to be disabled by default.
+- You can still enable them when you explicitly want to track these events.
+
 ### Date/Time Handling
 
 **Trade Date Priority**:
