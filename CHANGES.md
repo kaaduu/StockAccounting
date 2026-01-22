@@ -39,6 +39,10 @@ Poznámka: Pro Interactive Brokers se používá společná složka `~/.stockacc
 - UI: editor data v hlavní tabulce již nemaže sekundy (maže se pouze milisekundová část).
 - Import: porovnání duplicit nově preferuje shodu podle `TxnID` (pokud je vyplněno), aby se předešlo duplicitám při přechodu ze záznamů bez sekund na záznamy se sekundami.
 - Hlavní okno: přidán přepínač „Sekundy“ pro zobrazení/skrývání sekund ve sloupcích data.
+- Hlavní okno: přidáno tlačítko „Kopírovat“ pro zkopírování vybraných řádků do schránky jako TSV.
+- Hlavní okno: „Smazat řádek“ podporuje multivýběr a je doplněno o „Zpět“ (obnova posledního smazání); při obnově se vždy zruší všechny filtry.
+- Nastavení: přidána volba barvy a zapnutí/vypnutí zvýraznění nových a aktualizovaných řádků po importu, včetně náhledu.
+- Hlavní okno: přidáno tlačítko „Vyčistit barvy“ pro zrušení zvýraznění.
 
 ## [Oprava IBKR Flex Web Service - implementace podle oficiální API dokumentace] - 2026-01-20
 

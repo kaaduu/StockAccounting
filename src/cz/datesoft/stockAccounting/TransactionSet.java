@@ -50,10 +50,25 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     * instead of the complete one. But we still hold / save / enumerate / ...
     * the complete, filtering affects only table model.
     */
-   protected Vector<Transaction> filteredRows;
+  protected Vector<Transaction> filteredRows;
+
+  private static final class DeletedRow {
+    final Transaction tx;
+    final int originalIndex;
+
+    DeletedRow(Transaction tx, int originalIndex) {
+      this.tx = tx;
+      this.originalIndex = originalIndex;
+    }
+  }
+
+  private java.util.List<DeletedRow> lastDeletedRows = new java.util.ArrayList<>();
 
   /** Set of serials for recently updated transactions (for highlighting) */
   protected java.util.Set<Integer> updatedTransactionSerials = new java.util.HashSet<>();
+
+  /** Set of serials for recently inserted (imported) transactions (for highlighting) */
+  protected java.util.Set<Integer> insertedTransactionSerials = new java.util.HashSet<>();
 
   /** Logger */
   private static final Logger logger = Logger.getLogger(TransactionSet.class.getName());
@@ -230,6 +245,20 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     fireTableDataChanged();
 
     return tx;
+  }
+
+  public void markInserted(Transaction tx) {
+    if (tx == null) return;
+    insertedTransactionSerials.add(tx.getSerial());
+  }
+
+  public boolean isRecentlyInserted(int row) {
+    if (row < 0 || row >= rows.size()) {
+      return false;
+    }
+    Transaction tx = getRowAt(row);
+    if (tx == null) return false;
+    return insertedTransactionSerials.contains(tx.getSerial());
   }
 
   /**
@@ -729,6 +758,90 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     return true;
   }
 
+  public int deleteRows(int[] viewRowIndices) {
+    if (viewRowIndices == null || viewRowIndices.length == 0) {
+      return 0;
+    }
+
+    lastDeletedRows.clear();
+
+    // Resolve selected rows to Transaction objects first.
+    java.util.LinkedHashSet<Transaction> selected = new java.util.LinkedHashSet<>();
+    for (int viewRow : viewRowIndices) {
+      try {
+        if (filteredRows != null) {
+          if (viewRow < 0 || viewRow >= filteredRows.size()) continue;
+          selected.add(filteredRows.get(viewRow));
+        } else {
+          if (viewRow < 0 || viewRow >= rows.size()) continue;
+          selected.add(rows.get(viewRow));
+        }
+      } catch (Exception e) {
+        // ignore
+      }
+    }
+
+    if (selected.isEmpty()) {
+      return 0;
+    }
+
+    // Store original indices in 'rows' for undo.
+    for (Transaction tx : selected) {
+      int idx = rows.indexOf(tx);
+      if (idx >= 0) {
+        lastDeletedRows.add(new DeletedRow(tx, idx));
+      }
+    }
+
+    // Remove from rows in descending index order so indices don't shift.
+    lastDeletedRows.sort((a, b) -> Integer.compare(b.originalIndex, a.originalIndex));
+    int deleted = 0;
+    for (DeletedRow d : lastDeletedRows) {
+      try {
+        if (rows.remove(d.originalIndex) != null) {
+          deleted++;
+        }
+      } catch (Exception e) {
+        // ignore
+      }
+    }
+
+    // Clear filtered view if active; UI will clear filter on undo as requested.
+    if (filteredRows != null) {
+      filteredRows = null;
+    }
+
+    if (deleted > 0) {
+      modified = true;
+      fireTableDataChanged();
+    }
+
+    return deleted;
+  }
+
+  public int undoLastDelete() {
+    if (lastDeletedRows == null || lastDeletedRows.isEmpty()) {
+      return 0;
+    }
+
+    // Reinsert in ascending original index.
+    lastDeletedRows.sort((a, b) -> Integer.compare(a.originalIndex, b.originalIndex));
+    int restored = 0;
+    for (DeletedRow d : lastDeletedRows) {
+      if (d == null || d.tx == null) continue;
+      int idx = d.originalIndex;
+      if (idx < 0) idx = 0;
+      if (idx > rows.size()) idx = rows.size();
+      rows.add(idx, d.tx);
+      restored++;
+    }
+
+    lastDeletedRows.clear();
+    modified = true;
+    fireTableDataChanged();
+    return restored;
+  }
+
   /**
    * Get combo box model containing ticker names
    */
@@ -1083,9 +1196,12 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     for (int i = 0; i < rows.size(); i++) {
       Transaction tx = rows.get(i);
 
-      dstSet.addTransaction(tx.getDate(), tx.getDirection().intValue(), tx.getTicker(), tx.getAmount().doubleValue(),
+      Transaction added = dstSet.addTransaction(tx.getDate(), tx.getDirection().intValue(), tx.getTicker(), tx.getAmount().doubleValue(),
           tx.getPrice().doubleValue(), tx.getPriceCurrency(), tx.getFee().doubleValue(), tx.getFeeCurrency(),
           tx.getMarket(), tx.getExecutionDate(), tx.getNote());
+
+      // Mark as inserted for highlighting (import/merge only)
+      dstSet.markInserted(added);
     }
 
     // Sort destination
@@ -1181,6 +1297,12 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    */
   public void clearUpdatedHighlights() {
     updatedTransactionSerials.clear();
+    fireTableDataChanged();
+  }
+
+  public void clearHighlights() {
+    updatedTransactionSerials.clear();
+    insertedTransactionSerials.clear();
     fireTableDataChanged();
   }
 

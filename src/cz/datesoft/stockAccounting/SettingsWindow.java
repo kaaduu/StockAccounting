@@ -621,8 +621,8 @@ public class SettingsWindow extends javax.swing.JDialog {
      jPanel1.add(cbShowMetadataColumns, gridBagConstraints);
 
 
-     // Build System tab (last)
-     pSystem.setLayout(new java.awt.GridBagLayout());
+      // Build System tab (last)
+      pSystem.setLayout(new java.awt.GridBagLayout());
      cbShowRowNumberColumn.setText("Zobrazovat sloupec # (pořadí řádku)");
      cbShowRowNumberColumn.setToolTipText("Zobrazí nebo skryje pomocný sloupec s číslováním řádků v hlavní tabulce");
      cbShowRowNumberColumn.setSelected(Settings.getShowRowNumberColumn());
@@ -638,11 +638,107 @@ public class SettingsWindow extends javax.swing.JDialog {
      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
       pSystem.add(cbShowRowNumberColumn, gridBagConstraints);
 
+      // Import highlighting settings
+      javax.swing.JLabel lblImportHl = new javax.swing.JLabel("Zvýraznění po importu:");
+      gridBagConstraints = new java.awt.GridBagConstraints();
+      gridBagConstraints.gridx = 0;
+      gridBagConstraints.gridy = 1;
+      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+      pSystem.add(lblImportHl, gridBagConstraints);
 
-     gridBagConstraints = new java.awt.GridBagConstraints();
+      cbHighlightInserted = new javax.swing.JCheckBox("Zvýraznit nové (přidané)");
+      cbHighlightInserted.setSelected(Settings.getHighlightInsertedEnabled());
+      cbHighlightInserted.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          Settings.setHighlightInsertedEnabled(cbHighlightInserted.isSelected());
+          updateHighlightPreview();
+        }
+      });
+      gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 0;
       gridBagConstraints.gridy = 2;
-      gridBagConstraints.weighty = 1.0;
+      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+      gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
+      pSystem.add(cbHighlightInserted, gridBagConstraints);
+
+      bPickInsertedColor = new javax.swing.JButton("Barva nových...");
+      bPickInsertedColor.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          java.awt.Color chosen = javax.swing.JColorChooser.showDialog(SettingsWindow.this,
+              "Barva nových řádků", Settings.getHighlightInsertedColor());
+          if (chosen != null) {
+            Settings.setHighlightInsertedColor(chosen);
+            updateHighlightPreview();
+          }
+        }
+      });
+      gridBagConstraints = new java.awt.GridBagConstraints();
+      gridBagConstraints.gridx = 1;
+      gridBagConstraints.gridy = 2;
+      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+      gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+      pSystem.add(bPickInsertedColor, gridBagConstraints);
+
+      cbHighlightUpdated = new javax.swing.JCheckBox("Zvýraznit aktualizované (duplikáty)");
+      cbHighlightUpdated.setSelected(Settings.getHighlightUpdatedEnabled());
+      cbHighlightUpdated.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          Settings.setHighlightUpdatedEnabled(cbHighlightUpdated.isSelected());
+          updateHighlightPreview();
+        }
+      });
+      gridBagConstraints = new java.awt.GridBagConstraints();
+      gridBagConstraints.gridx = 0;
+      gridBagConstraints.gridy = 3;
+      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+      gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
+      pSystem.add(cbHighlightUpdated, gridBagConstraints);
+
+      bPickUpdatedColor = new javax.swing.JButton("Barva aktualizovaných...");
+      bPickUpdatedColor.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          java.awt.Color chosen = javax.swing.JColorChooser.showDialog(SettingsWindow.this,
+              "Barva aktualizovaných řádků", Settings.getHighlightUpdatedColor());
+          if (chosen != null) {
+            Settings.setHighlightUpdatedColor(chosen);
+            updateHighlightPreview();
+          }
+        }
+      });
+      gridBagConstraints = new java.awt.GridBagConstraints();
+      gridBagConstraints.gridx = 1;
+      gridBagConstraints.gridy = 3;
+      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+      gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+      pSystem.add(bPickUpdatedColor, gridBagConstraints);
+
+      lHighlightPreviewNew = new javax.swing.JLabel("Náhled: nový");
+      lHighlightPreviewNew.setOpaque(true);
+      lHighlightPreviewUpdated = new javax.swing.JLabel("Náhled: aktualizovaný");
+      lHighlightPreviewUpdated.setOpaque(true);
+
+      updateHighlightPreview();
+
+      gridBagConstraints = new java.awt.GridBagConstraints();
+      gridBagConstraints.gridx = 0;
+      gridBagConstraints.gridy = 4;
+      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+      gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
+      pSystem.add(lHighlightPreviewNew, gridBagConstraints);
+
+      gridBagConstraints = new java.awt.GridBagConstraints();
+      gridBagConstraints.gridx = 1;
+      gridBagConstraints.gridy = 4;
+      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+      gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+      pSystem.add(lHighlightPreviewUpdated, gridBagConstraints);
+
+
+      gridBagConstraints = new java.awt.GridBagConstraints();
+       gridBagConstraints.gridx = 0;
+       gridBagConstraints.gridy = 5;
+       gridBagConstraints.weighty = 1.0;
       pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
 
      gridBagConstraints = new java.awt.GridBagConstraints();
@@ -2176,7 +2272,7 @@ public class SettingsWindow extends javax.swing.JDialog {
      }
    }
 
-    private void cbShowRowNumberColumnActionPerformed(java.awt.event.ActionEvent evt) {
+  private void cbShowRowNumberColumnActionPerformed(java.awt.event.ActionEvent evt) {
       boolean show = cbShowRowNumberColumn.isSelected();
       Settings.setShowRowNumberColumn(show);
 
@@ -2256,6 +2352,17 @@ public class SettingsWindow extends javax.swing.JDialog {
       }
     };
     worker.execute();
+  }
+
+  private void updateHighlightPreview() {
+    if (lHighlightPreviewNew != null) {
+      java.awt.Color c = Settings.getHighlightInsertedColor();
+      lHighlightPreviewNew.setBackground(cbHighlightInserted != null && cbHighlightInserted.isSelected() ? c : java.awt.Color.WHITE);
+    }
+    if (lHighlightPreviewUpdated != null) {
+      java.awt.Color c = Settings.getHighlightUpdatedColor();
+      lHighlightPreviewUpdated.setBackground(cbHighlightUpdated != null && cbHighlightUpdated.isSelected() ? c : java.awt.Color.WHITE);
+    }
   }
 
 
@@ -2608,6 +2715,12 @@ public class SettingsWindow extends javax.swing.JDialog {
   // System tab components
   private javax.swing.JPanel pSystem;
   private javax.swing.JCheckBox cbShowRowNumberColumn;
+  private javax.swing.JCheckBox cbHighlightInserted;
+  private javax.swing.JCheckBox cbHighlightUpdated;
+  private javax.swing.JButton bPickInsertedColor;
+  private javax.swing.JButton bPickUpdatedColor;
+  private javax.swing.JLabel lHighlightPreviewNew;
+  private javax.swing.JLabel lHighlightPreviewUpdated;
    // End of variables declaration//GEN-END:variables
 
   /**
