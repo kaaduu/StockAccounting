@@ -4,6 +4,16 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Sjednocení výběru formátu importu a výběru souboru] - 2026-01-22
+
+### Změněno
+- Odstraněno duplicitní okno „Formát importu“ při volbě „Soubor → Import od brokera“.
+- Import se nyní otevírá přímo v okně importu a automaticky předvybere poslední použitý formát.
+
+### Přidáno
+- Tlačítko „Vybrat soubor…“ přímo v okně importu pro lokální souborové importy.
+- Výchozí filtr souborů podle formátu (např. `.tlg` pro IB TradeLog, `.csv` pro Fio/Revolut/T212, `.htm/.html` pro BrokerJet).
+
 ## [Oprava IBKR Flex Web Service - implementace podle oficiální API dokumentace] - 2026-01-20
 
 ### Opraveno - Kritické chyby API integrace
