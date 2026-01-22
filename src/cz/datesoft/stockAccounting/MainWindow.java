@@ -47,6 +47,9 @@ public class MainWindow extends javax.swing.JFrame {
         boolean hasFocus, int row, int column) {
       java.awt.Component c = super.getTableCellRendererComponent(
           table, value, isSelected, hasFocus, row, column);
+
+      // Reset font to base (renderer instances are reused)
+      c.setFont(table.getFont());
       
       // Check if this row was recently inserted/updated (import highlighting)
       if (!isSelected) {
@@ -55,6 +58,11 @@ public class MainWindow extends javax.swing.JFrame {
             c.setBackground(Settings.getHighlightInsertedColor());
           } else if (Settings.getHighlightUpdatedEnabled() && transactions.isRecentlyUpdated(row)) {
             c.setBackground(Settings.getHighlightUpdatedColor());
+
+            int modelCol = table.convertColumnIndexToModel(column);
+            if (transactions.isRecentlyUpdatedColumn(row, modelCol)) {
+              c.setFont(table.getFont().deriveFont(java.awt.Font.BOLD));
+            }
           } else {
             c.setBackground(java.awt.Color.WHITE);
           }
@@ -78,6 +86,9 @@ public class MainWindow extends javax.swing.JFrame {
         boolean hasFocus, int row, int column) {
       java.awt.Component c = super.getTableCellRendererComponent(
           table, value, isSelected, hasFocus, row, column);
+
+      // Reset font to base (renderer instances are reused)
+      c.setFont(table.getFont());
       
       // Check if this row was recently inserted/updated (import highlighting)
       if (!isSelected) {
@@ -86,6 +97,11 @@ public class MainWindow extends javax.swing.JFrame {
             c.setBackground(Settings.getHighlightInsertedColor());
           } else if (Settings.getHighlightUpdatedEnabled() && transactions.isRecentlyUpdated(row)) {
             c.setBackground(Settings.getHighlightUpdatedColor());
+
+            int modelCol = table.convertColumnIndexToModel(column);
+            if (transactions.isRecentlyUpdatedColumn(row, modelCol)) {
+              c.setFont(table.getFont().deriveFont(java.awt.Font.BOLD));
+            }
           } else {
             c.setBackground(java.awt.Color.WHITE);
           }
