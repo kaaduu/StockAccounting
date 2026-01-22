@@ -537,10 +537,24 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     * Does NOT update business key fields: Date, Direction, Ticker, Amount, Price, PriceCurrency, Market
     */
    public void updateFromTransaction(Transaction source) {
-     this.setNote(source.getNote());
-     this.setFee(source.getFee());
-     this.setFeeCurrency(source.getFeeCurrency());
-     this.setExecutionDate(source.getExecutionDate());
+      this.setNote(source.getNote());
+      this.setFee(source.getFee());
+      this.setFeeCurrency(source.getFeeCurrency());
+      this.setExecutionDate(source.getExecutionDate());
+   }
+
+   /**
+    * Update fields from another transaction (used for re-import updates) when TxnID match is used.
+    *
+    * In this mode we can safely update the timestamp to include missing seconds,
+    * because identity is anchored by TxnID.
+    */
+   public void updateFromTransactionWithTxnIdMatch(Transaction source) {
+     // Keep existing behavior
+     updateFromTransaction(source);
+
+     // Also update trade timestamp
+     this.setDate(source.getDate());
    }
 
    /**
@@ -769,5 +783,4 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   } 
 
 }
-
 

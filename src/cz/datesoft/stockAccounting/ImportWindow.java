@@ -1123,7 +1123,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
     cbUpdateDuplicates = new javax.swing.JCheckBox();
     cbUpdateDuplicates.setText("Aktualizovat duplikáty");
-    cbUpdateDuplicates.setToolTipText("Přepíše Poznámky, Poplatky a Datum vypořádání u existujících záznamů");
+    cbUpdateDuplicates.setToolTipText("Přepíše Poznámky, Poplatky a Datum vypořádání u existujících záznamů. Pokud existuje TxnID, doplní se i přesný čas (sekundy) v poli Datum.");
     cbUpdateDuplicates.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         cbUpdateDuplicatesActionPerformed(evt);
