@@ -618,7 +618,21 @@ public class SettingsWindow extends javax.swing.JDialog {
      gridBagConstraints.gridy = 2;
      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
      gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
-    jPanel1.add(cbShowMetadataColumns, gridBagConstraints);
+     jPanel1.add(cbShowMetadataColumns, gridBagConstraints);
+
+     cbShowSecondsInDates = new javax.swing.JCheckBox("Zobrazovat sekundy v datech (pokud jsou k dispozici)");
+     cbShowSecondsInDates.setSelected(Settings.getShowSecondsInDateColumns());
+     cbShowSecondsInDates.setToolTipText("Pokud je zapnuto, sloupce Datum a Vypořádání zobrazují HH:mm:ss, jinak HH:mm");
+     cbShowSecondsInDates.addActionListener(new java.awt.event.ActionListener() {
+       public void actionPerformed(java.awt.event.ActionEvent evt) {
+         cbShowSecondsInDatesActionPerformed(evt);
+       }
+     });
+     gridBagConstraints = new java.awt.GridBagConstraints();
+     gridBagConstraints.gridy = 3;
+     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+     gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
+     jPanel1.add(cbShowSecondsInDates, gridBagConstraints);
 
      // Build System tab (last)
      pSystem.setLayout(new java.awt.GridBagLayout());
@@ -1675,7 +1689,8 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JPanel pDailyRates;
   private javax.swing.JTable dailyRatesTable;
    private javax.swing.JCheckBox cbUseDailyRates;
-   private javax.swing.JCheckBox cbShowMetadataColumns;
+    private javax.swing.JCheckBox cbShowMetadataColumns;
+    private javax.swing.JCheckBox cbShowSecondsInDates;
    private javax.swing.JButton bFetchDailyRates;
   private javax.swing.table.DefaultTableModel dailyRatesModel;
 
@@ -2164,9 +2179,9 @@ public class SettingsWindow extends javax.swing.JDialog {
         Settings.save();
     }
 
-    private void cbShowMetadataColumnsActionPerformed(java.awt.event.ActionEvent evt) {
-     boolean showColumns = cbShowMetadataColumns.isSelected();
-     Settings.setShowMetadataColumns(showColumns);
+  private void cbShowMetadataColumnsActionPerformed(java.awt.event.ActionEvent evt) {
+    boolean showColumns = cbShowMetadataColumns.isSelected();
+    Settings.setShowMetadataColumns(showColumns);
 
      // Notify main window to update column visibility
      if (mainWindow != null) {
@@ -2254,6 +2269,10 @@ public class SettingsWindow extends javax.swing.JDialog {
       }
     };
     worker.execute();
+  }
+
+  private void cbShowSecondsInDatesActionPerformed(java.awt.event.ActionEvent evt) {
+    Settings.setShowSecondsInDateColumns(cbShowSecondsInDates.isSelected());
   }
 
    private void showDetailedErrorDialog(String title, String userMessage, Exception error) {

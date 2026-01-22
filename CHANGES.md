@@ -38,6 +38,7 @@ Poznámka: Pro Interactive Brokers se používá společná složka `~/.stockacc
 - IBKR import: interní posun času při řešení kolizí duplicit se nyní dělá po sekundách (+N s).
 - UI: editor data v hlavní tabulce již nemaže sekundy (maže se pouze milisekundová část).
 - Import: porovnání duplicit nově preferuje shodu podle `TxnID` (pokud je vyplněno), aby se předešlo duplicitám při přechodu ze záznamů bez sekund na záznamy se sekundami.
+- Nastavení: přidán přepínač pro zobrazení/skrývání sekund ve sloupcích data.
 
 ## [Oprava IBKR Flex Web Service - implementace podle oficiální API dokumentace] - 2026-01-20
 
