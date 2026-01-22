@@ -1271,7 +1271,17 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         }
         batchUpdatedTransactionSerials.add(serial);
       }
-      existing.updateFromTransaction(candidate);
+
+      // If TxnID match is available, allow updating timestamp too (to add missing seconds).
+      String txnExisting = nullToEmpty(existing.getTxnId());
+      String txnCandidate = nullToEmpty(candidate.getTxnId());
+      boolean txnIdMatch = !txnExisting.isEmpty() && txnExisting.equalsIgnoreCase(txnCandidate);
+      if (txnIdMatch) {
+        existing.updateFromTransactionWithTxnIdMatch(candidate);
+      } else {
+        existing.updateFromTransaction(candidate);
+      }
+
       updatedTransactionSerials.add(existing.getSerial());
       return true;
     }
