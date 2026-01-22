@@ -1019,60 +1019,20 @@ public class MainWindow extends javax.swing.JFrame {
   }// GEN-LAST:event_miAccountStateActionPerformed
 
   private void miImportActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_miImportActionPerformed
-    // Show format selection dialog first
-    String[] formats = {"<vyberte formát>", "Fio - obchody export", "BrokerJet - HTML export (legacy)",
-                       "IB - TradeLog", "IB - FlexQuery Trades only CSV", "T212 Invest  - csv  mena: USD",
-                       "T212 Invest  - csv  mena: CZK", "Revolut - csv", "Trading 212 API"};
+    // Open ImportWindow directly; it is the single source of truth
+    // for format selection and file selection.
+
+    Date startDate = transactions.getMaxDate();
+    if (startDate != null) {
+      // Add a day to start importing next day we have
+      GregorianCalendar cal = new GregorianCalendar();
+      cal.setTime(startDate);
+      cal.add(GregorianCalendar.DAY_OF_MONTH, 1);
+      startDate = cal.getTime();
+    }
 
     int savedFormatIndex = cz.datesoft.stockAccounting.Settings.getLastImportFormat();
-    String defaultSelection = (savedFormatIndex >= 0 && savedFormatIndex < formats.length) ? formats[savedFormatIndex] : formats[0];
-
-    String selectedFormat = (String) javax.swing.JOptionPane.showInputDialog(
-        this, "Vyberte formát importu:", "Formát importu",
-        javax.swing.JOptionPane.QUESTION_MESSAGE, null, formats, defaultSelection);
-
-    if (selectedFormat == null || selectedFormat.equals("<vyberte formát>")) {
-      return; // User cancelled or didn't select format
-    }
-
-    int formatIndex = java.util.Arrays.asList(formats).indexOf(selectedFormat);
-    boolean isApiFormat = (formatIndex == 8); // Trading 212 API
-
-    File selectedFile = null;
-    Date startDate = null;
-
-    if (!isApiFormat) {
-      // Show file dialog only for file-based formats
-      FileDialog dialog = new FileDialog(this, "Importovat soubor", FileDialog.LOAD);
-
-      String loc = Settings.getImportDirectory();
-      if (loc != null)
-        dialog.setDirectory(loc);
-
-      dialog.setVisible(true);
-
-      String fileName = dialog.getFile();
-      if (fileName != null) {
-        selectedFile = new File(dialog.getDirectory(), fileName);
-        Settings.setImportDirectory(dialog.getDirectory());
-        Settings.save();
-
-        // Get start date for file-based imports
-        startDate = transactions.getMaxDate();
-        if (startDate != null) {
-          // Add a day to start importing next day we have
-          GregorianCalendar cal = new GregorianCalendar();
-          cal.setTime(startDate);
-          cal.add(GregorianCalendar.DAY_OF_MONTH, 1);
-          startDate = cal.getTime();
-        }
-      } else {
-        return; // User cancelled file selection
-      }
-    }
-
-    // Open ImportWindow with the selected format and optional file
-    importWindow.startImport(selectedFile, startDate, formatIndex);
+    importWindow.startImport(null, startDate, savedFormatIndex);
   }// GEN-LAST:event_miImportActionPerformed
 
   private void bDeleteActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bDeleteActionPerformed
