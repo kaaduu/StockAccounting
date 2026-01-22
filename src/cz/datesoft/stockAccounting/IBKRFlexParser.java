@@ -94,12 +94,36 @@ public class IBKRFlexParser {
 
     private boolean includeTrades = true;
 
+    private java.util.Set<String> allowedCorporateActionTypes = null; // null => allow all
+
     public void setIncludeCorporateActions(boolean includeCorporateActions) {
         this.includeCorporateActions = includeCorporateActions;
     }
 
     public void setIncludeTrades(boolean includeTrades) {
         this.includeTrades = includeTrades;
+    }
+
+    public void setAllowedCorporateActionTypes(java.util.Set<String> allowedTypes) {
+        if (allowedTypes == null || allowedTypes.isEmpty()) {
+            this.allowedCorporateActionTypes = null;
+            return;
+        }
+        java.util.Set<String> norm = new java.util.HashSet<>();
+        for (String t : allowedTypes) {
+            if (t != null && !t.trim().isEmpty()) {
+                norm.add(t.trim().toUpperCase());
+            }
+        }
+        this.allowedCorporateActionTypes = norm.isEmpty() ? null : norm;
+    }
+
+    private boolean isCorporateActionTypeAllowed(String type) {
+        if (allowedCorporateActionTypes == null) return true;
+        if (type == null) return false;
+        String t = type.trim().toUpperCase();
+        if (t.isEmpty()) return false;
+        return allowedCorporateActionTypes.contains(t);
     }
 
     public void setAllowedAssetClasses(java.util.Set<String> allowedAssetClasses) {
@@ -217,6 +241,11 @@ public class IBKRFlexParser {
                 : ((COL_NAME >= 0 && COL_NAME < fields.length) ? fields[COL_NAME].trim() : "");
 
             if (row.actionId.isEmpty() || row.type.isEmpty() || row.symbol.isEmpty()) {
+                return null;
+            }
+
+            // Type filter (RS/TC/IC/TO)
+            if (!isCorporateActionTypeAllowed(row.type)) {
                 return null;
             }
             if (row.dateTimeStr.isEmpty()) {

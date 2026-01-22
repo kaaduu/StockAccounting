@@ -59,6 +59,10 @@ public class ImportWindow extends javax.swing.JFrame {
   private javax.swing.JButton bIBKRFlexClear;          // "Vymazat náhled"
   private javax.swing.JButton bIBKRFlexRefreshPreview;  // "Obnovit náhled"
   private javax.swing.JCheckBox cbIBKRFlexIncludeCorporateActions; // include Transformace
+  private javax.swing.JCheckBox cbIBKRFlexCaRS;
+  private javax.swing.JCheckBox cbIBKRFlexCaTC;
+  private javax.swing.JCheckBox cbIBKRFlexCaIC;
+  private javax.swing.JCheckBox cbIBKRFlexCaTO;
   private javax.swing.JComboBox<String> cbIBKRFlexImportMode; // import mode (trades/transformations)
   private javax.swing.JLabel lblIBKRFlexStatus;        // Status label
   private javax.swing.JPanel pIBKRFlexButtons;         // Left-aligned container for IBKR buttons
@@ -361,6 +365,7 @@ public class ImportWindow extends javax.swing.JFrame {
       IBKRFlexParser parser = new IBKRFlexParser();
       parser.setAllowedAssetClasses(getSelectedIbkrAssetClasses());
       parser.setIncludeCorporateActions(cbIBKRFlexIncludeCorporateActions == null || cbIBKRFlexIncludeCorporateActions.isSelected());
+      parser.setAllowedCorporateActionTypes(getSelectedIbkrCorporateActionTypes());
       int mode = getIbkrImportMode();
       parser.setIncludeTrades(mode != IBKR_MODE_TRANS_ONLY);
       if (mode == IBKR_MODE_TRADES_ONLY) {
@@ -582,6 +587,24 @@ public class ImportWindow extends javax.swing.JFrame {
     if (cbUpdateDuplicates != null) {
       cbUpdateDuplicates.setEnabled(!transOnly);
     }
+
+    boolean enableCaTypes = (cbIBKRFlexIncludeCorporateActions != null && cbIBKRFlexIncludeCorporateActions.isSelected());
+    if (mode == IBKR_MODE_TRADES_ONLY) {
+      enableCaTypes = false;
+    }
+    if (cbIBKRFlexCaRS != null) cbIBKRFlexCaRS.setEnabled(enableCaTypes);
+    if (cbIBKRFlexCaTC != null) cbIBKRFlexCaTC.setEnabled(enableCaTypes);
+    if (cbIBKRFlexCaIC != null) cbIBKRFlexCaIC.setEnabled(enableCaTypes);
+    if (cbIBKRFlexCaTO != null) cbIBKRFlexCaTO.setEnabled(enableCaTypes);
+  }
+
+  private java.util.Set<String> getSelectedIbkrCorporateActionTypes() {
+    java.util.Set<String> out = new java.util.HashSet<>();
+    if (cbIBKRFlexCaRS != null && cbIBKRFlexCaRS.isSelected()) out.add("RS");
+    if (cbIBKRFlexCaTC != null && cbIBKRFlexCaTC.isSelected()) out.add("TC");
+    if (cbIBKRFlexCaIC != null && cbIBKRFlexCaIC.isSelected()) out.add("IC");
+    if (cbIBKRFlexCaTO != null && cbIBKRFlexCaTO.isSelected()) out.add("TO");
+    return out;
   }
 
   private void syncIbkrAssetFilterState(javax.swing.AbstractButton source) {
@@ -1418,6 +1441,21 @@ public class ImportWindow extends javax.swing.JFrame {
       cbIBKRFlexIncludeCorporateActions = new javax.swing.JCheckBox("Transformace");
       cbIBKRFlexIncludeCorporateActions.setSelected(true);
       cbIBKRFlexIncludeCorporateActions.setToolTipText("Zahrnout korporátní akce (Transformace) do náhledu a importu");
+
+      cbIBKRFlexCaRS = new javax.swing.JCheckBox("RS");
+      cbIBKRFlexCaTC = new javax.swing.JCheckBox("TC");
+      cbIBKRFlexCaIC = new javax.swing.JCheckBox("IC");
+      cbIBKRFlexCaTO = new javax.swing.JCheckBox("TO");
+      cbIBKRFlexCaRS.setToolTipText("Reverse split / split");
+      cbIBKRFlexCaTC.setToolTipText("Ticker change / merger");
+      cbIBKRFlexCaIC.setToolTipText("CUSIP/ISIN change (identifier change)");
+      cbIBKRFlexCaTO.setToolTipText("Tender offer");
+
+      // Defaults: RS+TC on, IC+TO off
+      cbIBKRFlexCaRS.setSelected(true);
+      cbIBKRFlexCaTC.setSelected(true);
+      cbIBKRFlexCaIC.setSelected(false);
+      cbIBKRFlexCaTO.setSelected(false);
       cbIBKRFlexImportMode = new javax.swing.JComboBox<>(new String[] {
         "Obchody + transformace",
         "Pouze obchody",
@@ -1501,8 +1539,19 @@ public class ImportWindow extends javax.swing.JFrame {
       cbIBKRFlexIncludeCorporateActions.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
           markIbkrPreviewDirty("Nastavení Transformací změněno – náhled není aktuální, klikněte na Obnovit náhled");
+          applyIbkrImportModeToUi();
         }
       });
+
+      java.awt.event.ActionListener caTypeListener = new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          markIbkrPreviewDirty("Výběr typů transformací změněn – náhled není aktuální, klikněte na Obnovit náhled");
+        }
+      };
+      cbIBKRFlexCaRS.addActionListener(caTypeListener);
+      cbIBKRFlexCaTC.addActionListener(caTypeListener);
+      cbIBKRFlexCaIC.addActionListener(caTypeListener);
+      cbIBKRFlexCaTO.addActionListener(caTypeListener);
 
       cbIBKRFlexImportMode.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1518,6 +1567,11 @@ public class ImportWindow extends javax.swing.JFrame {
       pIBKRFlexButtons.add(bIBKRFlexRefreshPreview);
       pIBKRFlexButtons.add(cbIBKRFlexImportMode);
       pIBKRFlexButtons.add(cbIBKRFlexIncludeCorporateActions);
+      pIBKRFlexButtons.add(new javax.swing.JLabel("Typy:"));
+      pIBKRFlexButtons.add(cbIBKRFlexCaRS);
+      pIBKRFlexButtons.add(cbIBKRFlexCaTC);
+      pIBKRFlexButtons.add(cbIBKRFlexCaIC);
+      pIBKRFlexButtons.add(cbIBKRFlexCaTO);
       pIBKRFlexButtons.add(bIBKRFlexAssetFilter);
 
       applyIbkrImportModeToUi();
@@ -1722,6 +1776,7 @@ public class ImportWindow extends javax.swing.JFrame {
       IBKRFlexParser parser = new IBKRFlexParser();
       parser.setAllowedAssetClasses(getSelectedIbkrAssetClasses());
       parser.setIncludeCorporateActions(cbIBKRFlexIncludeCorporateActions == null || cbIBKRFlexIncludeCorporateActions.isSelected());
+      parser.setAllowedCorporateActionTypes(getSelectedIbkrCorporateActionTypes());
       int mode = getIbkrImportMode();
       parser.setIncludeTrades(mode != IBKR_MODE_TRANS_ONLY);
       if (mode == IBKR_MODE_TRADES_ONLY) {
