@@ -831,13 +831,17 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     // Group transactions by date and time to find TRANS operation patterns
     Map<String, List<Transaction>> transactionsByTime = new HashMap<>();
 
-    // Group transactions by timestamp only (not by ticker) to find related operations
+    // Group transactions by minute bucket (ignore seconds) to find related operations
     int transOperationCount = 0;
     for (Transaction tx : rows) {
       if (tx.getDirection() == Transaction.DIRECTION_TRANS_ADD ||
           tx.getDirection() == Transaction.DIRECTION_TRANS_SUB) {
 
-        String timeKey = String.valueOf(tx.getDate().getTime());  // Group by timestamp only
+        java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+        cal.setTime(tx.getDate());
+        cal.set(java.util.GregorianCalendar.SECOND, 0);
+        cal.set(java.util.GregorianCalendar.MILLISECOND, 0);
+        String timeKey = String.valueOf(cal.getTime().getTime()); // Group by minute bucket
         transactionsByTime.computeIfAbsent(timeKey, k -> new ArrayList<>()).add(tx);
         transOperationCount++;
 
