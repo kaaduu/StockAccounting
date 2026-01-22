@@ -525,22 +525,22 @@ public class ImportWindow extends javax.swing.JFrame {
       }
       toShift.sort(stableOrder);
 
-      // Keep base as-is (updates existing). Shift the rest by +1min, +2min, ...
+      // Keep base as-is (updates existing). Shift the rest by +1s, +2s, ...
       for (int i = 0; i < toShift.size(); i++) {
-        shiftTransactionByMinutes(toShift.get(i), i + 1);
+        shiftTransactionBySeconds(toShift.get(i), i + 1);
       }
     }
   }
 
-  private void shiftTransactionByMinutes(Transaction tx, int minutes) {
+  private void shiftTransactionBySeconds(Transaction tx, int seconds) {
     if (tx == null) return;
-    if (minutes <= 0) return;
+    if (seconds <= 0) return;
 
     java.util.Date d = tx.getDate();
     if (d != null) {
       java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
       cal.setTime(d);
-      cal.add(java.util.GregorianCalendar.MINUTE, minutes);
+      cal.add(java.util.GregorianCalendar.SECOND, seconds);
       tx.setDate(cal.getTime());
     }
 
@@ -548,12 +548,12 @@ public class ImportWindow extends javax.swing.JFrame {
     if (ex != null) {
       java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
       cal.setTime(ex);
-      cal.add(java.util.GregorianCalendar.MINUTE, minutes);
+      cal.add(java.util.GregorianCalendar.SECOND, seconds);
       tx.setExecutionDate(cal.getTime());
     }
 
     String note = tx.getNote();
-    String marker = "|TimeShift:+" + minutes + "m";
+    String marker = "|TimeShift:+" + seconds + "s";
     if (note == null || note.isEmpty()) {
       tx.setNote(marker.substring(1));
     } else if (!note.contains(marker)) {
