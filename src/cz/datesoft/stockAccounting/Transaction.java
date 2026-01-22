@@ -74,14 +74,13 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   String note;
   
   /**
-   * Clear seconds and miliseconds in the date
+   * Clear milliseconds in the date (keep seconds).
    */
   private static Date clearSMS(Date d)
   {
     GregorianCalendar cal = new GregorianCalendar();
     
     cal.setTime(d);
-    cal.set(GregorianCalendar.SECOND,0);
     cal.set(GregorianCalendar.MILLISECOND,0);
     
     return cal.getTime();
@@ -235,7 +234,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     else this.feeCurrency = feeCurrency.toUpperCase();
     
     this.market = market;
-    this.executionDate = executionDate;
+    this.executionDate = (executionDate == null) ? null : clearSMS(executionDate);
     this.note = note;
   }
   
@@ -251,6 +250,10 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     cal.setTime(date);
     
     //return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+cal.get(GregorianCalendar.MINUTE);
+    int sec = cal.get(GregorianCalendar.SECOND);
+    if (sec != 0) {
+      return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+String.format("%02d",cal.get(GregorianCalendar.MINUTE))+":"+String.format("%02d",sec);
+    }
     return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+String.format("%02d",cal.get(GregorianCalendar.MINUTE));
     
   }
@@ -261,6 +264,10 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
     cal.setTime(executionDate);
     
+    int sec = cal.get(GregorianCalendar.SECOND);
+    if (sec != 0) {
+      return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+String.format("%02d",cal.get(GregorianCalendar.MINUTE))+":"+String.format("%02d",sec);
+    }
     return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+String.format("%02d",cal.get(GregorianCalendar.MINUTE));
   }
 
@@ -520,7 +527,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   public void setMarket(String market)
   { this.market = market; }
   public void setExecutionDate(Date executionDate)
-  { this.executionDate = executionDate; }
+  { this.executionDate = (executionDate == null) ? null : clearSMS(executionDate); }
   public void setNote(String note)
   { this.note = note; }
   
@@ -762,6 +769,5 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   } 
 
 }
-
 
 
