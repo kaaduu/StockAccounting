@@ -32,6 +32,9 @@ Poznámka: Pro Interactive Brokers se používá společná složka `~/.stockacc
 - Oprava: doplněna chybějící knihovna `protobuf-java` pro IB TWS API (jinak padalo načítání pozic). Použita verze `4.33.4`.
 - Dokumentace: doplněn popis funkce porovnání pozic z TWS a potřebných závislostí.
 
+### Přidáno
+- Čas transakcí nyní podporuje přesnost na sekundy (import, ukládání/načítání, porovnání duplicit). Ukládá se zpětně kompatibilně: sekundy se do souboru zapisují jen pokud jsou nenulové.
+
 ## [Oprava IBKR Flex Web Service - implementace podle oficiální API dokumentace] - 2026-01-20
 
 ### Opraveno - Kritické chyby API integrace

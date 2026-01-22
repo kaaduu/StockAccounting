@@ -182,21 +182,33 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   /**
-   * Parse date from text to date object
+   * Parse date from text to date object.
+   *
+   * Supported formats:
+   * - dd.MM.yyyy HH:mm
+   * - dd.MM.yyyy HH:mm:ss
    */
   public static Date parseDate(String dateTxt) {
     GregorianCalendar cal = new GregorianCalendar();
-    String a[] = dateTxt.split("[\\. :]");
-
-    if (a.length != 5)
+    if (dateTxt == null) {
       return cal.getTime();
+    }
+
+    String a[] = dateTxt.split("[\\. :]");
+    if (a.length != 5 && a.length != 6) {
+      return cal.getTime();
+    }
 
     cal.set(GregorianCalendar.DAY_OF_MONTH, Integer.parseInt(a[0]));
     cal.set(GregorianCalendar.MONTH, Integer.parseInt(a[1]) - 1);
     cal.set(GregorianCalendar.YEAR, Integer.parseInt(a[2]));
     cal.set(GregorianCalendar.HOUR_OF_DAY, Integer.parseInt(a[3]));
     cal.set(GregorianCalendar.MINUTE, Integer.parseInt(a[4]));
-    cal.set(GregorianCalendar.SECOND, 0);
+    if (a.length == 6) {
+      cal.set(GregorianCalendar.SECOND, Integer.parseInt(a[5]));
+    } else {
+      cal.set(GregorianCalendar.SECOND, 0);
+    }
     cal.set(GregorianCalendar.MILLISECOND, 0);
 
     return cal.getTime();
@@ -1211,7 +1223,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   /**
-   * Compare dates for equality, ignoring seconds and milliseconds
+   * Compare dates for equality at second precision (milliseconds ignored).
    */
   private boolean datesEqual(Date d1, Date d2) {
     if (d1 == null && d2 == null) return true;
@@ -1223,10 +1235,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     cal1.setTime(d1);
     cal2.setTime(d2);
 
-    // Clear seconds and milliseconds for comparison
-    cal1.set(GregorianCalendar.SECOND, 0);
+    // Clear milliseconds for comparison
     cal1.set(GregorianCalendar.MILLISECOND, 0);
-    cal2.set(GregorianCalendar.SECOND, 0);
     cal2.set(GregorianCalendar.MILLISECOND, 0);
 
     return cal1.getTime().equals(cal2.getTime());

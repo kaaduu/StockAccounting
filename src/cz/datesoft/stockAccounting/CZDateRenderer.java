@@ -18,14 +18,16 @@ import java.text.SimpleDateFormat;
 public class CZDateRenderer extends javax.swing.table.DefaultTableCellRenderer
 {
   /**
-   * Formatter
+   * Formatters
    */
   private SimpleDateFormat _d2;
+  private SimpleDateFormat _d3;
 
   public CZDateRenderer()
   {
     // Initialize formatter
     _d2 = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+    _d3 = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
     setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
   }
 
@@ -35,7 +37,14 @@ public class CZDateRenderer extends javax.swing.table.DefaultTableCellRenderer
     
     if (value == null) super.setValue(null);
     else if (value.getClass().equals(java.util.Date.class)) {
-      super.setValue(_d2.format((java.util.Date)value));
+      java.util.Date d = (java.util.Date) value;
+      java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+      cal.setTime(d);
+      if (cal.get(java.util.GregorianCalendar.SECOND) != 0) {
+        super.setValue(_d3.format(d));
+      } else {
+        super.setValue(_d2.format(d));
+      }
     }
     else super.setValue(value);
   }  

@@ -185,14 +185,16 @@ public abstract class ImportBase
        cal.set(cal.MONTH,Integer.parseInt(a[1])-1);
        cal.set(cal.YEAR,Integer.parseInt(a[2]));
             
-       if (a.length >= 5) {
-         // Set time from string
-         cal.set(cal.HOUR_OF_DAY,Integer.parseInt(a[3]));
-         cal.set(cal.MINUTE,Integer.parseInt(a[4]));
-         if (a.length == 6) {
-           cal.set(cal.SECOND,Integer.parseInt(a[5]));
-         }
-       }
+        boolean hasSeconds = false;
+        if (a.length >= 5) {
+          // Set time from string
+          cal.set(cal.HOUR_OF_DAY,Integer.parseInt(a[3]));
+          cal.set(cal.MINUTE,Integer.parseInt(a[4]));
+          if (a.length == 6) {
+            cal.set(cal.SECOND,Integer.parseInt(a[5]));
+            hasSeconds = true;
+          }
+        }
        else {
          if (timeDate != null) {
            // Set time from timeDate
@@ -210,11 +212,13 @@ public abstract class ImportBase
          
        }
        
-       cal.set(cal.SECOND,0);
-       cal.set(cal.MILLISECOND,0);
-     }    
-     
-     return cal.getTime();
+        if (!hasSeconds) {
+          cal.set(cal.SECOND,0);
+        }
+        cal.set(cal.MILLISECOND,0);
+      }    
+      
+      return cal.getTime();
   }  
   
   /**
