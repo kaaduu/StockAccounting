@@ -2,6 +2,23 @@
  * IBKRFlexImportWindow.java
  *
  * UI window for IBKR Flex Query import with year checkboxes
+ * 
+ * @deprecated As of 2026-01-20, replaced by unified ImportWindow with "IBKR Flex API" format.
+ * 
+ * This standalone window is NO LONGER ACCESSIBLE from application menus.
+ * It is kept in the codebase for reference and potential future multi-year import feature.
+ * 
+ * RECOMMENDED WORKFLOW:
+ * - Current year import: Use "Soubor" → "Import od brokera" → "IBKR Flex API"
+ * - Historical year import: Temporarily change Query ID in Settings for each year
+ * 
+ * TECHNICAL DETAILS:
+ * - Multi-year import logic from this window could be integrated into ImportWindow later
+ * - Year checkbox UI pattern may be useful for future enhancements
+ * - IBKRFlexImporter backend still supports multi-year imports via importYears() method
+ * 
+ * @see ImportWindow for current IBKR import implementation
+ * @see IBKRFlexImporter for backend multi-year import support
  */
 
 package cz.datesoft.stockAccounting;
@@ -11,6 +28,7 @@ import java.awt.*;
 import java.time.LocalDate;
 import java.util.Vector;
 
+@Deprecated
 public class IBKRFlexImportWindow extends javax.swing.JDialog {
 
     private MainWindow mainWindow;

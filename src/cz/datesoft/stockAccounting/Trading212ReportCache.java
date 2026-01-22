@@ -22,8 +22,9 @@ import java.util.logging.Logger;
 public class Trading212ReportCache {
 
     private static final Logger logger = Logger.getLogger(Trading212ReportCache.class.getName());
-    private static final String CACHE_DIR = System.getProperty("user.home") + "/.trading212";
-    private static final String CACHE_FILE = CACHE_DIR + "/reports_cache.json";
+    private static final String LEGACY_CACHE_DIR = System.getProperty("user.home") + "/.trading212";
+    private static final String LEGACY_CACHE_FILE = LEGACY_CACHE_DIR + "/reports_cache.json";
+    private static final String CACHE_SUBPATH = "trading212/reports_cache.json";
     private static final int MAX_CACHE_ENTRIES = 50;
 
     private Map<Long, CachedReportStatus> reportCache = new HashMap<>();
@@ -95,9 +96,15 @@ public class Trading212ReportCache {
      */
     private void loadCacheFromDisk() {
         try {
-            Path cachePath = Paths.get(CACHE_FILE);
+            Path cachePath = Paths.get(Settings.getCacheBaseDir(), CACHE_SUBPATH);
             if (!Files.exists(cachePath)) {
-                return;
+                // Migration fallback: use legacy file if present
+                Path legacyPath = Paths.get(LEGACY_CACHE_FILE);
+                if (!Files.exists(legacyPath)) {
+                    return;
+                }
+                Files.createDirectories(cachePath.getParent());
+                Files.copy(legacyPath, cachePath);
             }
 
             String content = Files.readString(cachePath);
@@ -120,8 +127,8 @@ public class Trading212ReportCache {
     private synchronized void saveCacheToDisk() {
         try {
             // Create cache directory
-            Path cacheDir = Paths.get(CACHE_DIR);
-            Files.createDirectories(cacheDir);
+            Path cachePath = Paths.get(Settings.getCacheBaseDir(), CACHE_SUBPATH);
+            Files.createDirectories(cachePath.getParent());
 
             // Simple cache serialization
             // In production, this would create proper JSON
@@ -143,7 +150,7 @@ public class Trading212ReportCache {
             }
             sb.append("\n}");
 
-            Files.writeString(Paths.get(CACHE_FILE), sb.toString());
+            Files.writeString(cachePath, sb.toString());
 
         } catch (Exception e) {
             logger.warning("Failed to save report cache: " + e.getMessage());

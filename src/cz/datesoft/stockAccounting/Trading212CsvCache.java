@@ -26,6 +26,10 @@ public class Trading212CsvCache {
     private static final String CACHE_BASE_DIR = System.getProperty("user.home") + "/.trading212/csv_cache";
     private static final String METADATA_FILE = "metadata.json";
 
+    private static Path getUnifiedBaseDir() {
+        return Paths.get(Settings.getCacheBaseDir(), "trading212", "csv_cache");
+    }
+
     /**
      * Check if cached CSV exists for account and year
      */
@@ -67,6 +71,14 @@ public class Trading212CsvCache {
         // Write CSV file
         Path csvPath = getCsvPath(accountId, year);
         Files.writeString(csvPath, csvContent);
+
+        // Also archive into unified broker cache (human-friendly filename)
+        try {
+            CacheManager.archiveString("trading212", CacheManager.Source.API,
+                    "csv_single_" + sanitizeAccountId(accountId) + "_" + year, ".csv", csvContent);
+        } catch (Exception e) {
+            // Best effort
+        }
 
         // Update metadata
         updateMetadata(accountId, year, csvContent.length());
@@ -130,6 +142,10 @@ public class Trading212CsvCache {
         
         try {
             Path baseDir = Paths.get(CACHE_BASE_DIR);
+            // Prefer unified cache
+            if (Files.exists(getUnifiedBaseDir())) {
+                baseDir = getUnifiedBaseDir();
+            }
             if (!Files.exists(baseDir)) {
                 return accounts;
             }
@@ -244,11 +260,40 @@ public class Trading212CsvCache {
     // ========== Private Helper Methods ==========
 
     private Path getAccountDir(String accountId) {
+        // Prefer unified cache. If missing, fall back to legacy.
+        Path unified = getUnifiedBaseDir().resolve(sanitizeAccountId(accountId));
+        if (Files.exists(unified) || !Files.exists(Paths.get(CACHE_BASE_DIR))) {
+            return unified;
+        }
         return Paths.get(CACHE_BASE_DIR, sanitizeAccountId(accountId));
     }
 
     private Path getCsvPath(String accountId, int year) {
-        return getAccountDir(accountId).resolve(year + ".csv");
+        Path accountDir = getAccountDir(accountId);
+        Path candidate = accountDir.resolve(year + ".csv");
+        if (Files.exists(candidate)) {
+            return candidate;
+        }
+
+        // Migrate legacy cache file into unified cache on first access.
+        Path unifiedDir = getUnifiedBaseDir().resolve(sanitizeAccountId(accountId));
+        Path unified = unifiedDir.resolve(year + ".csv");
+        Path legacy = Paths.get(CACHE_BASE_DIR, sanitizeAccountId(accountId)).resolve(year + ".csv");
+
+        if (!Files.exists(unified) && Files.exists(legacy)) {
+            try {
+                Files.createDirectories(unifiedDir);
+                Files.copy(legacy, unified);
+                // Best-effort archive for debugging
+                CacheManager.archiveFile("trading212", CacheManager.Source.FILE,
+                        "legacy_csv_single_" + sanitizeAccountId(accountId) + "_" + year, legacy);
+                return unified;
+            } catch (Exception e) {
+                return legacy;
+            }
+        }
+
+        return unified;
     }
 
     private Path getMetadataPath(String accountId) {

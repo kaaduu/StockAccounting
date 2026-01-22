@@ -14,6 +14,17 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Tlačítko „Vybrat soubor…“ přímo v okně importu pro lokální souborové importy.
 - Výchozí filtr souborů podle formátu (např. `.tlg` pro IB TradeLog, `.csv` pro Fio/Revolut/T212, `.htm/.html` pro BrokerJet).
 
+### Opraveno
+- IBKR Flex: ošetřen vzácný případ, kdy více obchodů spadne do stejné minuty (aplikace ukládá čas pouze na minuty) a import je dříve mylně vyhodnotil jako duplicitu. Nově se jeden záznam aktualizuje a další se přidají jako nové řádky deterministicky.
+- Při tomto ošetření se zachovává existující `TxnID` v databázi (pokud je již vyplněn) a časový posun se aplikuje na „druhý“ obchod.
+
+### Přidáno
+- Sjednocená cache pro importy a API stahování pod `~/.stockaccounting/cache/<broker>/`.
+- Automatická migrace starých cache umístění (Trading 212 a IBKR Flex) do sjednocené cache.
+- Při importu z lokálních souborů se vybraný soubor zkopíruje do cache pro snadné opětovné použití a ladění.
+
+Poznámka: Pro Interactive Brokers se používá společná složka `~/.stockaccounting/cache/ib/` (TradeLog i Flex).
+
 ## [Oprava IBKR Flex Web Service - implementace podle oficiální API dokumentace] - 2026-01-20
 
 ### Opraveno - Kritické chyby API integrace

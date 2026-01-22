@@ -560,6 +560,10 @@ public class SettingsWindow extends javax.swing.JDialog {
     bCancel = new javax.swing.JButton();
     bOK = new javax.swing.JButton();
 
+    // System tab (app-level settings)
+    pSystem = new javax.swing.JPanel();
+    cbShowRowNumberColumn = new javax.swing.JCheckBox();
+
     jPanel1.setLayout(new java.awt.GridBagLayout());
 
     jLabel1.setText("P\u016fl roku je:");
@@ -614,7 +618,30 @@ public class SettingsWindow extends javax.swing.JDialog {
      gridBagConstraints.gridy = 2;
      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
      gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
-     jPanel1.add(cbShowMetadataColumns, gridBagConstraints);
+    jPanel1.add(cbShowMetadataColumns, gridBagConstraints);
+
+     // Build System tab (last)
+     pSystem.setLayout(new java.awt.GridBagLayout());
+     cbShowRowNumberColumn.setText("Zobrazovat sloupec # (pořadí řádku)");
+     cbShowRowNumberColumn.setToolTipText("Zobrazí nebo skryje pomocný sloupec s číslováním řádků v hlavní tabulce");
+     cbShowRowNumberColumn.setSelected(Settings.getShowRowNumberColumn());
+     cbShowRowNumberColumn.addActionListener(new java.awt.event.ActionListener() {
+       public void actionPerformed(java.awt.event.ActionEvent evt) {
+         cbShowRowNumberColumnActionPerformed(evt);
+       }
+     });
+     gridBagConstraints = new java.awt.GridBagConstraints();
+     gridBagConstraints.gridx = 0;
+     gridBagConstraints.gridy = 0;
+     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+     pSystem.add(cbShowRowNumberColumn, gridBagConstraints);
+
+     gridBagConstraints = new java.awt.GridBagConstraints();
+     gridBagConstraints.gridx = 0;
+     gridBagConstraints.gridy = 1;
+     gridBagConstraints.weighty = 1.0;
+     pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
 
      gridBagConstraints = new java.awt.GridBagConstraints();
      gridBagConstraints.gridy = 3;
@@ -1629,6 +1656,21 @@ public class SettingsWindow extends javax.swing.JDialog {
     gbcTrading212.weightx = 1.0;
     pTrading212.add(tfTrading212ApiKey, gbcTrading212);
 
+    // Copy API Key button
+    javax.swing.JButton btnCopyApiKey = new javax.swing.JButton("📋");
+    btnCopyApiKey.setToolTipText("Zkopírovat API Key do schránky");
+    btnCopyApiKey.setPreferredSize(new java.awt.Dimension(35, 25));
+    btnCopyApiKey.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            copyToClipboard(tfTrading212ApiKey.getText(), "Trading 212 API Key");
+        }
+    });
+    gbcTrading212.gridx = 2;
+    gbcTrading212.gridy = 0;
+    gbcTrading212.fill = java.awt.GridBagConstraints.NONE;
+    gbcTrading212.weightx = 0.0;
+    pTrading212.add(btnCopyApiKey, gbcTrading212);
+
     // API Secret label and field
     javax.swing.JLabel lblApiSecret = new javax.swing.JLabel();
     lblApiSecret.setText("Trading 212 API Secret:");
@@ -1645,6 +1687,21 @@ public class SettingsWindow extends javax.swing.JDialog {
     gbcTrading212.fill = java.awt.GridBagConstraints.HORIZONTAL;
     gbcTrading212.weightx = 1.0;
     pTrading212.add(tfTrading212ApiSecret, gbcTrading212);
+
+    // Copy API Secret button
+    javax.swing.JButton btnCopyApiSecret = new javax.swing.JButton("📋");
+    btnCopyApiSecret.setToolTipText("Zkopírovat API Secret do schránky");
+    btnCopyApiSecret.setPreferredSize(new java.awt.Dimension(35, 25));
+    btnCopyApiSecret.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            copyToClipboard(new String(tfTrading212ApiSecret.getPassword()), "Trading 212 API Secret");
+        }
+    });
+    gbcTrading212.gridx = 2;
+    gbcTrading212.gridy = 1;
+    gbcTrading212.fill = java.awt.GridBagConstraints.NONE;
+    gbcTrading212.weightx = 0.0;
+    pTrading212.add(btnCopyApiSecret, gbcTrading212);
 
     // Demo mode checkbox
     cbTrading212Demo = new javax.swing.JCheckBox();
@@ -1718,6 +1775,21 @@ public class SettingsWindow extends javax.swing.JDialog {
     tfIbkrQueryId.setPreferredSize(new java.awt.Dimension(300, 25));
     pIbkrFlex.add(tfIbkrQueryId, gbcIbkrFlex);
 
+    // Copy Query ID button
+    javax.swing.JButton btnCopyQueryId = new javax.swing.JButton("📋");
+    btnCopyQueryId.setToolTipText("Zkopírovat Query ID do schránky");
+    btnCopyQueryId.setPreferredSize(new java.awt.Dimension(35, 25));
+    btnCopyQueryId.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            copyToClipboard(tfIbkrQueryId.getText(), "IBKR Query ID");
+        }
+    });
+    gbcIbkrFlex.gridx = 2;
+    gbcIbkrFlex.gridy = 0;
+    gbcIbkrFlex.fill = java.awt.GridBagConstraints.NONE;
+    gbcIbkrFlex.weightx = 0.0;
+    pIbkrFlex.add(btnCopyQueryId, gbcIbkrFlex);
+
     // IBKR Flex Token field
     javax.swing.JLabel lblIbkrFlexToken = new javax.swing.JLabel("IBKR Flex Token:");
     tfIbkrFlexToken = new javax.swing.JPasswordField(40);
@@ -1738,6 +1810,21 @@ public class SettingsWindow extends javax.swing.JDialog {
     tfIbkrFlexToken.setPreferredSize(new java.awt.Dimension(300, 25));
     pIbkrFlex.add(tfIbkrFlexToken, gbcIbkrFlex);
 
+    // Copy Flex Token button
+    javax.swing.JButton btnCopyFlexToken = new javax.swing.JButton("📋");
+    btnCopyFlexToken.setToolTipText("Zkopírovat Flex Token do schránky");
+    btnCopyFlexToken.setPreferredSize(new java.awt.Dimension(35, 25));
+    btnCopyFlexToken.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            copyToClipboard(new String(tfIbkrFlexToken.getPassword()), "IBKR Flex Token");
+        }
+    });
+    gbcIbkrFlex.gridx = 2;
+    gbcIbkrFlex.gridy = 1;
+    gbcIbkrFlex.fill = java.awt.GridBagConstraints.NONE;
+    gbcIbkrFlex.weightx = 0.0;
+    pIbkrFlex.add(btnCopyFlexToken, gbcIbkrFlex);
+
     // Test connection button for IBKR
     javax.swing.JButton bTestIbkrConnection = new javax.swing.JButton();
     bTestIbkrConnection.setText("Otestovat připojení");
@@ -1754,14 +1841,70 @@ public class SettingsWindow extends javax.swing.JDialog {
     gbcIbkrFlex.insets = new java.awt.Insets(15, 5, 5, 5);
     pIbkrFlex.add(bTestIbkrConnection, gbcIbkrFlex);
 
+    // IBKR TWS API settings
+    javax.swing.JLabel lblTwsHost = new javax.swing.JLabel("TWS Host:");
+    tfTwsHost = new javax.swing.JTextField(30);
+    tfTwsHost.setText(Settings.getTwsHost());
+    gbcIbkrFlex.gridx = 0;
+    gbcIbkrFlex.gridy = 3;
+    gbcIbkrFlex.gridwidth = 1;
+    gbcIbkrFlex.anchor = java.awt.GridBagConstraints.WEST;
+    gbcIbkrFlex.insets = new java.awt.Insets(15, 5, 5, 5);
+    pIbkrFlex.add(lblTwsHost, gbcIbkrFlex);
+
+    gbcIbkrFlex.gridx = 1;
+    gbcIbkrFlex.gridy = 3;
+    gbcIbkrFlex.gridwidth = 1;
+    gbcIbkrFlex.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcIbkrFlex.weightx = 1.0;
+    tfTwsHost.setPreferredSize(new java.awt.Dimension(300, 25));
+    pIbkrFlex.add(tfTwsHost, gbcIbkrFlex);
+
+    javax.swing.JLabel lblTwsPort = new javax.swing.JLabel("TWS Port:");
+    tfTwsPort = new javax.swing.JTextField(10);
+    tfTwsPort.setText(String.valueOf(Settings.getTwsPort()));
+    gbcIbkrFlex.gridx = 0;
+    gbcIbkrFlex.gridy = 4;
+    gbcIbkrFlex.gridwidth = 1;
+    gbcIbkrFlex.fill = java.awt.GridBagConstraints.NONE;
+    gbcIbkrFlex.weightx = 0.0;
+    gbcIbkrFlex.insets = new java.awt.Insets(5, 5, 5, 5);
+    pIbkrFlex.add(lblTwsPort, gbcIbkrFlex);
+
+    gbcIbkrFlex.gridx = 1;
+    gbcIbkrFlex.gridy = 4;
+    gbcIbkrFlex.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcIbkrFlex.weightx = 1.0;
+    tfTwsPort.setPreferredSize(new java.awt.Dimension(120, 25));
+    pIbkrFlex.add(tfTwsPort, gbcIbkrFlex);
+
+    javax.swing.JLabel lblTwsClientId = new javax.swing.JLabel("TWS ClientId:");
+    tfTwsClientId = new javax.swing.JTextField(10);
+    tfTwsClientId.setText(String.valueOf(Settings.getTwsClientId()));
+    gbcIbkrFlex.gridx = 0;
+    gbcIbkrFlex.gridy = 5;
+    gbcIbkrFlex.fill = java.awt.GridBagConstraints.NONE;
+    gbcIbkrFlex.weightx = 0.0;
+    gbcIbkrFlex.insets = new java.awt.Insets(5, 5, 5, 5);
+    pIbkrFlex.add(lblTwsClientId, gbcIbkrFlex);
+
+    gbcIbkrFlex.gridx = 1;
+    gbcIbkrFlex.gridy = 5;
+    gbcIbkrFlex.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbcIbkrFlex.weightx = 1.0;
+    tfTwsClientId.setPreferredSize(new java.awt.Dimension(120, 25));
+    pIbkrFlex.add(tfTwsClientId, gbcIbkrFlex);
+
     jTabbedPane1.addTab("IBKR Flex", pIbkrFlex);
+
+    // System tab should be last
+    jTabbedPane1.addTab("System", pSystem);
 
     // Populate table
     refreshDailyRatesTable();
 
     // Load Trading 212 settings
     loadTrading212Settings();
-    loadIbkrFlexSettings();
     loadIbkrFlexSettings();
   }
 
@@ -1778,27 +1921,56 @@ public class SettingsWindow extends javax.swing.JDialog {
      Settings.save();
    }
 
-   private void loadIbkrFlexSettings() {
-       if (tfIbkrQueryId != null) {
-           tfIbkrQueryId.setText(Settings.getIbkrFlexQueryId());
-       }
-       if (tfIbkrFlexToken != null) {
-           String savedToken = Settings.getIbkrFlexToken();
-           if (savedToken != null && !savedToken.isEmpty()) {
-               tfIbkrFlexToken.setText(savedToken);
-           }
-       }
-   }
+    private void loadIbkrFlexSettings() {
+        if (tfIbkrQueryId != null) {
+            tfIbkrQueryId.setText(Settings.getIbkrFlexQueryId());
+        }
+        if (tfIbkrFlexToken != null) {
+            String savedToken = Settings.getIbkrFlexToken();
+            if (savedToken != null && !savedToken.isEmpty()) {
+                tfIbkrFlexToken.setText(savedToken);
+            }
+        }
 
-   private void saveIbkrFlexSettings() {
-       if (tfIbkrQueryId != null) {
-           Settings.setIbkrFlexQueryId(tfIbkrQueryId.getText().trim());
-       }
-       if (tfIbkrFlexToken != null) {
-           Settings.setIbkrFlexToken(new String(tfIbkrFlexToken.getPassword()).trim());
-       }
-       Settings.save();
+        if (tfTwsHost != null) {
+            tfTwsHost.setText(Settings.getTwsHost());
+        }
+        if (tfTwsPort != null) {
+            tfTwsPort.setText(String.valueOf(Settings.getTwsPort()));
+        }
+        if (tfTwsClientId != null) {
+            tfTwsClientId.setText(String.valueOf(Settings.getTwsClientId()));
+        }
     }
+
+    private void saveIbkrFlexSettings() {
+        if (tfIbkrQueryId != null) {
+            Settings.setIbkrFlexQueryId(tfIbkrQueryId.getText().trim());
+        }
+        if (tfIbkrFlexToken != null) {
+            Settings.setIbkrFlexToken(new String(tfIbkrFlexToken.getPassword()).trim());
+        }
+
+        if (tfTwsHost != null) {
+            Settings.setTwsHost(tfTwsHost.getText().trim());
+        }
+        if (tfTwsPort != null) {
+            try {
+                Settings.setTwsPort(Integer.parseInt(tfTwsPort.getText().trim()));
+            } catch (Exception e) {
+                // Keep previous/default value
+            }
+        }
+        if (tfTwsClientId != null) {
+            try {
+                Settings.setTwsClientId(Integer.parseInt(tfTwsClientId.getText().trim()));
+            } catch (Exception e) {
+                // Keep previous/default value
+            }
+        }
+
+        Settings.save();
+     }
 
     private void cbShowMetadataColumnsActionPerformed(java.awt.event.ActionEvent evt) {
      boolean showColumns = cbShowMetadataColumns.isSelected();
@@ -1809,6 +1981,16 @@ public class SettingsWindow extends javax.swing.JDialog {
        mainWindow.updateColumnVisibility();
      }
    }
+
+    private void cbShowRowNumberColumnActionPerformed(java.awt.event.ActionEvent evt) {
+      boolean show = cbShowRowNumberColumn.isSelected();
+      Settings.setShowRowNumberColumn(show);
+
+      // Notify main window to rebuild table structure
+      if (mainWindow != null) {
+        mainWindow.updateColumnVisibility();
+      }
+    }
 
    private void bTestTrading212ConnectionActionPerformed(java.awt.event.ActionEvent evt) {
     String apiKey = tfTrading212ApiKey.getText().trim();
@@ -2219,7 +2401,57 @@ public class SettingsWindow extends javax.swing.JDialog {
   // IBKR Flex components
   private javax.swing.JTextField tfIbkrQueryId;
   private javax.swing.JPasswordField tfIbkrFlexToken;
+
+  // IBKR TWS API components
+  private javax.swing.JTextField tfTwsHost;
+  private javax.swing.JTextField tfTwsPort;
+  private javax.swing.JTextField tfTwsClientId;
   private javax.swing.JButton bTestTrading212Connection;
+
+  // System tab components
+  private javax.swing.JPanel pSystem;
+  private javax.swing.JCheckBox cbShowRowNumberColumn;
    // End of variables declaration//GEN-END:variables
+
+  /**
+   * Copy text to system clipboard and show confirmation message.
+   * 
+   * @param text The text to copy to clipboard
+   * @param fieldName Name of the field being copied (for confirmation message)
+   */
+  private void copyToClipboard(String text, String fieldName) {
+    if (text == null || text.trim().isEmpty()) {
+      javax.swing.JOptionPane.showMessageDialog(
+        this,
+        "Pole je prázdné - není co zkopírovat.",
+        "Informace",
+        javax.swing.JOptionPane.INFORMATION_MESSAGE
+      );
+      return;
+    }
+    
+    try {
+      java.awt.datatransfer.StringSelection stringSelection = 
+        new java.awt.datatransfer.StringSelection(text);
+      java.awt.Toolkit.getDefaultToolkit()
+        .getSystemClipboard()
+        .setContents(stringSelection, null);
+      
+      // Show brief confirmation message
+      javax.swing.JOptionPane.showMessageDialog(
+        this,
+        fieldName + " byl zkopírován do schránky.",
+        "Zkopírováno",
+        javax.swing.JOptionPane.INFORMATION_MESSAGE
+      );
+    } catch (Exception ex) {
+      javax.swing.JOptionPane.showMessageDialog(
+        this,
+        "Nepodařilo se zkopírovat do schránky: " + ex.getMessage(),
+        "Chyba",
+        javax.swing.JOptionPane.ERROR_MESSAGE
+      );
+    }
+  }
 
 }

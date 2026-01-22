@@ -179,6 +179,11 @@ public class Settings {
   private static boolean showMetadataColumns = true;
 
   /**
+   * Show row number column (#) in main table
+   */
+  private static boolean showRowNumberColumn = true;
+
+  /**
    * Daily exchange rates map (currency|YYYY-MM-DD => ratio map)
    */
   private static HashMap<String, Double> dailyRates;
@@ -343,9 +348,86 @@ public class Settings {
      trading212ImportState = state;
    }
 
-   // IBKR Flex settings
-   private static String ibkrFlexQueryId = null;
-   private static String ibkrFlexToken = null;
+  // IBKR Flex settings
+  private static String ibkrFlexQueryId = null;
+  private static String ibkrFlexToken = null;
+
+  // Unified cache base directory
+  private static String cacheBaseDir = null;
+
+  // IBKR TWS API settings
+  private static String twsHost = null;
+  private static Integer twsPort = null;
+  private static Integer twsClientId = null;
+
+  private static String defaultCacheBaseDir() {
+    return System.getProperty("user.home") + "/.stockaccounting/cache";
+  }
+
+  public static String getCacheBaseDir() {
+    if (cacheBaseDir == null || cacheBaseDir.trim().isEmpty()) {
+      // Prefer persisted preferences key if present; otherwise default.
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      cacheBaseDir = p.get("cacheBaseDir", defaultCacheBaseDir());
+    }
+    return cacheBaseDir;
+  }
+
+  public static void setCacheBaseDir(String value) {
+    cacheBaseDir = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    if (value != null && !value.trim().isEmpty()) {
+      p.put("cacheBaseDir", value.trim());
+    } else {
+      p.remove("cacheBaseDir");
+    }
+  }
+
+  public static String getTwsHost() {
+    if (twsHost == null || twsHost.trim().isEmpty()) {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      twsHost = p.get("twsHost", "127.0.0.1");
+    }
+    return twsHost;
+  }
+
+  public static void setTwsHost(String value) {
+    twsHost = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    if (value != null && !value.trim().isEmpty()) {
+      p.put("twsHost", value.trim());
+    } else {
+      p.remove("twsHost");
+    }
+  }
+
+  public static int getTwsPort() {
+    if (twsPort == null) {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      twsPort = p.getInt("twsPort", 7496);
+    }
+    return twsPort;
+  }
+
+  public static void setTwsPort(int value) {
+    twsPort = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.putInt("twsPort", value);
+  }
+
+  public static int getTwsClientId() {
+    if (twsClientId == null) {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      twsClientId = p.getInt("twsClientId", 101);
+    }
+    return twsClientId;
+  }
+
+  public static void setTwsClientId(int value) {
+    twsClientId = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.putInt("twsClientId", value);
+  }
 
    public static String getIbkrFlexQueryId() {
      if (ibkrFlexQueryId == null) {
@@ -469,6 +551,14 @@ public class Settings {
    */
   public static void setShowMetadataColumns(boolean value) {
     showMetadataColumns = value;
+  }
+
+  public static boolean getShowRowNumberColumn() {
+    return showRowNumberColumn;
+  }
+
+  public static void setShowRowNumberColumn(boolean value) {
+    showRowNumberColumn = value;
   }
 
   /**
@@ -670,6 +760,9 @@ public class Settings {
     /* Show metadata columns */
     showMetadataColumns = p.getBoolean("showMetadataColumns", true);
 
+    /* Show row number column */
+    showRowNumberColumn = p.getBoolean("showRowNumberColumn", true);
+
     /* Trading 212 API settings */
     trading212ApiKey = p.get("trading212ApiKey", null);
     trading212ApiSecret = p.get("trading212ApiSecret", null);
@@ -741,6 +834,9 @@ public class Settings {
 
     // Show metadata columns
     p.putBoolean("showMetadataColumns", showMetadataColumns);
+
+    // Show row number column
+    p.putBoolean("showRowNumberColumn", showRowNumberColumn);
 
     // Trading 212 API settings
     if (trading212ApiKey != null) {

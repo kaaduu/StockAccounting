@@ -24,6 +24,91 @@ import java.util.HashMap;
  * @author lemming
  */
 public class Stocks {
+  // Floating point normalization for holdings
+  private static final double SNAP_TO_INTEGER_EPS = 1e-6;
+  // Snap very small residual holdings to zero (floating noise).
+  // Keep this well below real fractional-share precision.
+  private static final double SNAP_TO_ZERO_EPS = 1e-8;
+
+  // Corporate actions and fractional shares are typically reported to 4 decimals.
+  private static final int AMOUNT_SCALE_DEFAULT = 4;
+
+  private static double snapAmount(double v) {
+    if (Math.abs(v) < SNAP_TO_ZERO_EPS) {
+      return 0.0;
+    }
+    double r = Math.rint(v); // nearest integer (ties to even)
+    if (Math.abs(v - r) < SNAP_TO_INTEGER_EPS) {
+      return r;
+    }
+    return v;
+  }
+
+  private static double roundAmount(double v, int scale) {
+    return java.math.BigDecimal.valueOf(v)
+        .setScale(scale, java.math.RoundingMode.HALF_UP)
+        .doubleValue();
+  }
+
+  private static void quantizeFragmentsToScale(StockInfo info, int scale) {
+    if (info == null || info.fragments == null || info.fragments.isEmpty()) return;
+
+    for (StockFragment f : info.fragments) {
+      double oldAmount = f.amount;
+      double newAmount = snapAmount(roundAmount(oldAmount, scale));
+
+      if (newAmount != 0.0 && oldAmount != 0.0) {
+        // Keep the original amount mapping stable: original = current * oamRatio
+        f.oamRatio *= oldAmount / newAmount;
+      }
+
+      f.amount = newAmount;
+    }
+  }
+
+  private static boolean isIbkrLfTransaction(Transaction tx) {
+    if (tx == null) return false;
+    String note = tx.getNote();
+    if (note == null) return false;
+    // IBKR Flex/TradeLog uses Code:LF for cash-in-lieu fractional disposal.
+    return note.contains("Code:LF") || note.contains("|Code:LF") || note.contains("Code=LF");
+  }
+
+  // Cash-in-lieu notes are informational; final post-action amount is given by TRANS_ADD.
+
+  private static void reconcileHoldingsToTarget(StockInfo info, double targetAmount) {
+    if (info == null) return;
+    // Normalize to IBKR-like precision when reconciling transformation totals.
+    double target = roundAmount(targetAmount, AMOUNT_SCALE_DEFAULT);
+    double actual = roundAmount(info.getAmountD(), AMOUNT_SCALE_DEFAULT);
+    double delta = roundAmount(target - actual, AMOUNT_SCALE_DEFAULT);
+
+    if (info.fragments == null || info.fragments.isEmpty()) {
+      return;
+    }
+
+    if (Math.abs(delta) < SNAP_TO_ZERO_EPS) {
+      return;
+    }
+
+    // Adjust fragment amounts to match declared post-action amount.
+    // Keep FIFO distortion minimal: apply correction to the last (newest) fragment.
+    StockFragment last = info.fragments.lastElement();
+    double a = last.amount;
+    double newAmount = snapAmount(roundAmount(a + delta, AMOUNT_SCALE_DEFAULT));
+    if (newAmount != 0.0 && a != 0.0) {
+      last.oamRatio *= a / newAmount;
+    }
+    last.amount = newAmount;
+
+    // Final snap to stabilize near-zero / near-integer
+    for (StockFragment f : info.fragments) {
+      f.amount = snapAmount(roundAmount(f.amount, AMOUNT_SCALE_DEFAULT));
+    }
+  }
+
+  // Note: we intentionally do not derive split ratio from note.
+  // For correctness, StockAccounting treats TRANS_ADD amount as source of truth.
   /**
    * Security type
    */
@@ -253,13 +338,13 @@ public class Stocks {
      */
     public void applyStockSplit(StockSplit split) {
       // Change amount
-      amount *= split.getRatio();
+      amount = snapAmount(amount * split.getRatio());
       oamRatio /= split.getRatio();
 
       // Check if we can round amount - to avoid fractioning errors
       double a = Math.round(amount);
       if (Math.abs(a - amount) < 0.001)
-        amount = a;
+        amount = snapAmount(a);
 
       // Record split
       splits.add(split);
@@ -361,7 +446,7 @@ public class Stocks {
       } else {
         double res = ((double) Math.round(fee * Math.abs(damount / amount) * 100)) / 100;
 
-        amount += damount;
+        amount = snapAmount(amount + damount);
         fee -= res;
 
         if (fee < 0)
@@ -675,7 +760,7 @@ public class Stocks {
         amount += f.getAmount();
       }
 
-      return amount;
+      return snapAmount(amount);
     }
 
     /**
@@ -807,6 +892,12 @@ public class Stocks {
         i.next().applyStockSplit(split);
       }
 
+      // Normalize floating point noise after split
+      for (StockFragment f : fragments) {
+        f.amount = snapAmount(f.amount);
+        f.originalAmount = snapAmount(f.originalAmount);
+      }
+
       // Check if we got integer number of stock (in all fragments together - one
       // fragment CAN contain a fragment of a stock)
       /*
@@ -887,6 +978,19 @@ public class Stocks {
       if (tx.getDate().compareTo(tx1.getDate()) != 0)
         finishTransformations(); // Another date - finish
       else {
+        // Backward-compatible handling for multiple transformation pairs at the same timestamp:
+        // if a 3rd transformation arrives for the same exact time, finish the current pair
+        // and start a new pair instead of throwing.
+        if (trans.size() == 2) {
+          finishTransformations();
+          // After finishing, treat current transaction as start of a new transformation pair.
+          if ((tx.getDirection() == Transaction.DIRECTION_TRANS_ADD)
+              || (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB)) {
+            trans.add(tx);
+            return null;
+          }
+        }
+
         if (tx.getDirection() == tx1.getDirection()) {
           throw new TradingException("Ticker: " + tx.getTicker() + ", datum: " + tx.getDate()
               + ", dvě transformace ve stejný čas jsou stejného typu!");
@@ -935,6 +1039,11 @@ public class Stocks {
           "Ticker: " + tx.getTicker() + ", datum: " + tx.getDate() + " neznámý typ transakce; interní chyba?");
     }
 
+    // IBKR fractional disposal: keep share amounts aligned with 4-decimal reporting.
+    if (isIbkrLfTransaction(tx)) {
+      amount = roundAmount(amount, AMOUNT_SCALE_DEFAULT);
+    }
+
     // Determine type
     SecType type = SecType.STOCK;
 
@@ -970,6 +1079,14 @@ public class Stocks {
 
     StockTrade[] res = info.applyTrade(txDate, tx.getDate(), type, amount, price, fee, tx.getPriceCurrency(),
         tx.getFeeCurrency(), tx.market);
+
+    // For IBKR LF (cash-in-lieu fractional disposal), keep holdings stable to the same
+    // 4-decimal domain as the reported transaction.
+    if (isIbkrLfTransaction(tx)) {
+      quantizeFragmentsToScale(info, AMOUNT_SCALE_DEFAULT);
+      // Align total to 4-decimal domain to remove binary float residue.
+      reconcileHoldingsToTarget(info, roundAmount(info.getAmountD(), AMOUNT_SCALE_DEFAULT));
+    }
 
     // Check if we are out of this stock
     if (info.getAmountD() == 0) {
@@ -1029,9 +1146,27 @@ public class Stocks {
     double am2 = tx2.getAmount().doubleValue();
     if (am1 != am2) {
       // Split or reverse split
-      Stocks.StockSplit split = new Stocks.StockSplit(tx1.getDate(), am2 / am1);
+      // Use the declared before/after amounts as the authoritative source of truth.
+      // Applying a derived ratio (from note or double division) can introduce drift.
+      double ratio = am2 / am1;
+      Stocks.StockSplit split = new Stocks.StockSplit(tx1.getDate(), ratio);
 
       info.applyStockSplit(split);
+
+      // IBKR and similar sources represent post-corporate-action quantities in limited
+      // precision (typically 4 decimals). Quantize fragments first, then reconcile the
+      // total to the declared TRANS_ADD amount.
+      quantizeFragmentsToScale(info, AMOUNT_SCALE_DEFAULT);
+
+      // Force holdings to exactly match the declared TRANS_ADD amount.
+      // This eliminates recurring fractional residues (1/9, 2/3, 8/9, etc.)
+      // and keeps later LF/cash actions consistent.
+      reconcileHoldingsToTarget(info, am2);
+    }
+
+    // If holdings are now zero, remove the ticker entry so it doesn't show in Stav uctu.
+    if (info.getAmountD() == 0) {
+      infos.remove(info.getTicker());
     }
 
     trans.clear();

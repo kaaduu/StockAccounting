@@ -260,6 +260,38 @@ public class ImportWindow extends javax.swing.JFrame {
     Settings.setImportDirectory(dialog.getDirectory());
     Settings.save();
 
+    // Archive selected local file into unified cache for reproducibility.
+    try {
+      String brokerKey = "import";
+      String prefix = "local";
+      if (formatIndex == 1) {
+        brokerKey = "fio";
+        prefix = "fio";
+      } else if (formatIndex == 2) {
+        brokerKey = "brokerjet";
+        prefix = "brokerjet";
+      } else if (formatIndex == 3) {
+        brokerKey = "ib";
+        prefix = "ib_tradelog";
+      } else if (formatIndex == 4) {
+        brokerKey = "ib";
+        prefix = "ib_flexquery_legacy";
+      } else if (formatIndex == 5 || formatIndex == 6) {
+        brokerKey = "trading212";
+        prefix = "t212_csv";
+      } else if (formatIndex == 7) {
+        brokerKey = "revolut";
+        prefix = "revolut_csv";
+      }
+
+      java.nio.file.Path cached = CacheManager.archiveFile(brokerKey, CacheManager.Source.FILE,
+          prefix + "_" + currentFile.getName(), currentFile.toPath());
+      // Use cached copy for import.
+      currentFile = cached.toFile();
+    } catch (Exception e) {
+      // Best effort
+    }
+
     updateSelectedFileLabel();
 
     // Refresh preview immediately after selecting the file.
@@ -341,6 +373,10 @@ public class ImportWindow extends javax.swing.JFrame {
 
       clearPreview();
 
+      // Disambiguate rare collisions caused by minute-level timestamp precision.
+      // This keeps IBKR Flex re-import stable: update one existing row, insert the other(s).
+      disambiguateIbkrDuplicateCollisions(mainWindow.getTransactionDatabase(), parsedTransactions);
+
       Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase().filterDuplicates(parsedTransactions);
       int duplicatesFiltered = parsedTransactions.size() - filteredTransactions.size();
 
@@ -417,6 +453,112 @@ public class ImportWindow extends javax.swing.JFrame {
     }
 
     return res;
+  }
+
+  private static String nullToEmpty(String s) {
+    return s == null ? "" : s;
+  }
+
+  /**
+   * IBKR Flex can contain multiple consolidated trades within the same minute.
+   * StockAccounting stores timestamps only to minute precision (seconds are cleared),
+   * so two different trades can become indistinguishable and be treated as duplicates.
+   *
+   * When multiple IBKR candidates match the same existing transaction, keep one as
+   * a true duplicate (to update the existing row) and shift the others by +N minutes
+   * so they can be imported as separate rows.
+   *
+   * This is deterministic (stable on re-import) because ordering is based on TxnID.
+   */
+  private void disambiguateIbkrDuplicateCollisions(TransactionSet db, Vector<Transaction> candidates) {
+    if (db == null || candidates == null || candidates.isEmpty()) return;
+
+    java.util.Map<Integer, Transaction> existingBySerial = new java.util.HashMap<>();
+    java.util.Map<Integer, java.util.List<Transaction>> matchesBySerial = new java.util.HashMap<>();
+
+    for (Transaction c : candidates) {
+      if (c == null) continue;
+      if (!"IB".equalsIgnoreCase(c.getBroker())) continue;
+
+      Transaction existing = db.findDuplicateTransaction(c);
+      if (existing == null) continue;
+
+      existingBySerial.putIfAbsent(existing.getSerial(), existing);
+      matchesBySerial.computeIfAbsent(existing.getSerial(), k -> new java.util.ArrayList<>()).add(c);
+    }
+
+    for (java.util.Map.Entry<Integer, java.util.List<Transaction>> e : matchesBySerial.entrySet()) {
+      java.util.List<Transaction> group = e.getValue();
+      if (group == null || group.size() <= 1) continue;
+
+      Transaction existing = existingBySerial.get(e.getKey());
+      String existingTxnId = existing != null ? nullToEmpty(existing.getTxnId()) : "";
+
+      Transaction base = null;
+      if (!existingTxnId.isEmpty()) {
+        for (Transaction t : group) {
+          if (existingTxnId.equals(nullToEmpty(t.getTxnId()))) {
+            base = t;
+            break;
+          }
+        }
+      }
+
+      // Deterministic ordering for shifting.
+      java.util.Comparator<Transaction> stableOrder = java.util.Comparator
+          .comparing((Transaction t) -> nullToEmpty(t.getTxnId()))
+          .thenComparing((Transaction t) -> t.getExecutionDate(), java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+          .thenComparing((Transaction t) -> t.getPrice(), java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+          .thenComparing((Transaction t) -> Math.abs(t.getAmount() == null ? 0.0 : t.getAmount()));
+
+      if (base == null) {
+        // No existing TxnID match (old TradeLog rows), fall back to stable ordering.
+        group.sort(stableOrder);
+        base = group.get(0);
+      }
+
+      java.util.List<Transaction> toShift = new java.util.ArrayList<>();
+      for (Transaction t : group) {
+        if (t != base) {
+          toShift.add(t);
+        }
+      }
+      toShift.sort(stableOrder);
+
+      // Keep base as-is (updates existing). Shift the rest by +1min, +2min, ...
+      for (int i = 0; i < toShift.size(); i++) {
+        shiftTransactionByMinutes(toShift.get(i), i + 1);
+      }
+    }
+  }
+
+  private void shiftTransactionByMinutes(Transaction tx, int minutes) {
+    if (tx == null) return;
+    if (minutes <= 0) return;
+
+    java.util.Date d = tx.getDate();
+    if (d != null) {
+      java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+      cal.setTime(d);
+      cal.add(java.util.GregorianCalendar.MINUTE, minutes);
+      tx.setDate(cal.getTime());
+    }
+
+    java.util.Date ex = tx.getExecutionDate();
+    if (ex != null) {
+      java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+      cal.setTime(ex);
+      cal.add(java.util.GregorianCalendar.MINUTE, minutes);
+      tx.setExecutionDate(cal.getTime());
+    }
+
+    String note = tx.getNote();
+    String marker = "|TimeShift:+" + minutes + "m";
+    if (note == null || note.isEmpty()) {
+      tx.setNote(marker.substring(1));
+    } else if (!note.contains(marker)) {
+      tx.setNote(note + marker);
+    }
   }
 
   private int getIbkrImportMode() {
@@ -1550,6 +1692,15 @@ public class ImportWindow extends javax.swing.JFrame {
     java.io.File selectedFile = new java.io.File(dialog.getDirectory(), fileName);
     Settings.setImportDirectory(dialog.getDirectory());
     Settings.save();
+
+    // Archive selected file into unified cache and use cached copy.
+    try {
+      java.nio.file.Path cached = CacheManager.archiveFile("ib", CacheManager.Source.FILE,
+          "flex_file_" + selectedFile.getName(), selectedFile.toPath());
+      selectedFile = cached.toFile();
+    } catch (Exception e) {
+      // Best effort
+    }
     
     System.out.println("[IBKR:FILE:003] Selected file: " + selectedFile.getAbsolutePath());
     
@@ -1580,6 +1731,10 @@ public class ImportWindow extends javax.swing.JFrame {
       }
       Vector<Transaction> parsedTransactions = parser.parseCsvReport(csvContent);
       System.out.println("[IBKR:FILE:005] Parsed " + parsedTransactions.size() + " transactions");
+
+      // Disambiguate rare collisions caused by minute-level timestamp precision.
+      // This keeps IBKR Flex re-import stable: update one existing row, insert the other(s).
+      disambiguateIbkrDuplicateCollisions(mainWindow.getTransactionDatabase(), parsedTransactions);
       
       // Store parser reference for statistics access
       lastIBKRParser = parser;
@@ -1900,6 +2055,10 @@ public class ImportWindow extends javax.swing.JFrame {
       // Filter to current year only
       Vector<Transaction> currentYearTransactions = filterToCurrentYear(allTransactions);
       System.out.println("[IBKR:RESULT:003] Filtered to current year: " + currentYearTransactions.size() + " transactions");
+
+      // Disambiguate rare collisions caused by minute-level timestamp precision.
+      // This keeps IBKR Flex re-import stable: update one existing row, insert the other(s).
+      disambiguateIbkrDuplicateCollisions(mainWindow.getTransactionDatabase(), currentYearTransactions);
       
       // Clear existing transactions from preview table
       System.out.println("[IBKR:UI:001] Clearing existing transactions from preview table");

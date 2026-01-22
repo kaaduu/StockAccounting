@@ -308,6 +308,13 @@ public class Trading212Importer {
                     try {
                         csvCache.saveCsv(accountId, year, csvData);
                         logger.info("✓ Saved CSV to cache for future use (account: " + accountId + ", year: " + year + ")");
+                        // Also archive into unified broker cache for debugging/reuse
+                        try {
+                            CacheManager.archiveString("trading212", CacheManager.Source.API,
+                                "api_single_" + accountId + "_" + year, ".csv", csvData);
+                        } catch (Exception e) {
+                            // Best effort
+                        }
                     } catch (Exception cacheError) {
                         logger.warning("Failed to save CSV to cache: " + cacheError.getMessage());
                     }

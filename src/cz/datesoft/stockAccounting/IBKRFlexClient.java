@@ -85,13 +85,22 @@ public class IBKRFlexClient {
 
     /**
      * Request generation of a Flex Query report.
-     * Note: Date ranges must be configured in the Flex Query template in Client Portal.
-     * The API does not accept date parameters - it generates reports based on the template configuration.
+     * 
+     * IMPORTANT: Date ranges must be configured in the Flex Query template in Client Portal.
+     * The API does NOT accept date parameters - it generates reports based on the template configuration.
+     * 
+     * Testing confirmed that fromDate/toDate parameters are ignored by the IBKR API.
+     * To import specific date ranges, create separate Flex Query templates in IBKR Client Portal
+     * with different period configurations (e.g., "Year to Date", "Last Year", custom ranges).
+     * 
+     * @param queryId The Flex Query ID from Client Portal
+     * @return FlexRequestResult containing reference code or error information
      */
     public FlexRequestResult requestReport(String queryId)
             throws Exception {
 
         String url = BASE_URL + "/SendRequest";
+        
         // Per IBKR API documentation: only t (token), q (queryId), and v (version) are supported
         String params = String.format(
             "?t=%s&q=%s&v=3",
