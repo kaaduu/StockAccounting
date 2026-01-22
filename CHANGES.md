@@ -30,6 +30,7 @@ Poznámka: Pro Interactive Brokers se používá společná složka `~/.stockacc
 - Stav účtu: v porovnání pozic z TWS se zkouší běžné varianty tickerů (např. `BRK.B` vs `BRK B`) a porovnání se zachová i po přepočtu.
 - Nastavení: přidána samostatná karta „IBKR TWS API“ včetně tlačítka „Otestovat připojení“.
 - Oprava: doplněna chybějící knihovna `protobuf-java` pro IB TWS API (jinak padalo načítání pozic). Použita verze `4.33.4`.
+- Dokumentace: doplněn popis funkce porovnání pozic z TWS a potřebných závislostí.
 
 ## [Oprava IBKR Flex Web Service - implementace podle oficiální API dokumentace] - 2026-01-20
 

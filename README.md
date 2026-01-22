@@ -45,6 +45,8 @@ Project Properties → Libraries → Compile classpath:
 - libjar/DatePicker.jar
 - libjar/swing-layout-1.0.4.jar
 - libjar/jcalendar-1.4.jar
+- libjar/ib-twsapi-1042.01.jar
+- libjar/protobuf-java-4.33.4.jar
 
 ## Funkce aplikace
 
@@ -82,6 +84,7 @@ Podrobná dokumentace všech používaných API (Trading212, ČNB) viz [API.md](
 - **Filtry**: Pokročilé filtrování obchodů podle kritérií
 - **Zálohování**: Automatické zálohování kurzů před hromadnými operacemi
 - **Undo funkce**: Vrácení posledního smazání kurzů
+- **IBKR TWS API**: Načtení pozic z lokálního TWS a porovnání se „Stav účtu“ (sloupec TWS + barevné zvýraznění)
 
 ## Historie změn
 Viz [CHANGES.md](CHANGES.md) pro detailní historii všech změn od roku 2021.
