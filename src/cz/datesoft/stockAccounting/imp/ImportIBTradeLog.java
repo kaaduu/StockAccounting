@@ -81,9 +81,15 @@ public class ImportIBTradeLog extends ImportBase
              drow.ticker = ticker;
              drow.market = exchange;
 
-             // Enhanced note format with Account ID, Transaction ID, and status code
-             drow.note = description + "|Broker:IB|AccountID:" + accountId +
-                        "|TxnID:" + transactionId + "|Code:" + statusCode;
+              // Enhanced note format with Account ID, Transaction ID, and status code
+              drow.note = description + "|Broker:IB|AccountID:" + accountId +
+                         "|TxnID:" + transactionId + "|Code:" + statusCode;
+
+              // Persisted metadata
+              drow.broker = "IB";
+              drow.accountId = accountId;
+              drow.txnId = transactionId;
+              drow.code = statusCode;
             
           
             drow.direction = 0;

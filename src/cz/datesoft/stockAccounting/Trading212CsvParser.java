@@ -133,7 +133,11 @@ public class Trading212CsvParser {
             // Create note with company name, broker, and ISIN
             String companyName = fields[COL_NAME].trim();
             String isin = fields[COL_ISIN].trim();
+            String transactionId = (COL_ID >= 0 && COL_ID < fields.length) ? fields[COL_ID].trim() : "";
             String note = companyName + "|Broker:T212|ISIN:" + isin;
+            if (!transactionId.isEmpty()) {
+                note += "|TxnID:" + transactionId;
+            }
 
             // Create transaction
             Transaction transaction = new Transaction(
@@ -150,6 +154,11 @@ public class Trading212CsvParser {
                 date,                         // execution date same as order date
                 note
             );
+
+            transaction.setBroker("T212");
+            if (!transactionId.isEmpty()) {
+                transaction.setTxnId(transactionId);
+            }
 
             return transaction;
 
@@ -180,7 +189,11 @@ public class Trading212CsvParser {
             // Create note with company name, broker, and ISIN
             String companyName = fields[COL_NAME].trim();
             String isin = fields[COL_ISIN].trim();
+            String transactionId = (COL_ID >= 0 && COL_ID < fields.length) ? fields[COL_ID].trim() : "";
             String note = companyName + "|Broker:T212|ISIN:" + isin;
+            if (!transactionId.isEmpty()) {
+                note += "|TxnID:" + transactionId;
+            }
 
             // Create transaction
             Transaction transaction = new Transaction(
@@ -197,6 +210,11 @@ public class Trading212CsvParser {
                 date,                         // execution date same as order date
                 note
             );
+
+            transaction.setBroker("T212");
+            if (!transactionId.isEmpty()) {
+                transaction.setTxnId(transactionId);
+            }
 
             return transaction;
 

@@ -362,6 +362,11 @@ public class IBKRFlexParser {
                         eventDate,
                         notePrefix
                     );
+                    t.setBroker("IB");
+                    t.setTxnId(actionId);
+                    if (type != null && !type.trim().isEmpty()) {
+                        t.setCode(type.trim());
+                    }
                     outs.add(t);
                 } catch (Exception ex) {
                     logger.warning("Failed to build corporate OUT transaction: " + ex.getMessage());
@@ -383,6 +388,11 @@ public class IBKRFlexParser {
                         eventDate,
                         notePrefix
                     );
+                    t.setBroker("IB");
+                    t.setTxnId(actionId);
+                    if (type != null && !type.trim().isEmpty()) {
+                        t.setCode(type.trim());
+                    }
                     ins.add(t);
                 } catch (Exception ex) {
                     logger.warning("Failed to build corporate IN transaction: " + ex.getMessage());
@@ -913,7 +923,7 @@ public class IBKRFlexParser {
         String note = String.join("|", noteParts);
         
         try {
-            return new Transaction(
+            Transaction t = new Transaction(
                 0,
                 tradeDate,
                 direction,
@@ -927,6 +937,11 @@ public class IBKRFlexParser {
                 settlementDate,
                 note
             );
+            // Persisted metadata
+            t.setBroker("IB");
+            // AccountID/TxnID/Code are already in note; hydrateMetadataFromNote populates fields.
+            t.hydrateMetadataFromNote();
+            return t;
         } catch (Exception e) {
             logger.warning("Failed to create consolidated transaction: " + e.getMessage());
             return null;
@@ -987,7 +1002,7 @@ public class IBKRFlexParser {
         
         try {
             double fee = normalizeFee(row.commission.abs()).doubleValue();
-            return new Transaction(
+            Transaction t = new Transaction(
                 0,
                 tradeDate,
                 direction,
@@ -1001,6 +1016,10 @@ public class IBKRFlexParser {
                 settlementDate,
                 note
             );
+
+            t.setBroker("IB");
+            t.hydrateMetadataFromNote();
+            return t;
         } catch (Exception e) {
             logger.warning("Failed to create single transaction: " + e.getMessage());
             return null;
