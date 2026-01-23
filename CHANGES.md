@@ -4,6 +4,11 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
+
+### Opraveno
+- Nastavení/Systém: náhled barvy pro „aktualizované" řádky je nyní viditelný (dříve byl překryt tlačítkem kvůli chybné pozici v mřížce).
+
 ## [Sjednocení výběru formátu importu a výběru souboru] - 2026-01-22
 
 ### Změněno
@@ -21,6 +26,9 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - IB TradeLog: lepší zpětné doplňování `TxnID` i při více identických obchodech ve stejné minutě (párování podle pořadí `TxnID` a serialu, pokud počty souhlasí).
 - IB TradeLog: náhled importu už nezobrazuje „nové“ řádky v případech, kdy je lze jednoznačně spárovat s existujícími řádky bez `TxnID` (budou zařazeny mezi „duplikáty k aktualizaci“).
 - IB TradeLog: při importu z více souborů (a nově i při výběru jediného souboru) se interní deduplikace řídí primárně `TxnID`, aby se nesloučily různé obchody se stejným časem.
+- IBKR Flex: rozpoznání sloupce `SettleDateTarget` pro „Datum vypořádání“.
+- IBKR Flex (corporate actions): ukládání `ActionID` do sloupce „ID transakce“ a doplnění `Broker`/`ID účtu`; poznámka je nyní čistě popisná bez vnořeného `ActionID:`.
+- Načítání databáze: automatická oprava duplicitních interních serialů (aby se nerozbíjelo zvýrazňování a aktualizace při importu).
 - UI: zvýraznění nových/aktualizovaných řádků se automaticky vyčistí při „Otevřít - nový“, „Otevřít - přidat“ a „Nový“.
 
 ### Přidáno
@@ -29,6 +37,13 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
  - Podklad pro DP: upozornění na případy, kdy je „Datum vypořádání“ shodné s „Datum“ u obchodů 29.–31.12 vybraného roku; upozornění se zobrazuje i ve stavovém řádku.
 - Hlavní okno: tlačítko „Zpět import“ pro vrácení posledního importu (vložené řádky i aktualizace duplikátů).
 - Hlavní okno: tlačítko „Smazat TxnID“ pro odstranění Broker/ID účtu/ID transakce z vybraných řádků (včetně Note).
+- Import: v náhledu je vidět i sekce „K aktualizaci“ (side-by-side porovnání DB vs import) a krátký souhrn Nové/K aktualizaci/Neimportované.
+- IBKR Flex (soubor): při zpracování souboru se zobrazuje „busy“ překryv (spinner), aby UI nezamrzlo.
+- IBKR Flex: při změně režimu (obchody/transformace) se náhled automaticky obnoví; tlačítko „Obnovit náhled“ se při neaktuálním náhledu zvýrazní.
+- Nastavení: volba pro vypnutí automatického zobrazení okna „O aplikaci“ při startu.
+- IBKR Flex: po „Sloučit do databáze“ se okno importu automaticky zavře.
+- Po importu: aplikace automaticky skočí na první aktualizovaný řádek (nebo první nový řádek) v aktuálním pohledu tabulky.
+- IBKR Flex: po „Sloučit do databáze“ se už nezobrazuje modální okno se statistikami; místo toho se zobrazí krátká zpráva ve stavovém řádku.
 
 ### Opraveno
 - IBKR Flex: ošetřen vzácný případ, kdy více obchodů spadne do stejné minuty (aplikace ukládá čas pouze na minuty) a import je dříve mylně vyhodnotil jako duplicitu. Nově se jeden záznam aktualizuje a další se přidají jako nové řádky deterministicky.
