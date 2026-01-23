@@ -49,6 +49,7 @@ Poznámka: Pro Interactive Brokers se používá společná složka `~/.stockacc
 - Ukládání: do interního formátu `.dat` se nově ukládají i metadata `Broker`, `ID účtu`, `ID transakce` a `Code` jako samostatná pole (zpětně kompatibilní; staré soubory se při uložení automaticky doplní).
 - Import: pro IB TradeLog, IBKR Flex a Trading 212 se metadata (Broker/ID účtu/ID transakce/Code) nově ukládají přímo do transakce, ne pouze do Poznámky.
 - Trading 212: doplněno ukládání `TxnID` i pro starší importéry a API transformaci.
+- IBKR Flex: obchody nyní ukládají `Broker/ID účtu/ID transakce/Code` přímo do transakce (nejen do Poznámky).
 
 ## [Oprava IBKR Flex Web Service - implementace podle oficiální API dokumentace] - 2026-01-20
 

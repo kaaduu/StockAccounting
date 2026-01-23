@@ -938,8 +938,8 @@ public class IBKRFlexParser {
                 note
             );
             // Persisted metadata
+            // Persisted metadata is set from parsed fields in buildNoteParts(); note hydration is a fallback only.
             t.setBroker("IB");
-            // AccountID/TxnID/Code are already in note; hydrateMetadataFromNote populates fields.
             t.hydrateMetadataFromNote();
             return t;
         } catch (Exception e) {
@@ -1202,6 +1202,28 @@ public class IBKRFlexParser {
                 settlementDate,      // Settlement date for "datum vypořádání"
                 buildNote(fields, code)
         );
+
+        // Persisted metadata (independent of note format)
+        transaction.setBroker("IB");
+        if (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length) {
+            String acc = fields[COL_CLIENT_ACCOUNT_ID].trim();
+            if (!acc.isEmpty()) {
+                transaction.setAccountId(acc);
+            }
+        }
+        String txnId = "";
+        if (COL_IB_ORDER_ID >= 0 && COL_IB_ORDER_ID < fields.length) {
+            txnId = fields[COL_IB_ORDER_ID].trim();
+        }
+        if (txnId.isEmpty() && COL_TRANSACTION_ID >= 0 && COL_TRANSACTION_ID < fields.length) {
+            txnId = fields[COL_TRANSACTION_ID].trim();
+        }
+        if (!txnId.isEmpty()) {
+            transaction.setTxnId(txnId);
+        }
+        if (code != null && !code.trim().isEmpty()) {
+            transaction.setCode(code.trim());
+        }
 
         return transaction;
     }
