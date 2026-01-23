@@ -13,6 +13,22 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 ### Přidáno
 - Tlačítko „Vybrat soubor…“ přímo v okně importu pro lokální souborové importy.
 - Výchozí filtr souborů podle formátu (např. `.tlg` pro IB TradeLog, `.csv` pro Fio/Revolut/T212, `.htm/.html` pro BrokerJet).
+- Nastavení pro volbu výběru souboru: nativní (OS) nebo Java (Swing).
+- IB TradeLog: při výběru souboru lze označit více souborů najednou (např. měsíční exporty) a načíst je jako jeden import; přípona není rozhodující, kontroluje se hlavička `ACCOUNT_INFORMATION`.
+
+### Opraveno
+- IB TradeLog: zpětně kompatibilní párování duplikátů pro starší data bez sekund a bez `TxnID` (minutové párování s požadavkem na jednoznačnou shodu), aby šlo re-importem doplnit sekundy a metadata.
+- IB TradeLog: lepší zpětné doplňování `TxnID` i při více identických obchodech ve stejné minutě (párování podle pořadí `TxnID` a serialu, pokud počty souhlasí).
+- IB TradeLog: náhled importu už nezobrazuje „nové“ řádky v případech, kdy je lze jednoznačně spárovat s existujícími řádky bez `TxnID` (budou zařazeny mezi „duplikáty k aktualizaci“).
+- IB TradeLog: při importu z více souborů (a nově i při výběru jediného souboru) se interní deduplikace řídí primárně `TxnID`, aby se nesloučily různé obchody se stejným časem.
+- UI: zvýraznění nových/aktualizovaných řádků se automaticky vyčistí při „Otevřít - nový“, „Otevřít - přidat“ a „Nový“.
+
+### Přidáno
+- Podklad pro DP: nové tlačítko „Uložit HTML new“ (pro CP/deriváty/cash) s možností automaticky otevřít uložený soubor v prohlížeči.
+- Podklad pro DP: upozornění na případy, kdy je „Datum vypořádání“ shodné s „Datum“ u obchodů na přelomu roku (zejména IB TradeLog).
+ - Podklad pro DP: upozornění na případy, kdy je „Datum vypořádání“ shodné s „Datum“ u obchodů 29.–31.12 vybraného roku; upozornění se zobrazuje i ve stavovém řádku.
+- Hlavní okno: tlačítko „Zpět import“ pro vrácení posledního importu (vložené řádky i aktualizace duplikátů).
+- Hlavní okno: tlačítko „Smazat TxnID“ pro odstranění Broker/ID účtu/ID transakce z vybraných řádků (včetně Note).
 
 ### Opraveno
 - IBKR Flex: ošetřen vzácný případ, kdy více obchodů spadne do stejné minuty (aplikace ukládá čas pouze na minuty) a import je dříve mylně vyhodnotil jako duplicitu. Nově se jeden záznam aktualizuje a další se přidají jako nové řádky deterministicky.

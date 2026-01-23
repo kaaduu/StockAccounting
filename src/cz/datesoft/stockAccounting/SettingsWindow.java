@@ -623,9 +623,9 @@ public class SettingsWindow extends javax.swing.JDialog {
 
       // Build System tab (last)
       pSystem.setLayout(new java.awt.GridBagLayout());
-     cbShowRowNumberColumn.setText("Zobrazovat sloupec # (pořadí řádku)");
-     cbShowRowNumberColumn.setToolTipText("Zobrazí nebo skryje pomocný sloupec s číslováním řádků v hlavní tabulce");
-     cbShowRowNumberColumn.setSelected(Settings.getShowRowNumberColumn());
+      cbShowRowNumberColumn.setText("Zobrazovat sloupec # (pořadí řádku)");
+      cbShowRowNumberColumn.setToolTipText("Zobrazí nebo skryje pomocný sloupec s číslováním řádků v hlavní tabulce");
+      cbShowRowNumberColumn.setSelected(Settings.getShowRowNumberColumn());
      cbShowRowNumberColumn.addActionListener(new java.awt.event.ActionListener() {
        public void actionPerformed(java.awt.event.ActionEvent evt) {
          cbShowRowNumberColumnActionPerformed(evt);
@@ -638,11 +638,35 @@ public class SettingsWindow extends javax.swing.JDialog {
      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
       pSystem.add(cbShowRowNumberColumn, gridBagConstraints);
 
+      javax.swing.JLabel lblFileChooser = new javax.swing.JLabel("Výběr souborů:");
+      gridBagConstraints = new java.awt.GridBagConstraints();
+      gridBagConstraints.gridx = 0;
+      gridBagConstraints.gridy = 1;
+      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+      pSystem.add(lblFileChooser, gridBagConstraints);
+
+      cbFileChooserMode = new javax.swing.JComboBox(new String[] { "Nativní (OS)", "Java (Swing)" });
+      cbFileChooserMode.setSelectedIndex(Settings.getFileChooserMode() == Settings.FILE_CHOOSER_SWING ? 1 : 0);
+      cbFileChooserMode.setToolTipText("Nativní (OS) používá systémové dialogy (doporučeno). Java (Swing) umožní filtrování podle přípony s volbou 'All files'.");
+      cbFileChooserMode.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          cbFileChooserModeActionPerformed(evt);
+        }
+      });
+      gridBagConstraints = new java.awt.GridBagConstraints();
+      gridBagConstraints.gridx = 1;
+      gridBagConstraints.gridy = 1;
+      gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+      gridBagConstraints.weightx = 1.0;
+      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+      pSystem.add(cbFileChooserMode, gridBagConstraints);
+
       // Import highlighting settings
       javax.swing.JLabel lblImportHl = new javax.swing.JLabel("Zvýraznění po importu:");
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 1;
+      gridBagConstraints.gridy = 2;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
       pSystem.add(lblImportHl, gridBagConstraints);
@@ -657,7 +681,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       });
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 2;
+      gridBagConstraints.gridy = 3;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
       pSystem.add(cbHighlightInserted, gridBagConstraints);
@@ -675,7 +699,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       });
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 1;
-      gridBagConstraints.gridy = 2;
+      gridBagConstraints.gridy = 3;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
       pSystem.add(bPickInsertedColor, gridBagConstraints);
@@ -690,7 +714,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       });
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 3;
+      gridBagConstraints.gridy = 4;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
       pSystem.add(cbHighlightUpdated, gridBagConstraints);
@@ -708,7 +732,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       });
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 1;
-      gridBagConstraints.gridy = 3;
+      gridBagConstraints.gridy = 4;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
       pSystem.add(bPickUpdatedColor, gridBagConstraints);
@@ -722,14 +746,14 @@ public class SettingsWindow extends javax.swing.JDialog {
 
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 4;
+      gridBagConstraints.gridy = 5;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
       pSystem.add(lHighlightPreviewNew, gridBagConstraints);
 
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 1;
-      gridBagConstraints.gridy = 4;
+      gridBagConstraints.gridy = 5;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
       pSystem.add(lHighlightPreviewUpdated, gridBagConstraints);
@@ -737,7 +761,7 @@ public class SettingsWindow extends javax.swing.JDialog {
 
       gridBagConstraints = new java.awt.GridBagConstraints();
        gridBagConstraints.gridx = 0;
-       gridBagConstraints.gridy = 5;
+       gridBagConstraints.gridy = 6;
        gridBagConstraints.weighty = 1.0;
       pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
 
@@ -2282,6 +2306,12 @@ public class SettingsWindow extends javax.swing.JDialog {
       }
     }
 
+  private void cbFileChooserModeActionPerformed(java.awt.event.ActionEvent evt) {
+    int idx = cbFileChooserMode.getSelectedIndex();
+    Settings.setFileChooserMode(idx == 1 ? Settings.FILE_CHOOSER_SWING : Settings.FILE_CHOOSER_NATIVE);
+    Settings.save();
+  }
+
    private void bTestTrading212ConnectionActionPerformed(java.awt.event.ActionEvent evt) {
     String apiKey = tfTrading212ApiKey.getText().trim();
     String apiSecret = new String(tfTrading212ApiSecret.getPassword()).trim();
@@ -2653,6 +2683,7 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JButton bRemoveCurrency;
   private javax.swing.JButton bRemoveYear;
   private javax.swing.JComboBox cbHalfYear;
+  private javax.swing.JComboBox cbFileChooserMode;
   private javax.swing.JComboBox cbRemoveCurrency;
   private javax.swing.JTextField eDay;
   private javax.swing.JTextField eDelay;

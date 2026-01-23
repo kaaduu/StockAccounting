@@ -115,9 +115,12 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    /** Whether to show a row-number column (UI feature; currently no-op in model). */
    private boolean showRowNumberColumn = true;
 
-   /** Batch update mode for de-duplicating repeated updates. */
-   private boolean batchUpdateInProgress = false;
-   private java.util.Set<Integer> batchUpdatedTransactionSerials;
+  /** Batch update mode for de-duplicating repeated updates. */
+  private boolean batchUpdateInProgress = false;
+  private java.util.Set<Integer> batchUpdatedTransactionSerials;
+
+  /** Whether we are currently capturing undo data for an import operation. */
+  private transient boolean importUndoCaptureActive = false;
 
   /** Creates a new instance of TransactionSet */
   public TransactionSet() {
@@ -1205,10 +1208,301 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
       // Mark as inserted for highlighting (import/merge only)
       dstSet.markInserted(added);
+
+      // Record for undo (if enabled)
+      dstSet.recordImportInserted(added);
     }
 
     // Sort destination
     dstSet.sort();
+  }
+
+  // --- Undo last import ---
+  private static final class ImportUpdatedSnapshot {
+    final Transaction target;
+    final Transaction before;
+
+    ImportUpdatedSnapshot(Transaction target, Transaction before) {
+      this.target = target;
+      this.before = before;
+    }
+  }
+
+  private transient java.util.List<Transaction> lastImportInserted = new java.util.ArrayList<>();
+  private transient java.util.List<ImportUpdatedSnapshot> lastImportUpdated = new java.util.ArrayList<>();
+
+  public void beginImportUndoCapture() {
+    if (lastImportInserted == null) lastImportInserted = new java.util.ArrayList<>();
+    if (lastImportUpdated == null) lastImportUpdated = new java.util.ArrayList<>();
+    lastImportInserted.clear();
+    lastImportUpdated.clear();
+    importUndoCaptureActive = true;
+  }
+
+  public void recordImportInserted(Transaction inserted) {
+    if (inserted == null) return;
+    if (lastImportInserted == null) lastImportInserted = new java.util.ArrayList<>();
+    lastImportInserted.add(inserted);
+  }
+
+  public void recordImportUpdated(Transaction targetExisting, Transaction beforeSnapshot) {
+    if (targetExisting == null || beforeSnapshot == null) return;
+    if (lastImportUpdated == null) lastImportUpdated = new java.util.ArrayList<>();
+
+    for (ImportUpdatedSnapshot s : lastImportUpdated) {
+      if (s != null && s.target == targetExisting) {
+        return;
+      }
+    }
+    lastImportUpdated.add(new ImportUpdatedSnapshot(targetExisting, beforeSnapshot));
+  }
+
+  public boolean hasUndoImport() {
+    return (lastImportInserted != null && !lastImportInserted.isEmpty())
+        || (lastImportUpdated != null && !lastImportUpdated.isEmpty());
+  }
+
+  public int undoLastImport() {
+    int changed = 0;
+
+    if (lastImportInserted != null && !lastImportInserted.isEmpty()) {
+      for (Transaction t : lastImportInserted) {
+        if (t == null) continue;
+        if (rows.remove(t)) {
+          changed++;
+        }
+      }
+      lastImportInserted.clear();
+    }
+
+    if (lastImportUpdated != null && !lastImportUpdated.isEmpty()) {
+      for (ImportUpdatedSnapshot s : lastImportUpdated) {
+        if (s == null || s.target == null || s.before == null) continue;
+        s.target.restoreFrom(s.before);
+        changed++;
+      }
+      lastImportUpdated.clear();
+    }
+
+    if (changed > 0) {
+      clearHighlights();
+      sort();
+      modified = true;
+      fireTableDataChanged();
+    }
+
+    // Undo capture is one-shot; keep lastImport* empty until next import.
+    importUndoCaptureActive = false;
+
+    return changed;
+  }
+
+  private boolean updateExistingInternal(Transaction existing, Transaction candidate, boolean forceUpdateDate) {
+    if (existing == null || candidate == null) return false;
+
+    if (batchUpdateInProgress && batchUpdatedTransactionSerials != null) {
+      int serial = existing.getSerial();
+      if (batchUpdatedTransactionSerials.contains(serial)) {
+        return false;
+      }
+      batchUpdatedTransactionSerials.add(serial);
+    }
+
+    if (importUndoCaptureActive) {
+      recordImportUpdated(existing, existing.deepCopy());
+    }
+
+    // Snapshot before values so we can highlight changed columns.
+    java.util.Date oldDate = existing.getDate();
+    java.util.Date oldExDate = existing.getExecutionDate();
+    Double oldFee = existing.getFee();
+    String oldFeeCur = existing.getFeeCurrency();
+    String oldNote = existing.getNote();
+
+    if (forceUpdateDate) {
+      existing.updateFromTransactionWithTxnIdMatch(candidate);
+    } else {
+      // Default behavior from updateDuplicateTransaction
+      String txnExisting = nullToEmpty(existing.getTxnId());
+      String txnCandidate = nullToEmpty(candidate.getTxnId());
+      boolean txnIdMatch = !txnExisting.isEmpty() && txnExisting.equalsIgnoreCase(txnCandidate);
+      boolean ibLegacyMinuteMatch = isIbTradeLogLegacyMinuteMatch(candidate, existing);
+      if (txnIdMatch || ibLegacyMinuteMatch) {
+        existing.updateFromTransactionWithTxnIdMatch(candidate);
+      } else {
+        existing.updateFromTransaction(candidate);
+      }
+    }
+
+    java.util.Set<Integer> changedCols = new java.util.HashSet<>();
+    if (!objectsEqualDate(oldDate, existing.getDate())) {
+      changedCols.add(0); // Datum
+    }
+    if (!objectsEqualDate(oldExDate, existing.getExecutionDate())) {
+      changedCols.add(10); // Datum vypořádání
+    }
+    if (!doubleEqual(oldFee, existing.getFee())) {
+      changedCols.add(7); // Poplatky
+    }
+    if (!stringEqualExact(oldFeeCur, existing.getFeeCurrency())) {
+      changedCols.add(8); // Měna poplatků
+    }
+    if (!stringEqualExact(oldNote, existing.getNote())) {
+      changedCols.add(15); // Note
+    }
+    if (!changedCols.isEmpty()) {
+      updatedColumnsBySerial.put(existing.getSerial(), changedCols);
+    } else {
+      updatedColumnsBySerial.remove(existing.getSerial());
+    }
+
+    updatedTransactionSerials.add(existing.getSerial());
+    return true;
+  }
+
+  /**
+   * Batch update of duplicates during import.
+   *
+   * Includes special IB TradeLog legacy pairing when multiple identical trades exist
+   * without TxnID (pairs candidates by TxnID order to existing rows by serial order
+   * when group counts match).
+   */
+  public int updateDuplicateTransactions(java.util.Vector<Transaction> candidates) {
+    if (candidates == null || candidates.isEmpty()) return 0;
+
+    int updated = 0;
+    java.util.ArrayList<Transaction> remaining = new java.util.ArrayList<>();
+
+    for (Transaction candidate : candidates) {
+      if (candidate == null) continue;
+      if (updateDuplicateTransaction(candidate)) {
+        updated++;
+      } else {
+        remaining.add(candidate);
+      }
+    }
+
+    updated += updateIbTradeLogLegacyGroups(remaining);
+    return updated;
+  }
+
+  /**
+   * For IB TradeLog legacy rows (existing TxnID missing), determines which candidates can be
+   * safely treated as updatable duplicates based on group-count equality.
+   *
+   * This is used by import preview to avoid showing "new" rows that will actually be
+   * deterministically paired and updated during merge.
+   */
+  public java.util.Set<Transaction> getIbTradeLogLegacyBackfillableCandidates(java.util.List<Transaction> candidates) {
+    java.util.Set<Transaction> res = new java.util.HashSet<>();
+    if (candidates == null || candidates.isEmpty()) return res;
+
+    java.util.Map<String, java.util.List<Transaction>> groups = new java.util.HashMap<>();
+    for (Transaction c : candidates) {
+      if (c == null) continue;
+      if (!isIbBroker(c)) continue;
+      String txn = nullToEmpty(c.getTxnId());
+      if (txn.isEmpty()) continue;
+      String key = ibLegacyGroupKey(c);
+      groups.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(c);
+    }
+
+    for (java.util.Map.Entry<String, java.util.List<Transaction>> e : groups.entrySet()) {
+      java.util.List<Transaction> groupCandidates = e.getValue();
+      if (groupCandidates == null || groupCandidates.isEmpty()) continue;
+
+      Transaction sample = groupCandidates.get(0);
+      java.util.List<Transaction> existing = new java.util.ArrayList<>();
+      for (Transaction ex : rows) {
+        if (ex == null) continue;
+        if (!isIbTradeLogLegacyMinuteMatch(sample, ex)) continue;
+        existing.add(ex);
+      }
+
+      if (!existing.isEmpty() && existing.size() == groupCandidates.size()) {
+        res.addAll(groupCandidates);
+      }
+    }
+
+    return res;
+  }
+
+  private int updateIbTradeLogLegacyGroups(java.util.List<Transaction> candidates) {
+    if (candidates == null || candidates.isEmpty()) return 0;
+
+    // Group IB candidates by business key at minute precision (ignoring TxnID)
+    java.util.Map<String, java.util.List<Transaction>> groups = new java.util.HashMap<>();
+    for (Transaction c : candidates) {
+      if (c == null) continue;
+      if (!isIbBroker(c)) continue;
+      String txn = nullToEmpty(c.getTxnId());
+      if (txn.isEmpty()) continue;
+      String key = ibLegacyGroupKey(c);
+      groups.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(c);
+    }
+
+    int updated = 0;
+    for (java.util.Map.Entry<String, java.util.List<Transaction>> e : groups.entrySet()) {
+      java.util.List<Transaction> groupCandidates = e.getValue();
+      if (groupCandidates == null || groupCandidates.isEmpty()) continue;
+
+      // Find existing legacy rows (no TxnID) for this group.
+      java.util.List<Transaction> existing = new java.util.ArrayList<>();
+      Transaction sample = groupCandidates.get(0);
+      for (Transaction ex : rows) {
+        if (ex == null) continue;
+        if (!isIbTradeLogLegacyMinuteMatch(sample, ex)) continue;
+        existing.add(ex);
+      }
+
+      if (existing.size() != groupCandidates.size() || existing.isEmpty()) {
+        continue; // do not guess
+      }
+
+      existing.sort((a, b) -> Integer.compare(a.getSerial(), b.getSerial()));
+      groupCandidates.sort((a, b) -> compareTxnId(a.getTxnId(), b.getTxnId()));
+
+      for (int i = 0; i < existing.size(); i++) {
+        Transaction target = existing.get(i);
+        Transaction cand = groupCandidates.get(i);
+        if (updateExistingInternal(target, cand, true)) {
+          updated++;
+        }
+      }
+    }
+
+    return updated;
+  }
+
+  private static int compareTxnId(String a, String b) {
+    String sa = a == null ? "" : a.trim();
+    String sb = b == null ? "" : b.trim();
+    try {
+      long la = Long.parseLong(sa);
+      long lb = Long.parseLong(sb);
+      return Long.compare(la, lb);
+    } catch (Exception e) {
+      return sa.compareToIgnoreCase(sb);
+    }
+  }
+
+  private String ibLegacyGroupKey(Transaction tx) {
+    // Minute-truncated timestamp + business fields (excluding TxnID)
+    GregorianCalendar cal = new GregorianCalendar();
+    cal.setTime(tx.getDate());
+    cal.set(GregorianCalendar.MILLISECOND, 0);
+    cal.set(GregorianCalendar.SECOND, 0);
+    long minute = cal.getTimeInMillis();
+
+    return minute + "|" + tx.getDirection() + "|" + nullToEmpty(tx.getTicker()).toUpperCase() + "|"
+        + safeD(tx.getAmount()) + "|" + safeD(tx.getPrice()) + "|" + nullToEmpty(tx.getPriceCurrency()).toUpperCase() + "|"
+        + nullToEmpty(tx.getMarket()).toUpperCase() + "|" + nullToEmpty(tx.getAccountId()).toUpperCase();
+  }
+
+  private static String safeD(Double d) {
+    if (d == null) return "";
+    // normalize to avoid locale/grouping; tolerance matching is already in isIbTradeLogLegacyMinuteMatch
+    return String.valueOf(d.doubleValue());
   }
 
   /**
@@ -1216,12 +1510,42 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    * Uses business key comparison (excludes note, fee, and other non-essential fields)
    */
   public boolean isDuplicate(Transaction candidate) {
+    if (candidate == null) return false;
+
+    // 1) Prefer TxnID match when available.
+    String txnC = nullToEmpty(candidate.getTxnId());
+    if (!txnC.isEmpty()) {
+      for (Transaction existing : rows) {
+        if (existing == null) continue;
+        String txnE = nullToEmpty(existing.getTxnId());
+        if (!txnE.isEmpty() && txnC.equalsIgnoreCase(txnE)) {
+          // If broker/account are present, require them to match too.
+          String b1 = nullToEmpty(candidate.getBroker());
+          String b2 = nullToEmpty(existing.getBroker());
+          if (!b1.isEmpty() && !b2.isEmpty() && !b1.equalsIgnoreCase(b2)) {
+            continue;
+          }
+          String a1 = nullToEmpty(candidate.getAccountId());
+          String a2 = nullToEmpty(existing.getAccountId());
+          if (!a1.isEmpty() && !a2.isEmpty() && !a1.equalsIgnoreCase(a2)) {
+            continue;
+          }
+          return true;
+        }
+      }
+    }
+
+    // 2) Exact match (second precision).
     for (Transaction existing : rows) {
+      if (existing == null) continue;
       if (isDuplicateTransaction(candidate, existing)) {
         return true;
       }
     }
-    return false;
+
+    // 3) IB TradeLog legacy: allow matching old rows missing TxnID by minute (ignore seconds), but only if unique.
+    Transaction legacy = findIbTradeLogLegacyUniqueMatch(candidate);
+    return legacy != null;
   }
 
   /**
@@ -1251,12 +1575,41 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    * Returns the matching transaction or null if no duplicate exists
    */
   public Transaction findDuplicateTransaction(Transaction candidate) {
+    if (candidate == null) return null;
+
+    // 1) Prefer TxnID match when available.
+    String txnC = nullToEmpty(candidate.getTxnId());
+    if (!txnC.isEmpty()) {
+      for (Transaction existing : rows) {
+        if (existing == null) continue;
+        String txnE = nullToEmpty(existing.getTxnId());
+        if (!txnE.isEmpty() && txnC.equalsIgnoreCase(txnE)) {
+          // If broker/account are present, require them to match too.
+          String b1 = nullToEmpty(candidate.getBroker());
+          String b2 = nullToEmpty(existing.getBroker());
+          if (!b1.isEmpty() && !b2.isEmpty() && !b1.equalsIgnoreCase(b2)) {
+            continue;
+          }
+          String a1 = nullToEmpty(candidate.getAccountId());
+          String a2 = nullToEmpty(existing.getAccountId());
+          if (!a1.isEmpty() && !a2.isEmpty() && !a1.equalsIgnoreCase(a2)) {
+            continue;
+          }
+          return existing;
+        }
+      }
+    }
+
+    // 2) Exact match (second precision).
     for (Transaction existing : rows) {
+      if (existing == null) continue;
       if (isDuplicateTransaction(candidate, existing)) {
         return existing;
       }
     }
-    return null;
+
+    // 3) IB TradeLog legacy: minute match (unique only).
+    return findIbTradeLogLegacyUniqueMatch(candidate);
   }
 
   /**
@@ -1266,58 +1619,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    */
   public boolean updateDuplicateTransaction(Transaction candidate) {
     Transaction existing = findDuplicateTransaction(candidate);
-    if (existing != null) {
-      if (batchUpdateInProgress && batchUpdatedTransactionSerials != null) {
-        int serial = existing.getSerial();
-        if (batchUpdatedTransactionSerials.contains(serial)) {
-          return false;
-        }
-        batchUpdatedTransactionSerials.add(serial);
-      }
-
-      // Snapshot before values so we can highlight changed columns.
-      java.util.Date oldDate = existing.getDate();
-      java.util.Date oldExDate = existing.getExecutionDate();
-      Double oldFee = existing.getFee();
-      String oldFeeCur = existing.getFeeCurrency();
-      String oldNote = existing.getNote();
-
-      // If TxnID match is available, allow updating timestamp too (to add missing seconds).
-      String txnExisting = nullToEmpty(existing.getTxnId());
-      String txnCandidate = nullToEmpty(candidate.getTxnId());
-      boolean txnIdMatch = !txnExisting.isEmpty() && txnExisting.equalsIgnoreCase(txnCandidate);
-      if (txnIdMatch) {
-        existing.updateFromTransactionWithTxnIdMatch(candidate);
-      } else {
-        existing.updateFromTransaction(candidate);
-      }
-
-      java.util.Set<Integer> changedCols = new java.util.HashSet<>();
-      if (!objectsEqualDate(oldDate, existing.getDate())) {
-        changedCols.add(0); // Datum
-      }
-      if (!objectsEqualDate(oldExDate, existing.getExecutionDate())) {
-        changedCols.add(10); // Datum vypořádání
-      }
-      if (!doubleEqual(oldFee, existing.getFee())) {
-        changedCols.add(7); // Poplatky
-      }
-      if (!stringEqualExact(oldFeeCur, existing.getFeeCurrency())) {
-        changedCols.add(8); // Měna poplatků
-      }
-      if (!stringEqualExact(oldNote, existing.getNote())) {
-        changedCols.add(15); // Note
-      }
-      if (!changedCols.isEmpty()) {
-        updatedColumnsBySerial.put(existing.getSerial(), changedCols);
-      } else {
-        updatedColumnsBySerial.remove(existing.getSerial());
-      }
-
-      updatedTransactionSerials.add(existing.getSerial());
-      return true;
-    }
-    return false;
+    if (existing == null) return false;
+    return updateExistingInternal(existing, candidate, false);
   }
 
   public boolean isRecentlyUpdatedColumn(int row, int modelCol) {
@@ -1442,6 +1745,86 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
   private static String nullToEmpty(String s) {
     return s == null ? "" : s.trim();
+  }
+
+  private Transaction findIbTradeLogLegacyUniqueMatch(Transaction candidate) {
+    if (candidate == null) return null;
+    if (!isIbBroker(candidate)) return null;
+    String txnC = nullToEmpty(candidate.getTxnId());
+    if (txnC.isEmpty()) return null;
+
+    Transaction match = null;
+    int count = 0;
+    for (Transaction existing : rows) {
+      if (existing == null) continue;
+      if (!isIbTradeLogLegacyMinuteMatch(candidate, existing)) continue;
+      count++;
+      if (count == 1) {
+        match = existing;
+      } else {
+        // Ambiguous: do not auto-match.
+        return null;
+      }
+    }
+    return match;
+  }
+
+  private boolean isIbTradeLogLegacyMinuteMatch(Transaction candidate, Transaction existing) {
+    if (candidate == null || existing == null) return false;
+    if (!isIbBroker(candidate)) return false;
+
+    // Candidate must have TxnID (new import). Existing must not (legacy data).
+    String txnC = nullToEmpty(candidate.getTxnId());
+    if (txnC.isEmpty()) return false;
+    String txnE = nullToEmpty(existing.getTxnId());
+    if (!txnE.isEmpty()) return false;
+
+    // If existing broker/account are present, require IB / same account.
+    String bE = nullToEmpty(existing.getBroker());
+    if (!bE.isEmpty() && !bE.equalsIgnoreCase("IB")) return false;
+    String accC = nullToEmpty(candidate.getAccountId());
+    String accE = nullToEmpty(existing.getAccountId());
+    if (!accC.isEmpty() && !accE.isEmpty() && !accC.equalsIgnoreCase(accE)) return false;
+
+    // Minute-level date match (ignore seconds)
+    if (!datesEqualMinute(candidate.getDate(), existing.getDate())) return false;
+
+    // Business key fields must match
+    if (candidate.getDirection() != existing.getDirection()) return false;
+    if (!stringEqual(candidate.getTicker(), existing.getTicker())) return false;
+    if (!amountsEqual(candidate.getAmount(), existing.getAmount())) return false;
+    if (!amountsEqual(candidate.getPrice(), existing.getPrice())) return false;
+    if (!stringEqual(candidate.getPriceCurrency(), existing.getPriceCurrency())) return false;
+    if (!stringEqual(candidate.getMarket(), existing.getMarket())) return false;
+
+    return true;
+  }
+
+  private static boolean isIbBroker(Transaction tx) {
+    if (tx == null) return false;
+    String b = nullToEmpty(tx.getBroker());
+    if (!b.isEmpty()) {
+      return b.equalsIgnoreCase("IB");
+    }
+    // Backward compatibility: some rows may only carry broker in note.
+    java.util.Map<String, String> meta = Transaction.parseNoteMetadata(tx.getNote());
+    String bn = meta.getOrDefault("broker", "");
+    return bn != null && !bn.trim().isEmpty() && bn.trim().equalsIgnoreCase("IB");
+  }
+
+  private boolean datesEqualMinute(Date d1, Date d2) {
+    if (d1 == null && d2 == null) return true;
+    if (d1 == null || d2 == null) return false;
+
+    GregorianCalendar cal1 = new GregorianCalendar();
+    GregorianCalendar cal2 = new GregorianCalendar();
+    cal1.setTime(d1);
+    cal2.setTime(d2);
+    cal1.set(GregorianCalendar.MILLISECOND, 0);
+    cal2.set(GregorianCalendar.MILLISECOND, 0);
+    cal1.set(GregorianCalendar.SECOND, 0);
+    cal2.set(GregorianCalendar.SECOND, 0);
+    return cal1.getTime().equals(cal2.getTime());
   }
 
   /**

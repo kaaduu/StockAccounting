@@ -337,6 +337,7 @@ public class RateManagementDialog extends JDialog {
 
     private void importRates(ActionEvent e) {
         JFileChooser chooser = new JFileChooser();
+        chooser.setAcceptAllFileFilterUsed(true);
         chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("CSV soubory", "csv"));
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();

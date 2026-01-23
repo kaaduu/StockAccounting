@@ -15,6 +15,9 @@ import javax.swing.JOptionPane;
 import java.util.Vector;
 import javax.swing.table.DefaultTableModel;
 import java.util.GregorianCalendar;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 /**
  *
@@ -30,6 +33,17 @@ public class ImportWindow extends javax.swing.JFrame {
 
   // File we are importing
   File currentFile;
+
+  // Files we are importing (TradeLog multi-select)
+  private List<File> currentFiles;
+  private boolean tradeLogMultiSelection;
+
+  // Busy overlay for long-running preview loads
+  private javax.swing.JComponent busyGlass;
+  private javax.swing.JLabel busyLabel;
+  private javax.swing.JProgressBar busyBar;
+  private boolean previewLoadInProgress;
+  private boolean previewReloadRequested;
 
    // Main window
    MainWindow mainWindow;
@@ -149,6 +163,9 @@ public class ImportWindow extends javax.swing.JFrame {
 
     endDate.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
       public void propertyChange(java.beans.PropertyChangeEvent evt) {
+        if (evt != null && evt.getPropertyName() != null && !"date".equals(evt.getPropertyName())) {
+          return;
+        }
         loadImport();
       }
     });
@@ -169,11 +186,97 @@ public class ImportWindow extends javax.swing.JFrame {
     
     // Restore last checkbox state from settings
     cbUpdateDuplicates.setSelected(cz.datesoft.stockAccounting.Settings.getUpdateDuplicatesOnImport());
+
+    // File chooser preference is configured in Settings
     
     updateWindowTitle(); // Set initial window title
 
     // Initial warning state based on default selection
     updateObsoleteFormatWarning();
+
+    // Busy overlay (glass pane) for long-running preview loads
+    initBusyOverlay();
+  }
+
+  private void initBusyOverlay() {
+    javax.swing.JPanel p = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    p.setOpaque(true);
+    p.setBackground(new java.awt.Color(255, 255, 255, 200));
+
+    javax.swing.JPanel card = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    card.setOpaque(true);
+    card.setBackground(new java.awt.Color(255, 255, 255));
+    card.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+        javax.swing.BorderFactory.createLineBorder(new java.awt.Color(180, 180, 180)),
+        javax.swing.BorderFactory.createEmptyBorder(12, 14, 12, 14)));
+
+    busyLabel = new javax.swing.JLabel("Načítám…");
+    busyLabel.setFont(busyLabel.getFont().deriveFont(java.awt.Font.BOLD));
+    busyBar = new javax.swing.JProgressBar();
+    busyBar.setIndeterminate(true);
+    busyBar.setPreferredSize(new java.awt.Dimension(260, 14));
+
+    java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
+    gbc.gridx = 0;
+    gbc.gridy = 0;
+    gbc.anchor = java.awt.GridBagConstraints.WEST;
+    gbc.insets = new java.awt.Insets(0, 0, 8, 0);
+    card.add(busyLabel, gbc);
+
+    gbc = new java.awt.GridBagConstraints();
+    gbc.gridx = 0;
+    gbc.gridy = 1;
+    gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbc.weightx = 1.0;
+    card.add(busyBar, gbc);
+
+    gbc = new java.awt.GridBagConstraints();
+    gbc.gridx = 0;
+    gbc.gridy = 0;
+    gbc.anchor = java.awt.GridBagConstraints.CENTER;
+    p.add(card, gbc);
+
+    // Eat mouse events so user can't interact while busy.
+    p.addMouseListener(new java.awt.event.MouseAdapter() {
+    });
+
+    busyGlass = p;
+    setGlassPane(busyGlass);
+    busyGlass.setVisible(false);
+  }
+
+  private void showBusy(String message) {
+    if (busyGlass == null) return;
+    if (busyLabel != null && message != null) {
+      busyLabel.setText(message);
+    }
+    previewLoadInProgress = true;
+    java.awt.Cursor c = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR);
+    setCursor(c);
+    busyGlass.setVisible(true);
+
+    // Disable key controls during preview loading
+    if (cbFormat != null) cbFormat.setEnabled(false);
+    if (bSelectFile != null) bSelectFile.setEnabled(false);
+    if (bRefresh != null) bRefresh.setEnabled(false);
+    if (startDate != null) startDate.setEnabled(false);
+    if (endDate != null) endDate.setEnabled(false);
+    if (cbUpdateDuplicates != null) cbUpdateDuplicates.setEnabled(false);
+  }
+
+  private void hideBusy() {
+    if (busyGlass != null) {
+      busyGlass.setVisible(false);
+    }
+    setCursor(java.awt.Cursor.getDefaultCursor());
+    previewLoadInProgress = false;
+
+    if (cbFormat != null) cbFormat.setEnabled(true);
+    if (bSelectFile != null) bSelectFile.setEnabled(true);
+    if (bRefresh != null) bRefresh.setEnabled(true);
+    if (startDate != null) startDate.setEnabled(true);
+    if (endDate != null) endDate.setEnabled(true);
+    if (cbUpdateDuplicates != null) cbUpdateDuplicates.setEnabled(true);
   }
 
   private static boolean matchesAnyExtension(String nameLower, String... extensions) {
@@ -224,6 +327,20 @@ public class ImportWindow extends javax.swing.JFrame {
 
   private void updateSelectedFileLabel() {
     if (lSelectedFile == null) return;
+
+    if (tradeLogMultiSelection && currentFiles != null && !currentFiles.isEmpty()) {
+      int n = currentFiles.size();
+      lSelectedFile.setText("Vybráno souborů: " + n);
+      StringBuilder tip = new StringBuilder();
+      for (int i = 0; i < currentFiles.size(); i++) {
+        if (i > 0) tip.append("\n");
+        tip.append(currentFiles.get(i).getName());
+      }
+      lSelectedFile.setToolTipText(tip.toString());
+      return;
+    }
+
+    lSelectedFile.setToolTipText(null);
     if (currentFile == null) {
       lSelectedFile.setText("(soubor nevybrán)");
     } else {
@@ -237,32 +354,67 @@ public class ImportWindow extends javax.swing.JFrame {
       return;
     }
 
-    java.awt.FileDialog dialog = new java.awt.FileDialog(this, "Importovat soubor", java.awt.FileDialog.LOAD);
+    // IB TradeLog: allow selecting any files and validate by header (not by extension).
+    if (formatIndex == 3) {
+      java.util.List<java.io.File> selected = chooseFilesForOpen("Importovat soubor", null, true);
+      if (selected == null || selected.isEmpty()) return;
 
-    String loc = Settings.getImportDirectory();
-    if (loc != null) {
-      dialog.setDirectory(loc);
-    }
+      java.util.List<java.io.File> valid = new java.util.ArrayList<>();
+      java.util.List<String> invalid = new java.util.ArrayList<>();
 
-    String[] exts = getFileExtensionsForFormat(formatIndex);
-    if (exts != null && exts.length > 0) {
-      dialog.setFilenameFilter((dir, name) -> {
-        if (name == null) return false;
-        String n = name.toLowerCase(java.util.Locale.ROOT);
-        return matchesAnyExtension(n, exts);
-      });
-    }
+      for (java.io.File f : selected) {
+        String err = validateIbTradeLogHeader(f);
+        if (err != null) {
+          invalid.add(f.getName() + ": " + err);
+          continue;
+        }
+        valid.add(f);
+      }
 
-    dialog.setVisible(true);
+      if (!invalid.isEmpty()) {
+        StringBuilder msg = new StringBuilder();
+        msg.append("Některé soubory byly přeskočeny (nejsou ve formátu IB TradeLog):\n\n");
+        for (int i = 0; i < invalid.size(); i++) {
+          msg.append("- ").append(invalid.get(i)).append("\n");
+        }
+        JOptionPane.showMessageDialog(this, msg.toString(), "Neplatný soubor", JOptionPane.WARNING_MESSAGE);
+      }
 
-    String fileName = dialog.getFile();
-    if (fileName == null) {
+      if (valid.isEmpty()) {
+        JOptionPane.showMessageDialog(this,
+            "Nebyl vybrán žádný platný IB TradeLog soubor (očekávám hlavičku ACCOUNT_INFORMATION).",
+            "Neplatný výběr", JOptionPane.ERROR_MESSAGE);
+        return;
+      }
+
+      // Archive selected local files into unified cache for reproducibility.
+      java.util.List<java.io.File> cachedFiles = new java.util.ArrayList<>();
+      for (java.io.File f : valid) {
+        try {
+          java.nio.file.Path cached = CacheManager.archiveFile("ib", CacheManager.Source.FILE,
+              "ib_tradelog_" + f.getName(), f.toPath());
+          cachedFiles.add(cached.toFile());
+        } catch (Exception e) {
+          // Best effort: fallback to original file
+          cachedFiles.add(f);
+        }
+      }
+
+      currentFiles = cachedFiles;
+      tradeLogMultiSelection = true;
+      currentFile = currentFiles.get(0);
+      updateSelectedFileLabel();
+      loadImport();
       return;
     }
 
-    currentFile = new java.io.File(dialog.getDirectory(), fileName);
-    Settings.setImportDirectory(dialog.getDirectory());
-    Settings.save();
+    String[] exts = getFileExtensionsForFormat(formatIndex);
+    java.io.File selected = chooseFileForOpen("Importovat soubor", exts);
+    if (selected == null) return;
+
+    currentFiles = null;
+    tradeLogMultiSelection = false;
+    currentFile = selected;
 
     // Archive selected local file into unified cache for reproducibility.
     try {
@@ -300,6 +452,215 @@ public class ImportWindow extends javax.swing.JFrame {
 
     // Refresh preview immediately after selecting the file.
     loadImport();
+  }
+
+  private String validateIbTradeLogHeader(java.io.File file) {
+    if (file == null) return "chybí soubor";
+    try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(file))) {
+      String l1 = readFirstNonEmptyLine(r);
+      if (l1 == null) return "prázdný soubor";
+      if (!"ACCOUNT_INFORMATION".equals(l1.trim())) {
+        return "chybí hlavička ACCOUNT_INFORMATION";
+      }
+      String l2 = readFirstNonEmptyLine(r);
+      if (l2 == null) return "chybí řádek ACT_INF";
+      if (!l2.trim().startsWith("ACT_INF|")) {
+        return "chybí řádek ACT_INF|...";
+      }
+      return null;
+    } catch (Exception e) {
+      return "nelze číst soubor";
+    }
+  }
+
+  private static String readFirstNonEmptyLine(java.io.BufferedReader r) throws java.io.IOException {
+    String s;
+    while ((s = r.readLine()) != null) {
+      if (s.trim().isEmpty()) continue;
+      return s;
+    }
+    return null;
+  }
+
+  private void importIbTradeLogFilesIntoPreview(java.util.List<java.io.File> files, java.util.Date startD,
+      java.util.Date endD, java.util.Vector<String[]> notImported) throws cz.datesoft.stockAccounting.imp.ImportException, java.io.IOException {
+    System.out.println("[IMPORT:IBTLG] Importing multiple TradeLog files: " + (files != null ? files.size() : 0));
+
+    // Combine transactions and keep origin info for notImported
+    cz.datesoft.stockAccounting.imp.ImportIBTradeLog importer = new cz.datesoft.stockAccounting.imp.ImportIBTradeLog();
+    java.util.Vector<Transaction> all = new java.util.Vector<>();
+    java.util.Vector<String[]> allNotImported = new java.util.Vector<>();
+
+    if (files != null) {
+      for (java.io.File f : files) {
+        if (f == null) continue;
+        String err = validateIbTradeLogHeader(f);
+        if (err != null) {
+          // Should not happen (validated earlier), but be defensive.
+          continue;
+        }
+        java.util.Vector<String[]> perFileNotImported = new java.util.Vector<>();
+        java.util.Vector<Transaction> txs = importer.doImport(f, startD, endD, perFileNotImported);
+        all.addAll(txs);
+
+        if (perFileNotImported != null && !perFileNotImported.isEmpty()) {
+          for (String[] row : perFileNotImported) {
+            String[] withFile = new String[(row != null ? row.length : 0) + 1];
+            withFile[0] = f.getName();
+            if (row != null && row.length > 0) {
+              System.arraycopy(row, 0, withFile, 1, row.length);
+            }
+            allNotImported.add(withFile);
+          }
+        }
+      }
+    }
+
+    // De-duplicate within the selected files (avoid overlap when user selects e.g. monthly exports twice).
+    TransactionSet tmp = new TransactionSet();
+    java.util.Vector<Transaction> unique = new java.util.Vector<>();
+    for (Transaction candidate : all) {
+      if (candidate == null) continue;
+      if (!tmp.isDuplicate(candidate)) {
+        tmp.rows.add(candidate);
+        unique.add(candidate);
+      }
+    }
+
+    // Update notImported output with our combined list.
+    if (notImported != null) {
+      notImported.clear();
+      notImported.addAll(allNotImported);
+    }
+
+    // Assign serials and replace preview rows
+    transactions.rows.clear();
+    for (Transaction tx : unique) {
+      tx.setSerial(transactions.serialCounter++);
+      transactions.rows.add(tx);
+    }
+    transactions.sort();
+    transactions.modified = false;
+  }
+
+  private java.io.File chooseFileForOpen(String title, String[] dotExtensions) {
+    // Prefer native OS chooser by default, configurable in Settings.
+    if (cz.datesoft.stockAccounting.Settings.getFileChooserMode() == cz.datesoft.stockAccounting.Settings.FILE_CHOOSER_SWING) {
+      javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+      chooser.setDialogTitle(title);
+      chooser.setAcceptAllFileFilterUsed(true);
+      String lastDir = Settings.getImportDirectory();
+      if (lastDir != null && !lastDir.trim().isEmpty()) {
+        chooser.setCurrentDirectory(new java.io.File(lastDir));
+      }
+      if (dotExtensions != null && dotExtensions.length > 0) {
+        java.util.ArrayList<String> exts = new java.util.ArrayList<>();
+        for (String e : dotExtensions) {
+          if (e == null) continue;
+          String s = e.trim();
+          if (s.startsWith(".")) s = s.substring(1);
+          if (!s.isEmpty()) exts.add(s);
+        }
+        if (!exts.isEmpty()) {
+          chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Soubory importu", exts.toArray(new String[0])));
+        }
+      }
+      int r = chooser.showOpenDialog(this);
+      if (r != javax.swing.JFileChooser.APPROVE_OPTION) return null;
+      java.io.File f = chooser.getSelectedFile();
+      if (f != null) {
+        java.io.File dir = f.getParentFile();
+        if (dir != null) {
+          Settings.setImportDirectory(dir.getAbsolutePath());
+          Settings.save();
+        }
+      }
+      return f;
+    }
+
+    java.awt.FileDialog dialog = new java.awt.FileDialog(this, title, java.awt.FileDialog.LOAD);
+
+    String loc = Settings.getImportDirectory();
+    if (loc != null) {
+      dialog.setDirectory(loc);
+    }
+
+    // For native dialogs we deliberately avoid suffix filtering: users can switch file visibility in the OS UI.
+    dialog.setVisible(true);
+
+    String fileName = dialog.getFile();
+    if (fileName == null) {
+      return null;
+    }
+
+    java.io.File f = new java.io.File(dialog.getDirectory(), fileName);
+    Settings.setImportDirectory(dialog.getDirectory());
+    Settings.save();
+    return f;
+  }
+
+  private java.util.List<java.io.File> chooseFilesForOpen(String title, String[] dotExtensions, boolean allowMultiple) {
+    if (!allowMultiple) {
+      java.io.File f = chooseFileForOpen(title, dotExtensions);
+      if (f == null) return null;
+      java.util.List<java.io.File> res = new java.util.ArrayList<>();
+      res.add(f);
+      return res;
+    }
+
+    if (cz.datesoft.stockAccounting.Settings.getFileChooserMode() == cz.datesoft.stockAccounting.Settings.FILE_CHOOSER_SWING) {
+      javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+      chooser.setDialogTitle(title);
+      chooser.setAcceptAllFileFilterUsed(true);
+      chooser.setMultiSelectionEnabled(true);
+      String lastDir = Settings.getImportDirectory();
+      if (lastDir != null && !lastDir.trim().isEmpty()) {
+        chooser.setCurrentDirectory(new java.io.File(lastDir));
+      }
+      if (dotExtensions != null && dotExtensions.length > 0) {
+        java.util.ArrayList<String> exts = new java.util.ArrayList<>();
+        for (String e : dotExtensions) {
+          if (e == null) continue;
+          String s = e.trim();
+          if (s.startsWith(".")) s = s.substring(1);
+          if (!s.isEmpty()) exts.add(s);
+        }
+        if (!exts.isEmpty()) {
+          chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Soubory importu", exts.toArray(new String[0])));
+        }
+      }
+      int r = chooser.showOpenDialog(this);
+      if (r != javax.swing.JFileChooser.APPROVE_OPTION) return null;
+      java.io.File[] files = chooser.getSelectedFiles();
+      if (files == null || files.length == 0) return null;
+      java.io.File dir = files[0].getParentFile();
+      if (dir != null) {
+        Settings.setImportDirectory(dir.getAbsolutePath());
+        Settings.save();
+      }
+      java.util.List<java.io.File> res = new java.util.ArrayList<>();
+      for (java.io.File f : files) {
+        if (f != null) res.add(f);
+      }
+      return res;
+    }
+
+    java.awt.FileDialog dialog = new java.awt.FileDialog(this, title, java.awt.FileDialog.LOAD);
+    dialog.setMultipleMode(true);
+    String loc = Settings.getImportDirectory();
+    if (loc != null) {
+      dialog.setDirectory(loc);
+    }
+    dialog.setVisible(true);
+    java.io.File[] files = dialog.getFiles();
+    if (files == null || files.length == 0) return null;
+    Settings.setImportDirectory(dialog.getDirectory());
+    Settings.save();
+    java.util.List<java.io.File> res = new java.util.ArrayList<>();
+    for (java.io.File f : files) {
+      if (f != null) res.add(f);
+    }
+    return res;
   }
 
   private void adjustSizeToParent() {
@@ -700,8 +1061,32 @@ public class ImportWindow extends javax.swing.JFrame {
    * Load import from a file or prepare API import
    */
   private void loadImport() {
-    // Note: No importInProgress check here - internal method called from startImport()
-    // which already manages concurrency protection for external calls
+    // Avoid blocking EDT; if a preview load is already running, coalesce requests.
+    if (previewLoadInProgress) {
+      previewReloadRequested = true;
+      return;
+    }
+
+    // Only run async for file-based formats (API formats manage their own async flows).
+    int formatIdx = cbFormat != null ? cbFormat.getSelectedIndex() : 0;
+    if (formatIdx != 8 && formatIdx != 9) {
+      // Do not show busy overlay unless there is an actual file selection.
+      if (formatIdx == 0) {
+        // <vyberte formát>
+        return;
+      }
+
+      boolean hasMultiFiles = (formatIdx == 3 && tradeLogMultiSelection && currentFiles != null && !currentFiles.isEmpty());
+      if (!hasMultiFiles && currentFile == null) {
+        updateSelectedFileLabel();
+        return;
+      }
+
+      loadImportAsync();
+      return;
+    }
+
+    // Legacy synchronous path below is kept for API formats only.
 
     System.out.println("[IMPORT:002] loadImport() called - UI format: " + cbFormat.getSelectedIndex() + ", file: " + (currentFile != null ? currentFile.getName() : "null"));
 
@@ -769,8 +1154,13 @@ public class ImportWindow extends javax.swing.JFrame {
 
         // Get format - prefer programmatic override, fallback to UI state
         int formatIndex = (currentImportFormat > 0) ? currentImportFormat : cbFormat.getSelectedIndex();
-        System.out.println("[FORMAT:004] About to call importFile with formatIndex=" + formatIndex + " (programmatic: " + currentImportFormat + ", UI: " + cbFormat.getSelectedIndex() + ") for file: " + currentFile.getName());
-        transactions.importFile(currentFile, startD, endD, formatIndex, notImported);
+
+        if (formatIndex == 3 && tradeLogMultiSelection && currentFiles != null && !currentFiles.isEmpty()) {
+          importIbTradeLogFilesIntoPreview(currentFiles, startD, endD, notImported);
+        } else {
+          System.out.println("[FORMAT:004] About to call importFile with formatIndex=" + formatIndex + " (programmatic: " + currentImportFormat + ", UI: " + cbFormat.getSelectedIndex() + ") for file: " + currentFile.getName());
+          transactions.importFile(currentFile, startD, endD, formatIndex, notImported);
+        }
 
        // Filter duplicate transactions that already exist in main database
        System.out.println("[DUPLICATE:001] Checking for duplicates in file import against main database");
@@ -843,7 +1233,11 @@ public class ImportWindow extends javax.swing.JFrame {
 
         // Make columns
         for (n = 0; n < colCount; n++) {
-          niTable.getColumnModel().getColumn(n).setHeaderValue("Col " + n);
+          String header = "Col " + n;
+          if (tradeLogMultiSelection && colCount > 0 && n == 0) {
+            header = "Soubor";
+          }
+          niTable.getColumnModel().getColumn(n).setHeaderValue(header);
         }
 
         // Add data
@@ -875,6 +1269,258 @@ public class ImportWindow extends javax.swing.JFrame {
        JOptionPane.showMessageDialog(this, "Chyba při importu: " + e.getMessage());
        currentImportFormat = 0; // Clear programmatic override on error
      }
+  }
+
+  private void loadImportAsync() {
+    // Snapshot state so we can ignore outdated results
+    final int formatIndex = (currentImportFormat > 0) ? currentImportFormat : (cbFormat != null ? cbFormat.getSelectedIndex() : 0);
+    final java.io.File file = currentFile;
+    final java.util.List<java.io.File> files = (tradeLogMultiSelection && currentFiles != null)
+        ? new java.util.ArrayList<>(currentFiles)
+        : null;
+    final boolean multi = (formatIndex == 3 && tradeLogMultiSelection && files != null && !files.isEmpty());
+    final boolean updateDups = cbUpdateDuplicates != null && cbUpdateDuplicates.isSelected();
+
+    // Snapshot dates on EDT (Swing components are not thread-safe)
+    final java.util.Date startD = normalizeStartDate(startDate != null ? startDate.getDate() : null);
+    final java.util.Date endD = normalizeEndDate(endDate != null ? endDate.getDate() : null);
+
+    String msg = "Načítám…";
+    if (multi) {
+      msg = "Načítám " + files.size() + " souborů…";
+    } else if (file != null) {
+      msg = "Načítám " + file.getName() + "…";
+    }
+    showBusy(msg);
+
+    final javax.swing.SwingWorker<LoadResult, Void> worker = new javax.swing.SwingWorker<LoadResult, Void>() {
+      @Override
+      protected LoadResult doInBackground() throws Exception {
+        return loadImportCompute(formatIndex, file, files, multi, updateDups, startD, endD);
+      }
+
+      @Override
+      protected void done() {
+        try {
+          LoadResult r = get();
+          applyLoadResult(r);
+        } catch (Exception e) {
+          JOptionPane.showMessageDialog(ImportWindow.this, "Chyba při importu: " + e.getMessage());
+        } finally {
+          hideBusy();
+          if (previewReloadRequested) {
+            previewReloadRequested = false;
+            loadImport();
+          }
+        }
+      }
+    };
+
+    worker.execute();
+  }
+
+  private static java.util.Date normalizeStartDate(java.util.Date startD) {
+    if (startD == null) return null;
+    GregorianCalendar cal = new GregorianCalendar();
+    cal.setTime(startD);
+    cal.set(GregorianCalendar.HOUR_OF_DAY, 0);
+    cal.set(GregorianCalendar.MINUTE, 0);
+    cal.set(GregorianCalendar.SECOND, 0);
+    cal.set(GregorianCalendar.MILLISECOND, 0);
+    return cal.getTime();
+  }
+
+  private static java.util.Date normalizeEndDate(java.util.Date endD) {
+    if (endD == null) return null;
+    GregorianCalendar cal = new GregorianCalendar();
+    cal.setTime(endD);
+    cal.set(GregorianCalendar.HOUR_OF_DAY, 23);
+    cal.set(GregorianCalendar.MINUTE, 59);
+    cal.set(GregorianCalendar.SECOND, 59);
+    cal.set(GregorianCalendar.MILLISECOND, 999999);
+    return cal.getTime();
+  }
+
+  private static final class LoadResult {
+    final java.util.Vector<Transaction> preview;
+    final java.util.Vector<String[]> notImported;
+    final java.util.Vector<Transaction> duplicatesToUpdate;
+    final int duplicatesFiltered;
+    final int formatIndex;
+
+    LoadResult(java.util.Vector<Transaction> preview, java.util.Vector<String[]> notImported,
+        java.util.Vector<Transaction> duplicatesToUpdate, int duplicatesFiltered, int formatIndex) {
+      this.preview = preview;
+      this.notImported = notImported;
+      this.duplicatesToUpdate = duplicatesToUpdate;
+      this.duplicatesFiltered = duplicatesFiltered;
+      this.formatIndex = formatIndex;
+    }
+  }
+
+  private LoadResult loadImportCompute(int formatIndex, java.io.File file, java.util.List<java.io.File> files,
+      boolean multi, boolean updateDups, java.util.Date startD, java.util.Date endD) throws Exception {
+    // Mimic the synchronous loadImport logic, but without touching Swing components.
+    if (formatIndex == 0) {
+      return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(), 0, formatIndex);
+    }
+    if (formatIndex == 8 || formatIndex == 9) {
+      // API formats: preview is handled by dedicated flows
+      return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(), 0, formatIndex);
+    }
+    if (file == null) {
+      return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(), 0, formatIndex);
+    }
+
+    java.util.Vector<String[]> notImported = new java.util.Vector<>();
+
+    // Build candidate txs
+    TransactionSet tmpPreview = new TransactionSet();
+    if (formatIndex == 3 && multi && files != null && !files.isEmpty()) {
+      // Multi-file TradeLog
+      java.util.Vector<Transaction> all = new java.util.Vector<>();
+      java.util.Vector<String[]> allNotImported = new java.util.Vector<>();
+      cz.datesoft.stockAccounting.imp.ImportIBTradeLog importer = new cz.datesoft.stockAccounting.imp.ImportIBTradeLog();
+      for (java.io.File f : files) {
+        if (f == null) continue;
+        java.util.Vector<String[]> per = new java.util.Vector<>();
+        java.util.Vector<Transaction> txs = importer.doImport(f, startD, endD, per);
+        all.addAll(txs);
+        for (String[] row : per) {
+          String[] withFile = new String[(row != null ? row.length : 0) + 1];
+          withFile[0] = f.getName();
+          if (row != null && row.length > 0) {
+            System.arraycopy(row, 0, withFile, 1, row.length);
+          }
+          allNotImported.add(withFile);
+        }
+      }
+      notImported.addAll(allNotImported);
+
+      // internal dedupe (TxnID-based): avoid collapsing distinct executions that share the same timestamp
+      java.util.Set<String> seenTxnIds = new java.util.HashSet<>();
+      java.util.Vector<Transaction> unique = new java.util.Vector<>();
+      for (Transaction candidate : all) {
+        if (candidate == null) continue;
+        String txn = candidate.getTxnId();
+        if (txn != null) txn = txn.trim();
+        if (txn == null || txn.isEmpty()) {
+          // Fallback to business-key-based dedupe for rows without TxnID
+          if (!tmpPreview.isDuplicate(candidate)) {
+            tmpPreview.rows.add(candidate);
+            unique.add(candidate);
+          }
+          continue;
+        }
+        if (seenTxnIds.add(txn)) {
+          unique.add(candidate);
+        }
+      }
+      tmpPreview.rows.clear();
+      tmpPreview.rows.addAll(unique);
+    } else {
+      // Single-file import: reuse existing importer path
+      tmpPreview.importFile(file, startD, endD, formatIndex, notImported);
+    }
+
+    // Filter duplicates vs main DB (same logic as current loadImport)
+    java.util.Vector<Transaction> original = new java.util.Vector<>(tmpPreview.rows);
+    TransactionSet mainDb = mainWindow.getTransactionDatabase();
+    java.util.Vector<Transaction> filtered = mainDb.filterDuplicates(original);
+
+    java.util.Vector<Transaction> dupsToUpdate = new java.util.Vector<>();
+    if (updateDups) {
+      for (Transaction candidate : original) {
+        if (!filtered.contains(candidate)) {
+          dupsToUpdate.add(candidate);
+        }
+      }
+
+      // IB TradeLog: If we can deterministically pair legacy rows (missing TxnID) by group-count equality,
+      // treat them as "duplicates to update" rather than "new" inserts in preview.
+      if (formatIndex == 3 && !filtered.isEmpty()) {
+        java.util.Set<Transaction> backfillable = mainDb.getIbTradeLogLegacyBackfillableCandidates(filtered);
+        if (backfillable != null && !backfillable.isEmpty()) {
+          java.util.Vector<Transaction> newFiltered = new java.util.Vector<>();
+          for (Transaction t : filtered) {
+            if (backfillable.contains(t)) {
+              dupsToUpdate.add(t);
+            } else {
+              newFiltered.add(t);
+            }
+          }
+          filtered = newFiltered;
+        }
+      }
+    }
+
+    // duplicatesFiltered counts all non-new items (both "update" and "filtered")
+    int duplicatesFiltered = original.size() - filtered.size();
+    return new LoadResult(filtered, notImported, dupsToUpdate, duplicatesFiltered, formatIndex);
+  }
+
+  private void applyLoadResult(LoadResult r) {
+    if (r == null) return;
+
+    // Apply preview transactions
+    transactions.rows.clear();
+    for (Transaction tx : r.preview) {
+      if (tx == null) continue;
+      tx.setSerial(transactions.serialCounter++);
+      transactions.rows.add(tx);
+    }
+    transactions.sort();
+    transactions.fireTableDataChanged();
+
+    // Apply duplicates-to-update list
+    duplicatesToUpdate.clear();
+    duplicatesToUpdate.addAll(r.duplicatesToUpdate);
+
+    // Update labels
+    int n = transactions.getRowCount();
+    String previewText = "Náhled (" + n + " " + getRecordsWord(n) + ")";
+    if (r.duplicatesFiltered > 0) {
+      if (cbUpdateDuplicates != null && cbUpdateDuplicates.isSelected()) {
+        previewText += " - " + r.duplicatesFiltered + " duplikátů k aktualizaci";
+      } else {
+        previewText += " - " + r.duplicatesFiltered + " duplikátů vyfiltrováno";
+      }
+    }
+    previewText += ":";
+    lPreview.setText(previewText);
+
+    int rowCount = r.notImported != null ? r.notImported.size() : 0;
+    lUnimported.setText("Neimportované řádky (" + rowCount + " " + getRecordsWord(rowCount) + "):");
+
+    // Fill not-imported table
+    DefaultTableModel niTableModel = (DefaultTableModel) niTable.getModel();
+    niTableModel.setRowCount(0);
+    if (rowCount > 0) {
+      // Determine max columns
+      int colCount = 0;
+      for (int i = 0; i < rowCount; i++) {
+        int len = r.notImported.get(i) != null ? r.notImported.get(i).length : 0;
+        if (len > colCount) colCount = len;
+      }
+      niTableModel.setRowCount(rowCount);
+      niTableModel.setColumnCount(colCount);
+
+      for (int c = 0; c < colCount; c++) {
+        String header = "Col " + c;
+        if (tradeLogMultiSelection && colCount > 0 && c == 0) {
+          header = "Soubor";
+        }
+        niTable.getColumnModel().getColumn(c).setHeaderValue(header);
+      }
+
+      for (int i = 0; i < rowCount; i++) {
+        String[] a = r.notImported.get(i);
+        if (a == null) continue;
+        for (int c = 0; c < a.length; c++) {
+          niTableModel.setValueAt(a[c], i, c);
+        }
+      }
+    }
   }
 
   /**
@@ -1034,6 +1680,7 @@ public class ImportWindow extends javax.swing.JFrame {
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
     getContentPane().add(bSelectFile, gridBagConstraints);
+
 
     lSelectedFile.setText("(soubor nevybrán)");
     gridBagConstraints = new java.awt.GridBagConstraints();
@@ -1724,28 +2371,11 @@ public class ImportWindow extends javax.swing.JFrame {
     
     System.out.println("[IBKR:FILE:001] File import button clicked");
     
-    // Show file dialog
-    java.awt.FileDialog dialog = new java.awt.FileDialog(this, "Vybrat IBKR Flex CSV soubor", java.awt.FileDialog.LOAD);
-    
-    // Remember last directory from Settings
-    String lastDir = Settings.getImportDirectory();
-    if (lastDir != null) {
-      dialog.setDirectory(lastDir);
-    }
-    
-    // Show dialog
-    dialog.setVisible(true);
-    String fileName = dialog.getFile();
-    
-    if (fileName == null) {
+    java.io.File selectedFile = chooseFileForOpen("Vybrat IBKR Flex CSV soubor", new String[] { ".csv" });
+    if (selectedFile == null) {
       System.out.println("[IBKR:FILE:002] User cancelled file selection");
-      return; // User cancelled
+      return;
     }
-    
-    // Get selected file
-    java.io.File selectedFile = new java.io.File(dialog.getDirectory(), fileName);
-    Settings.setImportDirectory(dialog.getDirectory());
-    Settings.save();
 
     // Archive selected file into unified cache and use cached copy.
     try {
@@ -1759,13 +2389,13 @@ public class ImportWindow extends javax.swing.JFrame {
     System.out.println("[IBKR:FILE:003] Selected file: " + selectedFile.getAbsolutePath());
     
     // Update status label to show loading
-    lblIBKRFlexStatus.setText("Načítání souboru: " + fileName + "...");
+    lblIBKRFlexStatus.setText("Načítání souboru: " + selectedFile.getName() + "...");
     
     try {
       // Read file content
       String csvContent = readFileToString(selectedFile);
       lastIbkrCsvContent = csvContent;
-      lastIbkrSourceLabel = fileName;
+       lastIbkrSourceLabel = selectedFile.getName();
       ibkrPreviewDirty = false;
       if (bIBKRFlexRefreshPreview != null) {
         bIBKRFlexRefreshPreview.setEnabled(false);
@@ -1833,7 +2463,7 @@ public class ImportWindow extends javax.swing.JFrame {
       lPreview.setText(previewText);
       
       // Update status label with statistics (minimal format)
-      String statusMsg = "Načteno: " + fileName + " (" + filteredTransactions.size() + " transakcí";
+      String statusMsg = "Načteno: " + selectedFile.getName() + " (" + filteredTransactions.size() + " transakcí";
       if (duplicatesFiltered > 0) {
         statusMsg += ", " + duplicatesFiltered + " duplikátů";
       }
@@ -1946,7 +2576,9 @@ public class ImportWindow extends javax.swing.JFrame {
         int initialTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
         System.out.println("[IBKR:MERGE:002] Initial transaction count in database: " + initialTransactionCount);
         
-        transactions.mergeTo(mainWindow.getTransactionDatabase());
+        TransactionSet mainDbForUndo = mainWindow.getTransactionDatabase();
+        mainDbForUndo.beginImportUndoCapture();
+        transactions.mergeTo(mainDbForUndo);
         
         // Update duplicates if checkbox is checked
         int updatedCount = 0;
@@ -1958,11 +2590,7 @@ public class ImportWindow extends javax.swing.JFrame {
           // Start batch update to prevent double-updating same transaction
           mainDb.startBatchUpdate();
           
-          for (Transaction candidate : duplicatesToUpdate) {
-            if (mainDb.updateDuplicateTransaction(candidate)) {
-              updatedCount++;
-            }
-          }
+           updatedCount += mainDb.updateDuplicateTransactions(duplicatesToUpdate);
           
           // End batch update
           mainDb.endBatchUpdate();
@@ -2011,6 +2639,8 @@ public class ImportWindow extends javax.swing.JFrame {
         // Clear preview for next import
         clearPreview();
         updateIBKRFlexButtonState();
+
+        mainWindow.enableUndoImportIfAvailable();
         
         System.out.println("[IBKR:MERGE:006] ✅ Merge completed successfully");
       } catch (Exception e) {
@@ -2242,7 +2872,9 @@ public class ImportWindow extends javax.swing.JFrame {
             int initialTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
             System.out.println("[MERGE:001b] Initial transaction count in database: " + initialTransactionCount);
 
-            transactions.mergeTo(mainWindow.getTransactionDatabase());
+            TransactionSet mainDbForUndo = mainWindow.getTransactionDatabase();
+            mainDbForUndo.beginImportUndoCapture();
+            transactions.mergeTo(mainDbForUndo);
 
             // Update duplicates if checkbox is checked
             int updatedCount = 0;
@@ -2254,11 +2886,7 @@ public class ImportWindow extends javax.swing.JFrame {
               // Start batch update to prevent double-updating same transaction
               mainDb.startBatchUpdate();
               
-              for (Transaction candidate : duplicatesToUpdate) {
-                if (mainDb.updateDuplicateTransaction(candidate)) {
-                  updatedCount++;
-                }
-              }
+               updatedCount += mainDb.updateDuplicateTransactions(duplicatesToUpdate);
               
               // End batch update
               mainDb.endBatchUpdate();
@@ -2286,6 +2914,8 @@ public class ImportWindow extends javax.swing.JFrame {
             javax.swing.SwingUtilities.invokeLater(() -> {
               mainWindow.refreshTable();
             });
+
+            mainWindow.enableUndoImportIfAvailable();
 
             // Get the year from the dropdown to update status
             String selectedItem = (String) cbTrading212Year.getSelectedItem();
@@ -2606,6 +3236,12 @@ public class ImportWindow extends javax.swing.JFrame {
       updateSelectedFileLabel();
     }
 
+    // Clear multi-selection state when switching away from IB TradeLog.
+    if (formatIndex != 3) {
+      currentFiles = null;
+      tradeLogMultiSelection = false;
+    }
+
     // Update button text and state based on current state
     updateImportButtonText();
     updateImportButtonState(); // Check API credentials
@@ -2753,7 +3389,9 @@ public class ImportWindow extends javax.swing.JFrame {
         // Keep window open for sequential API imports
       } else {
         // Handle regular file-based import
-        transactions.mergeTo(mainWindow.getTransactionDatabase());
+        TransactionSet mainDbForUndo = mainWindow.getTransactionDatabase();
+        mainDbForUndo.beginImportUndoCapture();
+        transactions.mergeTo(mainDbForUndo);
 
         // Update duplicates if checkbox is checked
         if (cbUpdateDuplicates.isSelected() && !duplicatesToUpdate.isEmpty()) {
@@ -2765,11 +3403,7 @@ public class ImportWindow extends javax.swing.JFrame {
           // Start batch update to prevent double-updating same transaction
           mainDb.startBatchUpdate();
           
-          for (Transaction candidate : duplicatesToUpdate) {
-            if (mainDb.updateDuplicateTransaction(candidate)) {
-              updatedCount++;
-            }
-          }
+          updatedCount += mainDb.updateDuplicateTransactions(duplicatesToUpdate);
           
           // End batch update
           mainDb.endBatchUpdate();
@@ -2800,6 +3434,8 @@ public class ImportWindow extends javax.swing.JFrame {
         // Refresh metadata filter dropdowns after import
         System.out.println("DEBUG: Refreshing metadata filters after import");
         mainWindow.refreshMetadataFilters();
+
+        mainWindow.enableUndoImportIfAvailable();
 
         dispose(); // Close window after file import
       }
@@ -2876,6 +3512,7 @@ public class ImportWindow extends javax.swing.JFrame {
       loadImport(); // Reload to update the label text
     }
   }// GEN-LAST:event_cbUpdateDuplicatesActionPerformed
+
 
   /**
    * @param args the command line arguments

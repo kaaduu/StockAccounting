@@ -173,6 +173,11 @@ public class Settings {
    */
   private static boolean updateDuplicatesOnImport = false;
 
+  // File chooser preference
+  public static final int FILE_CHOOSER_NATIVE = 0;
+  public static final int FILE_CHOOSER_SWING = 1;
+  private static int fileChooserMode = FILE_CHOOSER_NATIVE;
+
   /**
    * Show metadata columns (Broker, AccountID, TxnID, Effect) visibility
    */
@@ -537,6 +542,17 @@ public class Settings {
 
   public static void setImportDirectory(String value) {
     importDirectory = value;
+  }
+
+  public static int getFileChooserMode() {
+    return fileChooserMode;
+  }
+
+  public static void setFileChooserMode(int value) {
+    if (value != FILE_CHOOSER_NATIVE && value != FILE_CHOOSER_SWING) {
+      value = FILE_CHOOSER_NATIVE;
+    }
+    fileChooserMode = value;
   }
 
   // Trading 212 API settings setters
@@ -918,6 +934,12 @@ public class Settings {
 
     /* Update duplicates on import */
     updateDuplicatesOnImport = p.getBoolean("updateDuplicatesOnImport", false);
+
+    /* File chooser preference */
+    fileChooserMode = p.getInt("fileChooserMode", FILE_CHOOSER_NATIVE);
+    if (fileChooserMode != FILE_CHOOSER_NATIVE && fileChooserMode != FILE_CHOOSER_SWING) {
+      fileChooserMode = FILE_CHOOSER_NATIVE;
+    }
   }
 
   /**
@@ -994,6 +1016,9 @@ public class Settings {
 
     // Update duplicates on import
     p.putBoolean("updateDuplicatesOnImport", updateDuplicatesOnImport);
+
+    // File chooser preference
+    p.putInt("fileChooserMode", fileChooserMode);
   }
 
   /**
