@@ -162,6 +162,9 @@ public class Trading212DataTransformer {
             String market = "TRADING212";
             java.util.Date executionDate = date; // Use same date for execution
 
+            // ID for stable matching
+            String txnId = extractStringField(orderJson, "id");
+
             // Create transaction
             Transaction transaction = new Transaction(
                 0, // serial will be set later
@@ -177,6 +180,11 @@ public class Trading212DataTransformer {
                 executionDate,
                 "Imported from Trading 212 API"
             );
+
+            transaction.setBroker("T212");
+            if (txnId != null && !txnId.trim().isEmpty()) {
+                transaction.setTxnId(txnId.trim());
+            }
 
             return transaction;
 

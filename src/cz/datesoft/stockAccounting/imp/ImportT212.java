@@ -190,6 +190,9 @@ public class ImportT212 extends ImportBase
             String isin = (isinIdx >= 0 && isinIdx < a.length) ? a[isinIdx].trim() : "";
             String transactionId = (transactionIdIdx >= 0 && transactionIdIdx < a.length) ? a[transactionIdIdx].trim() : "";
             drow.note = companyName + "|Broker:T212|ISIN:" + isin + "|TxnID:" + transactionId;
+
+            drow.broker = "T212";
+            drow.txnId = transactionId;
             /* Get date */   /* "2021-05-28 13:34:53" */      
             String x = a[dateIdx];           
             drow.date = parseDate(x.substring(8,10)+"."+x.substring(5,7)+"."+x.substring(0,4)+" "+x.substring(11), null);
