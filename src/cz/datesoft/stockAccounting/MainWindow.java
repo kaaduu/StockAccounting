@@ -854,17 +854,6 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
     jMenu1.add(miExportFIO);
-    javax.swing.JMenuItem miImportIBKR = new javax.swing.JMenuItem("Import z IBKR Flex...");
-    miImportIBKR.addActionListener(e -> {
-        IBKRFlexImportWindow importWindow = new IBKRFlexImportWindow(
-                MainWindow.this, MainWindow.this);
-        importWindow.setVisible(true);
-
-        if (importWindow.isImportCompleted()) {
-            refreshTable();
-        }
-    });
-    jMenu1.add(miImportIBKR);
     jMenu1.add(jSeparator2);
 
     miExit.setAccelerator(
@@ -1266,7 +1255,9 @@ public class MainWindow extends javax.swing.JFrame {
   private void formWindowOpened(java.awt.event.WindowEvent evt)// GEN-FIRST:event_formWindowOpened
   {// GEN-HEADEREND:event_formWindowOpened
     // Show about dialog
-     aboutWindow.setVisible(true);
+     if (cz.datesoft.stockAccounting.Settings.getShowAboutOnStartup()) {
+       aboutWindow.setVisible(true);
+     }
   }// GEN-LAST:event_formWindowOpened
 
   private void miReportActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_miReportActionPerformed
@@ -1679,6 +1670,12 @@ public class MainWindow extends javax.swing.JFrame {
            transactions.clearHighlights();
            table.repaint();
 
+           if (transactions.wereSerialsRepaired()) {
+             setTransientStatusMessage(
+                 "Oprava: přegenerovány interní serialy (duplicit: " + transactions.getSerialDuplicatesFound() + ")",
+                 12000L);
+           }
+
            // Clear filter
            clearFilter();
        } catch (Exception e) {
@@ -1788,6 +1785,12 @@ public class MainWindow extends javax.swing.JFrame {
         transactions.clearHighlights();
         table.repaint();
 
+        if (transactions.wereSerialsRepaired()) {
+          setTransientStatusMessage(
+              "Oprava: přegenerovány interní serialy (duplicit: " + transactions.getSerialDuplicatesFound() + ")",
+              12000L);
+        }
+
         // Clear filter
         clearFilter();
       } catch (Exception e) {
@@ -1889,6 +1892,17 @@ public class MainWindow extends javax.swing.JFrame {
       lastStatusMessage = null;
     }
 
+    long now = System.currentTimeMillis();
+    if (transientStatusMessage != null && !transientStatusMessage.isEmpty() && now <= transientStatusUntilMs) {
+      // Put transient message first so it isn't hidden by label truncation.
+      status = transientStatusMessage + " | " + status;
+      jLabel1.setToolTipText(transientStatusMessage);
+    } else {
+      transientStatusMessage = null;
+      transientStatusUntilMs = 0L;
+      jLabel1.setToolTipText(null);
+    }
+
     if (dpStatusWarning != null && !dpStatusWarning.isEmpty()) {
       status += dpStatusWarning;
       jLabel1.setForeground(statusColorWarning);
@@ -1899,6 +1913,14 @@ public class MainWindow extends javax.swing.JFrame {
     jLabel1.setText(status);
   }
 
+  public void setTransientStatusMessage(String msg, long ttlMs) {
+    if (msg == null) return;
+    transientStatusMessage = msg;
+    transientStatusUntilMs = System.currentTimeMillis() + Math.max(0L, ttlMs);
+    System.out.println("INFO: " + msg);
+    updateStatusBar();
+  }
+
   /**
    * Refresh the main table display
    */
@@ -1907,11 +1929,112 @@ public class MainWindow extends javax.swing.JFrame {
     table.repaint();
   }
 
+  public void jumpToFirstImportChangeInView() {
+    if (transactions == null) return;
+
+    int row = transactions.findFirstUpdatedVisibleRowIndex();
+    final boolean updated;
+    if (row < 0) {
+      row = transactions.findFirstInsertedVisibleRowIndex();
+      updated = false;
+    } else {
+      updated = true;
+    }
+    if (row < 0) {
+      return;
+    }
+
+    // If filter is active but row isn't visible, skip and notify.
+    // (Our find*VisibleRowIndex() already scans visible rows only.)
+    if (transactions.filteredRows != null && row >= transactions.filteredRows.size()) {
+      setTransientStatusMessage("Skok přeskočen (řádek není ve filtru vidět)", 8000L);
+      return;
+    }
+
+    final int viewRow = row;
+    javax.swing.SwingUtilities.invokeLater(() -> {
+      try {
+        if (viewRow < 0 || viewRow >= table.getRowCount()) {
+          setTransientStatusMessage("Skok přeskočen (řádek není ve filtru vidět)", 8000L);
+          return;
+        }
+
+        table.getSelectionModel().setSelectionInterval(viewRow, viewRow);
+        java.awt.Rectangle rect = table.getCellRect(viewRow, 0, true);
+        // Center the row in the visible viewport when possible.
+        try {
+          java.awt.Container parent = table.getParent();
+          if (parent instanceof javax.swing.JViewport) {
+            javax.swing.JViewport vp = (javax.swing.JViewport) parent;
+            int viewHeight = vp.getExtentSize().height;
+            java.awt.Rectangle target = new java.awt.Rectangle(rect);
+            target.y = Math.max(0, rect.y - (viewHeight / 2) + (rect.height / 2));
+            target.height = viewHeight;
+            table.scrollRectToVisible(target);
+          } else {
+            table.scrollRectToVisible(rect);
+          }
+        } catch (Exception e) {
+          table.scrollRectToVisible(rect);
+        }
+
+        flashSelectionRow(viewRow);
+
+        setTransientStatusMessage(updated ? "Skok na aktualizovaný řádek" : "Skok na nový řádek", 4000L);
+      } catch (Exception e) {
+        // ignore
+      }
+    });
+  }
+
+  private void flashSelectionRow(int viewRow) {
+    if (flashTimer != null) {
+      try {
+        flashTimer.stop();
+      } catch (Exception e) {
+      }
+      flashTimer = null;
+    }
+
+    flashRowIndex = viewRow;
+    final int[] ticks = new int[] { 0 };
+    flashTimer = new javax.swing.Timer(180, ev -> {
+      ticks[0]++;
+      if (ticks[0] % 2 == 0) {
+        table.clearSelection();
+      } else {
+        if (flashRowIndex != null && flashRowIndex >= 0 && flashRowIndex < table.getRowCount()) {
+          table.getSelectionModel().setSelectionInterval(flashRowIndex, flashRowIndex);
+        }
+      }
+      table.repaint();
+      if (ticks[0] >= 7) {
+        ((javax.swing.Timer) ev.getSource()).stop();
+        flashTimer = null;
+        // Leave row selected at the end
+        if (flashRowIndex != null && flashRowIndex >= 0 && flashRowIndex < table.getRowCount()) {
+          table.getSelectionModel().setSelectionInterval(flashRowIndex, flashRowIndex);
+        }
+        flashRowIndex = null;
+      }
+    });
+    flashTimer.setRepeats(true);
+    flashTimer.start();
+  }
+
   /** Current ticker filter for status bar display */
   private String currentTickerFilter = null;
 
   /** One-shot status bar message appended once */
   private String lastStatusMessage = null;
+
+  // Transient status bar message (kept for a short time)
+  private String transientStatusMessage = null;
+  private long transientStatusUntilMs = 0L;
+
+  // Flash updated/inserted row after import
+  private Integer flashRowIndex = null;
+  private javax.swing.Timer flashTimer = null;
 
   // Persistent DP warning shown in status bar
   private String dpStatusWarning = null;
