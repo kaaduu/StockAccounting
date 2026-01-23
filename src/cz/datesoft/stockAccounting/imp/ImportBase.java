@@ -43,6 +43,12 @@ public abstract class ImportBase
     public String market;
     public Date executionDate;
     public String note;
+
+    // Persisted metadata (preferred over parsing note when present)
+    public String broker;
+    public String accountId;
+    public String txnId;
+    public String code;
   }
   
   /**
@@ -260,6 +266,19 @@ public abstract class ImportBase
   protected void addRow(Vector<Transaction> set, DataRow row) throws Exception
   {
     Transaction tx = new Transaction(0, row.date, row.direction, row.ticker, row.amount, row.price, row.currency, row.fee, row.feeCurrency, row.market, row.executionDate, row.note);
+
+    if (row.broker != null && row.broker.trim().length() > 0) {
+      tx.setBroker(row.broker.trim());
+    }
+    if (row.accountId != null && row.accountId.trim().length() > 0) {
+      tx.setAccountId(row.accountId.trim());
+    }
+    if (row.txnId != null && row.txnId.trim().length() > 0) {
+      tx.setTxnId(row.txnId.trim());
+    }
+    if (row.code != null && row.code.trim().length() > 0) {
+      tx.setCode(row.code.trim());
+    }
     
     set.add(tx);
   }
