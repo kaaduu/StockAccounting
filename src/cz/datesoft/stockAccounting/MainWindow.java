@@ -215,6 +215,9 @@ public class MainWindow extends javax.swing.JFrame {
     System.out.println("DEBUG: Forcing status bar update after Nový");
     updateStatusBar();
 
+    // Undo import is disabled by default
+    enableUndoImportIfAvailable();
+
     // Create dialogs
     importWindow = new ImportWindow(this, true);
     computeWindow = new ComputeWindow(this, false);
@@ -589,6 +592,41 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(bUndoDelete, gridBagConstraints);
 
+    // Undo import button spanning both rows
+    bUndoImport = new javax.swing.JButton();
+    bUndoImport.setText("Zpět import");
+    bUndoImport.setEnabled(false);
+    bUndoImport.setToolTipText("Vrátí poslední import (vložené řádky i aktualizace duplikátů)");
+    bUndoImport.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bUndoImportActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 15;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.gridheight = 2;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(bUndoImport, gridBagConstraints);
+
+    // Clear TxnID/AccountID button spanning both rows
+    bClearTxnId = new javax.swing.JButton();
+    bClearTxnId.setText("Smazat TxnID");
+    bClearTxnId.setToolTipText("Odstraní Broker/ID účtu/ID transakce z vybraných řádků (včetně Note)");
+    bClearTxnId.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bClearTxnIdActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 16;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.gridheight = 2;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(bClearTxnId, gridBagConstraints);
+
     // Sort button spanning both rows
     bSort.setText("Seřadit");
     bSort.addActionListener(new java.awt.event.ActionListener() {
@@ -597,7 +635,7 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 15;
+    gridBagConstraints.gridx = 17;
     gridBagConstraints.gridy = 0;
     gridBagConstraints.gridheight = 2;  // Span both rows
     gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
@@ -1176,6 +1214,13 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Clear results of computing
     computeWindow.clearComputeResults();
+
+    // Clear highlights explicitly (fresh dataset)
+    transactions.clearHighlights();
+    table.repaint();
+
+    // Undo import state cleared
+    enableUndoImportIfAvailable();
     // Clear filter
     clearFilter();
 
@@ -1284,6 +1329,68 @@ public class MainWindow extends javax.swing.JFrame {
     bUndoDelete.setEnabled(false);
     lastStatusMessage = " | Obnoveno: " + restored;
     updateStatusBar();
+  }
+
+  private void bUndoImportActionPerformed(java.awt.event.ActionEvent evt) {
+    if (transactions == null || !transactions.hasUndoImport()) {
+      bUndoImport.setEnabled(false);
+      JOptionPane.showMessageDialog(this, "Není co vrátit.", "Zpět import", JOptionPane.INFORMATION_MESSAGE);
+      return;
+    }
+
+    if (JOptionPane.showConfirmDialog(this,
+        "Opravdu chcete vrátit poslední import?\n\nVrátí vložené řádky i aktualizace duplikátů.",
+        "Zpět import", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+      return;
+    }
+
+    int changed = transactions.undoLastImport();
+    if (changed <= 0) {
+      bUndoImport.setEnabled(false);
+      JOptionPane.showMessageDialog(this, "Není co vrátit.", "Zpět import", JOptionPane.INFORMATION_MESSAGE);
+      return;
+    }
+
+    clearAllFiltersAndInputs();
+    bUndoImport.setEnabled(false);
+    lastStatusMessage = " | Import vrácen: " + changed;
+    updateStatusBar();
+  }
+
+  private void bClearTxnIdActionPerformed(java.awt.event.ActionEvent evt) {
+    int[] selected = table.getSelectedRows();
+    if (selected == null || selected.length == 0) {
+      JOptionPane.showMessageDialog(this, "Nejsou vybrané žádné řádky.", "Smazat TxnID", JOptionPane.INFORMATION_MESSAGE);
+      return;
+    }
+
+    if (JOptionPane.showConfirmDialog(this,
+        "Opravdu chcete odstranit Broker/ID účtu/ID transakce z vybraných řádků?\n\n" +
+            "Odstraní se i z poznámky (Note). To ovlivní párování při re-importu.",
+        "Smazat TxnID", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+      return;
+    }
+
+    int changed = 0;
+    try {
+      for (int viewRow : selected) {
+        if (viewRow < 0) continue;
+        Transaction tx = transactions.getRowAt(viewRow);
+        if (tx == null) continue;
+        tx.clearBrokerAccountTxnMetadata();
+        changed++;
+      }
+      if (changed > 0) {
+        transactions.modified = true;
+        refreshMetadataFilters();
+        table.revalidate();
+        table.repaint();
+        lastStatusMessage = " | Smazáno TxnID: " + changed;
+        updateStatusBar();
+      }
+    } catch (Exception e) {
+      JOptionPane.showMessageDialog(this, "Chyba: " + e.getMessage(), "Smazat TxnID", JOptionPane.ERROR_MESSAGE);
+    }
   }
 
   private void clearAllFiltersAndInputs() {
@@ -1568,6 +1675,10 @@ public class MainWindow extends javax.swing.JFrame {
            // Clear results of computing to avoid confusion
            computeWindow.clearComputeResults();
 
+           // Clear inserted/updated highlights from previous session
+           transactions.clearHighlights();
+           table.repaint();
+
            // Clear filter
            clearFilter();
        } catch (Exception e) {
@@ -1673,6 +1784,10 @@ public class MainWindow extends javax.swing.JFrame {
         // Clear results of computing to avoid confusion
         computeWindow.clearComputeResults();
 
+        // Clear inserted/updated highlights from previous session
+        transactions.clearHighlights();
+        table.repaint();
+
         // Clear filter
         clearFilter();
       } catch (Exception e) {
@@ -1774,6 +1889,13 @@ public class MainWindow extends javax.swing.JFrame {
       lastStatusMessage = null;
     }
 
+    if (dpStatusWarning != null && !dpStatusWarning.isEmpty()) {
+      status += dpStatusWarning;
+      jLabel1.setForeground(statusColorWarning);
+    } else {
+      jLabel1.setForeground(statusColorDefault);
+    }
+
     jLabel1.setText(status);
   }
 
@@ -1791,11 +1913,41 @@ public class MainWindow extends javax.swing.JFrame {
   /** One-shot status bar message appended once */
   private String lastStatusMessage = null;
 
+  // Persistent DP warning shown in status bar
+  private String dpStatusWarning = null;
+  private int dpStatusWarningYear = 0;
+  private int dpStatusWarningCount = 0;
+  private final java.awt.Color statusColorDefault = java.awt.Color.BLACK;
+  private final java.awt.Color statusColorWarning = new java.awt.Color(180, 0, 0);
+
+  public void setDpYearEndSettlementWarning(int year, int count) {
+    dpStatusWarningYear = year;
+    dpStatusWarningCount = count;
+    if (count > 0) {
+      dpStatusWarning = " | DP " + year + ": vypořádání=datum (" + count + ")";
+    } else {
+      dpStatusWarning = null;
+    }
+    updateStatusBar();
+  }
+
+  public void enableUndoImportIfAvailable() {
+    try {
+      if (bUndoImport != null && transactions != null) {
+        bUndoImport.setEnabled(transactions.hasUndoImport());
+      }
+    } catch (Exception e) {
+      // ignore
+    }
+  }
+
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JButton bApplyFilter;
   private javax.swing.JButton bClearFilter;
   private javax.swing.JButton bDelete;
   private javax.swing.JButton bUndoDelete;
+  private javax.swing.JButton bUndoImport;
+  private javax.swing.JButton bClearTxnId;
   private javax.swing.JButton bSort;
   private javax.swing.JComboBox cbCurrencies;
   private javax.swing.JComboBox cbDirection;

@@ -116,6 +116,111 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.code = null;
     this.note = null;
   }
+
+  /**
+   * Deep copy of a transaction for undo purposes.
+   *
+   * Note: serial is copied as-is; this is safe for restoring existing rows.
+   */
+  public Transaction deepCopy() {
+    try {
+      Transaction t = new Transaction(this.serial,
+          this.date,
+          this.direction,
+          this.ticker,
+          this.amount == null ? 0.0 : this.amount.doubleValue(),
+          this.price == null ? 0.0 : this.price.doubleValue(),
+          this.priceCurrency == null ? "CZK" : this.priceCurrency,
+          this.fee == null ? 0.0 : this.fee.doubleValue(),
+          this.feeCurrency,
+          this.market,
+          this.executionDate,
+          this.note);
+
+      // Persisted metadata
+      t.broker = this.broker;
+      t.accountId = this.accountId;
+      t.txnId = this.txnId;
+      t.code = this.code;
+
+      return t;
+    } catch (Exception e) {
+      // Fallback: manual copy
+      Transaction t = new Transaction(this.serial);
+      t.date = this.date;
+      t.direction = this.direction;
+      t.ticker = this.ticker;
+      t.amount = this.amount;
+      t.price = this.price;
+      t.priceCurrency = this.priceCurrency;
+      t.fee = this.fee;
+      t.feeCurrency = this.feeCurrency;
+      t.market = this.market;
+      t.executionDate = this.executionDate;
+      t.note = this.note;
+      t.broker = this.broker;
+      t.accountId = this.accountId;
+      t.txnId = this.txnId;
+      t.code = this.code;
+      return t;
+    }
+  }
+
+  public void restoreFrom(Transaction snapshot) {
+    if (snapshot == null) return;
+    this.date = snapshot.date;
+    this.direction = snapshot.direction;
+    this.ticker = snapshot.ticker;
+    this.amount = snapshot.amount;
+    this.price = snapshot.price;
+    this.priceCurrency = snapshot.priceCurrency;
+    this.fee = snapshot.fee;
+    this.feeCurrency = snapshot.feeCurrency;
+    this.market = snapshot.market;
+    this.executionDate = snapshot.executionDate;
+    this.note = snapshot.note;
+    this.broker = snapshot.broker;
+    this.accountId = snapshot.accountId;
+    this.txnId = snapshot.txnId;
+    this.code = snapshot.code;
+  }
+
+  /**
+   * Remove broker/account/transaction metadata from both persisted fields and Note.
+   * Keeps the human-readable description part of Note and any unrelated custom segments.
+   */
+  public void clearBrokerAccountTxnMetadata() {
+    this.broker = null;
+    this.accountId = null;
+    this.txnId = null;
+    this.code = null;
+
+    if (this.note == null || this.note.trim().isEmpty()) {
+      return;
+    }
+
+    String[] parts = this.note.split("\\|");
+    java.util.ArrayList<String> kept = new java.util.ArrayList<>();
+    for (String p : parts) {
+      if (p == null) continue;
+      String s = p.trim();
+      if (s.isEmpty()) continue;
+      int idx = s.indexOf(':');
+      if (idx > 0) {
+        String key = s.substring(0, idx).trim().toLowerCase();
+        if (key.equals("broker") || key.equals("accountid") || key.equals("txnid") || key.equals("code")) {
+          continue;
+        }
+      }
+      kept.add(s);
+    }
+
+    if (kept.isEmpty()) {
+      this.note = null;
+    } else {
+      this.note = String.join("|", kept);
+    }
+  }
   
   /**
    * Create transaction from a file

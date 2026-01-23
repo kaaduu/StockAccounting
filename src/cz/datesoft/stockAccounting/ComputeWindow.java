@@ -20,6 +20,10 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableColumnModel;
 import java.io.File;
 import java.awt.FileDialog;
+import java.awt.Desktop;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 /**
  *
@@ -51,6 +55,48 @@ public class ComputeWindow extends javax.swing.JDialog {
     public String toString() {
       return _name;
     }
+  }
+
+  private static final DateTimeFormatter CZ_DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+
+  private static boolean isEndOfYearTradeDateForYear(java.util.Date d, int year) {
+    if (d == null) return false;
+    GregorianCalendar cal = new GregorianCalendar();
+    cal.setTime(d);
+    int y = cal.get(GregorianCalendar.YEAR);
+    int m = cal.get(GregorianCalendar.MONTH) + 1;
+    int day = cal.get(GregorianCalendar.DAY_OF_MONTH);
+    return y == year && m == 12 && (day == 29 || day == 30 || day == 31);
+  }
+
+  private int countSameSettlementOnYearEnd(TransactionSet transactions, int year) {
+    if (transactions == null) return 0;
+    int anySame = 0;
+    for (Iterator<Transaction> it = transactions.iterator(); it.hasNext();) {
+      Transaction tx = it.next();
+      if (tx == null) continue;
+      java.util.Date dTrade = tx.getDate();
+      if (!isEndOfYearTradeDateForYear(dTrade, year)) continue;
+      java.util.Date dSettle = tx.getExecutionDate();
+      if (dSettle != null && dSettle.equals(dTrade)) {
+        anySame++;
+      }
+    }
+    return anySame;
+  }
+
+  private void warnAboutSettlementDatesForYearIfNeeded(TransactionSet transactions, int year) {
+    int anySame = countSameSettlementOnYearEnd(transactions, year);
+    if (anySame <= 0) return;
+
+    StringBuilder msg = new StringBuilder();
+    msg.append("Pozor na datum vypořádání u obchodů na konci roku ").append(year).append(".\n\n");
+    msg.append("Celkem: ").append(anySame)
+        .append(" transakcí (29.12–31.12.").append(year)
+        .append(") má 'Datum vypořádání' shodné s 'Datum'.\n\n");
+    msg.append("Doporučení: ověřte skutečné datum vypořádání u brokera (zejména u obchodů 31.12) a případně jej ručně upravte ve sloupci 'Datum vypořádání'.");
+
+    JOptionPane.showMessageDialog(this, msg.toString(), "Upozornění: datum vypořádání", JOptionPane.WARNING_MESSAGE);
   }
 
   /**
@@ -155,6 +201,38 @@ public class ComputeWindow extends javax.swing.JDialog {
     ofl.println("<tr>");
     for (int i = 0; i < tbl.getColumnCount(); i++) {
       ofl.write("<th>" + (String) cm.getColumn(i).getHeaderValue() + "</th>");
+    }
+    ofl.println("</tr>");
+  }
+
+  private void saveHTMLHeaderNewTrades(java.io.PrintWriter ofl, String title, javax.swing.JTable tbl) {
+    ofl.println("<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+        "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">"
+        +
+        "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"cz\" lang=\"cz\"><head><title>" + title + "</title>");
+    ofl.println("<style type=\"text/css\">");
+    ofl.println("body { text-align: center; background-color: white; }");
+    ofl.println("table { border: 1px solid black; border-spacing: 0px; margin-left: auto; margin-right: auto; }");
+    ofl.println("td { border: 1px solid black; padding: 2px; text-align: right; }");
+    ofl.println("th { border: 1px solid black; padding: 2px; background-color: #dddddd; }");
+    ofl.println(".left { text-align: left; }");
+    ofl.println(".finalRow { font-weight: bold; }");
+    ofl.println("</style></head>");
+    ofl.println("<body>");
+    ofl.println("<h1>" + title + "</h1>");
+    ofl.println("<table>");
+
+    // Header line (18 columns): insert Poplatky CZK after open+close Poplatky
+    TableColumnModel cm = tbl.getColumnModel();
+    ofl.println("<tr>");
+    for (int i = 0; i < tbl.getColumnCount(); i++) {
+      ofl.write("<th>" + (String) cm.getColumn(i).getHeaderValue() + "</th>");
+      if (i == 5) {
+        ofl.write("<th>Poplatky CZK (otev.)</th>");
+      }
+      if (i == 12) {
+        ofl.write("<th>Poplatky CZK (zav.)</th>");
+      }
     }
     ofl.println("</tr>");
   }
@@ -361,6 +439,154 @@ public class ComputeWindow extends javax.swing.JDialog {
     }
   }
 
+  private void saveHtmlNewTrades(JTable table) {
+    if (yearComputed == 0) {
+      JOptionPane.showMessageDialog(this, "Výsledky nebyly (ještě) dopočítány.");
+      return;
+    }
+
+    FileDialog dialog = new FileDialog(this, "Uložit jako HTML new", FileDialog.SAVE);
+    dialog.setVisible(true);
+    String fileName = dialog.getFile();
+    if (fileName == null) return;
+
+    File file = new File(dialog.getDirectory(), fileName);
+    if (file.getName().lastIndexOf('.') < 0) {
+      file = new File(file.getParent(), file.getName() + ".html");
+    }
+
+    if (file.exists()) {
+      if (JOptionPane.showConfirmDialog(this,
+          "Soubor " + file.getAbsolutePath() + " již existuje, chcete jej přepsat?",
+          "Přepsat soubor?", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+        return;
+      }
+    }
+
+    String instrumentName;
+    if (table == tableCP) {
+      instrumentName = "cenných papírů";
+    } else if (table == tableCash) {
+      instrumentName = "kurzových zisků";
+    } else {
+      instrumentName = "derivátů";
+    }
+    String title = includeOverTaxFreeDurarionComputed
+        ? ("Výsledky obchodování " + instrumentName + " za rok " + yearComputed)
+        : ("Podklad pro daňové přiznání " + instrumentName + " za rok " + yearComputed);
+
+    try {
+      saveHTMLNewTrades(title, file, table);
+      promptOpenSavedHtml(file);
+    } catch (Exception e) {
+      JOptionPane.showMessageDialog(this, "Chyba při ukládání: " + e.getMessage());
+      e.printStackTrace();
+    }
+  }
+
+  private void promptOpenSavedHtml(File file) {
+    if (file == null) return;
+    int r = JOptionPane.showConfirmDialog(this,
+        "Chcete otevřít uložený HTML soubor v prohlížeči?\n\n" + file.getAbsolutePath(),
+        "Otevřít HTML", JOptionPane.YES_NO_OPTION);
+    if (r != JOptionPane.YES_OPTION) return;
+
+    try {
+      if (!Desktop.isDesktopSupported()) {
+        JOptionPane.showMessageDialog(this, "Otevření v prohlížeči není podporováno na této platformě.\n" + file.getAbsolutePath());
+        return;
+      }
+      Desktop d = Desktop.getDesktop();
+      if (d.isSupported(Desktop.Action.BROWSE)) {
+        d.browse(file.toURI());
+      } else if (d.isSupported(Desktop.Action.OPEN)) {
+        d.open(file);
+      } else {
+        JOptionPane.showMessageDialog(this, "Otevření v prohlížeči není podporováno.\n" + file.getAbsolutePath());
+      }
+    } catch (Exception e) {
+      JOptionPane.showMessageDialog(this, "Nelze otevřít soubor: " + e.getMessage() + "\n" + file.getAbsolutePath());
+    }
+  }
+
+  private void saveHTMLNewTrades(String title, File file, JTable table) throws Exception {
+    try (java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file))) {
+      saveHTMLHeaderNewTrades(ofl, title, table);
+
+      DefaultTableModel model = (DefaultTableModel) table.getModel();
+      int emptyRow = -1;
+      int finalRow = model.getRowCount() - 1;
+
+      for (int i = 0; i < model.getRowCount(); i++) {
+        if (i == emptyRow) continue;
+
+        ofl.write("<tr" + ((i == finalRow) ? " class=\"finalRow\"" : "") + ">");
+
+        // Original layout is 16 columns. We output 18 by inserting Poplatky CZK for both legs.
+        for (int n = 0; n < model.getColumnCount(); n++) {
+          // Insert open Poplatky CZK right after open Poplatky (col 5)
+          if (n == 6) {
+            String openFeeCzk = computeFeeCzkCell(model, i, 0, 5);
+            ofl.write("<td>" + openFeeCzk + "</td>");
+          }
+
+          // Insert close Poplatky CZK right after close Poplatky (col 12)
+          if (n == 13) {
+            String closeFeeCzk = computeFeeCzkCell(model, i, 7, 12);
+            ofl.write("<td>" + closeFeeCzk + "</td>");
+          }
+
+          if ((n == 1) || (n == 7) || (n == 8) || (n == 15)) {
+            ofl.write("<td class=\"left\">");
+          } else {
+            ofl.write("<td>");
+          }
+
+          String s = (String) model.getValueAt(i, n);
+          if (s == null) s = "";
+          if (n != 15) {
+            s = spaces2nbsp(s);
+          }
+          ofl.write(s + "</td>");
+        }
+
+        ofl.println("</tr>");
+      }
+
+      ofl.println("</body></html>");
+    }
+  }
+
+  private String computeFeeCzkCell(DefaultTableModel model, int rowIndex, int dateCol, int feeCol) {
+    try {
+      String dateStr = (String) model.getValueAt(rowIndex, dateCol);
+      String feeStr = (String) model.getValueAt(rowIndex, feeCol);
+      if (dateStr == null || feeStr == null) return "-";
+      dateStr = dateStr.trim();
+      feeStr = feeStr.trim();
+      if (dateStr.isEmpty() || dateStr.equals("-")) return "-";
+      if (feeStr.isEmpty() || feeStr.equals("-")) return "-";
+
+      String[] parts = feeStr.split(" ", 2);
+      if (parts.length != 2) return "-";
+      double fee = Double.parseDouble(parts[0].replace(',', '.'));
+      String cur = parts[1].trim();
+      if (cur.isEmpty()) return "-";
+
+      LocalDateTime ldt = LocalDateTime.parse(dateStr, CZ_DATE_TIME_FMT);
+      java.util.Date d = java.util.Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant());
+
+      double rate = Settings.getExchangeRate(cur, d);
+      double czk = Stocks.roundToHellers(fee * rate);
+      java.text.DecimalFormat f2 = new java.text.DecimalFormat("0.00");
+      f2.setGroupingUsed(true);
+      f2.setGroupingSize(3);
+      return spaces2nbsp(f2.format(czk));
+    } catch (Exception e) {
+      return "-";
+    }
+  }
+
   /**
    * Utility function to format date + time
    */
@@ -541,16 +767,19 @@ public class ComputeWindow extends javax.swing.JDialog {
     pCP = new javax.swing.JPanel();
     bSaveCSVCP = new javax.swing.JButton();
     bSaveHTMLCP = new javax.swing.JButton();
+    bSaveHTMLCPNew = new javax.swing.JButton();
     jScrollPane1 = new javax.swing.JScrollPane();
     tableCP = new javax.swing.JTable();
     pDerivates = new javax.swing.JPanel();
     bSaveCSVDer = new javax.swing.JButton();
     bSaveHTMLDer = new javax.swing.JButton();
+    bSaveHTMLDerNew = new javax.swing.JButton();
     jScrollPane3 = new javax.swing.JScrollPane();
     tableDer = new javax.swing.JTable();
     pCash = new javax.swing.JPanel();
     bSaveCSVCash = new javax.swing.JButton();
     bSaveHTMLCash = new javax.swing.JButton();
+    bSaveHTMLCashNew = new javax.swing.JButton();
     jScrollPane4 = new javax.swing.JScrollPane();
     tableCash = new javax.swing.JTable();
     jPanel2 = new javax.swing.JPanel();
@@ -682,6 +911,16 @@ public class ComputeWindow extends javax.swing.JDialog {
     gridBagConstraints.insets = new java.awt.Insets(4, 4, 4, 4);
     pCP.add(bSaveHTMLCP, gridBagConstraints);
 
+    bSaveHTMLCPNew.setText("Uložit HTML new");
+    bSaveHTMLCPNew.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bSaveHTMLCPNewActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.insets = new java.awt.Insets(4, 4, 4, 4);
+    pCP.add(bSaveHTMLCPNew, gridBagConstraints);
+
     tableCP.setModel(new javax.swing.table.DefaultTableModel(
         new Object[][] {
             { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
@@ -745,6 +984,16 @@ public class ComputeWindow extends javax.swing.JDialog {
     gridBagConstraints.insets = new java.awt.Insets(4, 4, 4, 4);
     pDerivates.add(bSaveHTMLDer, gridBagConstraints);
 
+    bSaveHTMLDerNew.setText("Uložit HTML new");
+    bSaveHTMLDerNew.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bSaveHTMLDerNewActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.insets = new java.awt.Insets(4, 4, 4, 4);
+    pDerivates.add(bSaveHTMLDerNew, gridBagConstraints);
+
     tableDer.setModel(new javax.swing.table.DefaultTableModel(
         new Object[][] {
             { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
@@ -807,6 +1056,16 @@ public class ComputeWindow extends javax.swing.JDialog {
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.insets = new java.awt.Insets(4, 4, 4, 4);
     pCash.add(bSaveHTMLCash, gridBagConstraints);
+
+    bSaveHTMLCashNew.setText("Uložit HTML new");
+    bSaveHTMLCashNew.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bSaveHTMLCashNewActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.insets = new java.awt.Insets(4, 4, 4, 4);
+    pCash.add(bSaveHTMLCashNew, gridBagConstraints);
 
     tableCash.setModel(new javax.swing.table.DefaultTableModel(
         new Object[][] {
@@ -945,6 +1204,13 @@ public class ComputeWindow extends javax.swing.JDialog {
     NoIncomeTrades noIncomeTrades;
     GregorianCalendar cal = new GregorianCalendar();
     int year = Integer.parseInt(eYear.getText());
+
+    // Year-scoped warning + status bar warning (only 29.-31.12 of selected year).
+    int sameSettlementCount = countSameSettlementOnYearEnd(transactions, year);
+    warnAboutSettlementDatesForYearIfNeeded(transactions, year);
+    if (mainWindow != null) {
+      mainWindow.setDpYearEndSettlementWarning(year, sameSettlementCount);
+    }
 
     boolean allowShortsOverYearBorder = cbAllowShortOverYearBoundary.isSelected();
 
@@ -1128,6 +1394,10 @@ public class ComputeWindow extends javax.swing.JDialog {
     save(SaveFormat.HTML, tableCP);
   }// GEN-LAST:event_bSaveHTMLCPActionPerformed
 
+  private void bSaveHTMLCPNewActionPerformed(java.awt.event.ActionEvent evt) {
+    saveHtmlNewTrades(tableCP);
+  }
+
   private void bSaveCSVDerActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_bSaveCSVDerActionPerformed
     save(SaveFormat.CSV, tableDer);
   }// GEN-LAST:event_bSaveCSVDerActionPerformed
@@ -1135,6 +1405,10 @@ public class ComputeWindow extends javax.swing.JDialog {
   private void bSaveHTMLDerActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_bSaveHTMLDerActionPerformed
     save(SaveFormat.HTML, tableDer);
   }// GEN-LAST:event_bSaveHTMLDerActionPerformed
+
+  private void bSaveHTMLDerNewActionPerformed(java.awt.event.ActionEvent evt) {
+    saveHtmlNewTrades(tableDer);
+  }
 
   private void bSaveCSVCashActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bSaveCSVCashActionPerformed
   {// GEN-HEADEREND:event_bSaveCSVCashActionPerformed
@@ -1146,6 +1420,10 @@ public class ComputeWindow extends javax.swing.JDialog {
     save(SaveFormat.HTML, tableCash);
   }// GEN-LAST:event_bSaveHTMLCashActionPerformed
 
+  private void bSaveHTMLCashNewActionPerformed(java.awt.event.ActionEvent evt) {
+    saveHtmlNewTrades(tableCash);
+  }
+
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JButton bClose;
   private javax.swing.JButton bCompute;
@@ -1154,8 +1432,11 @@ public class ComputeWindow extends javax.swing.JDialog {
   private javax.swing.JButton bSaveCSVDer;
   private javax.swing.JButton bSaveCSVDivi;
   private javax.swing.JButton bSaveHTMLCP;
+  private javax.swing.JButton bSaveHTMLCPNew;
   private javax.swing.JButton bSaveHTMLCash;
+  private javax.swing.JButton bSaveHTMLCashNew;
   private javax.swing.JButton bSaveHTMLDer;
+  private javax.swing.JButton bSaveHTMLDerNew;
   private javax.swing.JButton bSaveHTMLDivi;
   private javax.swing.JCheckBox cbAllowShortOverYearBoundary;
   private javax.swing.JCheckBox cbComputeDivi;
