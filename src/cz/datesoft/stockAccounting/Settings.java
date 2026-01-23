@@ -179,6 +179,11 @@ public class Settings {
   private static int fileChooserMode = FILE_CHOOSER_NATIVE;
 
   /**
+   * Show "O aplikaci" window on startup
+   */
+  private static boolean showAboutOnStartup = true;
+
+  /**
    * Show metadata columns (Broker, AccountID, TxnID, Effect) visibility
    */
   private static boolean showMetadataColumns = true;
@@ -189,11 +194,6 @@ public class Settings {
   private static boolean highlightUpdatedEnabled = true;
   private static java.awt.Color highlightInsertedColor = null;
   private static java.awt.Color highlightUpdatedColor = null;
-
-  /**
-   * Show row number column (#) in main table
-   */
-  private static boolean showRowNumberColumn = true;
 
   /**
    * Daily exchange rates map (currency|YYYY-MM-DD => ratio map)
@@ -555,6 +555,14 @@ public class Settings {
     fileChooserMode = value;
   }
 
+  public static boolean getShowAboutOnStartup() {
+    return showAboutOnStartup;
+  }
+
+  public static void setShowAboutOnStartup(boolean value) {
+    showAboutOnStartup = value;
+  }
+
   // Trading 212 API settings setters
   public static void setTrading212ApiKey(String value) {
     trading212ApiKey = value;
@@ -704,14 +712,6 @@ public class Settings {
     String g = String.format("%02X", c.getGreen());
     String b = String.format("%02X", c.getBlue());
     return "#" + r + g + b;
-  }
-
-  public static boolean getShowRowNumberColumn() {
-    return showRowNumberColumn;
-  }
-
-  public static void setShowRowNumberColumn(boolean value) {
-    showRowNumberColumn = value;
   }
 
   /**
@@ -913,9 +913,6 @@ public class Settings {
     /* Show metadata columns */
     showMetadataColumns = p.getBoolean("showMetadataColumns", true);
 
-    /* Show row number column */
-    showRowNumberColumn = p.getBoolean("showRowNumberColumn", true);
-
     /* Trading 212 API settings */
     trading212ApiKey = p.get("trading212ApiKey", null);
     trading212ApiSecret = p.get("trading212ApiSecret", null);
@@ -940,6 +937,9 @@ public class Settings {
     if (fileChooserMode != FILE_CHOOSER_NATIVE && fileChooserMode != FILE_CHOOSER_SWING) {
       fileChooserMode = FILE_CHOOSER_NATIVE;
     }
+
+    /* About on startup */
+    showAboutOnStartup = p.getBoolean("showAboutOnStartup", true);
   }
 
   /**
@@ -994,9 +994,6 @@ public class Settings {
     // Show metadata columns
     p.putBoolean("showMetadataColumns", showMetadataColumns);
 
-    // Show row number column
-    p.putBoolean("showRowNumberColumn", showRowNumberColumn);
-
     // Trading 212 API settings
     if (trading212ApiKey != null) {
       p.put("trading212ApiKey", trading212ApiKey);
@@ -1019,6 +1016,9 @@ public class Settings {
 
     // File chooser preference
     p.putInt("fileChooserMode", fileChooserMode);
+
+    // About on startup
+    p.putBoolean("showAboutOnStartup", showAboutOnStartup);
   }
 
   /**

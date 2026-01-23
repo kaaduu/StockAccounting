@@ -45,6 +45,10 @@ public class ImportWindow extends javax.swing.JFrame {
   private boolean previewLoadInProgress;
   private boolean previewReloadRequested;
 
+  // Preview: updates (duplicates to update)
+  // (declared in variables section)
+  private java.util.List<UpdatePair> previewUpdatePairs = new java.util.ArrayList<>();
+
    // Main window
    MainWindow mainWindow;
 
@@ -173,8 +177,6 @@ public class ImportWindow extends javax.swing.JFrame {
     getContentPane().doLayout();
 
     transactions = new TransactionSet();
-    // Preview table should not show row number column
-    transactions.setShowRowNumberColumn(false);
     table.setModel(transactions);
 
     table.getColumnModel().getColumn(0).setPreferredWidth(200);
@@ -694,6 +696,7 @@ public class ImportWindow extends javax.swing.JFrame {
     ibkrPreviewDirty = true;
     if (bIBKRFlexRefreshPreview != null) {
       bIBKRFlexRefreshPreview.setEnabled(true);
+      bIBKRFlexRefreshPreview.setText("🟢 Obnovit náhled");
     }
     if (statusMessage != null && lblIBKRFlexStatus != null) {
       lblIBKRFlexStatus.setText(statusMessage);
@@ -706,6 +709,7 @@ public class ImportWindow extends javax.swing.JFrame {
     ibkrPreviewDirty = false;
     if (bIBKRFlexRefreshPreview != null) {
       bIBKRFlexRefreshPreview.setEnabled(false);
+      bIBKRFlexRefreshPreview.setText("Obnovit náhled");
     }
   }
 
@@ -755,6 +759,17 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       }
 
+      // Populate new preview UI elements (summary + side-by-side update table)
+      previewUpdatePairs = new java.util.ArrayList<>();
+      if (cbUpdateDuplicates.isSelected() && !duplicatesToUpdate.isEmpty()) {
+        for (Transaction incoming : duplicatesToUpdate) {
+          if (incoming == null) continue;
+          Transaction existing = mainWindow.getTransactionDatabase().findDuplicateTransaction(incoming);
+          String match = computeMatchKind(existing, incoming);
+          previewUpdatePairs.add(new UpdatePair(existing, incoming, match));
+        }
+      }
+
       transactions.rows.addAll(filteredTransactions);
       transactions.fireTableDataChanged();
 
@@ -768,6 +783,15 @@ public class ImportWindow extends javax.swing.JFrame {
       }
       previewText += ":";
       lPreview.setText(previewText);
+
+      if (lSummary != null) {
+        int newCnt = filteredTransactions.size();
+        int updCnt = duplicatesToUpdate.size();
+        int ni = 0;
+        lSummary.setText("Nové: " + newCnt + " | K aktualizaci: " + updCnt + " | Neimportované: " + ni);
+      }
+
+      updateUpdatePreviewSection();
 
       String statusMsg = "Náhled obnoven";
       if (lastIbkrSourceLabel != null) {
@@ -790,6 +814,7 @@ public class ImportWindow extends javax.swing.JFrame {
       ibkrPreviewDirty = false;
       if (bIBKRFlexRefreshPreview != null) {
         bIBKRFlexRefreshPreview.setEnabled(false);
+        bIBKRFlexRefreshPreview.setText("Obnovit náhled");
       }
 
     } catch (Exception e) {
@@ -799,6 +824,47 @@ public class ImportWindow extends javax.swing.JFrame {
         lblIBKRFlexStatus.setText("Chyba při obnovení náhledu: " + e.getMessage());
       }
     }
+  }
+
+  private void refreshIbkrPreviewFromCachedCsvAsync() {
+    if (!isIBKRFlexFormat()) return;
+    if (lastIbkrCsvContent == null) {
+      if (lblIBKRFlexStatus != null) {
+        lblIBKRFlexStatus.setText("Nejprve načtěte data (API nebo soubor)");
+      }
+      return;
+    }
+    if (previewLoadInProgress) {
+      return;
+    }
+
+    showBusy("Obnovuji náhled IBKR Flex…");
+    if (bIBKRFlexFile != null) bIBKRFlexFile.setEnabled(false);
+    if (bIBKRFlexRefreshPreview != null) bIBKRFlexRefreshPreview.setEnabled(false);
+    if (bIBKRFlexClear != null) bIBKRFlexClear.setEnabled(false);
+
+    javax.swing.SwingWorker<Void, Void> w = new javax.swing.SwingWorker<>() {
+      @Override
+      protected Void doInBackground() {
+        refreshIbkrPreviewFromCachedCsv();
+        return null;
+      }
+
+      @Override
+      protected void done() {
+        try {
+          get();
+        } catch (Exception e) {
+          // refreshIbkrPreviewFromCachedCsv already set status; keep this minimal
+        } finally {
+          hideBusy();
+          if (bIBKRFlexFile != null) bIBKRFlexFile.setEnabled(true);
+          if (bIBKRFlexClear != null) bIBKRFlexClear.setEnabled(lastIbkrCsvContent != null);
+          updateIBKRFlexButtonState();
+        }
+      }
+    };
+    w.execute();
   }
 
   private java.util.Set<String> getSelectedIbkrAssetClasses() {
@@ -957,6 +1023,11 @@ public class ImportWindow extends javax.swing.JFrame {
     if (cbIBKRFlexCaTC != null) cbIBKRFlexCaTC.setEnabled(enableCaTypes);
     if (cbIBKRFlexCaIC != null) cbIBKRFlexCaIC.setEnabled(enableCaTypes);
     if (cbIBKRFlexCaTO != null) cbIBKRFlexCaTO.setEnabled(enableCaTypes);
+  }
+
+  private void setIbkrFlexUiVisible(boolean visible) {
+    if (pIBKRFlexButtons != null) pIBKRFlexButtons.setVisible(visible);
+    if (lblIBKRFlexStatus != null) lblIBKRFlexStatus.setVisible(visible);
   }
 
   private java.util.Set<String> getSelectedIbkrCorporateActionTypes() {
@@ -1345,16 +1416,31 @@ public class ImportWindow extends javax.swing.JFrame {
     final java.util.Vector<Transaction> preview;
     final java.util.Vector<String[]> notImported;
     final java.util.Vector<Transaction> duplicatesToUpdate;
+    final java.util.List<UpdatePair> updatePairs;
     final int duplicatesFiltered;
     final int formatIndex;
 
     LoadResult(java.util.Vector<Transaction> preview, java.util.Vector<String[]> notImported,
-        java.util.Vector<Transaction> duplicatesToUpdate, int duplicatesFiltered, int formatIndex) {
+        java.util.Vector<Transaction> duplicatesToUpdate, java.util.List<UpdatePair> updatePairs,
+        int duplicatesFiltered, int formatIndex) {
       this.preview = preview;
       this.notImported = notImported;
       this.duplicatesToUpdate = duplicatesToUpdate;
+      this.updatePairs = updatePairs;
       this.duplicatesFiltered = duplicatesFiltered;
       this.formatIndex = formatIndex;
+    }
+  }
+
+  private static final class UpdatePair {
+    final Transaction existing;
+    final Transaction incoming;
+    final String match;
+
+    UpdatePair(Transaction existing, Transaction incoming, String match) {
+      this.existing = existing;
+      this.incoming = incoming;
+      this.match = match;
     }
   }
 
@@ -1362,14 +1448,17 @@ public class ImportWindow extends javax.swing.JFrame {
       boolean multi, boolean updateDups, java.util.Date startD, java.util.Date endD) throws Exception {
     // Mimic the synchronous loadImport logic, but without touching Swing components.
     if (formatIndex == 0) {
-      return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(), 0, formatIndex);
+      return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(),
+          new java.util.ArrayList<>(), 0, formatIndex);
     }
     if (formatIndex == 8 || formatIndex == 9) {
       // API formats: preview is handled by dedicated flows
-      return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(), 0, formatIndex);
+      return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(),
+          new java.util.ArrayList<>(), 0, formatIndex);
     }
     if (file == null) {
-      return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(), 0, formatIndex);
+      return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(),
+          new java.util.ArrayList<>(), 0, formatIndex);
     }
 
     java.util.Vector<String[]> notImported = new java.util.Vector<>();
@@ -1454,9 +1543,31 @@ public class ImportWindow extends javax.swing.JFrame {
       }
     }
 
+    // Build update pairs for debug preview (existing vs incoming)
+    java.util.List<UpdatePair> pairs = new java.util.ArrayList<>();
+    if (updateDups && !dupsToUpdate.isEmpty()) {
+      for (Transaction incoming : dupsToUpdate) {
+        if (incoming == null) continue;
+        Transaction existing = mainDb.findDuplicateTransaction(incoming);
+        String match = computeMatchKind(existing, incoming);
+        pairs.add(new UpdatePair(existing, incoming, match));
+      }
+    }
+
     // duplicatesFiltered counts all non-new items (both "update" and "filtered")
     int duplicatesFiltered = original.size() - filtered.size();
-    return new LoadResult(filtered, notImported, dupsToUpdate, duplicatesFiltered, formatIndex);
+    return new LoadResult(filtered, notImported, dupsToUpdate, pairs, duplicatesFiltered, formatIndex);
+  }
+
+  private static String computeMatchKind(Transaction existing, Transaction incoming) {
+    if (existing == null || incoming == null) return "?";
+    String txE = existing.getTxnId();
+    String txI = incoming.getTxnId();
+    if (txE != null && txI != null && !txE.trim().isEmpty() && txE.trim().equalsIgnoreCase(txI.trim())) {
+      return "TxnID";
+    }
+    // TradeLog legacy group pairing / minute match ends up here as non-TxnID.
+    return "Key";
   }
 
   private void applyLoadResult(LoadResult r) {
@@ -1476,6 +1587,8 @@ public class ImportWindow extends javax.swing.JFrame {
     duplicatesToUpdate.clear();
     duplicatesToUpdate.addAll(r.duplicatesToUpdate);
 
+    previewUpdatePairs = (r.updatePairs != null) ? r.updatePairs : new java.util.ArrayList<>();
+
     // Update labels
     int n = transactions.getRowCount();
     String previewText = "Náhled (" + n + " " + getRecordsWord(n) + ")";
@@ -1488,6 +1601,14 @@ public class ImportWindow extends javax.swing.JFrame {
     }
     previewText += ":";
     lPreview.setText(previewText);
+
+    if (lSummary != null) {
+      int up = duplicatesToUpdate.size();
+      int ni = r.notImported != null ? r.notImported.size() : 0;
+      lSummary.setText("Nové: " + n + " | K aktualizaci: " + up + " | Neimportované: " + ni);
+    }
+
+    updateUpdatePreviewSection();
 
     int rowCount = r.notImported != null ? r.notImported.size() : 0;
     lUnimported.setText("Neimportované řádky (" + rowCount + " " + getRecordsWord(rowCount) + "):");
@@ -1519,6 +1640,111 @@ public class ImportWindow extends javax.swing.JFrame {
         for (int c = 0; c < a.length; c++) {
           niTableModel.setValueAt(a[c], i, c);
         }
+      }
+    }
+  }
+
+  private void updateUpdatePreviewSection() {
+    if (lToUpdate == null || updateScrollPane == null || updateTable == null) return;
+
+    int cnt = previewUpdatePairs != null ? previewUpdatePairs.size() : 0;
+    boolean show = cnt > 0;
+    lToUpdate.setVisible(show);
+    updateScrollPane.setVisible(show);
+    if (!show) {
+      return;
+    }
+
+    lToUpdate.setText("K aktualizaci (" + cnt + " " + getRecordsWord(cnt) + "):");
+    updateTable.setModel(new UpdatePreviewTableModel(previewUpdatePairs));
+    updateTable.repaint();
+  }
+
+  private static final class UpdatePreviewTableModel extends javax.swing.table.AbstractTableModel {
+    private final java.util.List<UpdatePair> pairs;
+
+    private static final String[] COLS = {
+        "Match",
+        "Datum (DB)", "Datum (Import)",
+        "Vypořádání (DB)", "Vypořádání (Import)",
+        "Typ (DB)", "Typ (Import)",
+        "Směr (DB)", "Směr (Import)",
+        "Ticker (DB)", "Ticker (Import)",
+        "Množství (DB)", "Množství (Import)",
+        "Kurs (DB)", "Kurs (Import)",
+        "Měna (DB)", "Měna (Import)",
+        "Poplatky (DB)", "Poplatky (Import)",
+        "Měna popl. (DB)", "Měna popl. (Import)",
+        "Trh (DB)", "Trh (Import)",
+        "Broker (DB)", "Broker (Import)",
+        "ID účtu (DB)", "ID účtu (Import)",
+        "ID transakce (DB)", "ID transakce (Import)",
+        "Poznámka (DB)", "Poznámka (Import)"
+    };
+
+    UpdatePreviewTableModel(java.util.List<UpdatePair> pairs) {
+      this.pairs = pairs == null ? java.util.Collections.emptyList() : pairs;
+    }
+
+    public int getRowCount() {
+      return pairs.size();
+    }
+
+    public int getColumnCount() {
+      return COLS.length;
+    }
+
+    public String getColumnName(int column) {
+      return COLS[column];
+    }
+
+    public Class<?> getColumnClass(int columnIndex) {
+      if (columnIndex == 1 || columnIndex == 2 || columnIndex == 3 || columnIndex == 4) {
+        return java.util.Date.class;
+      }
+      if (columnIndex == 11 || columnIndex == 12 || columnIndex == 13 || columnIndex == 14 || columnIndex == 17 || columnIndex == 18) {
+        return java.lang.Double.class;
+      }
+      return java.lang.String.class;
+    }
+
+    public Object getValueAt(int rowIndex, int columnIndex) {
+      UpdatePair p = pairs.get(rowIndex);
+      Transaction ex = p.existing;
+      Transaction in = p.incoming;
+      switch (columnIndex) {
+        case 0: return p.match;
+        case 1: return ex != null ? ex.getDate() : null;
+        case 2: return in != null ? in.getDate() : null;
+        case 3: return ex != null ? ex.getExecutionDate() : null;
+        case 4: return in != null ? in.getExecutionDate() : null;
+        case 5: return ex != null ? ex.getStringType() : null;
+        case 6: return in != null ? in.getStringType() : null;
+        case 7: return ex != null ? ex.getStringDirection() : null;
+        case 8: return in != null ? in.getStringDirection() : null;
+        case 9: return ex != null ? ex.getTicker() : null;
+        case 10: return in != null ? in.getTicker() : null;
+        case 11: return ex != null ? ex.getAmount() : null;
+        case 12: return in != null ? in.getAmount() : null;
+        case 13: return ex != null ? ex.getPrice() : null;
+        case 14: return in != null ? in.getPrice() : null;
+        case 15: return ex != null ? ex.getPriceCurrency() : null;
+        case 16: return in != null ? in.getPriceCurrency() : null;
+        case 17: return ex != null ? ex.getFee() : null;
+        case 18: return in != null ? in.getFee() : null;
+        case 19: return ex != null ? ex.getFeeCurrency() : null;
+        case 20: return in != null ? in.getFeeCurrency() : null;
+        case 21: return ex != null ? ex.getMarket() : null;
+        case 22: return in != null ? in.getMarket() : null;
+        case 23: return ex != null ? ex.getBroker() : null;
+        case 24: return in != null ? in.getBroker() : null;
+        case 25: return ex != null ? ex.getAccountId() : null;
+        case 26: return in != null ? in.getAccountId() : null;
+        case 27: return ex != null ? ex.getTxnId() : null;
+        case 28: return in != null ? in.getTxnId() : null;
+        case 29: return ex != null ? ex.getNote() : null;
+        case 30: return in != null ? in.getNote() : null;
+        default: return null;
       }
     }
   }
@@ -1623,6 +1849,10 @@ public class ImportWindow extends javax.swing.JFrame {
     jScrollPane1 = new javax.swing.JScrollPane();
     table = new javax.swing.JTable();
     lPreview = new javax.swing.JLabel();
+    lSummary = new javax.swing.JLabel();
+    lToUpdate = new javax.swing.JLabel();
+    updateScrollPane = new javax.swing.JScrollPane();
+    updateTable = new javax.swing.JTable();
     lUnimported = new javax.swing.JLabel();
     niScrollPane = new javax.swing.JScrollPane();
     niTable = new javax.swing.JTable();
@@ -1753,7 +1983,7 @@ public class ImportWindow extends javax.swing.JFrame {
     jScrollPane1.setViewportView(table);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridy = 4;
+    gridBagConstraints.gridy = 8;
     gridBagConstraints.gridwidth = 6;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.weightx = 1.0;
@@ -1762,11 +1992,19 @@ public class ImportWindow extends javax.swing.JFrame {
 
     lPreview.setText("Náhled (0 záznamů):");
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridy = 2;
+    gridBagConstraints.gridy = 6;
     gridBagConstraints.gridwidth = 6;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 5);
     getContentPane().add(lPreview, gridBagConstraints);
+
+    lSummary.setText("Nové: 0 | K aktualizaci: 0 | Neimportované: 0");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridy = 7;
+    gridBagConstraints.gridwidth = 6;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.insets = new java.awt.Insets(2, 5, 5, 5);
+    getContentPane().add(lSummary, gridBagConstraints);
 
     cbUpdateDuplicates = new javax.swing.JCheckBox();
     cbUpdateDuplicates.setText("Aktualizovat duplikáty");
@@ -1778,15 +2016,35 @@ public class ImportWindow extends javax.swing.JFrame {
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
-    gridBagConstraints.gridy = 3;
+    gridBagConstraints.gridy = 8;
     gridBagConstraints.gridwidth = 2;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
     gridBagConstraints.insets = new java.awt.Insets(0, 5, 5, 5);
     getContentPane().add(cbUpdateDuplicates, gridBagConstraints);
 
+    lToUpdate.setText("K aktualizaci (0 záznamů):");
+    lToUpdate.setVisible(false);
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridy = 9;
+    gridBagConstraints.gridwidth = 6;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 5);
+    getContentPane().add(lToUpdate, gridBagConstraints);
+
+    updateTable.setEnabled(false);
+    updateScrollPane.setViewportView(updateTable);
+    updateScrollPane.setVisible(false);
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridy = 10;
+    gridBagConstraints.gridwidth = 6;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.weighty = 1.0;
+    getContentPane().add(updateScrollPane, gridBagConstraints);
+
     lUnimported.setText("Neimportované řádky (0 záznamů):");
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridy = 5;
+    gridBagConstraints.gridy = 11;
     gridBagConstraints.gridwidth = 6;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
@@ -1814,7 +2072,7 @@ public class ImportWindow extends javax.swing.JFrame {
     niScrollPane.setViewportView(niTable);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridy = 6;
+    gridBagConstraints.gridy = 12;
     gridBagConstraints.gridwidth = 6;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.weightx = 1.0;
@@ -2176,10 +2434,11 @@ public class ImportWindow extends javax.swing.JFrame {
       });
 
       bIBKRFlexRefreshPreview.setEnabled(false);
+      bIBKRFlexRefreshPreview.setText("Obnovit náhled");
       bIBKRFlexRefreshPreview.setToolTipText("Znovu vytvořit náhled z načtených dat (bez stahování z API)");
       bIBKRFlexRefreshPreview.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
-          refreshIbkrPreviewFromCachedCsv();
+          refreshIbkrPreviewFromCachedCsvAsync();
         }
       });
 
@@ -2203,7 +2462,11 @@ public class ImportWindow extends javax.swing.JFrame {
       cbIBKRFlexImportMode.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
           applyIbkrImportModeToUi();
-          markIbkrPreviewDirty("Režim importu změněn – náhled není aktuální, klikněte na Obnovit náhled");
+          markIbkrPreviewDirty("Režim importu změněn – náhled není aktuální");
+          if (lastIbkrCsvContent != null && bIBKRFlexRefreshPreview != null && bIBKRFlexRefreshPreview.isEnabled()) {
+            System.out.println("[IBKR] Auto-refresh preview due to mode change");
+            refreshIbkrPreviewFromCachedCsvAsync();
+          }
         }
       });
       
@@ -2223,7 +2486,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
       applyIbkrImportModeToUi();
 
-      // Add to main layout directly below format selector (left-aligned)
+      // Add to main layout above preview
       java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
       gbc.gridx = 0;
       gbc.gridy = 2;
@@ -2267,6 +2530,11 @@ public class ImportWindow extends javax.swing.JFrame {
     }
     if (pIBKRFlexButtons != null) {
       pIBKRFlexButtons.setVisible(true);
+    }
+
+    // Ensure status label remains visible
+    if (lblIBKRFlexStatus != null) {
+      lblIBKRFlexStatus.setVisible(true);
     }
     lblIBKRFlexStatus.setVisible(true);
     
@@ -2391,100 +2659,19 @@ public class ImportWindow extends javax.swing.JFrame {
     // Update status label to show loading
     lblIBKRFlexStatus.setText("Načítání souboru: " + selectedFile.getName() + "...");
     
-    try {
-      // Read file content
-      String csvContent = readFileToString(selectedFile);
-      lastIbkrCsvContent = csvContent;
+     try {
+       // Read file content (fast) and then refresh preview asynchronously (slow)
+       String csvContent = readFileToString(selectedFile);
+       lastIbkrCsvContent = csvContent;
        lastIbkrSourceLabel = selectedFile.getName();
-      ibkrPreviewDirty = false;
-      if (bIBKRFlexRefreshPreview != null) {
-        bIBKRFlexRefreshPreview.setEnabled(false);
-      }
-      System.out.println("[IBKR:FILE:004] File read successfully, size: " + csvContent.length() + " chars");
-      
-      // Parse using IBKRFlexParser
-      IBKRFlexParser parser = new IBKRFlexParser();
-      parser.setAllowedAssetClasses(getSelectedIbkrAssetClasses());
-      parser.setIncludeCorporateActions(cbIBKRFlexIncludeCorporateActions == null || cbIBKRFlexIncludeCorporateActions.isSelected());
-      parser.setAllowedCorporateActionTypes(getSelectedIbkrCorporateActionTypes());
-      int mode = getIbkrImportMode();
-      parser.setIncludeTrades(mode != IBKR_MODE_TRANS_ONLY);
-      if (mode == IBKR_MODE_TRADES_ONLY) {
-        parser.setIncludeCorporateActions(false);
-      } else if (mode == IBKR_MODE_TRANS_ONLY) {
-        parser.setIncludeCorporateActions(true);
-      }
-      Vector<Transaction> parsedTransactions = parser.parseCsvReport(csvContent);
-      System.out.println("[IBKR:FILE:005] Parsed " + parsedTransactions.size() + " transactions");
+       ibkrPreviewDirty = false;
+       if (bIBKRFlexRefreshPreview != null) {
+         bIBKRFlexRefreshPreview.setEnabled(false);
+       }
+       System.out.println("[IBKR:FILE:004] File read successfully, size: " + csvContent.length() + " chars");
 
-      // Disambiguate rare collisions caused by minute-level timestamp precision.
-      // This keeps IBKR Flex re-import stable: update one existing row, insert the other(s).
-      disambiguateIbkrDuplicateCollisions(mainWindow.getTransactionDatabase(), parsedTransactions);
-      
-      // Store parser reference for statistics access
-      lastIBKRParser = parser;
-      
-      // Clear preview table
-      clearPreview();
-      
-      // Filter out duplicate transactions that already exist in main database
-      System.out.println("[IBKR:FILE:DUPLICATE:001] Checking for duplicates against main database");
-      Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase().filterDuplicates(parsedTransactions);
-      int duplicatesFiltered = parsedTransactions.size() - filteredTransactions.size();
-      System.out.println("[IBKR:FILE:DUPLICATE:002] Found " + duplicatesFiltered + " duplicates");
-      
-      // Clear previous duplicates list
-      duplicatesToUpdate.clear();
-      
-      // If update checkbox is checked, store duplicates for later update
-      if (cbUpdateDuplicates.isSelected() && duplicatesFiltered > 0) {
-        for (Transaction candidate : parsedTransactions) {
-          if (!filteredTransactions.contains(candidate)) {
-            duplicatesToUpdate.add(candidate);
-          }
-        }
-        System.out.println("[IBKR:FILE:DUPLICATE:003] " + duplicatesToUpdate.size() + " duplicates marked for update");
-      }
-      
-      // Add filtered transactions to preview
-      transactions.rows.addAll(filteredTransactions);
-      transactions.fireTableDataChanged();
-      
-      // Update UI labels to show preview with duplicate count
-      String previewText = "Náhled (" + filteredTransactions.size() + " záznamů)";
-      if (duplicatesFiltered > 0) {
-        if (cbUpdateDuplicates.isSelected()) {
-          previewText += " - " + duplicatesFiltered + " duplikátů k aktualizaci";
-        } else {
-          previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
-        }
-      }
-      previewText += ":";
-      lPreview.setText(previewText);
-      
-      // Update status label with statistics (minimal format)
-      String statusMsg = "Načteno: " + selectedFile.getName() + " (" + filteredTransactions.size() + " transakcí";
-      if (duplicatesFiltered > 0) {
-        statusMsg += ", " + duplicatesFiltered + " duplikátů";
-      }
-      if (parser.getImportedCorporateActionCount() > 0 || parser.getSkippedZeroNetCount() > 0) {
-          statusMsg += ", " + parser.getImportedCorporateActionCount() + " korp. akce";
-          if (parser.getSkippedZeroNetCount() > 0) {
-              statusMsg += ", " + parser.getSkippedZeroNetCount() + " přeskočeno";
-          }
-      }
-      statusMsg += ")";
-      lblIBKRFlexStatus.setText(statusMsg);
-
-      // If preview now has data, switch IBKR button to merge mode
-      updateIBKRFlexButtonState();
-      
-      // Update button state (shows "Sloučit do databáze" button)
-      updateIBKRFlexButtonState();
-      
-      System.out.println("[IBKR:FILE:006] File import preview complete - " + 
-                         filteredTransactions.size() + " new, " + 
-                         duplicatesFiltered + " duplicates");
+       refreshIbkrPreviewFromCachedCsvAsync();
+       return;
       
     } catch (Exception e) {
       System.err.println("[IBKR:FILE:ERROR] Failed to import file: " + e.getMessage());
@@ -2617,30 +2804,23 @@ public class ImportWindow extends javax.swing.JFrame {
         // Force immediate table refresh on EDT
         javax.swing.SwingUtilities.invokeLater(() -> {
           mainWindow.refreshTable();
+          mainWindow.jumpToFirstImportChangeInView();
         });
         
-        // Show success message with accurate count
-        int currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR);
-        String message = "Úspěšně importováno " + transactionsAdded + " transakcí z IBKR!\n";
-        if (updatedCount > 0) {
-          message += "Aktualizováno: " + updatedCount + " existujících záznamů\n\n";
-          message += "Aktualizované řádky jsou zvýrazněny žlutě v hlavním okně.\n\n";
-        } else {
-          message += "\n";
-        }
-        message += "Importován rok: " + currentYear + " (Year-to-Date)\n";
-        message += "Metoda importu: IBKR Flex Query API\n\n";
-        message += "Pro import historických let změňte Query ID v Nastavení.";
-        
-        javax.swing.JOptionPane.showMessageDialog(mainWindow,
-            message,
-            "Import dokončen", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        // Non-blocking status bar summary (avoid modal dialog)
+        mainWindow.setTransientStatusMessage(
+            "IBKR Flex: přidáno " + transactionsAdded + ", aktualizováno " + updatedCount,
+            10000L);
         
         // Clear preview for next import
         clearPreview();
         updateIBKRFlexButtonState();
 
         mainWindow.enableUndoImportIfAvailable();
+
+        // For IBKR Flex, close the import window after a successful merge.
+        clearIbkrCachedData();
+        setVisible(false);
         
         System.out.println("[IBKR:MERGE:006] ✅ Merge completed successfully");
       } catch (Exception e) {
@@ -2913,6 +3093,7 @@ public class ImportWindow extends javax.swing.JFrame {
             // Force immediate table refresh on EDT
             javax.swing.SwingUtilities.invokeLater(() -> {
               mainWindow.refreshTable();
+              mainWindow.jumpToFirstImportChangeInView();
             });
 
             mainWindow.enableUndoImportIfAvailable();
@@ -3236,6 +3417,14 @@ public class ImportWindow extends javax.swing.JFrame {
       updateSelectedFileLabel();
     }
 
+    // Show/hide IBKR Flex UI block
+    if (formatIndex == 9) {
+      setupIBKRFlexUI();
+      setIbkrFlexUiVisible(true);
+    } else {
+      setIbkrFlexUiVisible(false);
+    }
+
     // Clear multi-selection state when switching away from IB TradeLog.
     if (formatIndex != 3) {
       currentFiles = null;
@@ -3537,6 +3726,10 @@ public class ImportWindow extends javax.swing.JFrame {
   private javax.swing.JPanel jPanel2;
   private javax.swing.JScrollPane jScrollPane1;
   private javax.swing.JLabel lPreview;
+  private javax.swing.JLabel lSummary;
+  private javax.swing.JLabel lToUpdate;
+  private javax.swing.JScrollPane updateScrollPane;
+  private javax.swing.JTable updateTable;
   private javax.swing.JLabel lUnimported;
   private javax.swing.JScrollPane niScrollPane;
   private javax.swing.JTable niTable;
