@@ -70,6 +70,12 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   /** Execution date */
   Date executionDate;
 
+  /** Persisted metadata (preferred over parsing note when present) */
+  String broker;
+  String accountId;
+  String txnId;
+  String code;
+
     /** Note */
   String note;
   
@@ -104,6 +110,10 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.fee = null;
     this.feeCurrency = null;
     this.market = null;
+    this.broker = null;
+    this.accountId = null;
+    this.txnId = null;
+    this.code = null;
     this.note = null;
   }
   
@@ -124,6 +134,10 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.fee = null;
     this.feeCurrency = null;
     this.market = null;
+    this.broker = null;
+    this.accountId = null;
+    this.txnId = null;
+    this.code = null;
     this.note = null;
     
     String a[];
@@ -174,7 +188,26 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       {
         if (!a[1].equals("null")) this.note = a[1];
       }
+      else if (a[0].equals("broker"))
+      {
+        if (!a[1].equals("null")) this.broker = a[1];
+      }
+      else if (a[0].equals("accountId"))
+      {
+        if (!a[1].equals("null")) this.accountId = a[1];
+      }
+      else if (a[0].equals("txnId"))
+      {
+        if (!a[1].equals("null")) this.txnId = a[1];
+      }
+      else if (a[0].equals("code"))
+      {
+        if (!a[1].equals("null")) this.code = a[1];
+      }
     }
+
+    // Backward compatibility: hydrate metadata from note if not present as separate fields.
+    hydrateMetadataFromNote();
 
     /*
     // Fix type
@@ -236,6 +269,13 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.market = market;
     this.executionDate = (executionDate == null) ? null : clearSMS(executionDate);
     this.note = note;
+
+    this.broker = null;
+    this.accountId = null;
+    this.txnId = null;
+    this.code = null;
+
+    hydrateMetadataFromNote();
   }
   
   /**
@@ -530,6 +570,18 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   { this.executionDate = (executionDate == null) ? null : clearSMS(executionDate); }
   public void setNote(String note)
   { this.note = note; }
+
+  public void setBroker(String broker)
+  { this.broker = broker; }
+
+  public void setAccountId(String accountId)
+  { this.accountId = accountId; }
+
+  public void setTxnId(String txnId)
+  { this.txnId = txnId; }
+
+  public void setCode(String code)
+  { this.code = code; }
   
    /**
     * Update fields from another transaction (used for re-import updates)
@@ -537,10 +589,28 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     * Does NOT update business key fields: Date, Direction, Ticker, Amount, Price, PriceCurrency, Market
     */
    public void updateFromTransaction(Transaction source) {
+      // Preserve existing metadata unless source provides new values.
+      String prevBroker = this.broker;
+      String prevAccountId = this.accountId;
+      String prevTxnId = this.txnId;
+      String prevCode = this.code;
+
       this.setNote(source.getNote());
       this.setFee(source.getFee());
       this.setFeeCurrency(source.getFeeCurrency());
       this.setExecutionDate(source.getExecutionDate());
+
+      // Prefer explicit fields from source; fall back to parsing source note.
+      java.util.Map<String, String> meta = parseNoteMetadata(source.getNote());
+      String b = (source.broker != null && !source.broker.trim().isEmpty()) ? source.broker : meta.getOrDefault("broker", "");
+      String a = (source.accountId != null && !source.accountId.trim().isEmpty()) ? source.accountId : meta.getOrDefault("accountId", "");
+      String t = (source.txnId != null && !source.txnId.trim().isEmpty()) ? source.txnId : meta.getOrDefault("txnId", "");
+      String c = (source.code != null && !source.code.trim().isEmpty()) ? source.code : meta.getOrDefault("code", "");
+
+      if (b != null && !b.trim().isEmpty()) this.broker = b.trim(); else this.broker = prevBroker;
+      if (a != null && !a.trim().isEmpty()) this.accountId = a.trim(); else this.accountId = prevAccountId;
+      if (t != null && !t.trim().isEmpty()) this.txnId = t.trim(); else this.txnId = prevTxnId;
+      if (c != null && !c.trim().isEmpty()) this.code = c.trim(); else this.code = prevCode;
    }
 
    /**
@@ -598,25 +668,63 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
      return metadata;
    }
 
+   public void hydrateMetadataFromNote() {
+     if (note == null || note.trim().isEmpty()) return;
+
+     java.util.Map<String, String> meta = parseNoteMetadata(note);
+     if (this.broker == null || this.broker.trim().isEmpty()) {
+       String v = meta.getOrDefault("broker", "");
+       if (!v.isEmpty()) this.broker = v;
+     }
+     if (this.accountId == null || this.accountId.trim().isEmpty()) {
+       String v = meta.getOrDefault("accountId", "");
+       if (!v.isEmpty()) this.accountId = v;
+     }
+     if (this.txnId == null || this.txnId.trim().isEmpty()) {
+       String v = meta.getOrDefault("txnId", "");
+       if (!v.isEmpty()) this.txnId = v;
+     }
+     if (this.code == null || this.code.trim().isEmpty()) {
+       String v = meta.getOrDefault("code", "");
+       if (!v.isEmpty()) this.code = v;
+     }
+   }
+
    /**
     * Get broker from note field
     */
    public String getBroker() {
-     return parseNoteMetadata(note).getOrDefault("broker", "");
+      if (broker != null && !broker.trim().isEmpty()) {
+        return broker.trim();
+      }
+      return parseNoteMetadata(note).getOrDefault("broker", "");
    }
 
    /**
     * Get account ID from note field
     */
    public String getAccountId() {
-     return parseNoteMetadata(note).getOrDefault("accountId", "");
+      if (accountId != null && !accountId.trim().isEmpty()) {
+        return accountId.trim();
+      }
+      return parseNoteMetadata(note).getOrDefault("accountId", "");
    }
 
    /**
     * Get transaction ID from note field
     */
    public String getTxnId() {
-     return parseNoteMetadata(note).getOrDefault("txnId", "");
+      if (txnId != null && !txnId.trim().isEmpty()) {
+        return txnId.trim();
+      }
+      return parseNoteMetadata(note).getOrDefault("txnId", "");
+   }
+
+   public String getCode() {
+     if (code != null && !code.trim().isEmpty()) {
+       return code.trim();
+     }
+     return parseNoteMetadata(note).getOrDefault("code", "");
    }
 
     /**
@@ -631,10 +739,10 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
         return "";
       }
 
-      String codeString = parseNoteMetadata(note).getOrDefault("code", "");
-      if (codeString.isEmpty()) {
-        return "";
-      }
+       String codeString = getCode();
+       if (codeString.isEmpty()) {
+         return "";
+       }
 
       // Split by semicolon and process each code (format: Code:A;C or Code:C;Ep)
       String[] codes = codeString.split(";");
@@ -718,6 +826,10 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     ofl.println(prefix+"feeCurrency="+feeCurrency);
     ofl.println(prefix+"market="+market);
     ofl.println(prefix+"exDate="+getStringExecutionDate());
+    ofl.println(prefix+"broker="+getBroker());
+    ofl.println(prefix+"accountId="+getAccountId());
+    ofl.println(prefix+"txnId="+getTxnId());
+    ofl.println(prefix+"code="+getCode());
     ofl.println(prefix+"note="+note);
   }
   
@@ -783,4 +895,3 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   } 
 
 }
-
