@@ -11,6 +11,7 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 
 ### Odstraněno
 - Nastavení/Systém: odstraněna neimplementovaná volba „Zobrazovat sloupec # (pořadí řádku)" - funkce nebyla nikdy dokončena.
+- Menu „Soubor → Import z IBKR Flex..." odstraněno - nahrazeno sjednoceným importem přes „Import od brokera → IBKR Flex".
 
 ## [Sjednocení výběru formátu importu a výběru souboru] - 2026-01-22
 
