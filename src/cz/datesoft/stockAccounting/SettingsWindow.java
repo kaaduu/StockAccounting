@@ -662,11 +662,27 @@ public class SettingsWindow extends javax.swing.JDialog {
       gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
       pSystem.add(cbFileChooserMode, gridBagConstraints);
 
+      cbShowAboutOnStartup = new javax.swing.JCheckBox("Zobrazit \"O aplikaci\" při startu");
+      cbShowAboutOnStartup.setSelected(Settings.getShowAboutOnStartup());
+      cbShowAboutOnStartup.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          Settings.setShowAboutOnStartup(cbShowAboutOnStartup.isSelected());
+          Settings.save();
+        }
+      });
+      gridBagConstraints = new java.awt.GridBagConstraints();
+      gridBagConstraints.gridx = 0;
+      gridBagConstraints.gridy = 2;
+      gridBagConstraints.gridwidth = 2;
+      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+      pSystem.add(cbShowAboutOnStartup, gridBagConstraints);
+
       // Import highlighting settings
       javax.swing.JLabel lblImportHl = new javax.swing.JLabel("Zvýraznění po importu:");
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 2;
+      gridBagConstraints.gridy = 3;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
       pSystem.add(lblImportHl, gridBagConstraints);
@@ -681,7 +697,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       });
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 3;
+      gridBagConstraints.gridy = 4;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
       pSystem.add(cbHighlightInserted, gridBagConstraints);
@@ -699,7 +715,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       });
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 1;
-      gridBagConstraints.gridy = 3;
+      gridBagConstraints.gridy = 4;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
       pSystem.add(bPickInsertedColor, gridBagConstraints);
@@ -714,7 +730,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       });
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 4;
+      gridBagConstraints.gridy = 5;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
       pSystem.add(cbHighlightUpdated, gridBagConstraints);
@@ -732,7 +748,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       });
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 1;
-      gridBagConstraints.gridy = 4;
+      gridBagConstraints.gridy = 5;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
       pSystem.add(bPickUpdatedColor, gridBagConstraints);
@@ -746,14 +762,14 @@ public class SettingsWindow extends javax.swing.JDialog {
 
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 5;
+      gridBagConstraints.gridy = 6;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
       pSystem.add(lHighlightPreviewNew, gridBagConstraints);
 
       gridBagConstraints = new java.awt.GridBagConstraints();
       gridBagConstraints.gridx = 1;
-      gridBagConstraints.gridy = 5;
+      gridBagConstraints.gridy = 6;
       gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
       gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
       pSystem.add(lHighlightPreviewUpdated, gridBagConstraints);
@@ -761,7 +777,7 @@ public class SettingsWindow extends javax.swing.JDialog {
 
       gridBagConstraints = new java.awt.GridBagConstraints();
        gridBagConstraints.gridx = 0;
-       gridBagConstraints.gridy = 6;
+       gridBagConstraints.gridy = 7;
        gridBagConstraints.weighty = 1.0;
       pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
 
@@ -2684,6 +2700,7 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JButton bRemoveYear;
   private javax.swing.JComboBox cbHalfYear;
   private javax.swing.JComboBox cbFileChooserMode;
+  private javax.swing.JCheckBox cbShowAboutOnStartup;
   private javax.swing.JComboBox cbRemoveCurrency;
   private javax.swing.JTextField eDay;
   private javax.swing.JTextField eDelay;
