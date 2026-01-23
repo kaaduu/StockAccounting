@@ -9,6 +9,9 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 ### Opraveno
 - Nastavení/Systém: náhled barvy pro „aktualizované" řádky je nyní viditelný (dříve byl překryt tlačítkem kvůli chybné pozici v mřížce).
 
+### Odstraněno
+- Nastavení/Systém: odstraněna neimplementovaná volba „Zobrazovat sloupec # (pořadí řádku)" - funkce nebyla nikdy dokončena.
+
 ## [Sjednocení výběru formátu importu a výběru souboru] - 2026-01-22
 
 ### Změněno

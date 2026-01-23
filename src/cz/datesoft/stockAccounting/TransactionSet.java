@@ -85,6 +85,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    /** Serial counter */
    protected int serialCounter;
 
+  // Serial repair info (set during load/loadAdd)
+  private transient boolean serialsRepaired = false;
+  private transient int serialDuplicatesFound = 0;
+
    /**
     * Last date we set
     */
@@ -112,9 +116,6 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     */
    SortedSetComboBoxModel cbmodel;
 
-   /** Whether to show a row-number column (UI feature; currently no-op in model). */
-   private boolean showRowNumberColumn = true;
-
   /** Batch update mode for de-duplicating repeated updates. */
   private boolean batchUpdateInProgress = false;
   private java.util.Set<Integer> batchUpdatedTransactionSerials;
@@ -131,23 +132,70 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     cbmodel = new SortedSetComboBoxModel();
 
     transformationCache = new TransformationCache();
-
-    // Default follows global settings; can be overridden per instance.
-    showRowNumberColumn = Settings.getShowRowNumberColumn();
   }
 
-  /**
-   * Controls whether a helper row-number column should be shown.
-   *
-   * Note: the table model currently does not expose a dedicated "#" column;
-   * this setter exists for compatibility with UI code.
-   */
-  public void setShowRowNumberColumn(boolean value) {
-    showRowNumberColumn = value;
+  public boolean wereSerialsRepaired() {
+    return serialsRepaired;
   }
 
-  public boolean getShowRowNumberColumn() {
-    return showRowNumberColumn;
+  public int getSerialDuplicatesFound() {
+    return serialDuplicatesFound;
+  }
+
+  public int getRowCountRaw() {
+    return rows != null ? rows.size() : 0;
+  }
+
+  public int getSerialCounter() {
+    return serialCounter;
+  }
+
+  private void normalizeSerialsIfNeeded() {
+    // Detect duplicates / zeros
+    java.util.Set<Integer> seen = new java.util.HashSet<>();
+    int dups = 0;
+    boolean hasZero = false;
+    int max = 0;
+
+    for (Transaction t : rows) {
+      if (t == null) continue;
+      int s = t.getSerial();
+      if (s <= 0) {
+        hasZero = true;
+      }
+      if (s > max) max = s;
+      if (!seen.add(s)) {
+        dups++;
+      }
+    }
+
+    boolean counterMismatch = (serialCounter <= max);
+    if (dups == 0 && !hasZero && !counterMismatch) {
+      this.serialsRepaired = false;
+      this.serialDuplicatesFound = 0;
+      return;
+    }
+
+    System.out.println("INFO: Serial repair triggered: duplicates=" + dups + ", hasZero=" + hasZero + ", counterMismatch=" + counterMismatch + ", rows=" + (rows != null ? rows.size() : 0));
+
+    // Renumber all rows deterministically in current order.
+    int next = 1;
+    for (Transaction t : rows) {
+      if (t == null) continue;
+      t.setSerial(next++);
+    }
+    serialCounter = next;
+
+    // Clear serial-keyed runtime state
+    clearHighlights();
+    batchUpdateInProgress = false;
+    batchUpdatedTransactionSerials = null;
+    if (lastImportInserted != null) lastImportInserted.clear();
+    if (lastImportUpdated != null) lastImportUpdated.clear();
+    importUndoCaptureActive = false;
+
+    this.serialsRepaired = true;
+    this.serialDuplicatesFound = dups;
   }
 
   /**
@@ -265,6 +313,54 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     Transaction tx = getRowAt(row);
     if (tx == null) return false;
     return insertedTransactionSerials.contains(tx.getSerial());
+  }
+
+  /**
+   * Returns the index of the first updated row, scanning in the current view order.
+   * If filter is active, scans only visible rows.
+   */
+  public int findFirstUpdatedVisibleRowIndex() {
+    if (filteredRows != null) {
+      for (int i = 0; i < filteredRows.size(); i++) {
+        Transaction tx = filteredRows.get(i);
+        if (tx != null && updatedTransactionSerials.contains(tx.getSerial())) {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    for (int i = 0; i < rows.size(); i++) {
+      Transaction tx = rows.get(i);
+      if (tx != null && updatedTransactionSerials.contains(tx.getSerial())) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * Returns the index of the first inserted row, scanning in the current view order.
+   * If filter is active, scans only visible rows.
+   */
+  public int findFirstInsertedVisibleRowIndex() {
+    if (filteredRows != null) {
+      for (int i = 0; i < filteredRows.size(); i++) {
+        Transaction tx = filteredRows.get(i);
+        if (tx != null && insertedTransactionSerials.contains(tx.getSerial())) {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    for (int i = 0; i < rows.size(); i++) {
+      Transaction tx = rows.get(i);
+      if (tx != null && insertedTransactionSerials.contains(tx.getSerial())) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   /**
@@ -664,6 +760,9 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     }
 
     sort();
+
+    // Repair duplicate/broken serials (affects highlighting and batch update logic)
+    normalizeSerialsIfNeeded();
 
     // We don't fire data changed event, since it is alreday done by the sort()
 
