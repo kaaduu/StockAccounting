@@ -198,6 +198,11 @@ public class Settings {
   /**
    * Daily exchange rates map (currency|YYYY-MM-DD => ratio map)
    */
+  private static boolean autoMaximized = false;
+
+  /**
+   * Daily exchange rates map (currency|YYYY-MM-DD => ratio map)
+   */
   private static HashMap<String, Double> dailyRates;
 
   private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -349,16 +354,16 @@ public class Settings {
     return trading212UseDemo;
   }
 
-   // Trading 212 import state
-   private static String trading212ImportState = null;
+  // Trading 212 import state
+  private static String trading212ImportState = null;
 
-   public static String getTrading212ImportState() {
-     return trading212ImportState;
-   }
+  public static String getTrading212ImportState() {
+    return trading212ImportState;
+  }
 
-   public static void setTrading212ImportState(String state) {
-     trading212ImportState = state;
-   }
+  public static void setTrading212ImportState(String state) {
+    trading212ImportState = state;
+  }
 
   // IBKR Flex settings
   private static String ibkrFlexQueryId = null;
@@ -458,8 +463,10 @@ public class Settings {
   }
 
   public static void setTwsTimeoutSeconds(int value) {
-    if (value < 3) value = 3;
-    if (value > 120) value = 120;
+    if (value < 3)
+      value = 3;
+    if (value > 120)
+      value = 120;
     twsTimeoutSeconds = value;
     java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
     p.putInt("twsTimeoutSeconds", value);
@@ -483,41 +490,41 @@ public class Settings {
     }
   }
 
-   public static String getIbkrFlexQueryId() {
-     if (ibkrFlexQueryId == null) {
-       java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
-       ibkrFlexQueryId = p.get("IBKR_FLEX_QUERY_ID", "");
-     }
-     return ibkrFlexQueryId;
-   }
+  public static String getIbkrFlexQueryId() {
+    if (ibkrFlexQueryId == null) {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      ibkrFlexQueryId = p.get("IBKR_FLEX_QUERY_ID", "");
+    }
+    return ibkrFlexQueryId;
+  }
 
-   public static String getIbkrFlexToken() {
-     if (ibkrFlexToken == null) {
-       java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
-       ibkrFlexToken = p.get("IBKR_FLEX_TOKEN", "");
-     }
-     return ibkrFlexToken;
-   }
+  public static String getIbkrFlexToken() {
+    if (ibkrFlexToken == null) {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      ibkrFlexToken = p.get("IBKR_FLEX_TOKEN", "");
+    }
+    return ibkrFlexToken;
+  }
 
-   public static void setIbkrFlexQueryId(String queryId) {
-     ibkrFlexQueryId = queryId;
-     java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
-     if (queryId != null && !queryId.isEmpty()) {
-       p.put("IBKR_FLEX_QUERY_ID", queryId);
-     } else {
-       p.remove("IBKR_FLEX_QUERY_ID");
-     }
-   }
+  public static void setIbkrFlexQueryId(String queryId) {
+    ibkrFlexQueryId = queryId;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    if (queryId != null && !queryId.isEmpty()) {
+      p.put("IBKR_FLEX_QUERY_ID", queryId);
+    } else {
+      p.remove("IBKR_FLEX_QUERY_ID");
+    }
+  }
 
-   public static void setIbkrFlexToken(String token) {
-     ibkrFlexToken = token;
-     java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
-     if (token != null && !token.isEmpty()) {
-       p.put("IBKR_FLEX_TOKEN", token);
-     } else {
-       p.remove("IBKR_FLEX_TOKEN");
-     }
-   }
+  public static void setIbkrFlexToken(String token) {
+    ibkrFlexToken = token;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    if (token != null && !token.isEmpty()) {
+      p.put("IBKR_FLEX_TOKEN", token);
+    } else {
+      p.remove("IBKR_FLEX_TOKEN");
+    }
+  }
 
   /* Setters */
   public static void setOverTaxFreeDuration(int value) {
@@ -638,6 +645,14 @@ public class Settings {
     p.putBoolean("showSecondsInDateColumns", value);
   }
 
+  public static boolean getAutoMaximized() {
+    return autoMaximized;
+  }
+
+  public static void setAutoMaximized(boolean value) {
+    autoMaximized = value;
+  }
+
   public static boolean getHighlightInsertedEnabled() {
     java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
     highlightInsertedEnabled = p.getBoolean("highlightInsertedEnabled", true);
@@ -672,7 +687,8 @@ public class Settings {
   }
 
   public static void setHighlightInsertedColor(java.awt.Color c) {
-    if (c == null) return;
+    if (c == null)
+      return;
     highlightInsertedColor = c;
     java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
     p.put("highlightInsertedColor", colorToHex(c));
@@ -688,7 +704,8 @@ public class Settings {
   }
 
   public static void setHighlightUpdatedColor(java.awt.Color c) {
-    if (c == null) return;
+    if (c == null)
+      return;
     highlightUpdatedColor = c;
     java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
     p.put("highlightUpdatedColor", colorToHex(c));
@@ -696,10 +713,13 @@ public class Settings {
 
   private static java.awt.Color parseColorHex(String hex, java.awt.Color fallback) {
     try {
-      if (hex == null) return fallback;
+      if (hex == null)
+        return fallback;
       String s = hex.trim();
-      if (s.startsWith("#")) s = s.substring(1);
-      if (s.length() != 6) return fallback;
+      if (s.startsWith("#"))
+        s = s.substring(1);
+      if (s.length() != 6)
+        return fallback;
       int rgb = Integer.parseInt(s, 16);
       return new java.awt.Color((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
     } catch (Exception e) {
@@ -940,6 +960,9 @@ public class Settings {
 
     /* About on startup */
     showAboutOnStartup = p.getBoolean("showAboutOnStartup", true);
+
+    /* Auto maximized */
+    autoMaximized = p.getBoolean("autoMaximized", false);
   }
 
   /**
@@ -1019,6 +1042,9 @@ public class Settings {
 
     // About on startup
     p.putBoolean("showAboutOnStartup", showAboutOnStartup);
+
+    // Auto maximized
+    p.putBoolean("autoMaximized", autoMaximized);
   }
 
   /**
@@ -1062,7 +1088,8 @@ public class Settings {
   }
 
   /**
-   * Get list of currencies to fetch (prioritizing used currencies, falling back to defaults)
+   * Get list of currencies to fetch (prioritizing used currencies, falling back
+   * to defaults)
    */
   public static java.util.List<String> getCurrenciesToFetch(TransactionSet transactions) {
     java.util.Set<String> usedCurrencies = getUsedCurrencies(transactions);
@@ -1126,7 +1153,7 @@ public class Settings {
           int year = Integer.parseInt(parts[1].substring(0, 4)); // Extract year from YYYY-MM-DD
 
           currencyYearCounts.computeIfAbsent(currency, k -> new java.util.TreeMap<>())
-                           .merge(year, 1, Integer::sum);
+              .merge(year, 1, Integer::sum);
         } catch (Exception e) {
           // Skip invalid entries
         }
@@ -1200,7 +1227,8 @@ public class Settings {
   /**
    * Export daily rates to CSV file
    */
-  public static void exportRates(java.io.File file, java.util.Set<String> currencies, java.util.Set<Integer> years) throws Exception {
+  public static void exportRates(java.io.File file, java.util.Set<String> currencies, java.util.Set<Integer> years)
+      throws Exception {
     if (dailyRates == null || dailyRates.isEmpty()) {
       throw new Exception("Žádné denní kurzy k exportu");
     }
@@ -1227,8 +1255,10 @@ public class Settings {
             int year = Integer.parseInt(date.substring(0, 4));
 
             // Apply filters if specified
-            if (currencies != null && !currencies.contains(currency)) continue;
-            if (years != null && !years.contains(year)) continue;
+            if (currencies != null && !currencies.contains(currency))
+              continue;
+            if (years != null && !years.contains(year))
+              continue;
 
             writer.printf("%s,%s,%.4f%n", currency, date, rate);
           } catch (Exception e) {
@@ -1270,7 +1300,8 @@ public class Settings {
           continue; // Skip header
         }
 
-        if (line.trim().isEmpty()) continue;
+        if (line.trim().isEmpty())
+          continue;
 
         String[] parts = line.split(",");
         if (parts.length != 3) {
@@ -1408,12 +1439,11 @@ public class Settings {
     // This will be replaced by the new RateManagementDialog
     // For now, keep the old implementation as fallback
     int result = javax.swing.JOptionPane.showConfirmDialog(
-      parent,
-      "Opravdu chcete smazat všechny uložené denní kurzy?",
-      "Smazat denní kurzy",
-      javax.swing.JOptionPane.YES_NO_OPTION,
-      javax.swing.JOptionPane.WARNING_MESSAGE
-    );
+        parent,
+        "Opravdu chcete smazat všechny uložené denní kurzy?",
+        "Smazat denní kurzy",
+        javax.swing.JOptionPane.YES_NO_OPTION,
+        javax.swing.JOptionPane.WARNING_MESSAGE);
 
     if (result == javax.swing.JOptionPane.YES_OPTION) {
       try {
@@ -1433,18 +1463,16 @@ public class Settings {
         }
 
         javax.swing.JOptionPane.showMessageDialog(
-          parent,
-          "Smazáno " + deletedCount + " denních kurzů.",
-          "Hotovo",
-          javax.swing.JOptionPane.INFORMATION_MESSAGE
-        );
+            parent,
+            "Smazáno " + deletedCount + " denních kurzů.",
+            "Hotovo",
+            javax.swing.JOptionPane.INFORMATION_MESSAGE);
       } catch (Exception e) {
         javax.swing.JOptionPane.showMessageDialog(
-          parent,
-          "Chyba při mazání denních kurzů: " + e.getMessage(),
-          "Chyba",
-          javax.swing.JOptionPane.ERROR_MESSAGE
-        );
+            parent,
+            "Chyba při mazání denních kurzů: " + e.getMessage(),
+            "Chyba",
+            javax.swing.JOptionPane.ERROR_MESSAGE);
       }
     }
   }

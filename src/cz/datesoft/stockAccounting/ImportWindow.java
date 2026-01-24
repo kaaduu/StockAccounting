@@ -743,6 +743,11 @@ public class ImportWindow extends javax.swing.JFrame {
 
       clearPreview();
 
+      // Enforce minute-level uniqueness rules for transformations.
+      // If a transformation pair exists at a minute, it must be the only content of that minute.
+      // Any colliding trades/other rows are shifted forward by +N minutes.
+      normalizeIbkrMinuteCollisions(mainWindow.getTransactionDatabase(), parsedTransactions);
+
       // Disambiguate rare collisions caused by minute-level timestamp precision.
       // This keeps IBKR Flex re-import stable: update one existing row, insert the other(s).
       disambiguateIbkrDuplicateCollisions(mainWindow.getTransactionDatabase(), parsedTransactions);
@@ -751,7 +756,8 @@ public class ImportWindow extends javax.swing.JFrame {
       int duplicatesFiltered = parsedTransactions.size() - filteredTransactions.size();
 
       duplicatesToUpdate.clear();
-      if (cbUpdateDuplicates.isSelected() && duplicatesFiltered > 0) {
+      // IBKR Flex: always treat duplicates as "to update" (TxnID-based re-import).
+      if (duplicatesFiltered > 0) {
         for (Transaction candidate : parsedTransactions) {
           if (!filteredTransactions.contains(candidate)) {
             duplicatesToUpdate.add(candidate);
@@ -761,7 +767,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
       // Populate new preview UI elements (summary + side-by-side update table)
       previewUpdatePairs = new java.util.ArrayList<>();
-      if (cbUpdateDuplicates.isSelected() && !duplicatesToUpdate.isEmpty()) {
+      if (!duplicatesToUpdate.isEmpty()) {
         for (Transaction incoming : duplicatesToUpdate) {
           if (incoming == null) continue;
           Transaction existing = mainWindow.getTransactionDatabase().findDuplicateTransaction(incoming);
@@ -775,11 +781,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
       String previewText = "Náhled (" + filteredTransactions.size() + " záznamů)";
       if (duplicatesFiltered > 0) {
-        if (cbUpdateDuplicates.isSelected()) {
-          previewText += " - " + duplicatesFiltered + " duplikátů k aktualizaci";
-        } else {
-          previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
-        }
+        previewText += " - " + duplicatesFiltered + " duplikátů k aktualizaci";
       }
       previewText += ":";
       lPreview.setText(previewText);
@@ -957,35 +959,252 @@ public class ImportWindow extends javax.swing.JFrame {
       }
       toShift.sort(stableOrder);
 
-      // Keep base as-is (updates existing). Shift the rest by +1s, +2s, ...
+      // Keep base as-is (updates existing). Shift the rest by +1m, +2m, ...
       for (int i = 0; i < toShift.size(); i++) {
-        shiftTransactionBySeconds(toShift.get(i), i + 1);
+        shiftTransactionByMinutes(toShift.get(i), i + 1);
       }
     }
   }
 
-  private void shiftTransactionBySeconds(Transaction tx, int seconds) {
+  /**
+   * StockAccounting stores timestamps only to minute precision (seconds are effectively ignored).
+   *
+   * For correctness of transformation pairing, we enforce:
+   * - At most one transformation pair can exist within a given minute.
+   * - If a transformation (TRANS_SUB/TRANS_ADD) exists at a minute, no other transaction may share that minute.
+   * - If there is a collision, shift the other transaction(s) forward by +N minutes.
+   *
+   * This is applied to IBKR Flex import candidates before duplicate filtering/merge.
+   */
+  private void normalizeIbkrMinuteCollisions(TransactionSet db, Vector<Transaction> candidates) {
+    if (candidates == null || candidates.isEmpty()) return;
+
+    // Occupied minutes from DB.
+    java.util.Set<Long> occupied = new java.util.HashSet<>();
+    if (db != null) {
+      // TransactionSet.getRowCount() includes an extra empty row at the end.
+      int max = Math.max(0, db.getRowCount() - 1);
+      for (int i = 0; i < max; i++) {
+        Transaction t = db.getRowAt(i);
+        if (t == null) continue;
+        occupied.add(minuteKey(t.getDate()));
+      }
+    }
+
+    // Group candidates by minute.
+    java.util.Map<Long, java.util.List<Transaction>> byMinute = new java.util.TreeMap<>();
+    for (Transaction t : candidates) {
+      if (t == null) continue;
+      if (!"IB".equalsIgnoreCase(t.getBroker())) continue;
+      byMinute.computeIfAbsent(minuteKey(t.getDate()), k -> new java.util.ArrayList<>()).add(t);
+    }
+
+    // Stable ordering so shifts are deterministic.
+    java.util.Comparator<Transaction> stableOrder = java.util.Comparator
+        .comparing((Transaction t) -> isTransformation(t) ? 0 : 1)
+        .thenComparing((Transaction t) -> t.getDirection() == Transaction.DIRECTION_TRANS_SUB ? 0
+            : (t.getDirection() == Transaction.DIRECTION_TRANS_ADD ? 1 : 2))
+        .thenComparing((Transaction t) -> nullToEmpty(t.getTicker()), String.CASE_INSENSITIVE_ORDER)
+        .thenComparing((Transaction t) -> nullToEmpty(t.getTxnId()))
+        .thenComparing((Transaction t) -> t.getExecutionDate(), java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+        .thenComparing((Transaction t) -> Math.abs(t.getAmount() == null ? 0.0 : t.getAmount()));
+
+    java.util.Set<Long> reservedTransMinutes = new java.util.HashSet<>();
+    for (java.util.Map.Entry<Long, java.util.List<Transaction>> e : byMinute.entrySet()) {
+      java.util.List<Transaction> group = e.getValue();
+      if (group == null || group.isEmpty()) continue;
+
+      group.sort(stableOrder);
+      boolean hasTrans = group.stream().anyMatch(ImportWindow::isTransformation);
+      if (hasTrans) {
+        reservedTransMinutes.add(e.getKey());
+      }
+    }
+
+    // Process minutes in order, place transactions while maintaining occupied minutes.
+    for (java.util.Map.Entry<Long, java.util.List<Transaction>> e : byMinute.entrySet()) {
+      long minute = e.getKey();
+      java.util.List<Transaction> group = e.getValue();
+      if (group == null || group.isEmpty()) continue;
+
+      group.sort(stableOrder);
+      boolean hasTrans = group.stream().anyMatch(ImportWindow::isTransformation);
+      if (hasTrans) {
+        // Transformations must occupy an exclusive minute. If the original minute is already
+        // occupied (e.g., by existing DB rows), shift the whole pair forward by +N minutes.
+        long targetMinute = minute;
+        int shiftMinutes = 0;
+        while (true) {
+          boolean collides = occupied.contains(targetMinute);
+          // Avoid landing on another transformation minute (except the original one).
+          if (shiftMinutes > 0 && reservedTransMinutes.contains(targetMinute)) {
+            collides = true;
+          }
+          if (!collides) break;
+          java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+          cal.setTimeInMillis(targetMinute);
+          cal.add(java.util.GregorianCalendar.MINUTE, 1);
+          targetMinute = cal.getTimeInMillis();
+          shiftMinutes++;
+          if (shiftMinutes > 24 * 60) break;
+        }
+
+        for (Transaction t : group) {
+          if (t == null) continue;
+          if (!isTransformation(t)) continue;
+          alignToMinute(t, targetMinute);
+          if (shiftMinutes > 0) {
+            appendTimeShiftMinutesMarker(t, shiftMinutes);
+          }
+        }
+        occupied.add(targetMinute);
+
+        // Shift everything else away from this minute.
+        for (Transaction t : group) {
+          if (t == null) continue;
+          if (isTransformation(t)) continue;
+          // Trades/other rows must be after the transformation minute.
+          shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, targetMinute);
+        }
+      } else {
+        // No transformations: ensure no collisions with already occupied minutes.
+        for (Transaction t : group) {
+          if (t == null) continue;
+          long mk = minuteKey(t.getDate());
+          if (!occupied.contains(mk) && !reservedTransMinutes.contains(mk)) {
+            occupied.add(mk);
+            continue;
+          }
+          shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, mk);
+        }
+      }
+    }
+  }
+
+  private static boolean isTransformation(Transaction t) {
+    if (t == null) return false;
+    int d = t.getDirection();
+    return d == Transaction.DIRECTION_TRANS_ADD || d == Transaction.DIRECTION_TRANS_SUB;
+  }
+
+  private static long minuteKey(java.util.Date d) {
+    if (d == null) return Long.MIN_VALUE;
+    java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+    cal.setTime(d);
+    cal.set(java.util.GregorianCalendar.SECOND, 0);
+    cal.set(java.util.GregorianCalendar.MILLISECOND, 0);
+    return cal.getTimeInMillis();
+  }
+
+  private static boolean datesEqualMinute(java.util.Date d1, java.util.Date d2) {
+    if (d1 == null && d2 == null) return true;
+    if (d1 == null || d2 == null) return false;
+    return minuteKey(d1) == minuteKey(d2);
+  }
+
+  private static void alignToMinute(Transaction t, long minuteKeyMillis) {
+    if (t == null) return;
+    java.util.Date oldDate = t.getDate();
+    java.util.Date oldEx = t.getExecutionDate();
+
+    java.util.Date newDate = new java.util.Date(minuteKeyMillis);
+    t.setDate(newDate);
+
+    // Do not overwrite settlement date for trades.
+    // Only shift executionDate when it was effectively the same as trade timestamp (transformations / legacy rows).
+    if (oldEx == null) {
+      // Preserve unknown settlement date. For transformations, keep execution date aligned with trade timestamp.
+      if (isTransformation(t)) {
+        t.setExecutionDate(newDate);
+      }
+    } else if (oldDate != null && datesEqualMinute(oldEx, oldDate)) {
+      t.setExecutionDate(newDate);
+    }
+  }
+
+  private void shiftForwardToFreeMinute(Transaction tx, java.util.Set<Long> occupied, java.util.Set<Long> reservedTransMinutes,
+      long baseMinuteKeyMillis) {
     if (tx == null) return;
-    if (seconds <= 0) return;
 
     java.util.Date d = tx.getDate();
+    if (d == null) return;
+    java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+    cal.setTime(d);
+    cal.set(java.util.GregorianCalendar.SECOND, 0);
+    cal.set(java.util.GregorianCalendar.MILLISECOND, 0);
+
+    // Ensure we only move forward, and also respect base minute (e.g. transformation minute).
+    if (baseMinuteKeyMillis != Long.MIN_VALUE && cal.getTimeInMillis() < baseMinuteKeyMillis) {
+      cal.setTimeInMillis(baseMinuteKeyMillis);
+    }
+
+    long start = cal.getTimeInMillis();
+    int minutes = 0;
+    while (true) {
+      long mk = cal.getTimeInMillis();
+      if (!occupied.contains(mk) && !reservedTransMinutes.contains(mk)) {
+        break;
+      }
+      cal.add(java.util.GregorianCalendar.MINUTE, 1);
+      minutes++;
+      // Safety: avoid infinite loops in pathological datasets.
+      if (minutes > 24 * 60) {
+        break;
+      }
+    }
+
+    long target = cal.getTimeInMillis();
+    if (target != start) {
+      java.util.Date oldDate = tx.getDate();
+      java.util.Date oldEx = tx.getExecutionDate();
+
+      java.util.Date newDate = cal.getTime();
+      tx.setDate(newDate);
+      if (oldEx != null && oldDate != null && datesEqualMinute(oldEx, oldDate)) {
+        tx.setExecutionDate(newDate);
+      }
+      appendTimeShiftMinutesMarker(tx, minutes);
+    }
+
+    occupied.add(cal.getTimeInMillis());
+  }
+
+  private void appendTimeShiftMinutesMarker(Transaction tx, int minutes) {
+    if (tx == null) return;
+    if (minutes <= 0) return;
+    String note = tx.getNote();
+    String marker = "|TimeShift:+" + minutes + "m";
+    if (note == null || note.isEmpty()) {
+      tx.setNote(marker.substring(1));
+    } else if (!note.contains(marker)) {
+      tx.setNote(note + marker);
+    }
+  }
+
+  private void shiftTransactionByMinutes(Transaction tx, int minutes) {
+    if (tx == null) return;
+    if (minutes <= 0) return;
+
+    java.util.Date d = tx.getDate();
+    java.util.Date oldEx = tx.getExecutionDate();
+    java.util.Date oldDate = d;
+
     if (d != null) {
       java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
       cal.setTime(d);
-      cal.add(java.util.GregorianCalendar.SECOND, seconds);
+      cal.set(java.util.GregorianCalendar.SECOND, 0);
+      cal.set(java.util.GregorianCalendar.MILLISECOND, 0);
+      cal.add(java.util.GregorianCalendar.MINUTE, minutes);
       tx.setDate(cal.getTime());
     }
 
-    java.util.Date ex = tx.getExecutionDate();
-    if (ex != null) {
-      java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
-      cal.setTime(ex);
-      cal.add(java.util.GregorianCalendar.SECOND, seconds);
-      tx.setExecutionDate(cal.getTime());
+    // Preserve settlement date for trades; only shift when executionDate equals trade timestamp.
+    if (oldEx != null && oldDate != null && datesEqualMinute(oldEx, oldDate)) {
+      tx.setExecutionDate(tx.getDate());
     }
 
     String note = tx.getNote();
-    String marker = "|TimeShift:+" + seconds + "s";
+    String marker = "|TimeShift:+" + minutes + "m";
     if (note == null || note.isEmpty()) {
       tx.setNote(marker.substring(1));
     } else if (!note.contains(marker)) {
@@ -2590,8 +2809,8 @@ public class ImportWindow extends javax.swing.JFrame {
       return;
     }
     
-    boolean hasPreviewData = !transactions.rows.isEmpty();
-    if (hasPreviewData) {
+    boolean hasWork = !transactions.rows.isEmpty() || (duplicatesToUpdate != null && !duplicatesToUpdate.isEmpty());
+    if (hasWork) {
       bIBKRFlexFetch.setText("Sloučit do databáze");
       bIBKRFlexFetch.setToolTipText("Sloučit načtené transakce do hlavní databáze");
     } else {
@@ -2601,7 +2820,7 @@ public class ImportWindow extends javax.swing.JFrame {
     
     // Enable/disable clear button
     if (bIBKRFlexClear != null) {
-      bIBKRFlexClear.setEnabled(hasPreviewData);
+      bIBKRFlexClear.setEnabled(hasWork);
     }
 
     if (bIBKRFlexRefreshPreview != null) {
@@ -2617,8 +2836,8 @@ public class ImportWindow extends javax.swing.JFrame {
       return;
     }
     
-    boolean hasPreviewData = !transactions.rows.isEmpty();
-    if (hasPreviewData) {
+    boolean hasWork = !transactions.rows.isEmpty() || (duplicatesToUpdate != null && !duplicatesToUpdate.isEmpty());
+    if (hasWork) {
       // MERGE MODE: Merge existing preview data to database
       System.out.println("[IBKR:001] Merging existing preview data to database");
       performIBKRFlexImport(true);
@@ -2767,17 +2986,17 @@ public class ImportWindow extends javax.swing.JFrame {
         mainDbForUndo.beginImportUndoCapture();
         transactions.mergeTo(mainDbForUndo);
         
-        // Update duplicates if checkbox is checked
+        // Update duplicates (IBKR Flex: always on)
         int updatedCount = 0;
-        if (cbUpdateDuplicates.isSelected() && !duplicatesToUpdate.isEmpty()) {
+        if (!duplicatesToUpdate.isEmpty()) {
           TransactionSet mainDb = mainWindow.getTransactionDatabase();
           
           System.out.println("[IBKR:UPDATE:001] Updating " + duplicatesToUpdate.size() + " duplicate transactions");
           
-          // Start batch update to prevent double-updating same transaction
-          mainDb.startBatchUpdate();
+           // Start batch update to prevent double-updating same transaction
+           mainDb.startBatchUpdate();
           
-           updatedCount += mainDb.updateDuplicateTransactions(duplicatesToUpdate);
+            updatedCount += mainDb.updateDuplicateTransactions(duplicatesToUpdate);
           
           // End batch update
           mainDb.endBatchUpdate();

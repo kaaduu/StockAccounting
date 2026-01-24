@@ -38,7 +38,8 @@ public class MainWindow extends javax.swing.JFrame {
 
   // <editor-fold defaultstate="collapsed" desc="Class: DateChooserCellEditor">
   /**
-   * Custom cell renderer that highlights recently updated rows with light yellow background
+   * Custom cell renderer that highlights recently updated rows with light yellow
+   * background
    */
   private class HighlightedCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
     @Override
@@ -50,7 +51,7 @@ public class MainWindow extends javax.swing.JFrame {
 
       // Reset font to base (renderer instances are reused)
       c.setFont(table.getFont());
-      
+
       // Check if this row was recently inserted/updated (import highlighting)
       if (!isSelected) {
         try {
@@ -71,7 +72,7 @@ public class MainWindow extends javax.swing.JFrame {
           c.setBackground(java.awt.Color.WHITE);
         }
       }
-      
+
       return c;
     }
   }
@@ -89,7 +90,7 @@ public class MainWindow extends javax.swing.JFrame {
 
       // Reset font to base (renderer instances are reused)
       c.setFont(table.getFont());
-      
+
       // Check if this row was recently inserted/updated (import highlighting)
       if (!isSelected) {
         try {
@@ -110,7 +111,7 @@ public class MainWindow extends javax.swing.JFrame {
           c.setBackground(java.awt.Color.WHITE);
         }
       }
-      
+
       return c;
     }
   }
@@ -167,13 +168,13 @@ public class MainWindow extends javax.swing.JFrame {
 
   // Transaction database
   private TransactionSet transactions;
-  
+
   // Import window
   private ImportWindow importWindow;
-  
+
   // Current file for .t212state tracking
   private File currentFile;
-  
+
   // Current Trading 212 import state for this file
   private Trading212ImportState currentFileImportState;
 
@@ -199,11 +200,11 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Re-add the TableModelListener for automatic status bar updates
     transactions.addTableModelListener(new javax.swing.event.TableModelListener() {
-        @Override
-        public void tableChanged(javax.swing.event.TableModelEvent e) {
-            System.out.println("DEBUG: TableModelEvent received, type: " + e.getType());
-            updateStatusBar();
-        }
+      @Override
+      public void tableChanged(javax.swing.event.TableModelEvent e) {
+        System.out.println("DEBUG: TableModelEvent received, type: " + e.getType());
+        updateStatusBar();
+      }
     });
 
     table.setModel(transactions);
@@ -227,6 +228,12 @@ public class MainWindow extends javax.swing.JFrame {
     java.net.URL iconURL = getClass().getResource("images/dolarm.png");
     dollarIcon = new javax.swing.ImageIcon(iconURL);
     setIconImage(getDollarImage());
+    updateTitle();
+
+    // Auto-maximize if enabled
+    if (Settings.getAutoMaximized()) {
+      setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH);
+    }
   }
 
   /**
@@ -323,6 +330,7 @@ public class MainWindow extends javax.swing.JFrame {
     miExportFIO = new javax.swing.JMenuItem();
     jSeparator2 = new javax.swing.JSeparator();
     miExit = new javax.swing.JMenuItem();
+    miShowLogs = new javax.swing.JMenuItem();
     jMenu2 = new javax.swing.JMenu();
     miAccountState = new javax.swing.JMenuItem();
     miReport = new javax.swing.JMenuItem();
@@ -347,7 +355,8 @@ public class MainWindow extends javax.swing.JFrame {
 
     cbTypeFilter = new javax.swing.JComboBox();
     cbTypeFilter.setModel(
-        new javax.swing.DefaultComboBoxModel(new String[] { "", "CP", "Derivát", "Transformace", "Dividenda", "Cash" }));
+        new javax.swing.DefaultComboBoxModel(
+            new String[] { "", "CP", "Derivát", "Transformace", "Dividenda", "Cash" }));
 
     cbEffectFilter = new javax.swing.JComboBox();
     cbEffectFilter.setModel(
@@ -405,7 +414,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     bCopy = new javax.swing.JButton();
     bCopy.setText("Kopírovat");
-    bCopy.setToolTipText("Zkopíruje vybrané řádky do schránky jako TSV (tabulátory + nové řádky)");
+    bCopy.setToolTipText("Zkopíruje vybrané řádky do schránky jako CSV (včetně hlavičky, uvozovky, oddělovač ',')");
     bCopy.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bCopyActionPerformed(evt);
@@ -552,7 +561,7 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 12;
     gridBagConstraints.gridy = 0;
-    gridBagConstraints.gridheight = 2;  // Span both rows
+    gridBagConstraints.gridheight = 2; // Span both rows
     gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.EAST;
     gridBagConstraints.weightx = 1.0;
@@ -569,7 +578,7 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 13;
     gridBagConstraints.gridy = 0;
-    gridBagConstraints.gridheight = 2;  // Span both rows
+    gridBagConstraints.gridheight = 2; // Span both rows
     gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(bDelete, gridBagConstraints);
@@ -585,10 +594,9 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 14;
-    gridBagConstraints.gridy = 0;
-    gridBagConstraints.gridheight = 2;
-    gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 2; // Moved to row 2 to avoid overlap with Note filter
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(bUndoDelete, gridBagConstraints);
 
@@ -603,10 +611,9 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 15;
-    gridBagConstraints.gridy = 0;
-    gridBagConstraints.gridheight = 2;
-    gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 2; // Moved to row 2 to avoid overlap
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(bUndoImport, gridBagConstraints);
 
@@ -637,19 +644,20 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 17;
     gridBagConstraints.gridy = 0;
-    gridBagConstraints.gridheight = 2;  // Span both rows
+    gridBagConstraints.gridheight = 2; // Span both rows
     gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
     jPanel2.add(bSort, gridBagConstraints);
 
-    // ===== ROW 1: Metadata Filters (with left indentation for visual hierarchy) =====
-    
+    // ===== ROW 1: Metadata Filters (with left indentation for visual hierarchy)
+    // =====
+
     // Row 1: Note filter
     jLabel7.setText("Note:");
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
     gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 20, 5, 0);  // 20px left indent
+    gridBagConstraints.insets = new java.awt.Insets(5, 20, 5, 0); // 20px left indent
     jPanel2.add(jLabel7, gridBagConstraints);
 
     tfNote.setMinimumSize(new java.awt.Dimension(150, 20));
@@ -667,7 +675,7 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 1;
     gridBagConstraints.gridy = 1;
-    gridBagConstraints.gridwidth = 2;  // Span 2 columns for wider note field
+    gridBagConstraints.gridwidth = 2; // Span 2 columns for wider note field
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(tfNote, gridBagConstraints);
 
@@ -717,7 +725,7 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 9;
     gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 15, 5, 0);  // Extra left padding
+    gridBagConstraints.insets = new java.awt.Insets(5, 15, 5, 0); // Extra left padding
     jPanel2.add(cbShowMetadata, gridBagConstraints);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
@@ -907,12 +915,20 @@ public class MainWindow extends javax.swing.JFrame {
     });
     jMenu3.add(miAbout);
 
+    miShowLogs.setText("Logy");
+    miShowLogs.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        miShowLogsActionPerformed(evt);
+      }
+    });
+    jMenu3.add(miShowLogs);
+
     jMenuBar1.add(jMenu3);
 
     setJMenuBar(jMenuBar1);
 
     pack();
-    
+
     // Set reasonable minimum size for two-row filter layout
     setMinimumSize(new java.awt.Dimension(1200, 600));
   }// </editor-fold>//GEN-END:initComponents
@@ -931,7 +947,7 @@ public class MainWindow extends javax.swing.JFrame {
   public void initTableColumns() {
     // get list of tickers from current transactions (if new = empty)
     cbTickers.setModel(transactions.getTickersModel());
-    
+
     // Populate metadata filter combo boxes
     cbBrokerFilter.setModel(transactions.getBrokersModel());
     cbAccountIdFilter.setModel(transactions.getAccountIdsModel());
@@ -1059,7 +1075,8 @@ public class MainWindow extends javax.swing.JFrame {
   }
 
   private void bCopyActionPerformed(java.awt.event.ActionEvent evt) {
-    if (table == null) return;
+    if (table == null)
+      return;
 
     int[] selected = table.getSelectedRows();
     if (selected == null || selected.length == 0) {
@@ -1067,54 +1084,69 @@ public class MainWindow extends javax.swing.JFrame {
       return;
     }
 
-    javax.swing.table.TableColumnModel cm = table.getColumnModel();
-    java.util.List<Integer> visibleViewCols = new java.util.ArrayList<>();
-    for (int i = 0; i < cm.getColumnCount(); i++) {
-      javax.swing.table.TableColumn col = cm.getColumn(i);
-      if (col == null) continue;
-      // Hidden columns in this app are represented by width/maxWidth == 0.
-      if (col.getWidth() == 0 || col.getMaxWidth() == 0) continue;
-      visibleViewCols.add(i);
-    }
-
     boolean showSeconds = Settings.getShowSecondsInDateColumns();
     java.text.SimpleDateFormat df2 = new java.text.SimpleDateFormat("dd.MM.yyyy HH:mm");
     java.text.SimpleDateFormat df3 = new java.text.SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
 
+    java.util.function.Function<String, String> csvQuote = (String s) -> {
+      if (s == null)
+        s = "";
+      // Keep CSV one-row-per-line.
+      s = s.replace('\n', ' ').replace('\r', ' ');
+      // Escape quotes per RFC4180.
+      s = s.replace("\"", "\"\"");
+      return "\"" + s + "\"";
+    };
+
+    java.util.function.Function<Object, String> toCellString = (Object v) -> {
+      if (v == null)
+        return "";
+      if (v instanceof java.util.Date) {
+        java.util.Date d = (java.util.Date) v;
+        if (showSeconds) {
+          java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+          cal.setTime(d);
+          if (cal.get(java.util.GregorianCalendar.SECOND) != 0) {
+            return df3.format(d);
+          }
+        }
+        return df2.format(d);
+      }
+      return String.valueOf(v);
+    };
+
+    int modelColCount = table.getModel() != null ? table.getModel().getColumnCount() : 0;
+    java.util.List<Integer> modelCols = new java.util.ArrayList<>();
+    for (int mc = 0; mc < modelColCount; mc++) {
+      modelCols.add(mc);
+    }
+
     StringBuilder sb = new StringBuilder();
+
+    // Header row (always include all columns)
+    for (int c = 0; c < modelCols.size(); c++) {
+      int modelCol = modelCols.get(c);
+      String header = table.getModel().getColumnName(modelCol);
+      if (c > 0)
+        sb.append(',');
+      sb.append(csvQuote.apply(header));
+    }
+    sb.append('\n');
+
     for (int r = 0; r < selected.length; r++) {
       int viewRow = selected[r];
-      for (int c = 0; c < visibleViewCols.size(); c++) {
-        int viewCol = visibleViewCols.get(c);
-        Object v = table.getValueAt(viewRow, viewCol);
+      int modelRow = table.convertRowIndexToModel(viewRow);
 
-        String cell;
-        if (v == null) {
-          cell = "";
-        } else if (v instanceof java.util.Date) {
-          java.util.Date d = (java.util.Date) v;
-          if (showSeconds) {
-            java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
-            cal.setTime(d);
-            if (cal.get(java.util.GregorianCalendar.SECOND) != 0) {
-              cell = df3.format(d);
-            } else {
-              cell = df2.format(d);
-            }
-          } else {
-            cell = df2.format(d);
-          }
-        } else {
-          cell = String.valueOf(v);
-        }
-
-        // Keep TSV stable: no tabs/newlines inside a cell.
-        cell = cell.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
-
-        if (c > 0) sb.append('\t');
-        sb.append(cell);
+      for (int c = 0; c < modelCols.size(); c++) {
+        int modelCol = modelCols.get(c);
+        Object v = table.getModel().getValueAt(modelRow, modelCol);
+        String cell = toCellString.apply(v);
+        if (c > 0)
+          sb.append(',');
+        sb.append(csvQuote.apply(cell));
       }
-      if (r < selected.length - 1) sb.append('\n');
+      if (r < selected.length - 1)
+        sb.append('\n');
     }
 
     try {
@@ -1143,7 +1175,7 @@ public class MainWindow extends javax.swing.JFrame {
   public void refreshMetadataFilters() {
     cbBrokerFilter.setModel(transactions.getBrokersModel());
     cbAccountIdFilter.setModel(transactions.getAccountIdsModel());
-    
+
     // Reset selections to empty (no filter)
     cbBrokerFilter.setSelectedIndex(0);
     cbAccountIdFilter.setSelectedIndex(0);
@@ -1185,11 +1217,11 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Re-add the TableModelListener for automatic status bar updates
     transactions.addTableModelListener(new javax.swing.event.TableModelListener() {
-        @Override
-        public void tableChanged(javax.swing.event.TableModelEvent e) {
-            System.out.println("DEBUG: TableModelEvent received, type: " + e.getType());
-            updateStatusBar();
-        }
+      @Override
+      public void tableChanged(javax.swing.event.TableModelEvent e) {
+        System.out.println("DEBUG: TableModelEvent received, type: " + e.getType());
+        updateStatusBar();
+      }
     });
 
     table.setModel(transactions);
@@ -1212,6 +1244,10 @@ public class MainWindow extends javax.swing.JFrame {
     enableUndoImportIfAvailable();
     // Clear filter
     clearFilter();
+
+    currentFile = null;
+    currentFileImportState = null;
+    updateTitle();
 
     // if (JOptionPane.showConfirmDialog(rootPane, "Pozor!\n Aktualne nefunguje,
     // ukonci a spust aplikaci znovu :)\nAle pokud rozumis jave a chtel bys toto
@@ -1254,10 +1290,10 @@ public class MainWindow extends javax.swing.JFrame {
 
   private void formWindowOpened(java.awt.event.WindowEvent evt)// GEN-FIRST:event_formWindowOpened
   {// GEN-HEADEREND:event_formWindowOpened
-    // Show about dialog
-     if (cz.datesoft.stockAccounting.Settings.getShowAboutOnStartup()) {
-       aboutWindow.setVisible(true);
-     }
+   // Show about dialog
+    if (cz.datesoft.stockAccounting.Settings.getShowAboutOnStartup()) {
+      aboutWindow.setVisible(true);
+    }
   }// GEN-LAST:event_formWindowOpened
 
   private void miReportActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_miReportActionPerformed
@@ -1351,7 +1387,8 @@ public class MainWindow extends javax.swing.JFrame {
   private void bClearTxnIdActionPerformed(java.awt.event.ActionEvent evt) {
     int[] selected = table.getSelectedRows();
     if (selected == null || selected.length == 0) {
-      JOptionPane.showMessageDialog(this, "Nejsou vybrané žádné řádky.", "Smazat TxnID", JOptionPane.INFORMATION_MESSAGE);
+      JOptionPane.showMessageDialog(this, "Nejsou vybrané žádné řádky.", "Smazat TxnID",
+          JOptionPane.INFORMATION_MESSAGE);
       return;
     }
 
@@ -1365,9 +1402,11 @@ public class MainWindow extends javax.swing.JFrame {
     int changed = 0;
     try {
       for (int viewRow : selected) {
-        if (viewRow < 0) continue;
+        if (viewRow < 0)
+          continue;
         Transaction tx = transactions.getRowAt(viewRow);
-        if (tx == null) continue;
+        if (tx == null)
+          continue;
         tx.clearBrokerAccountTxnMetadata();
         changed++;
       }
@@ -1388,19 +1427,30 @@ public class MainWindow extends javax.swing.JFrame {
     // Clear model filter + UI controls
     transactions.clearFilter();
 
-    if (tfTicker != null) tfTicker.setText("");
-    if (tfMarket != null) tfMarket.setText("");
-    if (tfNote != null) tfNote.setText("");
-    if (dcFrom != null) dcFrom.setDate(null);
-    if (dcTo != null) dcTo.setDate(null);
-    if (cbTypeFilter != null) cbTypeFilter.setSelectedIndex(0);
-    if (cbBrokerFilter != null) cbBrokerFilter.setSelectedIndex(0);
-    if (cbAccountIdFilter != null) cbAccountIdFilter.setSelectedIndex(0);
-    if (cbEffectFilter != null) cbEffectFilter.setSelectedIndex(0);
+    if (tfTicker != null)
+      tfTicker.setText("");
+    if (tfMarket != null)
+      tfMarket.setText("");
+    if (tfNote != null)
+      tfNote.setText("");
+    if (dcFrom != null)
+      dcFrom.setDate(null);
+    if (dcTo != null)
+      dcTo.setDate(null);
+    if (cbTypeFilter != null)
+      cbTypeFilter.setSelectedIndex(0);
+    if (cbBrokerFilter != null)
+      cbBrokerFilter.setSelectedIndex(0);
+    if (cbAccountIdFilter != null)
+      cbAccountIdFilter.setSelectedIndex(0);
+    if (cbEffectFilter != null)
+      cbEffectFilter.setSelectedIndex(0);
 
     // Disable filter-related actions
-    if (bClearFilter != null) bClearFilter.setEnabled(false);
-    if (miSaveFiltered != null) miSaveFiltered.setEnabled(false);
+    if (bClearFilter != null)
+      bClearFilter.setEnabled(false);
+    if (miSaveFiltered != null)
+      miSaveFiltered.setEnabled(false);
 
     // Track current ticker filter for status bar
     currentTickerFilter = null;
@@ -1422,26 +1472,26 @@ public class MainWindow extends javax.swing.JFrame {
    */
   private boolean saveTransactions(File fl) {
     try {
-       transactions.save(fl);
-       
-       // Save Trading 212 import state to sidecar file if exists
-       if (currentFileImportState != null && currentFile != null) {
-         try {
-           currentFileImportState.saveToFile(currentFile);
-           System.out.println("Saved Trading 212 import state to .t212state file: " + currentFile.getAbsolutePath());
-         } catch (Exception e) {
-           System.err.println("Failed to save Trading 212 import state: " + e.getMessage());
-         }
-       }
-       } catch (Exception e) {
-       e.printStackTrace();
-       JOptionPane.showMessageDialog(this, "Při ukládání souboru nastala chyba: " + e);
+      transactions.save(fl);
 
-       return false;
-     }
+      // Save Trading 212 import state to sidecar file if exists
+      if (currentFileImportState != null && currentFile != null) {
+        try {
+          currentFileImportState.saveToFile(currentFile);
+          System.out.println("Saved Trading 212 import state to .t212state file: " + currentFile.getAbsolutePath());
+        } catch (Exception e) {
+          System.err.println("Failed to save Trading 212 import state: " + e.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      JOptionPane.showMessageDialog(this, "Při ukládání souboru nastala chyba: " + e);
 
-     return true;
-   }
+      return false;
+    }
+
+    return true;
+  }
 
   /**
    * Save transactions to different file.
@@ -1460,14 +1510,14 @@ public class MainWindow extends javax.swing.JFrame {
     String fileName = dialog.getFile();
     if (fileName != null) {
       File file = new File(dialog.getDirectory(), fileName);
-      
+
       // If saving to a different file, reset currentFile and import state
       if (!file.equals(currentFile)) {
         currentFile = file;
         currentFileImportState = null;
         System.out.println("Saved to different file, reset currentFileImportState");
       }
-      
+
       if (file.exists()) {
         if (JOptionPane.showConfirmDialog(this,
             "Soubor " + file.getAbsolutePath() + " již existuje, chcete jej přepsat?", "Přepsat soubor?",
@@ -1478,7 +1528,11 @@ public class MainWindow extends javax.swing.JFrame {
       Settings.setDataDirectory(dialog.getDirectory());
       Settings.save();
 
-      return saveTransactions(file);
+      boolean success = saveTransactions(file);
+      if (success) {
+        updateTitle();
+      }
+      return success;
     }
 
     return false;
@@ -1539,7 +1593,7 @@ public class MainWindow extends javax.swing.JFrame {
   /**
    * Apply filter to the transaction set
    */
-   private void applyFilter() {
+  private void applyFilter() {
     // Get ticker and market. Set them to NULL when they are not set.
     String ticker = tfTicker.getText();
     String market = tfMarket.getText();
@@ -1600,8 +1654,6 @@ public class MainWindow extends javax.swing.JFrame {
     Settings.showDialog();
   }// GEN-LAST:event_miSettingsActionPerformed
 
-
-
   private void bApplyFilterActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_bApplyFilterActionPerformed
     applyFilter();
   }// GEN-LAST:event_bApplyFilterActionPerformed
@@ -1640,45 +1692,48 @@ public class MainWindow extends javax.swing.JFrame {
       Settings.setDataDirectory(dialog.getDirectory());
       Settings.save();
 
-        try {
-          // Load file
-           transactions.load(selectedFile);
-           
-           // Load Trading 212 import state from sidecar file if exists
-           currentFile = selectedFile;
-           currentFileImportState = Trading212ImportState.loadFromFile(selectedFile);
-           if (currentFileImportState != null) {
-             System.out.println("Loaded Trading 212 import state from .t212state file for: " + selectedFile.getAbsolutePath());
-           }
+      try {
+        // Load file
+        transactions.load(selectedFile);
 
-           // Initialize date range to show all loaded data (1900-01-01 to today)
-           java.util.GregorianCalendar startCal = new java.util.GregorianCalendar(1900, 0, 1); // 1900-01-01
-           dcFrom.setDate(startCal.getTime());
-           dcTo.setDate(new java.util.Date()); // Today
+        // Load Trading 212 import state from sidecar file if exists
+        currentFile = selectedFile;
+        currentFileImportState = Trading212ImportState.loadFromFile(selectedFile);
+        if (currentFileImportState != null) {
+          System.out
+              .println("Loaded Trading 212 import state from .t212state file for: " + selectedFile.getAbsolutePath());
+        }
 
-           // Invalidate transformation cache for loaded data
-           System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
-           transactions.invalidateTransformationCache();
+        // Initialize date range to show all loaded data (1900-01-01 to today)
+        java.util.GregorianCalendar startCal = new java.util.GregorianCalendar(1900, 0, 1); // 1900-01-01
+        dcFrom.setDate(startCal.getTime());
+        dcTo.setDate(new java.util.Date()); // Today
 
-           // Refresh metadata filter dropdowns with loaded data
-           refreshMetadataFilters();
+        // Invalidate transformation cache for loaded data
+        System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
+        transactions.invalidateTransformationCache();
 
-           // Clear results of computing to avoid confusion
-           computeWindow.clearComputeResults();
+        // Refresh metadata filter dropdowns with loaded data
+        refreshMetadataFilters();
 
-           // Clear inserted/updated highlights from previous session
-           transactions.clearHighlights();
-           table.repaint();
+        // Clear results of computing to avoid confusion
+        computeWindow.clearComputeResults();
 
-           if (transactions.wereSerialsRepaired()) {
-             setTransientStatusMessage(
-                 "Oprava: přegenerovány interní serialy (duplicit: " + transactions.getSerialDuplicatesFound() + ")",
-                 12000L);
-           }
+        // Clear inserted/updated highlights from previous session
+        transactions.clearHighlights();
+        table.repaint();
 
-           // Clear filter
-           clearFilter();
-       } catch (Exception e) {
+        if (transactions.wereSerialsRepaired()) {
+          setTransientStatusMessage(
+              "Oprava: přegenerovány interní serialy (duplicit: " + transactions.getSerialDuplicatesFound() + ")",
+              12000L);
+        }
+
+        // Clear filter
+        clearFilter();
+
+        updateTitle();
+      } catch (Exception e) {
         JOptionPane.showMessageDialog(this, "Při načítání souboru nastala chyba: " + e);
       }
     }
@@ -1750,11 +1805,11 @@ public class MainWindow extends javax.swing.JFrame {
     }
   }// GEN-LAST:event_miExportFIOActionPerformed
 
-   private void tfNoteActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_tfNoteActionPerformed
-     // TODO add your handling code here:
-   }// GEN-LAST:event_tfNoteActionPerformed
+  private void tfNoteActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_tfNoteActionPerformed
+    // TODO add your handling code here:
+  }// GEN-LAST:event_tfNoteActionPerformed
 
-   private void miOpenAddActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_miOpenAddActionPerformed
+  private void miOpenAddActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_miOpenAddActionPerformed
 
     // Show open dialog
     FileDialog dialog = new FileDialog(this, "Otevřít soubor", FileDialog.LOAD);
@@ -1793,6 +1848,8 @@ public class MainWindow extends javax.swing.JFrame {
 
         // Clear filter
         clearFilter();
+
+        updateTitle();
       } catch (Exception e) {
         JOptionPane.showMessageDialog(this, "Při načítání souboru nastala chyba: " + e);
       }
@@ -1829,21 +1886,21 @@ public class MainWindow extends javax.swing.JFrame {
   public TransactionSet getTransactionDatabase() {
     return transactions;
   }
-  
+
   /**
    * Get current file for .t212state tracking
    */
   public File getCurrentFile() {
     return currentFile;
   }
-  
+
   /**
    * Get current Trading 212 import state for this file
    */
   public Trading212ImportState getCurrentFileImportState() {
     return currentFileImportState;
   }
-  
+
   /**
    * Set current Trading 212 import state for this file
    */
@@ -1856,39 +1913,40 @@ public class MainWindow extends javax.swing.JFrame {
    */
   private void updateStatusBar() {
     TransactionSet db = getTransactionDatabase();
-    int totalRecords = db.rows.size();  // Actual transaction count (excludes empty row)
+    int totalRecords = db.rows.size(); // Actual transaction count (excludes empty row)
 
     // For filtered count, check if filtering is active and exclude empty row
     int visibleRecords;
     if (db.filteredRows != null) {
-        visibleRecords = db.filteredRows.size();  // Actual filtered transactions
+      visibleRecords = db.filteredRows.size(); // Actual filtered transactions
     } else {
-        visibleRecords = db.rows.size();  // All transactions when no filter
+      visibleRecords = db.rows.size(); // All transactions when no filter
     }
 
     String status = "Záznamů: " + totalRecords;
     if (visibleRecords != totalRecords) {
-        status += " | Filtr: " + visibleRecords;
+      status += " | Filtr: " + visibleRecords;
 
-        // Show related tickers if smart filtering was used
-        if (currentTickerFilter != null && !currentTickerFilter.isEmpty()) {
-            try {
-                Set<String> relatedTickers = db.getRelatedTickers(currentTickerFilter);
-                if (relatedTickers.size() > 1) {
-                    // Sort for consistent display
-                    java.util.List<String> sortedRelated = new java.util.ArrayList<>(relatedTickers);
-                    java.util.Collections.sort(sortedRelated);
-                    status += " | Zahrnuje: " + String.join(", ", sortedRelated);
-                }
-            } catch (Exception e) {
-                // Ignore errors in status bar display
-                System.err.println("Error getting related tickers for status bar: " + e.getMessage());
-            }
+      // Show related tickers if smart filtering was used
+      if (currentTickerFilter != null && !currentTickerFilter.isEmpty()) {
+        try {
+          Set<String> relatedTickers = db.getRelatedTickers(currentTickerFilter);
+          if (relatedTickers.size() > 1) {
+            // Sort for consistent display
+            java.util.List<String> sortedRelated = new java.util.ArrayList<>(relatedTickers);
+            java.util.Collections.sort(sortedRelated);
+            status += " | Zahrnuje: " + String.join(", ", sortedRelated);
+          }
+        } catch (Exception e) {
+          // Ignore errors in status bar display
+          System.err.println("Error getting related tickers for status bar: " + e.getMessage());
         }
+      }
     }
 
     if (lastStatusMessage != null && !lastStatusMessage.isEmpty()) {
       status += lastStatusMessage;
+      logEvent(lastStatusMessage.replaceFirst("^ \\| ", "")); // Remove separator if present
       lastStatusMessage = null;
     }
 
@@ -1913,8 +1971,69 @@ public class MainWindow extends javax.swing.JFrame {
     jLabel1.setText(status);
   }
 
+  /**
+   * List of event logs
+   */
+  private final java.util.List<String> eventLogs = new java.util.ArrayList<>();
+
+  /**
+   * Log an event with timestamp
+   */
+  private void logEvent(String message) {
+    if (message == null || message.trim().isEmpty())
+      return;
+    String timestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
+    eventLogs.add("[" + timestamp + "] " + message);
+  }
+
+  /**
+   * Show logs dialog
+   */
+  private void miShowLogsActionPerformed(java.awt.event.ActionEvent evt) {
+    // 2x wider (was 60, now 120)
+    javax.swing.JTextArea textArea = new javax.swing.JTextArea(20, 120);
+    textArea.setEditable(false);
+    textArea.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+
+    StringBuilder sb = new StringBuilder();
+    synchronized (eventLogs) {
+      for (String log : eventLogs) {
+        sb.append(log).append("\n");
+      }
+    }
+
+    if (sb.length() == 0) {
+      sb.append("Žádné logy k zobrazení.");
+    }
+
+    textArea.setText(sb.toString());
+    textArea.setCaretPosition(textArea.getDocument().getLength());
+
+    javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(textArea);
+
+    // Create resizable dialog instead of simple message dialog
+    javax.swing.JOptionPane pane = new javax.swing.JOptionPane(scrollPane, javax.swing.JOptionPane.PLAIN_MESSAGE);
+    javax.swing.JDialog dialog = pane.createDialog(this, "Logy událostí");
+    dialog.setResizable(true);
+    dialog.setVisible(true);
+  }
+
+  /**
+   * Update window title based on current file
+   */
+  private void updateTitle() {
+    File fl = transactions.getFile();
+    if (fl != null) {
+      setTitle("Akciové účetnictví - " + fl.getName());
+    } else {
+      setTitle("Akciové účetnictví");
+    }
+  }
+
   public void setTransientStatusMessage(String msg, long ttlMs) {
-    if (msg == null) return;
+    if (msg == null)
+      return;
+    logEvent(msg);
     transientStatusMessage = msg;
     transientStatusUntilMs = System.currentTimeMillis() + Math.max(0L, ttlMs);
     System.out.println("INFO: " + msg);
@@ -1930,7 +2049,8 @@ public class MainWindow extends javax.swing.JFrame {
   }
 
   public void jumpToFirstImportChangeInView() {
-    if (transactions == null) return;
+    if (transactions == null)
+      return;
 
     int row = transactions.findFirstUpdatedVisibleRowIndex();
     final boolean updated;
@@ -2084,12 +2204,12 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JLabel jLabel2;
   private javax.swing.JLabel jLabel3;
   private javax.swing.JLabel jLabel4;
-   private javax.swing.JLabel jLabel5;
-   private javax.swing.JLabel jLabel6;
-   private javax.swing.JLabel jLabel7;
-   private javax.swing.JLabel jLabel8;
-   private javax.swing.JLabel jLabel9;
-   private javax.swing.JLabel jLabel10;
+  private javax.swing.JLabel jLabel5;
+  private javax.swing.JLabel jLabel6;
+  private javax.swing.JLabel jLabel7;
+  private javax.swing.JLabel jLabel8;
+  private javax.swing.JLabel jLabel9;
+  private javax.swing.JLabel jLabel10;
   private javax.swing.JMenu jMenu1;
   private javax.swing.JMenu jMenu2;
   private javax.swing.JMenu jMenu3;
@@ -2101,6 +2221,7 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JSeparator jSeparator2;
   private javax.swing.JSeparator jSeparator3;
   private javax.swing.JMenuItem miAbout;
+  private javax.swing.JMenuItem miShowLogs;
   private javax.swing.JMenuItem miAccountState;
   private javax.swing.JMenuItem miExit;
   private javax.swing.JMenuItem miExport;
@@ -2115,16 +2236,16 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JMenuItem miSaveFiltered;
   private javax.swing.JMenuItem miSettings;
   private javax.swing.JTable table;
-   private javax.swing.JTextField tfMarket;
-   private javax.swing.JTextField tfNote;
-   private javax.swing.JTextField tfTicker;
-   private javax.swing.JComboBox cbBrokerFilter;
-   private javax.swing.JComboBox cbAccountIdFilter;
-   private javax.swing.JComboBox cbEffectFilter;
-   private javax.swing.JCheckBox cbShowMetadata;
-   private javax.swing.JCheckBox cbShowSeconds;
-   private javax.swing.JButton bCopy;
-   private javax.swing.JButton bClearColors;
-   // End of variables declaration//GEN-END:variables
+  private javax.swing.JTextField tfMarket;
+  private javax.swing.JTextField tfNote;
+  private javax.swing.JTextField tfTicker;
+  private javax.swing.JComboBox cbBrokerFilter;
+  private javax.swing.JComboBox cbAccountIdFilter;
+  private javax.swing.JComboBox cbEffectFilter;
+  private javax.swing.JCheckBox cbShowMetadata;
+  private javax.swing.JCheckBox cbShowSeconds;
+  private javax.swing.JButton bCopy;
+  private javax.swing.JButton bClearColors;
+  // End of variables declaration//GEN-END:variables
 
 }

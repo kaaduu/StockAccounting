@@ -1305,6 +1305,25 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
           tx.getPrice().doubleValue(), tx.getPriceCurrency(), tx.getFee().doubleValue(), tx.getFeeCurrency(),
           tx.getMarket(), tx.getExecutionDate(), tx.getNote());
 
+      // Preserve persisted metadata (Broker/AccountID/TxnID/Code) from the source.
+      // This is important for imports where metadata is not encoded in Note (e.g. IBKR Flex corporate actions).
+      String broker = tx.getBroker();
+      if (broker != null && !broker.trim().isEmpty()) {
+        added.setBroker(broker.trim());
+      }
+      String accountId = tx.getAccountId();
+      if (accountId != null && !accountId.trim().isEmpty()) {
+        added.setAccountId(accountId.trim());
+      }
+      String txnId = tx.getTxnId();
+      if (txnId != null && !txnId.trim().isEmpty()) {
+        added.setTxnId(txnId.trim());
+      }
+      String code = tx.getCode();
+      if (code != null && !code.trim().isEmpty()) {
+        added.setCode(code.trim());
+      }
+
       // Mark as inserted for highlighting (import/merge only)
       dstSet.markInserted(added);
 

@@ -177,6 +177,7 @@ public class IBKRFlexParser {
 
     private static class RawCorporateActionRow {
         String actionId;
+        String accountId;
         String type;
         String code;
         String symbol;
@@ -228,6 +229,9 @@ public class IBKRFlexParser {
 
             RawCorporateActionRow row = new RawCorporateActionRow();
             row.actionId = fields[COL_ACTION_ID].trim();
+            row.accountId = (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length)
+                ? fields[COL_CLIENT_ACCOUNT_ID].trim()
+                : "";
             row.type = fields[COL_CA_TYPE].trim();
             row.code = (COL_CODE >= 0 && COL_CODE < fields.length) ? fields[COL_CODE].trim() : "";
             row.symbol = fields[COL_SYMBOL].trim();
@@ -337,10 +341,15 @@ public class IBKRFlexParser {
                 }
             }
 
-            String notePrefix = type + "|ActionID:" + actionId + ": " + desc;
+            // Keep note pipe-delimited and store ActionID in the dedicated TxnID column.
+            String notePrefix = type + "|" + desc;
             if (!origSymbols.isEmpty()) {
                 notePrefix += "|OrigSymbols:" + String.join(",", origSymbols);
             }
+
+            String accountId = grp.get(0).accountId;
+            if (accountId == null) accountId = "";
+            accountId = accountId.trim();
 
             // Emit OUT first, then IN
             List<Transaction> outs = new ArrayList<>();
@@ -363,6 +372,9 @@ public class IBKRFlexParser {
                         notePrefix
                     );
                     t.setBroker("IB");
+                    if (!accountId.isBlank()) {
+                        t.setAccountId(accountId);
+                    }
                     t.setTxnId(actionId);
                     if (type != null && !type.trim().isEmpty()) {
                         t.setCode(type.trim());
@@ -389,6 +401,9 @@ public class IBKRFlexParser {
                         notePrefix
                     );
                     t.setBroker("IB");
+                    if (!accountId.isBlank()) {
+                        t.setAccountId(accountId);
+                    }
                     t.setTxnId(actionId);
                     if (type != null && !type.trim().isEmpty()) {
                         t.setCode(type.trim());
@@ -592,7 +607,8 @@ public class IBKRFlexParser {
                 COL_DATE = i;
             }
             // Settlement date
-            else if (h.contains("settlement") && h.contains("date")) {
+            else if (h.equals("settledatetarget") || h.equals("settledate") || h.equals("settledatesource")
+                    || (h.contains("settlement") && h.contains("date"))) {
                 COL_SETTLEMENT_DATE = i;
             }
             // Transaction type
