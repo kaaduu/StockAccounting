@@ -605,171 +605,187 @@ public class SettingsWindow extends javax.swing.JDialog {
     jPanel4Layout.setVerticalGroup(
         jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(0, 100, Short.MAX_VALUE));
-     cbShowMetadataColumns = new javax.swing.JCheckBox("Zobrazovat sloupce metadat (Broker, ID účtu, ID transakce, Efekt)");
-     cbShowMetadataColumns.setSelected(Settings.getShowMetadataColumns());
-     cbShowMetadataColumns.setToolTipText("Zobrazí nebo skryje sloupce s metadaty parsovanými z poznámek transakcí");
-     cbShowMetadataColumns.addActionListener(new java.awt.event.ActionListener() {
-       public void actionPerformed(java.awt.event.ActionEvent evt) {
-         cbShowMetadataColumnsActionPerformed(evt);
-       }
-     });
-     gridBagConstraints = new java.awt.GridBagConstraints();
-     gridBagConstraints.gridy = 2;
-     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-     gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
-     jPanel1.add(cbShowMetadataColumns, gridBagConstraints);
+    cbShowMetadataColumns = new javax.swing.JCheckBox(
+        "Zobrazovat sloupce metadat (Broker, ID účtu, ID transakce, Efekt)");
+    cbShowMetadataColumns.setSelected(Settings.getShowMetadataColumns());
+    cbShowMetadataColumns.setToolTipText("Zobrazí nebo skryje sloupce s metadaty parsovanými z poznámek transakcí");
+    cbShowMetadataColumns.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbShowMetadataColumnsActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridy = 2;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
+    jPanel1.add(cbShowMetadataColumns, gridBagConstraints);
 
+    // Build System tab (last)
+    pSystem.setLayout(new java.awt.GridBagLayout());
 
-      // Build System tab (last)
-      pSystem.setLayout(new java.awt.GridBagLayout());
+    javax.swing.JLabel lblFileChooser = new javax.swing.JLabel("Výběr souborů:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    pSystem.add(lblFileChooser, gridBagConstraints);
 
-      javax.swing.JLabel lblFileChooser = new javax.swing.JLabel("Výběr souborů:");
-      gridBagConstraints = new java.awt.GridBagConstraints();
-      gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 0;
-      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-      pSystem.add(lblFileChooser, gridBagConstraints);
+    cbFileChooserMode = new javax.swing.JComboBox(new String[] { "Nativní (OS)", "Java (Swing)" });
+    cbFileChooserMode.setSelectedIndex(Settings.getFileChooserMode() == Settings.FILE_CHOOSER_SWING ? 1 : 0);
+    cbFileChooserMode.setToolTipText(
+        "Nativní (OS) používá systémové dialogy (doporučeno). Java (Swing) umožní filtrování podle přípony s volbou 'All files'.");
+    cbFileChooserMode.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbFileChooserModeActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    pSystem.add(cbFileChooserMode, gridBagConstraints);
 
-      cbFileChooserMode = new javax.swing.JComboBox(new String[] { "Nativní (OS)", "Java (Swing)" });
-      cbFileChooserMode.setSelectedIndex(Settings.getFileChooserMode() == Settings.FILE_CHOOSER_SWING ? 1 : 0);
-      cbFileChooserMode.setToolTipText("Nativní (OS) používá systémové dialogy (doporučeno). Java (Swing) umožní filtrování podle přípony s volbou 'All files'.");
-      cbFileChooserMode.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-          cbFileChooserModeActionPerformed(evt);
-        }
-      });
-      gridBagConstraints = new java.awt.GridBagConstraints();
-      gridBagConstraints.gridx = 1;
-      gridBagConstraints.gridy = 0;
-      gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-      gridBagConstraints.weightx = 1.0;
-      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-      pSystem.add(cbFileChooserMode, gridBagConstraints);
+    cbShowAboutOnStartup = new javax.swing.JCheckBox("Zobrazit \"O aplikaci\" při startu");
+    cbShowAboutOnStartup.setSelected(Settings.getShowAboutOnStartup());
+    cbShowAboutOnStartup.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        Settings.setShowAboutOnStartup(cbShowAboutOnStartup.isSelected());
+        Settings.save();
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.gridwidth = 2;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    pSystem.add(cbShowAboutOnStartup, gridBagConstraints);
 
-      cbShowAboutOnStartup = new javax.swing.JCheckBox("Zobrazit \"O aplikaci\" při startu");
-      cbShowAboutOnStartup.setSelected(Settings.getShowAboutOnStartup());
-      cbShowAboutOnStartup.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-          Settings.setShowAboutOnStartup(cbShowAboutOnStartup.isSelected());
-          Settings.save();
-        }
-      });
-      gridBagConstraints = new java.awt.GridBagConstraints();
-      gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 1;
-      gridBagConstraints.gridwidth = 2;
-      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-      pSystem.add(cbShowAboutOnStartup, gridBagConstraints);
+    cbAutoMaximized = new javax.swing.JCheckBox("Maximalizovat hlavní okno při startu");
+    cbAutoMaximized.setSelected(Settings.getAutoMaximized());
+    cbAutoMaximized.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        Settings.setAutoMaximized(cbAutoMaximized.isSelected());
+        Settings.save();
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 2;
+    gridBagConstraints.gridwidth = 2;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    pSystem.add(cbAutoMaximized, gridBagConstraints);
 
-      // Import highlighting settings
-      javax.swing.JLabel lblImportHl = new javax.swing.JLabel("Zvýraznění po importu:");
-      gridBagConstraints = new java.awt.GridBagConstraints();
-      gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 2;
-      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-      gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-      pSystem.add(lblImportHl, gridBagConstraints);
+    // Import highlighting settings
+    javax.swing.JLabel lblImportHl = new javax.swing.JLabel("Zvýraznění po importu:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 3;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    pSystem.add(lblImportHl, gridBagConstraints);
 
-      cbHighlightInserted = new javax.swing.JCheckBox("Zvýraznit nové (přidané)");
-      cbHighlightInserted.setSelected(Settings.getHighlightInsertedEnabled());
-      cbHighlightInserted.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-          Settings.setHighlightInsertedEnabled(cbHighlightInserted.isSelected());
+    cbHighlightInserted = new javax.swing.JCheckBox("Zvýraznit nové (přidané)");
+    cbHighlightInserted.setSelected(Settings.getHighlightInsertedEnabled());
+    cbHighlightInserted.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        Settings.setHighlightInsertedEnabled(cbHighlightInserted.isSelected());
+        updateHighlightPreview();
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 4;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
+    pSystem.add(cbHighlightInserted, gridBagConstraints);
+
+    bPickInsertedColor = new javax.swing.JButton("Barva nových...");
+    bPickInsertedColor.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        java.awt.Color chosen = javax.swing.JColorChooser.showDialog(SettingsWindow.this,
+            "Barva nových řádků", Settings.getHighlightInsertedColor());
+        if (chosen != null) {
+          Settings.setHighlightInsertedColor(chosen);
           updateHighlightPreview();
         }
-      });
-      gridBagConstraints = new java.awt.GridBagConstraints();
-      gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 3;
-      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-      gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
-      pSystem.add(cbHighlightInserted, gridBagConstraints);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 4;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+    pSystem.add(bPickInsertedColor, gridBagConstraints);
 
-      bPickInsertedColor = new javax.swing.JButton("Barva nových...");
-      bPickInsertedColor.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-          java.awt.Color chosen = javax.swing.JColorChooser.showDialog(SettingsWindow.this,
-              "Barva nových řádků", Settings.getHighlightInsertedColor());
-          if (chosen != null) {
-            Settings.setHighlightInsertedColor(chosen);
-            updateHighlightPreview();
-          }
-        }
-      });
-      gridBagConstraints = new java.awt.GridBagConstraints();
-      gridBagConstraints.gridx = 1;
-      gridBagConstraints.gridy = 3;
-      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-      gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
-      pSystem.add(bPickInsertedColor, gridBagConstraints);
+    cbHighlightUpdated = new javax.swing.JCheckBox("Zvýraznit aktualizované (duplikáty)");
+    cbHighlightUpdated.setSelected(Settings.getHighlightUpdatedEnabled());
+    cbHighlightUpdated.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        Settings.setHighlightUpdatedEnabled(cbHighlightUpdated.isSelected());
+        updateHighlightPreview();
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 5;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
+    pSystem.add(cbHighlightUpdated, gridBagConstraints);
 
-      cbHighlightUpdated = new javax.swing.JCheckBox("Zvýraznit aktualizované (duplikáty)");
-      cbHighlightUpdated.setSelected(Settings.getHighlightUpdatedEnabled());
-      cbHighlightUpdated.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-          Settings.setHighlightUpdatedEnabled(cbHighlightUpdated.isSelected());
+    bPickUpdatedColor = new javax.swing.JButton("Barva aktualizovaných...");
+    bPickUpdatedColor.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        java.awt.Color chosen = javax.swing.JColorChooser.showDialog(SettingsWindow.this,
+            "Barva aktualizovaných řádků", Settings.getHighlightUpdatedColor());
+        if (chosen != null) {
+          Settings.setHighlightUpdatedColor(chosen);
           updateHighlightPreview();
         }
-      });
-      gridBagConstraints = new java.awt.GridBagConstraints();
-      gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 4;
-      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-      gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
-      pSystem.add(cbHighlightUpdated, gridBagConstraints);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 5;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+    pSystem.add(bPickUpdatedColor, gridBagConstraints);
 
-      bPickUpdatedColor = new javax.swing.JButton("Barva aktualizovaných...");
-      bPickUpdatedColor.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-          java.awt.Color chosen = javax.swing.JColorChooser.showDialog(SettingsWindow.this,
-              "Barva aktualizovaných řádků", Settings.getHighlightUpdatedColor());
-          if (chosen != null) {
-            Settings.setHighlightUpdatedColor(chosen);
-            updateHighlightPreview();
-          }
-        }
-      });
-      gridBagConstraints = new java.awt.GridBagConstraints();
-      gridBagConstraints.gridx = 1;
-      gridBagConstraints.gridy = 4;
-      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-      gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
-      pSystem.add(bPickUpdatedColor, gridBagConstraints);
+    lHighlightPreviewNew = new javax.swing.JLabel("Náhled: nový");
+    lHighlightPreviewNew.setOpaque(true);
+    lHighlightPreviewUpdated = new javax.swing.JLabel("Náhled: aktualizovaný");
+    lHighlightPreviewUpdated.setOpaque(true);
 
-      lHighlightPreviewNew = new javax.swing.JLabel("Náhled: nový");
-      lHighlightPreviewNew.setOpaque(true);
-      lHighlightPreviewUpdated = new javax.swing.JLabel("Náhled: aktualizovaný");
-      lHighlightPreviewUpdated.setOpaque(true);
+    updateHighlightPreview();
 
-      updateHighlightPreview();
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 6;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
+    pSystem.add(lHighlightPreviewNew, gridBagConstraints);
 
-      gridBagConstraints = new java.awt.GridBagConstraints();
-      gridBagConstraints.gridx = 0;
-      gridBagConstraints.gridy = 5;
-      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-      gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
-      pSystem.add(lHighlightPreviewNew, gridBagConstraints);
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 6;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+    pSystem.add(lHighlightPreviewUpdated, gridBagConstraints);
 
-      gridBagConstraints = new java.awt.GridBagConstraints();
-      gridBagConstraints.gridx = 1;
-      gridBagConstraints.gridy = 5;
-      gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-      gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
-      pSystem.add(lHighlightPreviewUpdated, gridBagConstraints);
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 7;
+    gridBagConstraints.weighty = 1.0;
+    pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
 
-
-      gridBagConstraints = new java.awt.GridBagConstraints();
-       gridBagConstraints.gridx = 0;
-       gridBagConstraints.gridy = 6;
-       gridBagConstraints.weighty = 1.0;
-      pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
-
-     gridBagConstraints = new java.awt.GridBagConstraints();
-     gridBagConstraints.gridy = 3;
-     gridBagConstraints.weighty = 1.0;
-     jPanel1.add(jPanel4, gridBagConstraints);
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridy = 3;
+    gridBagConstraints.weighty = 1.0;
+    jPanel1.add(jPanel4, gridBagConstraints);
 
     jPanel6.setLayout(new java.awt.GridBagLayout());
 
@@ -1403,111 +1419,114 @@ public class SettingsWindow extends javax.swing.JDialog {
     Settings.setMarkets(markets);
 
     // And save them
-      Settings.setUseDailyRates(cbUseDailyRates.isSelected());
-      saveTrading212Settings();
-      saveIbkrFlexSettings();
-      saveTwsSettings();
+    Settings.setUseDailyRates(cbUseDailyRates.isSelected());
+    saveTrading212Settings();
+    saveIbkrFlexSettings();
+    saveTwsSettings();
 
     // Close
     setVisible(false);
   }// GEN-LAST:event_bOKActionPerformed
 
-   private void bTestTwsConnectionActionPerformed(java.awt.event.ActionEvent evt) {
-     // Validate inputs from fields (not yet saved)
-     String host = tfTwsHost != null ? tfTwsHost.getText().trim() : Settings.getTwsHost();
-     int port;
-     int clientId;
-     int timeoutSeconds;
+  private void bTestTwsConnectionActionPerformed(java.awt.event.ActionEvent evt) {
+    // Validate inputs from fields (not yet saved)
+    String host = tfTwsHost != null ? tfTwsHost.getText().trim() : Settings.getTwsHost();
+    int port;
+    int clientId;
+    int timeoutSeconds;
 
-     try {
-       port = Integer.parseInt(tfTwsPort != null ? tfTwsPort.getText().trim() : String.valueOf(Settings.getTwsPort()));
-     } catch (Exception e) {
-       javax.swing.JOptionPane.showMessageDialog(this,
-           "Neplatný port.",
-           "Chyba", javax.swing.JOptionPane.WARNING_MESSAGE);
-       return;
-     }
-     try {
-       clientId = Integer.parseInt(tfTwsClientId != null ? tfTwsClientId.getText().trim() : String.valueOf(Settings.getTwsClientId()));
-     } catch (Exception e) {
-       javax.swing.JOptionPane.showMessageDialog(this,
-           "Neplatný ClientId.",
-           "Chyba", javax.swing.JOptionPane.WARNING_MESSAGE);
-       return;
-     }
-     try {
-       timeoutSeconds = Integer.parseInt(tfTwsTimeoutSeconds != null ? tfTwsTimeoutSeconds.getText().trim() : String.valueOf(Settings.getTwsTimeoutSeconds()));
-     } catch (Exception e) {
-       timeoutSeconds = Settings.getTwsTimeoutSeconds();
-     }
+    try {
+      port = Integer.parseInt(tfTwsPort != null ? tfTwsPort.getText().trim() : String.valueOf(Settings.getTwsPort()));
+    } catch (Exception e) {
+      javax.swing.JOptionPane.showMessageDialog(this,
+          "Neplatný port.",
+          "Chyba", javax.swing.JOptionPane.WARNING_MESSAGE);
+      return;
+    }
+    try {
+      clientId = Integer
+          .parseInt(tfTwsClientId != null ? tfTwsClientId.getText().trim() : String.valueOf(Settings.getTwsClientId()));
+    } catch (Exception e) {
+      javax.swing.JOptionPane.showMessageDialog(this,
+          "Neplatný ClientId.",
+          "Chyba", javax.swing.JOptionPane.WARNING_MESSAGE);
+      return;
+    }
+    try {
+      timeoutSeconds = Integer.parseInt(tfTwsTimeoutSeconds != null ? tfTwsTimeoutSeconds.getText().trim()
+          : String.valueOf(Settings.getTwsTimeoutSeconds()));
+    } catch (Exception e) {
+      timeoutSeconds = Settings.getTwsTimeoutSeconds();
+    }
 
-     if (host == null || host.isEmpty()) {
-       host = "127.0.0.1";
-     }
+    if (host == null || host.isEmpty()) {
+      host = "127.0.0.1";
+    }
 
-     javax.swing.JButton sourceButton = (javax.swing.JButton) evt.getSource();
-     sourceButton.setEnabled(false);
-     sourceButton.setText("Testování...");
+    javax.swing.JButton sourceButton = (javax.swing.JButton) evt.getSource();
+    sourceButton.setEnabled(false);
+    sourceButton.setText("Testování...");
 
-     final String fHost = host;
-     final int fPort = port;
-     final int fClientId = clientId;
-     final int fTimeout = timeoutSeconds;
+    final String fHost = host;
+    final int fPort = port;
+    final int fClientId = clientId;
+    final int fTimeout = timeoutSeconds;
 
-     javax.swing.SwingWorker<IbkrTwsPositionsClient.PositionsResult, Void> worker =
-         new javax.swing.SwingWorker<IbkrTwsPositionsClient.PositionsResult, Void>() {
-           private Exception error;
+    javax.swing.SwingWorker<IbkrTwsPositionsClient.PositionsResult, Void> worker = new javax.swing.SwingWorker<IbkrTwsPositionsClient.PositionsResult, Void>() {
+      private Exception error;
 
-           @Override
-           protected IbkrTwsPositionsClient.PositionsResult doInBackground() {
-             try {
-               IbkrTwsPositionsClient c = new IbkrTwsPositionsClient();
-               return c.fetchPositions(fHost, fPort, fClientId, java.time.Duration.ofSeconds(fTimeout));
-             } catch (Exception e) {
-               error = e;
-               return null;
-             }
-           }
+      @Override
+      protected IbkrTwsPositionsClient.PositionsResult doInBackground() {
+        try {
+          IbkrTwsPositionsClient c = new IbkrTwsPositionsClient();
+          return c.fetchPositions(fHost, fPort, fClientId, java.time.Duration.ofSeconds(fTimeout));
+        } catch (Exception e) {
+          error = e;
+          return null;
+        }
+      }
 
-           @Override
-           protected void done() {
-             sourceButton.setEnabled(true);
-             sourceButton.setText("Otestovat připojení");
+      @Override
+      protected void done() {
+        sourceButton.setEnabled(true);
+        sourceButton.setText("Otestovat připojení");
 
-             if (error != null) {
-               showDetailedErrorDialog("Test připojení selhal", "Nepodařilo se připojit k TWS: " + error.getMessage(), error);
-               return;
-             }
-             try {
-               IbkrTwsPositionsClient.PositionsResult r = get();
-               int accounts = r == null || r.positionsByAccount == null ? 0 : r.positionsByAccount.size();
-               int totalPos = 0;
-               if (r != null && r.positionsByAccount != null) {
-                 for (java.util.Map<String, Double> m : r.positionsByAccount.values()) {
-                   if (m != null) totalPos += m.size();
-                 }
-               }
+        if (error != null) {
+          showDetailedErrorDialog("Test připojení selhal", "Nepodařilo se připojit k TWS: " + error.getMessage(),
+              error);
+          return;
+        }
+        try {
+          IbkrTwsPositionsClient.PositionsResult r = get();
+          int accounts = r == null || r.positionsByAccount == null ? 0 : r.positionsByAccount.size();
+          int totalPos = 0;
+          if (r != null && r.positionsByAccount != null) {
+            for (java.util.Map<String, Double> m : r.positionsByAccount.values()) {
+              if (m != null)
+                totalPos += m.size();
+            }
+          }
 
-               String msg = "✅ Připojení k TWS je funkční.\n\n" +
-                   "Host: " + fHost + "\n" +
-                   "Port: " + fPort + "\n" +
-                   "ClientId: " + fClientId + "\n\n" +
-                   "Účty: " + accounts + "\n" +
-                   "Pozice (STK): " + totalPos;
+          String msg = "✅ Připojení k TWS je funkční.\n\n" +
+              "Host: " + fHost + "\n" +
+              "Port: " + fPort + "\n" +
+              "ClientId: " + fClientId + "\n\n" +
+              "Účty: " + accounts + "\n" +
+              "Pozice (STK): " + totalPos;
 
-               if (r != null && r.errors != null && !r.errors.isEmpty()) {
-                 msg += "\n\nVarování: " + r.errors.iterator().next();
-               }
+          if (r != null && r.errors != null && !r.errors.isEmpty()) {
+            msg += "\n\nVarování: " + r.errors.iterator().next();
+          }
 
-               javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this, msg,
-                   "Test úspěšný", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-             } catch (Exception e) {
-               showDetailedErrorDialog("Test připojení selhal", "Neznámá chyba: " + e.getMessage(), e);
-             }
-           }
-         };
-     worker.execute();
-   }
+          javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this, msg,
+              "Test úspěšný", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception e) {
+          showDetailedErrorDialog("Test připojení selhal", "Neznámá chyba: " + e.getMessage(), e);
+        }
+      }
+    };
+    worker.execute();
+  }
 
   private void bCancelActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bCancelActionPerformed
   {// GEN-HEADEREND:event_bCancelActionPerformed
@@ -1797,9 +1816,9 @@ public class SettingsWindow extends javax.swing.JDialog {
   /* Daily Rates Tab Implementation */
   private javax.swing.JPanel pDailyRates;
   private javax.swing.JTable dailyRatesTable;
-   private javax.swing.JCheckBox cbUseDailyRates;
-    private javax.swing.JCheckBox cbShowMetadataColumns;
-   private javax.swing.JButton bFetchDailyRates;
+  private javax.swing.JCheckBox cbUseDailyRates;
+  private javax.swing.JCheckBox cbShowMetadataColumns;
+  private javax.swing.JButton bFetchDailyRates;
   private javax.swing.table.DefaultTableModel dailyRatesModel;
 
   private void initDailyRatesTab() {
@@ -1882,9 +1901,9 @@ public class SettingsWindow extends javax.swing.JDialog {
     btnCopyApiKey.setToolTipText("Zkopírovat API Key do schránky");
     btnCopyApiKey.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyApiKey.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-            copyToClipboard(tfTrading212ApiKey.getText(), "Trading 212 API Key");
-        }
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        copyToClipboard(tfTrading212ApiKey.getText(), "Trading 212 API Key");
+      }
     });
     gbcTrading212.gridx = 2;
     gbcTrading212.gridy = 0;
@@ -1914,9 +1933,9 @@ public class SettingsWindow extends javax.swing.JDialog {
     btnCopyApiSecret.setToolTipText("Zkopírovat API Secret do schránky");
     btnCopyApiSecret.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyApiSecret.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-            copyToClipboard(new String(tfTrading212ApiSecret.getPassword()), "Trading 212 API Secret");
-        }
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        copyToClipboard(new String(tfTrading212ApiSecret.getPassword()), "Trading 212 API Secret");
+      }
     });
     gbcTrading212.gridx = 2;
     gbcTrading212.gridy = 1;
@@ -1935,11 +1954,11 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     // Test connection button
     bTestTrading212Connection = new javax.swing.JButton();
-        bTestTrading212Connection.setText("Otestovat připojení");
+    bTestTrading212Connection.setText("Otestovat připojení");
     bTestTrading212Connection.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-            bTestTrading212ConnectionActionPerformed(evt);
-        }
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bTestTrading212ConnectionActionPerformed(evt);
+      }
     });
     gbcTrading212.gridx = 0;
     gbcTrading212.gridy = 3;
@@ -1951,14 +1970,14 @@ public class SettingsWindow extends javax.swing.JDialog {
     // Info label
     javax.swing.JLabel lblInfo = new javax.swing.JLabel();
     lblInfo.setText("<html><small>Získejte své API přihlašovací údaje z aplikace Trading 212 Nastavení → API<br>" +
-                   "Pro testování se doporučuje demo prostředí.<br><br>" +
-                   "<b>Požadovaná API oprávnění (musí být zaškrtnuta/povolena):</b><br>" +
-                   "• Account data / Údaje o účtu<br>" +
-                   "• History / Historie<br>" +
-                   "• History - Dividends / Historie - Dividendy<br>" +
-                   "• History - Orders / Historie - Objednávky<br>" +
-                   "• History - Transactions / Historie - Transakce<br><br>" +
-                   "Bez těchto oprávnění se importní operace nezdaří.</small></html>");
+        "Pro testování se doporučuje demo prostředí.<br><br>" +
+        "<b>Požadovaná API oprávnění (musí být zaškrtnuta/povolena):</b><br>" +
+        "• Account data / Údaje o účtu<br>" +
+        "• History / Historie<br>" +
+        "• History - Dividends / Historie - Dividendy<br>" +
+        "• History - Orders / Historie - Objednávky<br>" +
+        "• History - Transactions / Historie - Transakce<br><br>" +
+        "Bez těchto oprávnění se importní operace nezdaří.</small></html>");
     gbcTrading212.gridx = 0;
     gbcTrading212.gridy = 4;
     gbcTrading212.gridwidth = 2;
@@ -2001,9 +2020,9 @@ public class SettingsWindow extends javax.swing.JDialog {
     btnCopyQueryId.setToolTipText("Zkopírovat Query ID do schránky");
     btnCopyQueryId.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyQueryId.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-            copyToClipboard(tfIbkrQueryId.getText(), "IBKR Query ID");
-        }
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        copyToClipboard(tfIbkrQueryId.getText(), "IBKR Query ID");
+      }
     });
     gbcIbkrFlex.gridx = 2;
     gbcIbkrFlex.gridy = 0;
@@ -2016,7 +2035,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     tfIbkrFlexToken = new javax.swing.JPasswordField(40);
     String savedToken = Settings.getIbkrFlexToken();
     if (savedToken != null && !savedToken.isEmpty()) {
-        tfIbkrFlexToken.setText(savedToken);
+      tfIbkrFlexToken.setText(savedToken);
     }
     gbcIbkrFlex.gridx = 0;
     gbcIbkrFlex.gridy = 1;
@@ -2036,9 +2055,9 @@ public class SettingsWindow extends javax.swing.JDialog {
     btnCopyFlexToken.setToolTipText("Zkopírovat Flex Token do schránky");
     btnCopyFlexToken.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyFlexToken.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-            copyToClipboard(new String(tfIbkrFlexToken.getPassword()), "IBKR Flex Token");
-        }
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        copyToClipboard(new String(tfIbkrFlexToken.getPassword()), "IBKR Flex Token");
+      }
     });
     gbcIbkrFlex.gridx = 2;
     gbcIbkrFlex.gridy = 1;
@@ -2050,9 +2069,9 @@ public class SettingsWindow extends javax.swing.JDialog {
     javax.swing.JButton bTestIbkrConnection = new javax.swing.JButton();
     bTestIbkrConnection.setText("Otestovat připojení");
     bTestIbkrConnection.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-            bTestIbkrConnectionActionPerformed(evt);
-        }
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bTestIbkrConnectionActionPerformed(evt);
+      }
     });
     gbcIbkrFlex.gridx = 0;
     gbcIbkrFlex.gridy = 2;
@@ -2171,9 +2190,9 @@ public class SettingsWindow extends javax.swing.JDialog {
     javax.swing.JButton bTestTwsConnection = new javax.swing.JButton();
     bTestTwsConnection.setText("Otestovat připojení");
     bTestTwsConnection.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-            bTestTwsConnectionActionPerformed(evt);
-        }
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bTestTwsConnectionActionPerformed(evt);
+      }
     });
     gbcTws.gridx = 0;
     gbcTws.gridy = 6;
@@ -2209,93 +2228,93 @@ public class SettingsWindow extends javax.swing.JDialog {
     cbTrading212Demo.setSelected(Settings.getTrading212UseDemo());
   }
 
-   private void saveTrading212Settings() {
-     Settings.setTrading212ApiKey(tfTrading212ApiKey.getText().trim());
-     Settings.setTrading212ApiSecret(new String(tfTrading212ApiSecret.getPassword()).trim());
-     Settings.setTrading212UseDemo(cbTrading212Demo.isSelected());
-     Settings.save();
-   }
+  private void saveTrading212Settings() {
+    Settings.setTrading212ApiKey(tfTrading212ApiKey.getText().trim());
+    Settings.setTrading212ApiSecret(new String(tfTrading212ApiSecret.getPassword()).trim());
+    Settings.setTrading212UseDemo(cbTrading212Demo.isSelected());
+    Settings.save();
+  }
 
-    private void loadIbkrFlexSettings() {
-        if (tfIbkrQueryId != null) {
-            tfIbkrQueryId.setText(Settings.getIbkrFlexQueryId());
-        }
-        if (tfIbkrFlexToken != null) {
-            String savedToken = Settings.getIbkrFlexToken();
-            if (savedToken != null && !savedToken.isEmpty()) {
-                tfIbkrFlexToken.setText(savedToken);
-            }
-        }
+  private void loadIbkrFlexSettings() {
+    if (tfIbkrQueryId != null) {
+      tfIbkrQueryId.setText(Settings.getIbkrFlexQueryId());
     }
-
-    private void saveIbkrFlexSettings() {
-        if (tfIbkrQueryId != null) {
-            Settings.setIbkrFlexQueryId(tfIbkrQueryId.getText().trim());
-        }
-        if (tfIbkrFlexToken != null) {
-            Settings.setIbkrFlexToken(new String(tfIbkrFlexToken.getPassword()).trim());
-        }
-        Settings.save();
-     }
-
-    private void loadTwsSettings() {
-        if (tfTwsHost != null) {
-            tfTwsHost.setText(Settings.getTwsHost());
-        }
-        if (tfTwsPort != null) {
-            tfTwsPort.setText(String.valueOf(Settings.getTwsPort()));
-        }
-        if (tfTwsClientId != null) {
-            tfTwsClientId.setText(String.valueOf(Settings.getTwsClientId()));
-        }
-        if (tfTwsTimeoutSeconds != null) {
-            tfTwsTimeoutSeconds.setText(String.valueOf(Settings.getTwsTimeoutSeconds()));
-        }
-        if (tfTwsDefaultAccount != null) {
-            tfTwsDefaultAccount.setText(Settings.getTwsDefaultAccount());
-        }
+    if (tfIbkrFlexToken != null) {
+      String savedToken = Settings.getIbkrFlexToken();
+      if (savedToken != null && !savedToken.isEmpty()) {
+        tfIbkrFlexToken.setText(savedToken);
+      }
     }
+  }
 
-    private void saveTwsSettings() {
-        if (tfTwsHost != null) {
-            Settings.setTwsHost(tfTwsHost.getText().trim());
-        }
-        if (tfTwsPort != null) {
-            try {
-                Settings.setTwsPort(Integer.parseInt(tfTwsPort.getText().trim()));
-            } catch (Exception e) {
-                // Keep previous/default value
-            }
-        }
-        if (tfTwsClientId != null) {
-            try {
-                Settings.setTwsClientId(Integer.parseInt(tfTwsClientId.getText().trim()));
-            } catch (Exception e) {
-                // Keep previous/default value
-            }
-        }
-        if (tfTwsTimeoutSeconds != null) {
-            try {
-                Settings.setTwsTimeoutSeconds(Integer.parseInt(tfTwsTimeoutSeconds.getText().trim()));
-            } catch (Exception e) {
-                // Keep previous/default value
-            }
-        }
-        if (tfTwsDefaultAccount != null) {
-            Settings.setTwsDefaultAccount(tfTwsDefaultAccount.getText().trim());
-        }
-        Settings.save();
+  private void saveIbkrFlexSettings() {
+    if (tfIbkrQueryId != null) {
+      Settings.setIbkrFlexQueryId(tfIbkrQueryId.getText().trim());
     }
+    if (tfIbkrFlexToken != null) {
+      Settings.setIbkrFlexToken(new String(tfIbkrFlexToken.getPassword()).trim());
+    }
+    Settings.save();
+  }
+
+  private void loadTwsSettings() {
+    if (tfTwsHost != null) {
+      tfTwsHost.setText(Settings.getTwsHost());
+    }
+    if (tfTwsPort != null) {
+      tfTwsPort.setText(String.valueOf(Settings.getTwsPort()));
+    }
+    if (tfTwsClientId != null) {
+      tfTwsClientId.setText(String.valueOf(Settings.getTwsClientId()));
+    }
+    if (tfTwsTimeoutSeconds != null) {
+      tfTwsTimeoutSeconds.setText(String.valueOf(Settings.getTwsTimeoutSeconds()));
+    }
+    if (tfTwsDefaultAccount != null) {
+      tfTwsDefaultAccount.setText(Settings.getTwsDefaultAccount());
+    }
+  }
+
+  private void saveTwsSettings() {
+    if (tfTwsHost != null) {
+      Settings.setTwsHost(tfTwsHost.getText().trim());
+    }
+    if (tfTwsPort != null) {
+      try {
+        Settings.setTwsPort(Integer.parseInt(tfTwsPort.getText().trim()));
+      } catch (Exception e) {
+        // Keep previous/default value
+      }
+    }
+    if (tfTwsClientId != null) {
+      try {
+        Settings.setTwsClientId(Integer.parseInt(tfTwsClientId.getText().trim()));
+      } catch (Exception e) {
+        // Keep previous/default value
+      }
+    }
+    if (tfTwsTimeoutSeconds != null) {
+      try {
+        Settings.setTwsTimeoutSeconds(Integer.parseInt(tfTwsTimeoutSeconds.getText().trim()));
+      } catch (Exception e) {
+        // Keep previous/default value
+      }
+    }
+    if (tfTwsDefaultAccount != null) {
+      Settings.setTwsDefaultAccount(tfTwsDefaultAccount.getText().trim());
+    }
+    Settings.save();
+  }
 
   private void cbShowMetadataColumnsActionPerformed(java.awt.event.ActionEvent evt) {
     boolean showColumns = cbShowMetadataColumns.isSelected();
     Settings.setShowMetadataColumns(showColumns);
 
-     // Notify main window to update column visibility
-     if (mainWindow != null) {
-       mainWindow.updateColumnVisibility();
-     }
-   }
+    // Notify main window to update column visibility
+    if (mainWindow != null) {
+      mainWindow.updateColumnVisibility();
+    }
+  }
 
   private void cbFileChooserModeActionPerformed(java.awt.event.ActionEvent evt) {
     int idx = cbFileChooserMode.getSelectedIndex();
@@ -2303,7 +2322,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     Settings.save();
   }
 
-   private void bTestTrading212ConnectionActionPerformed(java.awt.event.ActionEvent evt) {
+  private void bTestTrading212ConnectionActionPerformed(java.awt.event.ActionEvent evt) {
     String apiKey = tfTrading212ApiKey.getText().trim();
     String apiSecret = new String(tfTrading212ApiSecret.getPassword()).trim();
     boolean useDemo = cbTrading212Demo.isSelected();
@@ -2338,17 +2357,26 @@ public class SettingsWindow extends javax.swing.JDialog {
               "📊 Account Information:\n" +
               "• Account ID: " + accountSummary.accountId + "\n" +
               "• Currency: " + accountSummary.currency + "\n" +
-              "• Total Account Value: " + String.format("%.2f", accountSummary.totalValue) + " " + accountSummary.currency + "\n\n" +
+              "• Total Account Value: " + String.format("%.2f", accountSummary.totalValue) + " "
+              + accountSummary.currency + "\n\n" +
               "💰 Cash Details:\n" +
-              "• Available to Trade: " + String.format("%.2f", accountSummary.availableToTrade) + " " + accountSummary.currency + "\n" +
-              "• Reserved for Orders: " + String.format("%.2f", accountSummary.reservedForOrders) + " " + accountSummary.currency + "\n" +
-              "• Invested in Pies: " + String.format("%.2f", accountSummary.cashInPies) + " " + accountSummary.currency + "\n" +
-              "• Total Cash: " + String.format("%.2f", accountSummary.totalCash) + " " + accountSummary.currency + "\n\n" +
+              "• Available to Trade: " + String.format("%.2f", accountSummary.availableToTrade) + " "
+              + accountSummary.currency + "\n" +
+              "• Reserved for Orders: " + String.format("%.2f", accountSummary.reservedForOrders) + " "
+              + accountSummary.currency + "\n" +
+              "• Invested in Pies: " + String.format("%.2f", accountSummary.cashInPies) + " " + accountSummary.currency
+              + "\n" +
+              "• Total Cash: " + String.format("%.2f", accountSummary.totalCash) + " " + accountSummary.currency
+              + "\n\n" +
               "📈 Investment Summary:\n" +
-              "• Current Value: " + String.format("%.2f", accountSummary.investmentsCurrentValue) + " " + accountSummary.currency + "\n" +
-              "• Total Invested: " + String.format("%.2f", accountSummary.investmentsTotalCost) + " " + accountSummary.currency + "\n" +
-              "• Realized P/L: " + String.format("%.2f", accountSummary.realizedProfitLoss) + " " + accountSummary.currency + "\n" +
-              "• Unrealized P/L: " + String.format("%.2f", accountSummary.unrealizedProfitLoss) + " " + accountSummary.currency + "\n\n" +
+              "• Current Value: " + String.format("%.2f", accountSummary.investmentsCurrentValue) + " "
+              + accountSummary.currency + "\n" +
+              "• Total Invested: " + String.format("%.2f", accountSummary.investmentsTotalCost) + " "
+              + accountSummary.currency + "\n" +
+              "• Realized P/L: " + String.format("%.2f", accountSummary.realizedProfitLoss) + " "
+              + accountSummary.currency + "\n" +
+              "• Unrealized P/L: " + String.format("%.2f", accountSummary.unrealizedProfitLoss) + " "
+              + accountSummary.currency + "\n\n" +
               "This data was fetched from your Trading 212 account.";
         } catch (Exception e) {
           success = false;
@@ -2362,7 +2390,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       protected void done() {
         // Re-enable button
         bTestTrading212Connection.setEnabled(true);
-    bTestTrading212Connection.setText("Otestovat připojení");
+        bTestTrading212Connection.setText("Otestovat připojení");
 
         if (success) {
           javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this, resultMessage,
@@ -2378,115 +2406,117 @@ public class SettingsWindow extends javax.swing.JDialog {
   private void updateHighlightPreview() {
     if (lHighlightPreviewNew != null) {
       java.awt.Color c = Settings.getHighlightInsertedColor();
-      lHighlightPreviewNew.setBackground(cbHighlightInserted != null && cbHighlightInserted.isSelected() ? c : java.awt.Color.WHITE);
+      lHighlightPreviewNew
+          .setBackground(cbHighlightInserted != null && cbHighlightInserted.isSelected() ? c : java.awt.Color.WHITE);
     }
     if (lHighlightPreviewUpdated != null) {
       java.awt.Color c = Settings.getHighlightUpdatedColor();
-      lHighlightPreviewUpdated.setBackground(cbHighlightUpdated != null && cbHighlightUpdated.isSelected() ? c : java.awt.Color.WHITE);
+      lHighlightPreviewUpdated
+          .setBackground(cbHighlightUpdated != null && cbHighlightUpdated.isSelected() ? c : java.awt.Color.WHITE);
     }
   }
 
+  private void showDetailedErrorDialog(String title, String userMessage, Exception error) {
+    javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout());
 
-   private void showDetailedErrorDialog(String title, String userMessage, Exception error) {
-     javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout());
+    // Main error message
+    javax.swing.JLabel messageLabel = new javax.swing.JLabel("<html>" +
+        userMessage.replace("\n", "<br>") + "</html>");
+    messageLabel.setBorder(new javax.swing.border.EmptyBorder(10, 10, 10, 10));
+    panel.add(messageLabel, java.awt.BorderLayout.CENTER);
 
-     // Main error message
-     javax.swing.JLabel messageLabel = new javax.swing.JLabel("<html>" +
-         userMessage.replace("\n", "<br>") + "</html>");
-     messageLabel.setBorder(new javax.swing.border.EmptyBorder(10, 10, 10, 10));
-     panel.add(messageLabel, java.awt.BorderLayout.CENTER);
+    javax.swing.JOptionPane.showMessageDialog(this, panel, title, javax.swing.JOptionPane.ERROR_MESSAGE);
+  }
 
-     javax.swing.JOptionPane.showMessageDialog(this, panel, title, javax.swing.JOptionPane.ERROR_MESSAGE);
-   }
+  private void bTestIbkrConnectionActionPerformed(java.awt.event.ActionEvent evt) {
+    String queryId = tfIbkrQueryId.getText().trim();
+    String flexToken = new String(tfIbkrFlexToken.getPassword()).trim();
 
-   private void bTestIbkrConnectionActionPerformed(java.awt.event.ActionEvent evt) {
-     String queryId = tfIbkrQueryId.getText().trim();
-     String flexToken = new String(tfIbkrFlexToken.getPassword()).trim();
+    if (queryId.isEmpty() || flexToken.isEmpty()) {
+      javax.swing.JOptionPane.showMessageDialog(this,
+          "Prosím zadejte Query ID a Flex Token před testováním.",
+          "Chybějící pověření", javax.swing.JOptionPane.WARNING_MESSAGE);
+      return;
+    }
 
-     if (queryId.isEmpty() || flexToken.isEmpty()) {
-       javax.swing.JOptionPane.showMessageDialog(this,
-           "Prosím zadejte Query ID a Flex Token před testováním.",
-           "Chybějící pověření", javax.swing.JOptionPane.WARNING_MESSAGE);
-       return;
-     }
+    // Disable button and show progress
+    javax.swing.JButton sourceButton = (javax.swing.JButton) evt.getSource();
+    sourceButton.setEnabled(false);
+    sourceButton.setText("Testování...");
 
-     // Disable button and show progress
-     javax.swing.JButton sourceButton = (javax.swing.JButton) evt.getSource();
-     sourceButton.setEnabled(false);
-     sourceButton.setText("Testování...");
+    // Run test in background thread
+    javax.swing.SwingWorker<Void, Void> worker = new javax.swing.SwingWorker<Void, Void>() {
+      private String resultMessage;
+      private boolean success;
+      private Exception error;
 
-     // Run test in background thread
-     javax.swing.SwingWorker<Void, Void> worker = new javax.swing.SwingWorker<Void, Void>() {
-       private String resultMessage;
-       private boolean success;
-       private Exception error;
-
-       @Override
-       protected Void doInBackground() throws Exception {
-          try {
-            IBKRFlexClient client = new IBKRFlexClient(flexToken);
-            // Test basic connectivity by requesting a report (will fail if credentials are wrong)
-            // Note: Per API docs, no date parameters - dates are in Flex Query template
-            IBKRFlexClient.FlexRequestResult result = client.requestReport(queryId);
-            if (result.success) {
-              success = true;
-              resultMessage = "✅ IBKR Flex připojení úspěšné!\n\n" +
-                  "Vaše IBKR Flex pověření fungují správně.\n" +
-                  "Můžete nyní importovat vaše obchodní data.\n\n" +
-                  "📋 Reference Code: " + result.referenceCode + "\n\n" +
-                  "✅ Query ID validní\n" +
-                  "✅ Flex Token validní\n" +
-                  "✅ Síťové připojení funguje\n\n" +
-                  "Report byl požadován a bude zpracováván asynchronně.\n" +
-                  "Můžete nyní použít funkci importu IBKR Flex dat.\n\n" +
-                  "POZNÁMKA: Rozsah dat je určen konfigurací\n" +
-                  "Flex Query šablony v Client Portal.";
-            } else {
-              success = false;
-              String errorDetail = "";
-              if (result.errorCode != null) {
-                errorDetail = "\n\nKód chyby: " + result.errorCode + "\n" + result.errorMessage;
-              }
-              resultMessage = "❌ Neplatné pověření nebo chyba konfigurace\n\n" +
-                  "Zkontrolujte Query ID a Flex Token." + errorDetail;
+      @Override
+      protected Void doInBackground() throws Exception {
+        try {
+          IBKRFlexClient client = new IBKRFlexClient(flexToken);
+          // Test basic connectivity by requesting a report (will fail if credentials are
+          // wrong)
+          // Note: Per API docs, no date parameters - dates are in Flex Query template
+          IBKRFlexClient.FlexRequestResult result = client.requestReport(queryId);
+          if (result.success) {
+            success = true;
+            resultMessage = "✅ IBKR Flex připojení úspěšné!\n\n" +
+                "Vaše IBKR Flex pověření fungují správně.\n" +
+                "Můžete nyní importovat vaše obchodní data.\n\n" +
+                "📋 Reference Code: " + result.referenceCode + "\n\n" +
+                "✅ Query ID validní\n" +
+                "✅ Flex Token validní\n" +
+                "✅ Síťové připojení funguje\n\n" +
+                "Report byl požadován a bude zpracováván asynchronně.\n" +
+                "Můžete nyní použít funkci importu IBKR Flex dat.\n\n" +
+                "POZNÁMKA: Rozsah dat je určen konfigurací\n" +
+                "Flex Query šablony v Client Portal.";
+          } else {
+            success = false;
+            String errorDetail = "";
+            if (result.errorCode != null) {
+              errorDetail = "\n\nKód chyby: " + result.errorCode + "\n" + result.errorMessage;
             }
-         } catch (Exception e) {
-           success = false;
-           error = e;
-           String errorMsg = e.getMessage() != null ? e.getMessage() : "Neznámá chyba";
-           if (errorMsg.contains("401") || errorMsg.contains("authentication") || errorMsg.contains("Unauthorized")) {
-             resultMessage = "❌ Neplatné pověření\n\n" +
-                 "Zkontrolujte Query ID a Flex Token v IBKR Client Portal.";
-           } else if (errorMsg.contains("403") || errorMsg.contains("forbidden") || errorMsg.contains("Forbidden")) {
-             resultMessage = "❌ Nedostatečná oprávnění\n\n" +
-                 "Flex Token nemá dostatečná oprávnění pro tento Query.";
-           } else if (errorMsg.contains("404") || errorMsg.contains("Not Found")) {
-             resultMessage = "❌ Query ID nenalezen\n\n" +
-                 "Zkontrolujte, že Query ID existuje v IBKR Client Portal.";
-           } else {
-             resultMessage = "❌ Chyba připojení: " + errorMsg + "\n\n" +
-                 "Zkontrolujte síťové připojení nebo IBKR server status.";
-           }
-         }
-         return null;
-       }
+            resultMessage = "❌ Neplatné pověření nebo chyba konfigurace\n\n" +
+                "Zkontrolujte Query ID a Flex Token." + errorDetail;
+          }
+        } catch (Exception e) {
+          success = false;
+          error = e;
+          String errorMsg = e.getMessage() != null ? e.getMessage() : "Neznámá chyba";
+          if (errorMsg.contains("401") || errorMsg.contains("authentication") || errorMsg.contains("Unauthorized")) {
+            resultMessage = "❌ Neplatné pověření\n\n" +
+                "Zkontrolujte Query ID a Flex Token v IBKR Client Portal.";
+          } else if (errorMsg.contains("403") || errorMsg.contains("forbidden") || errorMsg.contains("Forbidden")) {
+            resultMessage = "❌ Nedostatečná oprávnění\n\n" +
+                "Flex Token nemá dostatečná oprávnění pro tento Query.";
+          } else if (errorMsg.contains("404") || errorMsg.contains("Not Found")) {
+            resultMessage = "❌ Query ID nenalezen\n\n" +
+                "Zkontrolujte, že Query ID existuje v IBKR Client Portal.";
+          } else {
+            resultMessage = "❌ Chyba připojení: " + errorMsg + "\n\n" +
+                "Zkontrolujte síťové připojení nebo IBKR server status.";
+          }
+        }
+        return null;
+      }
 
-       @Override
-       protected void done() {
-         // Re-enable button
-         sourceButton.setEnabled(true);
-         sourceButton.setText("Otestovat připojení");
+      @Override
+      protected void done() {
+        // Re-enable button
+        sourceButton.setEnabled(true);
+        sourceButton.setText("Otestovat připojení");
 
-         if (success) {
-           javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this, resultMessage,
-               "Test úspěšný", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-         } else {
-           showDetailedErrorDialog("Test připojení selhal", resultMessage, error);
-         }
-       }
-     };
-     worker.execute();
-   }
+        if (success) {
+          javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this, resultMessage,
+              "Test úspěšný", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        } else {
+          showDetailedErrorDialog("Test připojení selhal", resultMessage, error);
+        }
+      }
+    };
+    worker.execute();
+  }
 
   private String getFullStackTrace(Exception e) {
     java.io.StringWriter sw = new java.io.StringWriter();
@@ -2566,7 +2596,8 @@ public class SettingsWindow extends javax.swing.JDialog {
 
           try {
             // Use selective fetching - only fetch currencies that are needed
-            java.util.Map<String, Double> yearRates = CurrencyRateFetcher.fetchSelectiveDailyRates(year, currenciesToFetch);
+            java.util.Map<String, Double> yearRates = CurrencyRateFetcher.fetchSelectiveDailyRates(year,
+                currenciesToFetch);
             allNewRates.putAll(yearRates);
             loadedCount++;
           } catch (Exception e) {
@@ -2717,7 +2748,7 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JList lMarkets;
   private javax.swing.JPanel pHolidays;
   private javax.swing.JTable table;
-   private javax.swing.JTextField tfCurrency;
+  private javax.swing.JTextField tfCurrency;
   // Trading 212 API components
   private javax.swing.JTextField tfTrading212ApiKey;
   private javax.swing.JPasswordField tfTrading212ApiSecret;
@@ -2743,46 +2774,43 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JButton bPickUpdatedColor;
   private javax.swing.JLabel lHighlightPreviewNew;
   private javax.swing.JLabel lHighlightPreviewUpdated;
-   // End of variables declaration//GEN-END:variables
+  private javax.swing.JCheckBox cbAutoMaximized;
+  // End of variables declaration//GEN-END:variables
 
   /**
    * Copy text to system clipboard and show confirmation message.
    * 
-   * @param text The text to copy to clipboard
+   * @param text      The text to copy to clipboard
    * @param fieldName Name of the field being copied (for confirmation message)
    */
   private void copyToClipboard(String text, String fieldName) {
     if (text == null || text.trim().isEmpty()) {
       javax.swing.JOptionPane.showMessageDialog(
-        this,
-        "Pole je prázdné - není co zkopírovat.",
-        "Informace",
-        javax.swing.JOptionPane.INFORMATION_MESSAGE
-      );
+          this,
+          "Pole je prázdné - není co zkopírovat.",
+          "Informace",
+          javax.swing.JOptionPane.INFORMATION_MESSAGE);
       return;
     }
-    
+
     try {
-      java.awt.datatransfer.StringSelection stringSelection = 
-        new java.awt.datatransfer.StringSelection(text);
+      java.awt.datatransfer.StringSelection stringSelection = new java.awt.datatransfer.StringSelection(text);
       java.awt.Toolkit.getDefaultToolkit()
-        .getSystemClipboard()
-        .setContents(stringSelection, null);
-      
+          .getSystemClipboard()
+          .setContents(stringSelection, null);
+
       // Show brief confirmation message
       javax.swing.JOptionPane.showMessageDialog(
-        this,
-        fieldName + " byl zkopírován do schránky.",
-        "Zkopírováno",
-        javax.swing.JOptionPane.INFORMATION_MESSAGE
-      );
+          this,
+          fieldName + " byl zkopírován do schránky.",
+          "Zkopírováno",
+          javax.swing.JOptionPane.INFORMATION_MESSAGE);
     } catch (Exception ex) {
       javax.swing.JOptionPane.showMessageDialog(
-        this,
-        "Nepodařilo se zkopírovat do schránky: " + ex.getMessage(),
-        "Chyba",
-        javax.swing.JOptionPane.ERROR_MESSAGE
-      );
+          this,
+          "Nepodařilo se zkopírovat do schránky: " + ex.getMessage(),
+          "Chyba",
+          javax.swing.JOptionPane.ERROR_MESSAGE);
     }
   }
 

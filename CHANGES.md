@@ -8,6 +8,11 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 
 ### Opraveno
 - Nastavení/Systém: náhled barvy pro „aktualizované" řádky je nyní viditelný (dříve byl překryt tlačítkem kvůli chybné pozici v mřížce).
+- Import (IBKR Flex): při sloučení importu do databáze se nyní zachovává „ID transakce" (TxnID/ActionID) a další metadata i v případě, že nejsou zapsaná v poznámce.
+- Import (IBKR Flex): při kolizi časů v rámci jedné minuty se nově automaticky posouvají obchody a další záznamy o +N minut tak, aby transformace (pár Odebrání/Přidání) byly v dané minutě jediné.
+- Import (IBKR Flex): posun času už nepřepisuje datum vypořádání (SettleDateTarget) u běžných obchodů.
+- Import (IBKR Flex): aktualizace existujících záznamů je nyní vždy zapnutá a tlačítko „Sloučit do databáze" je dostupné i v režimu „pouze aktualizace" (0 nových, jen duplikáty).
+- Hlavní okno: tlačítko „Kopírovat" nyní kopíruje vybrané řádky jako CSV včetně hlavičky a všech sloupců (s uvozovkami a escapováním).
 
 ### Odstraněno
 - Nastavení/Systém: odstraněna neimplementovaná volba „Zobrazovat sloupec # (pořadí řádku)" - funkce nebyla nikdy dokončena.
