@@ -22,6 +22,42 @@ public class IBKRFlexParser {
 
     private static final Logger logger = Logger.getLogger(IBKRFlexParser.class.getName());
 
+    public enum FlexCsvVersion {
+        UNKNOWN,
+        V1_LEGACY,
+        V2_HEADERS_AND_TRAILERS
+    }
+
+    public static final class FlexSection {
+        public final String code;
+        public final String label;
+        public Integer rows; // from EOS when available
+
+        public FlexSection(String code, String label) {
+            this.code = code;
+            this.label = label;
+        }
+    }
+
+    public static final class FlexAccountSections {
+        public final String accountId;
+        public final java.util.List<FlexSection> sections;
+        public final java.util.List<String> missingMandatorySections;
+
+        FlexAccountSections(String accountId,
+                            java.util.List<FlexSection> sections,
+                            java.util.List<String> missingMandatorySections) {
+            this.accountId = accountId;
+            this.sections = sections;
+            this.missingMandatorySections = missingMandatorySections;
+        }
+    }
+
+    private FlexCsvVersion flexCsvVersion = FlexCsvVersion.UNKNOWN;
+    private final java.util.List<FlexSection> flexSections = new java.util.ArrayList<>();
+    private final java.util.Map<String, java.util.List<FlexSection>> flexSectionsByAccount = new java.util.LinkedHashMap<>();
+    private final java.util.Map<String, java.util.List<String>> missingMandatoryV2SectionsByAccount = new java.util.LinkedHashMap<>();
+
     // Column indices - initialized to -1 (not found), will be detected from CSV header
     private int COL_DATE = -1;
     private int COL_SETTLEMENT_DATE = -1;
@@ -52,10 +88,175 @@ public class IBKRFlexParser {
     private int COL_ACTION_ID = -1;          // "ActionID"
     private boolean columnsDetected = false;
 
+    private void resetDetectedColumns() {
+        COL_DATE = -1;
+        COL_SETTLEMENT_DATE = -1;
+        COL_TRANSACTION_TYPE = -1;
+        COL_SYMBOL = -1;
+        COL_NAME = -1;
+        COL_QUANTITY = -1;
+        COL_PRICE = -1;
+        COL_CURRENCY = -1;
+        COL_PROCEEDS = -1;
+        COL_COMMISSION = -1;
+        COL_NET_PROCEEDS = -1;
+        COL_CODE = -1;
+        COL_EXCHANGE = -1;
+        COL_BUY_SELL = -1;
+        COL_CLIENT_ACCOUNT_ID = -1;
+        COL_ISIN = -1;
+        COL_ASSET_CLASS = -1;
+        COL_DATETIME = -1;
+        COL_TRANSACTION_ID = -1;
+        COL_IB_ORDER_ID = -1;
+        COL_MULTIPLIER = -1;
+        COL_CA_REPORT_DATE = -1;
+        COL_CA_DATETIME = -1;
+        COL_CA_ACTION_DESCRIPTION = -1;
+        COL_CA_TYPE = -1;
+        COL_ACTION_ID = -1;
+        columnsDetected = false;
+    }
+
     // Statistics tracking (populated during parsing, queryable after parseCsvReport() completes)
     private int skippedZeroNetEvents = 0;
     private List<String> skippedZeroNetTickers = new ArrayList<>();
     private int importedCorporateActionEvents = 0;
+
+    public FlexCsvVersion getFlexCsvVersion() {
+        return flexCsvVersion;
+    }
+
+    public java.util.List<FlexSection> getFlexSections() {
+        return java.util.Collections.unmodifiableList(flexSections);
+    }
+
+    /**
+     * v2 only: Missing mandatory sections per account (Trades + Corporate Actions).
+     */
+    public java.util.Map<String, java.util.List<String>> getMissingMandatoryV2SectionsByAccount() {
+        return java.util.Collections.unmodifiableMap(missingMandatoryV2SectionsByAccount);
+    }
+
+    public java.util.List<FlexAccountSections> getFlexAccountSections() {
+        java.util.List<FlexAccountSections> out = new java.util.ArrayList<>();
+        for (java.util.Map.Entry<String, java.util.List<FlexSection>> e : flexSectionsByAccount.entrySet()) {
+            String accountId = e.getKey();
+            java.util.List<FlexSection> secs = e.getValue() == null ? java.util.List.of() : e.getValue();
+            java.util.List<String> missing = missingMandatoryV2SectionsByAccount.get(accountId);
+            if (missing == null) missing = java.util.List.of();
+            out.add(new FlexAccountSections(accountId,
+                java.util.Collections.unmodifiableList(secs),
+                java.util.Collections.unmodifiableList(missing)));
+        }
+        return java.util.Collections.unmodifiableList(out);
+    }
+
+    private static String normalizeSectionLabel(String label) {
+        if (label == null) return "";
+        String t = label.trim();
+        if (t.isEmpty()) return "";
+        int semi = t.indexOf(';');
+        if (semi >= 0) {
+            t = t.substring(0, semi).trim();
+        }
+        return t;
+    }
+
+    private void validateMandatoryV2Sections() {
+        missingMandatoryV2SectionsByAccount.clear();
+        if (flexCsvVersion != FlexCsvVersion.V2_HEADERS_AND_TRAILERS) return;
+
+        for (java.util.Map.Entry<String, java.util.List<FlexSection>> e : flexSectionsByAccount.entrySet()) {
+            String accountId = e.getKey();
+            java.util.List<FlexSection> secs = e.getValue();
+            boolean hasTrades = false;
+            boolean hasCorporateActions = false;
+            if (secs != null) {
+                for (FlexSection s : secs) {
+                    if (s == null) continue;
+                    String code = s.code != null ? s.code.trim() : "";
+                    String label = normalizeSectionLabel(s.label);
+                    if (!hasTrades && (code.equalsIgnoreCase("TRNT") || label.equalsIgnoreCase("Trades"))) {
+                        hasTrades = true;
+                    }
+                    if (!hasCorporateActions && (code.equalsIgnoreCase("CORP") || label.equalsIgnoreCase("Corporate Actions"))) {
+                        hasCorporateActions = true;
+                    }
+                }
+            }
+            java.util.List<String> missing = new java.util.ArrayList<>();
+            if (!hasTrades) missing.add("Trades");
+            if (!hasCorporateActions) missing.add("Corporate Actions");
+            if (!missing.isEmpty()) {
+                missingMandatoryV2SectionsByAccount.put(accountId, missing);
+                logger.warning("IBKR Flex v2: Account " + accountId + " missing mandatory sections: " + missing);
+            }
+        }
+    }
+
+    private static String stripOuterQuotes(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        // Handle UTF-8 BOM that may appear at the beginning of the first token
+        if (!t.isEmpty() && t.charAt(0) == '\uFEFF') {
+            t = t.substring(1);
+        }
+        if (t.length() >= 2 && t.startsWith("\"") && t.endsWith("\"")) {
+            return t.substring(1, t.length() - 1);
+        }
+        return t;
+    }
+
+    private static boolean isFlexControlLine(String[] fields) {
+        if (fields == null || fields.length == 0) return false;
+        String f0 = stripOuterQuotes(fields[0]);
+        if (f0 == null) return false;
+        return f0.equals("BOF") || f0.equals("BOA") || f0.equals("BOS") || f0.equals("EOS") || f0.equals("EOA") || f0.equals("EOF");
+    }
+
+    private static String controlType(String[] fields) {
+        if (fields == null || fields.length == 0) return null;
+        return stripOuterQuotes(fields[0]);
+    }
+
+    private void noteFlexControlLine(String[] fields) {
+        String type = controlType(fields);
+        if (type == null) return;
+        if (type.equals("BOF") || type.equals("BOA") || type.equals("EOA") || type.equals("EOF")) {
+            // ignore
+            return;
+        }
+        if (type.equals("BOS")) {
+            String code = (fields.length > 1) ? stripOuterQuotes(fields[1]) : "";
+            String label = (fields.length > 2) ? stripOuterQuotes(fields[2]) : "";
+            if (code == null) code = "";
+            if (label == null) label = "";
+            flexSections.add(new FlexSection(code, label));
+            return;
+        }
+        if (type.equals("EOS")) {
+            // EOS,"CODE","rowCount",...
+            String code = (fields.length > 1) ? stripOuterQuotes(fields[1]) : null;
+            Integer rows = null;
+            if (fields.length > 2) {
+                try {
+                    String n = stripOuterQuotes(fields[2]);
+                    if (n != null && !n.isEmpty()) rows = Integer.parseInt(n);
+                } catch (Exception ignored) {
+                }
+            }
+            if (code != null && rows != null) {
+                for (int i = flexSections.size() - 1; i >= 0; i--) {
+                    FlexSection s = flexSections.get(i);
+                    if (s != null && code.equalsIgnoreCase(s.code) && s.rows == null) {
+                        s.rows = rows;
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     private static double roundTo(double value, int scale) {
         return BigDecimal.valueOf(value).setScale(scale, RoundingMode.HALF_UP).doubleValue();
@@ -150,24 +351,24 @@ public class IBKRFlexParser {
         String lower = headerLine.toLowerCase();
 
         // Trades / executions section
-        boolean hasTransactionType = lower.contains("\"transactiontype\"");
-        boolean hasTradePrice = lower.contains("\"tradeprice\"");
-        boolean hasIbOrderId = lower.contains("\"iborderid\"");
-        boolean hasExchange = lower.contains("\"exchange\"");
+        boolean hasTransactionType = lower.contains("\"transactiontype\"") || lower.contains(",transactiontype,") || lower.contains("transactiontype,") || lower.contains(",transactiontype");
+        boolean hasTradePrice = lower.contains("\"tradeprice\"") || lower.contains(",tradeprice,") || lower.contains("tradeprice,") || lower.contains(",tradeprice");
+        boolean hasIbOrderId = lower.contains("\"iborderid\"") || lower.contains(",iborderid,") || lower.contains("iborderid,") || lower.contains(",iborderid");
+        boolean hasExchange = lower.contains("\"exchange\"") || lower.contains(",exchange,") || lower.contains("exchange,") || lower.contains(",exchange");
         if (hasTransactionType && hasTradePrice && hasIbOrderId && hasExchange) {
             return SectionType.TRADES;
         }
 
         // Options/positions summary section (note the spaces in column names)
-        boolean hasTransactionTypeSpaced = lower.contains("\"transaction type\"");
-        boolean hasTradePriceSpaced = lower.contains("\"trade price\"");
+        boolean hasTransactionTypeSpaced = lower.contains("\"transaction type\"") || lower.contains("transaction type");
+        boolean hasTradePriceSpaced = lower.contains("\"trade price\"") || lower.contains("trade price");
         if (hasTransactionTypeSpaced && hasTradePriceSpaced && !hasIbOrderId) {
             return SectionType.OPTIONS_SUMMARY;
         }
 
         // Corporate actions section
-        boolean hasActionDescription = lower.contains("\"actiondescription\"");
-        boolean hasActionId = lower.contains("\"actionid\"");
+        boolean hasActionDescription = lower.contains("\"actiondescription\"") || lower.contains("actiondescription");
+        boolean hasActionId = lower.contains("\"actionid\"") || lower.contains("actionid");
         if (hasActionDescription && hasActionId) {
             return SectionType.CORPORATE_ACTIONS;
         }
@@ -458,6 +659,11 @@ public class IBKRFlexParser {
         skippedZeroNetEvents = 0;
         skippedZeroNetTickers.clear();
         importedCorporateActionEvents = 0;
+        flexCsvVersion = FlexCsvVersion.UNKNOWN;
+        flexSections.clear();
+        flexSectionsByAccount.clear();
+        missingMandatoryV2SectionsByAccount.clear();
+        resetDetectedColumns();
         
         Vector<Transaction> transactions = new Vector<>();
         int corporateActionCount = 0;
@@ -469,35 +675,126 @@ public class IBKRFlexParser {
         // Corporate actions raw rows (ActionID-based netting)
         List<RawCorporateActionRow> corporateActionRows = new ArrayList<>();
 
+        // v2: track current account and current section context
+        String currentAccountId = "";
+        boolean inV2 = false;
+
         try (BufferedReader reader = new BufferedReader(new StringReader(csvContent))) {
             String line;
-            boolean isHeader = true;
+            boolean headerDetected = false;
+            boolean v2ExpectSectionHeader = false;
 
             while ((line = reader.readLine()) != null) {
-                if (isHeader) {
-                    detectColumnIndices(line);
-                    currentSectionType = detectSectionType(line);
-                    isHeader = false;
-                    continue;
-                }
-
-                // Handle repeated header sections inside the same CSV
-                if (line.startsWith("\"ClientAccountID\"")) {
-                    detectColumnIndices(line);
-                    currentSectionType = detectSectionType(line);
-                    continue;
-                }
-
+                if (line == null) continue;
                 if (line.trim().isEmpty()) {
                     continue;
                 }
 
+                String[] fieldsForControl = splitCsvLine(line);
+                if (fieldsForControl != null && fieldsForControl.length > 0) {
+                    String ctl = controlType(fieldsForControl);
+                    if (ctl != null && (ctl.equals("BOF") || ctl.equals("BOA") || ctl.equals("BOS") || ctl.equals("EOS") || ctl.equals("EOA") || ctl.equals("EOF"))) {
+                        if (flexCsvVersion == FlexCsvVersion.UNKNOWN) {
+                            flexCsvVersion = FlexCsvVersion.V2_HEADERS_AND_TRAILERS;
+                            inV2 = true;
+                        } else if (flexCsvVersion == FlexCsvVersion.V1_LEGACY) {
+                            throw new Exception("IBKR Flex CSV: mixed versions detected (legacy header CSV + BOF/BOS trailer records)");
+                        }
+
+                        if (ctl.equals("BOA")) {
+                            currentAccountId = (fieldsForControl.length > 1) ? stripOuterQuotes(fieldsForControl[1]) : "";
+                            if (currentAccountId == null) currentAccountId = "";
+                            currentAccountId = currentAccountId.trim();
+                            flexSectionsByAccount.computeIfAbsent(currentAccountId, k -> new java.util.ArrayList<>());
+                        }
+                        if (ctl.equals("BOS")) {
+                            String code = (fieldsForControl.length > 1) ? stripOuterQuotes(fieldsForControl[1]) : "";
+                            String label = (fieldsForControl.length > 2) ? stripOuterQuotes(fieldsForControl[2]) : "";
+                            if (code == null) code = "";
+                            if (label == null) label = "";
+                            code = code.trim();
+                            label = label.trim();
+                            FlexSection s = new FlexSection(code, label);
+                            flexSectionsByAccount.computeIfAbsent(currentAccountId, k -> new java.util.ArrayList<>()).add(s);
+                        }
+
+                        noteFlexControlLine(fieldsForControl);
+                        if (ctl.equals("BOS")) {
+                            v2ExpectSectionHeader = true;
+                            // Next non-empty line should be the section header.
+                        }
+                        if (ctl.equals("EOS")) {
+                            // Section ended; next parsed section must re-detect columns.
+                            headerDetected = false;
+                            v2ExpectSectionHeader = false;
+                            currentSectionType = SectionType.UNKNOWN;
+                            resetDetectedColumns();
+                        }
+                        continue;
+                    }
+                }
+
+                // If we got here we have a non-control line.
+                if (!inV2 && flexCsvVersion == FlexCsvVersion.UNKNOWN) {
+                    // Decide based on the first meaningful non-control line.
+                    if (line.startsWith("\"ClientAccountID\"")) {
+                        flexCsvVersion = FlexCsvVersion.V1_LEGACY;
+                    } else {
+                        flexCsvVersion = FlexCsvVersion.V1_LEGACY;
+                    }
+                } else if (inV2) {
+                    // In v2, allow unquoted headers as well.
+                    if (!headerDetected && !v2ExpectSectionHeader &&
+                        (line.startsWith("\"ClientAccountID\"") || line.startsWith("ClientAccountID,"))) {
+                        // Header-like line without BOS marker => likely mixed or malformed.
+                        throw new Exception("IBKR Flex CSV: malformed v2 file (section header without BOS marker)");
+                    }
+                }
+
+                // Header handling
+                if (!headerDetected) {
+                    if (flexCsvVersion == FlexCsvVersion.V2_HEADERS_AND_TRAILERS && !v2ExpectSectionHeader) {
+                        // In v2 we must wait for BOS before the first header.
+                        continue;
+                    }
+                    currentSectionType = detectSectionType(line);
+                    if (inV2 && currentSectionType == SectionType.UNKNOWN) {
+                        // v2 can contain arbitrary sections (ACCT/POST/CTRN/...) that we do not parse.
+                        headerDetected = true;
+                        v2ExpectSectionHeader = false;
+                        continue;
+                    }
+                    detectColumnIndices(line);
+                    validateRequiredColumnsForSection(currentSectionType);
+                    headerDetected = true;
+                    v2ExpectSectionHeader = false;
+                    continue;
+                }
+
+                // Handle repeated header sections inside the same CSV
+                if (line.startsWith("\"ClientAccountID\"") || (inV2 && line.startsWith("ClientAccountID,"))) {
+                    currentSectionType = detectSectionType(line);
+                    if (inV2 && currentSectionType == SectionType.UNKNOWN) {
+                        v2ExpectSectionHeader = false;
+                        continue;
+                    }
+                    detectColumnIndices(line);
+                    validateRequiredColumnsForSection(currentSectionType);
+                    v2ExpectSectionHeader = false;
+                    continue;
+                }
+
                 try {
-                    String[] fields = splitCsvLine(line);
+                    String[] fields = fieldsForControl;
 
                 // Ignore options/positions summary section (not executions)
                 if (currentSectionType == SectionType.OPTIONS_SUMMARY) {
                     ignoredOptionsSummaryRows++;
+                    continue;
+                }
+
+                // v2: ignore unsupported sections entirely
+                if (inV2 && currentSectionType == SectionType.UNKNOWN) {
                     continue;
                 }
 
@@ -530,7 +827,8 @@ public class IBKRFlexParser {
                         RawExchTradeRow row = createRawRow(fields);
                         if (row != null) {
                             String ibOrderId = row.ibOrderId;
-                            orderGroups.computeIfAbsent(ibOrderId, k -> new ArrayList<>()).add(row);
+                            String key = inV2 ? (currentAccountId + "|" + ibOrderId) : ibOrderId;
+                            orderGroups.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
                         }
                         continue; // Skip adding individual transaction
                     }
@@ -539,11 +837,17 @@ public class IBKRFlexParser {
                     if (currentSectionType == SectionType.CORPORATE_ACTIONS) {
                         RawCorporateActionRow ca = parseCorporateActionRow(fields);
                         if (ca != null) {
+                            if (inV2 && (ca.accountId == null || ca.accountId.trim().isEmpty())) {
+                                ca.accountId = currentAccountId;
+                            }
                             corporateActionRows.add(ca);
                         }
                     } else {
                         Transaction transaction = parseCsvLine(line);
                         if (transaction != null) {
+                            if (inV2 && (transaction.getAccountId() == null || transaction.getAccountId().trim().isEmpty())) {
+                                transaction.setAccountId(currentAccountId);
+                            }
                             transactions.add(transaction);
                         }
                     }
@@ -572,10 +876,29 @@ public class IBKRFlexParser {
 
         // Convert corporate actions using ActionID-based netting
         if (includeCorporateActions && !corporateActionRows.isEmpty()) {
-            Vector<Transaction> caTx = buildCorporateActionsFromActionIdNetting(corporateActionRows);
-            transactions.addAll(caTx);
-            corporateActionCount = caTx.size();
+            if (flexCsvVersion == FlexCsvVersion.V2_HEADERS_AND_TRAILERS) {
+                // v2: group by accountId|ActionID to avoid cross-account netting.
+                Map<String, List<RawCorporateActionRow>> byAccAndAction = new LinkedHashMap<>();
+                for (RawCorporateActionRow r : corporateActionRows) {
+                    String acc = r.accountId == null ? "" : r.accountId.trim();
+                    String key = acc + "|" + r.actionId;
+                    byAccAndAction.computeIfAbsent(key, k -> new ArrayList<>()).add(r);
+                }
+                Vector<Transaction> caTx = new Vector<>();
+                for (List<RawCorporateActionRow> grp : byAccAndAction.values()) {
+                    caTx.addAll(buildCorporateActionsFromActionIdNetting(grp));
+                }
+                transactions.addAll(caTx);
+                corporateActionCount = caTx.size();
+            } else {
+                Vector<Transaction> caTx = buildCorporateActionsFromActionIdNetting(corporateActionRows);
+                transactions.addAll(caTx);
+                corporateActionCount = caTx.size();
+            }
         }
+
+        // Validate file structure for v2 reports regardless of import filters.
+        validateMandatoryV2Sections();
 
         logger.info("Parsed " + transactions.size() + " transactions from IBKR Flex CSV " +
                     "(consolidated " + orderGroups.size() + " order groups, " + corporateActionCount + " corporate actions, " +
@@ -611,15 +934,15 @@ public class IBKRFlexParser {
                     || (h.contains("settlement") && h.contains("date"))) {
                 COL_SETTLEMENT_DATE = i;
             }
-            // Transaction type
-            else if (h.equals("transactiontype") || h.equals("transaction type")) {
-                COL_TRANSACTION_TYPE = i;
-            } else if (COL_TRANSACTION_TYPE < 0 && (h.contains("transaction") || h.equals("type"))) {
-                COL_TRANSACTION_TYPE = i;
-            }
             // Corporate actions type (RS/TC/IC/TO) - in corporate section "Type" means action type
             else if (h.equals("type")) {
                 COL_CA_TYPE = i;
+            }
+            // Transaction type
+            else if (h.equals("transactiontype") || h.equals("transaction type")) {
+                COL_TRANSACTION_TYPE = i;
+            } else if (COL_TRANSACTION_TYPE < 0 && h.contains("transaction")) {
+                COL_TRANSACTION_TYPE = i;
             }
             // Symbol
             else if (h.equals("symbol") || h.equals("ticker")) {
@@ -755,27 +1078,6 @@ public class IBKRFlexParser {
         logger.info("  CA Type: " + COL_CA_TYPE);
         logger.info("  ActionID: " + COL_ACTION_ID);
         
-        // Validate required columns were found
-        boolean allRequiredFound = true;
-        StringBuilder missing = new StringBuilder();
-        
-        if (COL_DATE < 0) {
-            missing.append("Date, ");
-            allRequiredFound = false;
-        }
-        if (COL_SYMBOL < 0) {
-            missing.append("Symbol, ");
-            allRequiredFound = false;
-        }
-        if (COL_QUANTITY < 0) {
-            missing.append("Quantity, ");
-            allRequiredFound = false;
-        }
-        if (COL_PRICE < 0) {
-            missing.append("Price, ");
-            allRequiredFound = false;
-        }
-        
         // Warnings for optional but useful columns
         if (COL_BUY_SELL < 0) {
             logger.warning("Buy/Sell column not found - will infer direction from TransactionType");
@@ -787,11 +1089,35 @@ public class IBKRFlexParser {
             logger.warning("Currency column not found - will use default");
         }
         
-        if (!allRequiredFound) {
-            logger.severe("CRITICAL: Missing required CSV columns: " + missing.toString());
-            throw new RuntimeException("Cannot parse IBKR CSV - missing required columns: " + missing.toString());
-        } else {
-            logger.info("Successfully detected all required IBKR Flex CSV columns");
+        // Do not validate required columns here. Validation depends on the section type
+        // (Trades vs Corporate Actions vs ignored sections) and is handled by the caller.
+    }
+
+    private void validateRequiredColumnsForSection(SectionType sectionType) {
+        if (sectionType == null) sectionType = SectionType.UNKNOWN;
+
+        if (sectionType == SectionType.TRADES) {
+            java.util.List<String> missing = new java.util.ArrayList<>();
+            if (COL_DATE < 0 && COL_DATETIME < 0) missing.add("Date/DateTime");
+            if (COL_SYMBOL < 0) missing.add("Symbol");
+            if (COL_QUANTITY < 0) missing.add("Quantity");
+            if (COL_PRICE < 0) missing.add("TradePrice/Price");
+            if (!missing.isEmpty()) {
+                throw new RuntimeException("Cannot parse IBKR CSV Trades section - missing required columns: " + missing);
+            }
+            return;
+        }
+
+        if (sectionType == SectionType.CORPORATE_ACTIONS) {
+            java.util.List<String> missing = new java.util.ArrayList<>();
+            if (COL_ACTION_ID < 0) missing.add("ActionID");
+            if (COL_CA_TYPE < 0) missing.add("Type");
+            if (COL_CA_DATETIME < 0 && COL_CA_REPORT_DATE < 0) missing.add("Date/Time");
+            if (COL_SYMBOL < 0) missing.add("Symbol");
+            if (COL_QUANTITY < 0) missing.add("Quantity");
+            if (!missing.isEmpty()) {
+                throw new RuntimeException("Cannot parse IBKR CSV Corporate Actions section - missing required columns: " + missing);
+            }
         }
     }
 
