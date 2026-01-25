@@ -234,6 +234,123 @@ public class MainWindow extends javax.swing.JFrame {
     if (Settings.getAutoMaximized()) {
       setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH);
     }
+
+    // Check for last opened file
+    checkLastOpenedFile();
+  }
+
+  private void checkLastOpenedFile() {
+    String lastPath = Settings.getLastOpenedFile();
+    File lastFile = null;
+    if (lastPath != null) {
+      File f = new File(lastPath);
+      if (f.exists() && f.isFile())
+        lastFile = f;
+    }
+
+    File[] recentFiles = getRecentDatFiles();
+
+    if (Settings.getAutoLoadLastFile()) {
+      // Prefer the last explicitly opened file (user expectation).
+      File toOpen = lastFile;
+      if (toOpen == null && recentFiles != null && recentFiles.length > 0)
+        toOpen = recentFiles[0];
+
+      if (toOpen != null) {
+        try {
+          openFile(toOpen);
+        } catch (Exception e) {
+          e.printStackTrace();
+          JOptionPane.showMessageDialog(this, "Chyba při automatickém načítání souboru:\n" + e.getMessage());
+        }
+      }
+      return;
+    }
+
+    // Auto-Load disabled: show selection dialog if we have recent files.
+    if (recentFiles != null && recentFiles.length > 0) {
+      File defaultSelection = recentFiles[0];
+      if (lastFile != null) {
+        for (File rf : recentFiles) {
+          if (rf != null && rf.equals(lastFile)) {
+            defaultSelection = lastFile;
+            break;
+          }
+        }
+      }
+
+      Object selected = JOptionPane.showInputDialog(
+          this,
+          "Vyberte datový soubor k načtení:",
+          "Otevřít soubor",
+          JOptionPane.QUESTION_MESSAGE,
+          null,
+          recentFiles,
+          defaultSelection);
+
+      if (selected != null) {
+        try {
+          openFile((File) selected);
+        } catch (Exception e) {
+          e.printStackTrace();
+          JOptionPane.showMessageDialog(this, "Chyba při načítání souboru:\n" + e.getMessage());
+        }
+      }
+
+      return;
+    }
+
+    // No recent files from scan: ask to open last opened file if known.
+    if (lastFile != null) {
+      if (JOptionPane.showConfirmDialog(this,
+          "Chcete načíst poslední otevřený soubor?\n" + lastFile.getAbsolutePath(),
+          "Načíst poslední soubor",
+          JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+        try {
+          openFile(lastFile);
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+    }
+  }
+
+  /**
+   * Scan data directory for recent .dat files, sorted by date desc
+   */
+  private File[] getRecentDatFiles() {
+    String dataDir = Settings.getDataDirectory();
+    if (dataDir == null)
+      return null;
+
+    File dir = new File(dataDir);
+    if (!dir.exists() || !dir.isDirectory())
+      return null;
+
+    File[] files = dir.listFiles(new java.io.FilenameFilter() {
+      public boolean accept(File d, String name) {
+        return name.toLowerCase().endsWith(".dat");
+      }
+    });
+
+    if (files == null || files.length == 0)
+      return null;
+
+    // Sort by last modified descending
+    java.util.Arrays.sort(files, new java.util.Comparator<File>() {
+      public int compare(File f1, File f2) {
+        return Long.compare(f2.lastModified(), f1.lastModified());
+      }
+    });
+
+    // Limit to top 5
+    if (files.length > 5) {
+      File[] top = new File[5];
+      System.arraycopy(files, 0, top, 0, 5);
+      return top;
+    }
+
+    return files;
   }
 
   /**
@@ -1531,6 +1648,7 @@ public class MainWindow extends javax.swing.JFrame {
       boolean success = saveTransactions(file);
       if (success) {
         updateTitle();
+        Settings.setLastOpenedFile(file.getAbsolutePath());
       }
       return success;
     }
@@ -1693,51 +1811,61 @@ public class MainWindow extends javax.swing.JFrame {
       Settings.save();
 
       try {
-        // Load file
-        transactions.load(selectedFile);
-
-        // Load Trading 212 import state from sidecar file if exists
-        currentFile = selectedFile;
-        currentFileImportState = Trading212ImportState.loadFromFile(selectedFile);
-        if (currentFileImportState != null) {
-          System.out
-              .println("Loaded Trading 212 import state from .t212state file for: " + selectedFile.getAbsolutePath());
-        }
-
-        // Initialize date range to show all loaded data (1900-01-01 to today)
-        java.util.GregorianCalendar startCal = new java.util.GregorianCalendar(1900, 0, 1); // 1900-01-01
-        dcFrom.setDate(startCal.getTime());
-        dcTo.setDate(new java.util.Date()); // Today
-
-        // Invalidate transformation cache for loaded data
-        System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
-        transactions.invalidateTransformationCache();
-
-        // Refresh metadata filter dropdowns with loaded data
-        refreshMetadataFilters();
-
-        // Clear results of computing to avoid confusion
-        computeWindow.clearComputeResults();
-
-        // Clear inserted/updated highlights from previous session
-        transactions.clearHighlights();
-        table.repaint();
-
-        if (transactions.wereSerialsRepaired()) {
-          setTransientStatusMessage(
-              "Oprava: přegenerovány interní serialy (duplicit: " + transactions.getSerialDuplicatesFound() + ")",
-              12000L);
-        }
-
-        // Clear filter
-        clearFilter();
-
-        updateTitle();
+        openFile(selectedFile);
       } catch (Exception e) {
+        // e.printStackTrace(); // Handled in openFile or caught here?
+        // Previous impl printed stack trace here.
+        e.printStackTrace();
         JOptionPane.showMessageDialog(this, "Při načítání souboru nastala chyba: " + e);
       }
     }
-  }// GEN-LAST:event_miOpenActionPerformed
+  }
+
+  public void openFile(File selectedFile) throws Exception {
+    // Load file
+    transactions.load(selectedFile);
+
+    // Load Trading 212 import state from sidecar file if exists
+    currentFile = selectedFile;
+    currentFileImportState = Trading212ImportState.loadFromFile(selectedFile);
+    if (currentFileImportState != null) {
+      System.out
+          .println("Loaded Trading 212 import state from .t212state file for: " + selectedFile.getAbsolutePath());
+    }
+
+    // Initialize date range to show all loaded data (1900-01-01 to today)
+    java.util.GregorianCalendar startCal = new java.util.GregorianCalendar(1900, 0, 1); // 1900-01-01
+    dcFrom.setDate(startCal.getTime());
+    dcTo.setDate(new java.util.Date()); // Today
+
+    // Invalidate transformation cache for loaded data
+    System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
+    transactions.invalidateTransformationCache();
+
+    // Refresh metadata filter dropdowns with loaded data
+    refreshMetadataFilters();
+
+    // Clear results of computing to avoid confusion
+    computeWindow.clearComputeResults();
+
+    // Clear inserted/updated highlights from previous session
+    transactions.clearHighlights();
+    table.repaint();
+
+    if (transactions.wereSerialsRepaired()) {
+      setTransientStatusMessage(
+          "Oprava: přegenerovány interní serialy (duplicit: " + transactions.getSerialDuplicatesFound() + ")",
+          12000L);
+    }
+
+    // Clear filter
+    clearFilter();
+
+    updateTitle();
+
+    // Save as last opened file
+    Settings.setLastOpenedFile(selectedFile.getAbsolutePath());
+  }
 
   private void tfTickerActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_tfTickerActionPerformed
     // TODO add your handling code here:

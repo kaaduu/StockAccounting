@@ -14,6 +14,27 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Import (IBKR Flex): aktualizace existujících záznamů je nyní vždy zapnutá a tlačítko „Sloučit do databáze" je dostupné i v režimu „pouze aktualizace" (0 nových, jen duplikáty).
 - Hlavní okno: tlačítko „Kopírovat" nyní kopíruje vybrané řádky jako CSV včetně hlavičky a všech sloupců (s uvozovkami a escapováním).
 
+## [Podklad pro DP: oprava barvení zisku v HTML new] - 2026-01-25
+
+### Opraveno
+- Podklad pro DP: správné vyhodnocení záporných hodnot ve sloupci „Zisk CZK“ při exportu „Uložit HTML new“ i pro formáty s oddělovači tisíců (např. `-2,300.79`, `-73,474.81`).
+
+### Přidáno
+- Podklad pro DP: export „Uložit HTML new“ pro CP obsahuje sekce ve stylu Kačky („Souhrn“, „Výstupy podle jednotlivých roků“, „Výstupy podle jednotlivých akcií“) při použití jednotného kurzu.
+
+## [Otevírání souborů: preferovat poslední otevřený] - 2026-01-25
+
+### Opraveno
+- Při startu aplikace se při zapnutém „Auto-load“ nově preferuje poslední explicitně otevřený soubor (nastavení „lastOpenedFile“) před „nejnovějším“ souborem v datové složce.
+- „Uložit jako“ nyní aktualizuje „lastOpenedFile“, aby se nově uložený soubor stal výchozím pro další spuštění.
+
+## [Podklad pro DP: Kačka-like tabulka podle akcií] - 2026-01-25
+
+### Opraveno
+- Podklad pro DP: sekce „Výstupy podle jednotlivých akcií“ v exportu „Uložit HTML new“ pro CP je nyní ve stylu Kačky (BUY/SELL řádky, Počet/Cena/Poplatky/Objem/Zisk/% a běžící „Stav CP“).
+- Podklad pro DP: „Stav CP“ v této sekci nově zohledňuje i transformace (split/reverse split/rename) přes řádky TRANS_SUB/TRANS_ADD, které jsou ve výpisu označené jako corporate action.
+- Podklad pro DP: oprava exportu pro corporate actions přes více tickerů (např. ATNF→ETHZ, CS→UBS, NEOS→AYTU) – zpracování probíhá globálně (jako ve výpočtu), takže se nespouští chyba „pouze jedna transformace ve stejný čas“.
+
 ### Odstraněno
 - Nastavení/Systém: odstraněna neimplementovaná volba „Zobrazovat sloupec # (pořadí řádku)" - funkce nebyla nikdy dokončena.
 - Menu „Soubor → Import z IBKR Flex..." odstraněno - nahrazeno sjednoceným importem přes „Import od brokera → IBKR Flex".
