@@ -39,6 +39,20 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Nastavení/Systém: odstraněna neimplementovaná volba „Zobrazovat sloupec # (pořadí řádku)" - funkce nebyla nikdy dokončena.
 - Menu „Soubor → Import z IBKR Flex..." odstraněno - nahrazeno sjednoceným importem přes „Import od brokera → IBKR Flex".
 
+## [IBKR Flex: podpora CSV v2 (BOF/BOS/EOS)] - 2026-01-25
+
+### Přidáno
+- Import (IBKR Flex): podpora novějšího CSV formátu s hlavičkami a trailery (BOF/BOA/BOS/EOS/EOA/EOF) vedle původního „legacy" CSV.
+- Import (IBKR Flex): informace o verzi CSV se zobrazuje vedle výběru formátu; u CSV v2 se v tooltipu vypíší obsažené sekce (např. Trades, Corporate Actions).
+- Import (IBKR Flex, CSV v2): tooltip se nyní zobrazuje seskupeně podle účtu (BOA) a varování o chybějících povinných sekcích se vyhodnocuje pro každý účet zvlášť.
+- Import (IBKR Flex, CSV v2): vedle informace o verzi CSV je tlačítko „Detaily...“, které otevře okno se seznamem sekcí seskupeným podle účtu (podobné dialogu „Nápověda → Logy“).
+
+### Opraveno
+- Import (IBKR Flex): při „Načíst ze souboru" se nyní vždy vymaže předchozí náhled před načtením nového souboru, aby nedocházelo k matoucímu zobrazení starých dat.
+
+### Přidáno
+- Import (IBKR Flex): u CSV v2 se při náhledu zobrazí upozornění, pokud chybí povinné sekce `Trades` nebo `Corporate Actions`.
+
 ## [Sjednocení výběru formátu importu a výběru souboru] - 2026-01-22
 
 ### Změněno

@@ -203,6 +203,53 @@ ACT_INF|U393818|John Doe|Individual|123 Main St|Prague|CZ
 - **Date Format**: YYYYMMDD;HHMMSS (DateTime column - compact format with time component)
 - **Settlement Format**: YYYYMMDD (SettlementDate column - compact date only)
 
+### Flex CSV Versions (v1 vs v2)
+
+IBKR Flex CSV can exist in two closely related variants. StockAccounting supports both, but **does not allow mixing** the variants within a single import preview/session.
+
+#### Version 1 (legacy)
+
+- Starts directly with the section header row (usually beginning with `"ClientAccountID"...`).
+- May contain multiple sections in one file; each section is separated by a repeated header row.
+- There are **no explicit begin/end markers** for sections.
+
+Example (first lines):
+
+```csv
+"ClientAccountID","AccountAlias",...
+"U154...",...
+...
+```
+
+#### Version 2 (headers and trailers)
+
+- Adds explicit control records which clearly mark the file and section boundaries.
+- File starts with `BOF/BOA` and ends with `EOA/EOF`.
+- Each section is wrapped by:
+  - `"BOS","<code>","<label>"` (begin section)
+  - then the section CSV header row (often `"ClientAccountID"...`)
+  - then data rows
+  - `"EOS","<code>","<rowCount>",...` (end section)
+
+Example (first lines):
+
+```csv
+"BOF","U154...",...
+"BOA","U154..."
+"BOS","TRNT","Trades; trade date basis"
+"ClientAccountID","AccountAlias",...
+"U154...",...
+...
+"EOS","TRNT","1738",...
+...
+"EOA","U154..."
+"EOF"
+```
+
+**UI behavior**: when v2 is loaded, ImportWindow shows the file version next to the Format dropdown and lists included sections in a tooltip (one per line, derived from the section label before `;`, e.g. `Trades`, `Corporate Actions`).
+
+**Mandatory sections** (v2): the file is expected to include at least `Trades` and `Corporate Actions` sections. If any of these are missing, StockAccounting shows a warning during import preview.
+
 ### Field Mapping Table
 
 | Column Name     | Data Type | Description                          | Used In Output     | Example Value       |

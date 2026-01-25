@@ -93,6 +93,12 @@ public class ImportWindow extends javax.swing.JFrame {
   private javax.swing.JCheckBoxMenuItem miIBKRAssetCASH;
   private javax.swing.JCheckBox cbIBKRFlexUpdateDups;  // Update duplicates checkbox (reuse existing)
   private IBKRFlexParser lastIBKRParser = null;        // Store parser reference for statistics
+  private javax.swing.JLabel lblIbkrFlexCsvInfo = null;
+  private javax.swing.JButton bIbkrFlexCsvDetails = null;
+  private javax.swing.JLabel lblIbkrFlexCsvSpacer = null;
+
+  // Deduplicate IBKR Flex structural warnings per loaded CSV content
+  private String lastIbkrFlexStructureWarnKey = null;
 
   // Local file selection components (for file-based imports)
   private javax.swing.JButton bSelectFile;
@@ -707,10 +713,63 @@ public class ImportWindow extends javax.swing.JFrame {
     lastIbkrCsvContent = null;
     lastIbkrSourceLabel = null;
     ibkrPreviewDirty = false;
+    if (lblIbkrFlexCsvInfo != null) {
+      lblIbkrFlexCsvInfo.setText("");
+      lblIbkrFlexCsvInfo.setToolTipText(null);
+    }
+    if (lblIbkrFlexCsvSpacer != null) {
+      lblIbkrFlexCsvSpacer.setText("");
+    }
+    if (bIbkrFlexCsvDetails != null) {
+      bIbkrFlexCsvDetails.setEnabled(false);
+    }
+    lastIbkrFlexStructureWarnKey = null;
     if (bIBKRFlexRefreshPreview != null) {
       bIBKRFlexRefreshPreview.setEnabled(false);
       bIBKRFlexRefreshPreview.setText("Obnovit náhled");
     }
+  }
+
+  private void updateIbkrFlexCsvInfoLabel() {
+    if (lblIbkrFlexCsvInfo == null) return;
+    if (!isIBKRFlexFormat()) {
+      lblIbkrFlexCsvInfo.setText("");
+      if (bIbkrFlexCsvDetails != null) {
+        bIbkrFlexCsvDetails.setEnabled(false);
+      }
+      return;
+    }
+    if (lastIBKRParser == null) {
+      lblIbkrFlexCsvInfo.setText("");
+      lblIbkrFlexCsvInfo.setToolTipText(null);
+      if (bIbkrFlexCsvDetails != null) {
+        bIbkrFlexCsvDetails.setEnabled(false);
+      }
+      return;
+    }
+    IBKRFlexParser.FlexCsvVersion v = lastIBKRParser.getFlexCsvVersion();
+    StringBuilder sb = new StringBuilder();
+    if (v == IBKRFlexParser.FlexCsvVersion.V2_HEADERS_AND_TRAILERS) {
+      sb.append("Flex csv file - version with headers and trailers");
+      // Details are shown in a dedicated dialog.
+      lblIbkrFlexCsvInfo.setToolTipText(null);
+      if (bIbkrFlexCsvDetails != null) {
+        bIbkrFlexCsvDetails.setEnabled(true);
+      }
+    } else if (v == IBKRFlexParser.FlexCsvVersion.V1_LEGACY) {
+      sb.append("");
+      lblIbkrFlexCsvInfo.setToolTipText(null);
+      if (bIbkrFlexCsvDetails != null) {
+        bIbkrFlexCsvDetails.setEnabled(false);
+      }
+    } else {
+      sb.append("");
+      lblIbkrFlexCsvInfo.setToolTipText(null);
+      if (bIbkrFlexCsvDetails != null) {
+        bIbkrFlexCsvDetails.setEnabled(false);
+      }
+    }
+    lblIbkrFlexCsvInfo.setText(sb.toString());
   }
 
   private void refreshIbkrPreviewFromCachedCsv() {
@@ -740,6 +799,29 @@ public class ImportWindow extends javax.swing.JFrame {
       }
       Vector<Transaction> parsedTransactions = parser.parseCsvReport(lastIbkrCsvContent);
       lastIBKRParser = parser;
+      updateIbkrFlexCsvInfoLabel();
+
+      // Warn if mandatory v2 sections are missing per account (Trades + Corporate Actions)
+      if (parser.getFlexCsvVersion() == IBKRFlexParser.FlexCsvVersion.V2_HEADERS_AND_TRAILERS) {
+        java.util.Map<String, java.util.List<String>> missingByAcc = parser.getMissingMandatoryV2SectionsByAccount();
+        if (missingByAcc != null && !missingByAcc.isEmpty()) {
+          String key = (lastIbkrSourceLabel != null ? lastIbkrSourceLabel : "") + "|" + missingByAcc.toString();
+          if (lastIbkrFlexStructureWarnKey == null || !lastIbkrFlexStructureWarnKey.equals(key)) {
+            lastIbkrFlexStructureWarnKey = key;
+            StringBuilder msg = new StringBuilder();
+            msg.append("IBKR Flex CSV (v2): chybí povinné sekce v některých účtech:\n");
+            for (java.util.Map.Entry<String, java.util.List<String>> e : missingByAcc.entrySet()) {
+              String acc = e.getKey() != null ? e.getKey().trim() : "";
+              if (acc.isEmpty()) acc = "(unknown)";
+              msg.append("- ").append(acc).append(": ").append(String.join(", ", e.getValue())).append("\n");
+            }
+            msg.append("\nZkontrolujte nastavení Flex Query šablony v IBKR.");
+            javax.swing.JOptionPane.showMessageDialog(this,
+                msg.toString(),
+                "IBKR Flex", javax.swing.JOptionPane.WARNING_MESSAGE);
+          }
+        }
+      }
 
       clearPreview();
 
@@ -1247,6 +1329,9 @@ public class ImportWindow extends javax.swing.JFrame {
   private void setIbkrFlexUiVisible(boolean visible) {
     if (pIBKRFlexButtons != null) pIBKRFlexButtons.setVisible(visible);
     if (lblIBKRFlexStatus != null) lblIBKRFlexStatus.setVisible(visible);
+    if (lblIbkrFlexCsvInfo != null) lblIbkrFlexCsvInfo.setVisible(visible);
+    if (lblIbkrFlexCsvSpacer != null) lblIbkrFlexCsvSpacer.setVisible(visible);
+    if (bIbkrFlexCsvDetails != null) bIbkrFlexCsvDetails.setVisible(visible);
   }
 
   private java.util.Set<String> getSelectedIbkrCorporateActionTypes() {
@@ -2059,6 +2144,9 @@ public class ImportWindow extends javax.swing.JFrame {
     jLabel2 = new javax.swing.JLabel();
     jLabel4 = new javax.swing.JLabel();
     cbFormat = new javax.swing.JComboBox();
+    lblIbkrFlexCsvInfo = new javax.swing.JLabel();
+    lblIbkrFlexCsvSpacer = new javax.swing.JLabel();
+    bIbkrFlexCsvDetails = new javax.swing.JButton();
     bSelectFile = new javax.swing.JButton();
     lSelectedFile = new javax.swing.JLabel();
     bRefresh = new javax.swing.JButton();
@@ -2116,6 +2204,40 @@ public class ImportWindow extends javax.swing.JFrame {
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
     getContentPane().add(cbFormat, gridBagConstraints);
 
+    lblIbkrFlexCsvInfo.setText("");
+    lblIbkrFlexCsvInfo.setToolTipText(null);
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 4;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.gridwidth = 2;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.weightx = 0.0;
+    gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 5);
+    getContentPane().add(lblIbkrFlexCsvInfo, gridBagConstraints);
+
+    lblIbkrFlexCsvSpacer.setText("");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 6;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 5);
+    getContentPane().add(lblIbkrFlexCsvSpacer, gridBagConstraints);
+
+    bIbkrFlexCsvDetails.setText("Detaily...");
+    bIbkrFlexCsvDetails.setToolTipText("Zobrazit detaily sekcí v načteném IBKR Flex CSV");
+    bIbkrFlexCsvDetails.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        showIbkrFlexCsvDetailsDialog();
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 5;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 5);
+    getContentPane().add(bIbkrFlexCsvDetails, gridBagConstraints);
+
     bSelectFile.setText("Vybrat soubor...");
     bSelectFile.setToolTipText("Vybrat lokální soubor pro import (dle zvoleného formátu)");
     bSelectFile.addActionListener(new java.awt.event.ActionListener() {
@@ -2124,7 +2246,7 @@ public class ImportWindow extends javax.swing.JFrame {
       }
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 4;
+    gridBagConstraints.gridx = 0;
     gridBagConstraints.gridy = 0;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
@@ -2133,7 +2255,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
     lSelectedFile.setText("(soubor nevybrán)");
     gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 5;
+    gridBagConstraints.gridx = 1;
     gridBagConstraints.gridy = 0;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.weightx = 1.0;
@@ -2864,6 +2986,10 @@ public class ImportWindow extends javax.swing.JFrame {
       return;
     }
 
+    // Treat selecting a new file as starting a new preview session.
+    // This avoids confusion where the old preview remains visible while the new file is being parsed.
+    clearIbkrPreviewAndCache();
+
     // Archive selected file into unified cache and use cached copy.
     try {
       java.nio.file.Path cached = CacheManager.archiveFile("ib", CacheManager.Source.FILE,
@@ -2880,17 +3006,18 @@ public class ImportWindow extends javax.swing.JFrame {
     
      try {
        // Read file content (fast) and then refresh preview asynchronously (slow)
-       String csvContent = readFileToString(selectedFile);
-       lastIbkrCsvContent = csvContent;
-       lastIbkrSourceLabel = selectedFile.getName();
-       ibkrPreviewDirty = false;
+      String csvContent = readFileToString(selectedFile);
+
+      lastIbkrCsvContent = csvContent;
+      lastIbkrSourceLabel = selectedFile.getName();
+      ibkrPreviewDirty = false;
        if (bIBKRFlexRefreshPreview != null) {
          bIBKRFlexRefreshPreview.setEnabled(false);
        }
        System.out.println("[IBKR:FILE:004] File read successfully, size: " + csvContent.length() + " chars");
 
-       refreshIbkrPreviewFromCachedCsvAsync();
-       return;
+      refreshIbkrPreviewFromCachedCsvAsync();
+      return;
       
     } catch (Exception e) {
       System.err.println("[IBKR:FILE:ERROR] Failed to import file: " + e.getMessage());
@@ -2907,7 +3034,7 @@ public class ImportWindow extends javax.swing.JFrame {
       lblIBKRFlexStatus.setText("Vyberte zdroj dat: API nebo lokální soubor");
     }
   }
-  
+
   /**
    * Read file content to String (UTF-8 encoding with fallback)
    */
@@ -3574,6 +3701,7 @@ public class ImportWindow extends javax.swing.JFrame {
     if (lblIBKRFlexStatus != null) {
       lblIBKRFlexStatus.setText("Vyberte zdroj dat: API nebo lokální soubor");
     }
+    updateIbkrFlexCsvInfoLabel();
   }
 
   /**
@@ -3627,6 +3755,10 @@ public class ImportWindow extends javax.swing.JFrame {
       hideIBKRFlexUI();
     }
 
+    if (lblIbkrFlexCsvInfo != null) {
+      lblIbkrFlexCsvInfo.setVisible(isIBKR);
+    }
+
     boolean isLocalFile = isLocalFileFormat(formatIndex);
     if (bSelectFile != null) {
       bSelectFile.setVisible(isLocalFile);
@@ -3656,6 +3788,92 @@ public class ImportWindow extends javax.swing.JFrame {
 
     // Repack to adjust window size
     pack();
+
+    // Update the IBKR Flex CSV info label (shown next to Format dropdown).
+    updateIbkrFlexCsvInfoLabel();
+  }
+
+  private void showIbkrFlexCsvDetailsDialog() {
+    if (!isIBKRFlexFormat()) {
+      return;
+    }
+    if (lastIBKRParser == null || lastIBKRParser.getFlexCsvVersion() != IBKRFlexParser.FlexCsvVersion.V2_HEADERS_AND_TRAILERS) {
+      javax.swing.JOptionPane.showMessageDialog(this,
+          "Detaily jsou dostupné pouze pro IBKR Flex CSV (verze s hlavičkami a trailery).",
+          "IBKR Flex - detaily CSV", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      return;
+    }
+
+    javax.swing.JTextArea textArea = new javax.swing.JTextArea(20, 120);
+    textArea.setEditable(false);
+    textArea.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+
+    StringBuilder sb = new StringBuilder();
+    sb.append("IBKR Flex CSV - detaily sekcí (v2)\n");
+    if (lastIbkrSourceLabel != null && !lastIbkrSourceLabel.trim().isEmpty()) {
+      sb.append("Soubor: ").append(lastIbkrSourceLabel.trim()).append("\n");
+    }
+    sb.append("\n");
+
+    java.util.List<IBKRFlexParser.FlexAccountSections> accounts = lastIBKRParser.getFlexAccountSections();
+    java.util.Map<String, java.util.List<String>> missingByAcc = lastIBKRParser.getMissingMandatoryV2SectionsByAccount();
+    if (accounts == null || accounts.isEmpty()) {
+      sb.append("Žádné sekce nebyly detekovány.\n");
+    } else {
+      for (IBKRFlexParser.FlexAccountSections a : accounts) {
+        if (a == null) continue;
+        String acc = a.accountId != null ? a.accountId.trim() : "";
+        if (acc.isEmpty()) acc = "(unknown)";
+        sb.append(acc).append("\n");
+
+        java.util.LinkedHashSet<String> printed = new java.util.LinkedHashSet<>();
+        if (a.sections != null) {
+          for (IBKRFlexParser.FlexSection s : a.sections) {
+            if (s == null) continue;
+            String label = s.label != null ? s.label.trim() : "";
+            String shortLabel = label;
+            int semi = shortLabel.indexOf(';');
+            if (semi >= 0) shortLabel = shortLabel.substring(0, semi).trim();
+            if (shortLabel.isEmpty()) {
+              shortLabel = s.code != null ? s.code.trim() : "";
+            }
+            if (shortLabel.isEmpty()) continue;
+
+            StringBuilder line = new StringBuilder();
+            line.append("  - ").append(shortLabel);
+            if (s.code != null && !s.code.trim().isEmpty()) {
+              line.append(" (").append(s.code.trim()).append(")");
+            }
+            if (s.rows != null) {
+              line.append(" [rows=").append(s.rows).append("]");
+            }
+
+            String outLine = line.toString();
+            if (printed.add(outLine)) {
+              sb.append(outLine).append("\n");
+            }
+          }
+        }
+
+        java.util.List<String> missing = missingByAcc != null ? missingByAcc.get(a.accountId) : null;
+        if (missing != null && !missing.isEmpty()) {
+          sb.append("  WARNING: missing mandatory sections: ")
+              .append(String.join(", ", missing))
+              .append("\n");
+        }
+
+        sb.append("\n");
+      }
+    }
+
+    textArea.setText(sb.toString());
+    textArea.setCaretPosition(0);
+
+    javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(textArea);
+    javax.swing.JOptionPane pane = new javax.swing.JOptionPane(scrollPane, javax.swing.JOptionPane.PLAIN_MESSAGE);
+    javax.swing.JDialog dialog = pane.createDialog(this, "IBKR Flex - detaily CSV");
+    dialog.setResizable(true);
+    dialog.setVisible(true);
   }
 
   /**
