@@ -680,11 +680,27 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
     pSystem.add(cbAutoMaximized, gridBagConstraints);
 
+    cbAutoLoadLastFile = new javax.swing.JCheckBox("Automaticky načíst poslední otevřený soubor bez dotazu");
+    cbAutoLoadLastFile.setSelected(Settings.getAutoLoadLastFile());
+    cbAutoLoadLastFile.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        Settings.setAutoLoadLastFile(cbAutoLoadLastFile.isSelected());
+        Settings.save();
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 3;
+    gridBagConstraints.gridwidth = 2;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    pSystem.add(cbAutoLoadLastFile, gridBagConstraints);
+
     // Import highlighting settings
     javax.swing.JLabel lblImportHl = new javax.swing.JLabel("Zvýraznění po importu:");
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
-    gridBagConstraints.gridy = 3;
+    gridBagConstraints.gridy = 4;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
     pSystem.add(lblImportHl, gridBagConstraints);
@@ -699,7 +715,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
-    gridBagConstraints.gridy = 4;
+    gridBagConstraints.gridy = 5;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
     pSystem.add(cbHighlightInserted, gridBagConstraints);
@@ -717,7 +733,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 1;
-    gridBagConstraints.gridy = 4;
+    gridBagConstraints.gridy = 5;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
     pSystem.add(bPickInsertedColor, gridBagConstraints);
@@ -732,7 +748,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
-    gridBagConstraints.gridy = 5;
+    gridBagConstraints.gridy = 6;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
     pSystem.add(cbHighlightUpdated, gridBagConstraints);
@@ -750,7 +766,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 1;
-    gridBagConstraints.gridy = 5;
+    gridBagConstraints.gridy = 6;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
     pSystem.add(bPickUpdatedColor, gridBagConstraints);
@@ -764,21 +780,21 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
-    gridBagConstraints.gridy = 6;
+    gridBagConstraints.gridy = 7;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
     pSystem.add(lHighlightPreviewNew, gridBagConstraints);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 1;
-    gridBagConstraints.gridy = 6;
+    gridBagConstraints.gridy = 7;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
     pSystem.add(lHighlightPreviewUpdated, gridBagConstraints);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
-    gridBagConstraints.gridy = 7;
+    gridBagConstraints.gridy = 8;
     gridBagConstraints.weighty = 1.0;
     pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
 
@@ -2775,6 +2791,7 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JLabel lHighlightPreviewNew;
   private javax.swing.JLabel lHighlightPreviewUpdated;
   private javax.swing.JCheckBox cbAutoMaximized;
+  private javax.swing.JCheckBox cbAutoLoadLastFile;
   // End of variables declaration//GEN-END:variables
 
   /**

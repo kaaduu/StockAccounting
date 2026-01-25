@@ -60,7 +60,8 @@ public class ComputeWindow extends javax.swing.JDialog {
   private static final DateTimeFormatter CZ_DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
   private static boolean isEndOfYearTradeDateForYear(java.util.Date d, int year) {
-    if (d == null) return false;
+    if (d == null)
+      return false;
     GregorianCalendar cal = new GregorianCalendar();
     cal.setTime(d);
     int y = cal.get(GregorianCalendar.YEAR);
@@ -70,13 +71,16 @@ public class ComputeWindow extends javax.swing.JDialog {
   }
 
   private int countSameSettlementOnYearEnd(TransactionSet transactions, int year) {
-    if (transactions == null) return 0;
+    if (transactions == null)
+      return 0;
     int anySame = 0;
     for (Iterator<Transaction> it = transactions.iterator(); it.hasNext();) {
       Transaction tx = it.next();
-      if (tx == null) continue;
+      if (tx == null)
+        continue;
       java.util.Date dTrade = tx.getDate();
-      if (!isEndOfYearTradeDateForYear(dTrade, year)) continue;
+      if (!isEndOfYearTradeDateForYear(dTrade, year))
+        continue;
       java.util.Date dSettle = tx.getExecutionDate();
       if (dSettle != null && dSettle.equals(dTrade)) {
         anySame++;
@@ -87,14 +91,16 @@ public class ComputeWindow extends javax.swing.JDialog {
 
   private void warnAboutSettlementDatesForYearIfNeeded(TransactionSet transactions, int year) {
     int anySame = countSameSettlementOnYearEnd(transactions, year);
-    if (anySame <= 0) return;
+    if (anySame <= 0)
+      return;
 
     StringBuilder msg = new StringBuilder();
     msg.append("Pozor na datum vypořádání u obchodů na konci roku ").append(year).append(".\n\n");
     msg.append("Celkem: ").append(anySame)
         .append(" transakcí (29.12–31.12.").append(year)
         .append(") má 'Datum vypořádání' shodné s 'Datum'.\n\n");
-    msg.append("Doporučení: ověřte skutečné datum vypořádání u brokera (zejména u obchodů 31.12) a případně jej ručně upravte ve sloupci 'Datum vypořádání'.");
+    msg.append(
+        "Doporučení: ověřte skutečné datum vypořádání u brokera (zejména u obchodů 31.12) a případně jej ručně upravte ve sloupci 'Datum vypořádání'.");
 
     JOptionPane.showMessageDialog(this, msg.toString(), "Upozornění: datum vypořádání", JOptionPane.WARNING_MESSAGE);
   }
@@ -113,6 +119,22 @@ public class ComputeWindow extends javax.swing.JDialog {
    * Include over tax free duration
    */
   private boolean includeOverTaxFreeDurarionComputed;
+
+  private static class CpTaxExportTrade {
+    String currency;
+    String ticker;
+    Date openTradeDate;
+    Date openExecutionDate;
+    Date closeTradeDate;
+    Date closeExecutionDate;
+    Date incomeTradeDate;
+    Date incomeExecutionDate;
+    double taxIncomeCZK;
+    double taxExpenseCZK;
+    double profitCZK;
+  }
+
+  private final java.util.List<CpTaxExportTrade> lastComputedCpTaxTrades = new java.util.ArrayList<>();
 
   /** Creates new form ComputeDialog */
   public ComputeWindow(java.awt.Frame parent, boolean modal) {
@@ -448,7 +470,8 @@ public class ComputeWindow extends javax.swing.JDialog {
     FileDialog dialog = new FileDialog(this, "Uložit jako HTML new", FileDialog.SAVE);
     dialog.setVisible(true);
     String fileName = dialog.getFile();
-    if (fileName == null) return;
+    if (fileName == null)
+      return;
 
     File file = new File(dialog.getDirectory(), fileName);
     if (file.getName().lastIndexOf('.') < 0) {
@@ -485,15 +508,18 @@ public class ComputeWindow extends javax.swing.JDialog {
   }
 
   private void promptOpenSavedHtml(File file) {
-    if (file == null) return;
+    if (file == null)
+      return;
     int r = JOptionPane.showConfirmDialog(this,
         "Chcete otevřít uložený HTML soubor v prohlížeči?\n\n" + file.getAbsolutePath(),
         "Otevřít HTML", JOptionPane.YES_NO_OPTION);
-    if (r != JOptionPane.YES_OPTION) return;
+    if (r != JOptionPane.YES_OPTION)
+      return;
 
     try {
       if (!Desktop.isDesktopSupported()) {
-        JOptionPane.showMessageDialog(this, "Otevření v prohlížeči není podporováno na této platformě.\n" + file.getAbsolutePath());
+        JOptionPane.showMessageDialog(this,
+            "Otevření v prohlížeči není podporováno na této platformě.\n" + file.getAbsolutePath());
         return;
       }
       Desktop d = Desktop.getDesktop();
@@ -511,49 +537,931 @@ public class ComputeWindow extends javax.swing.JDialog {
 
   private void saveHTMLNewTrades(String title, File file, JTable table) throws Exception {
     try (java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file))) {
-      saveHTMLHeaderNewTrades(ofl, title, table);
+      // CSS and Header
+      ofl.println("<!DOCTYPE html>");
+      ofl.println("<html><head><title>" + title + "</title>");
+      ofl.println("<meta charset=\"utf-8\">");
+      ofl.println("<style>");
+      ofl.println(
+          "body { font-family: 'Roboto Condensed', sans-serif; color: #777; font-size: 14px; background-color: #f9f9f9; padding: 20px; }");
+      ofl.println("h1, h2 { color: #333; }");
+      ofl.println(
+          "table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 20px; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }");
+      ofl.println(
+          "th { background-color: #028af4; color: white; padding: 8px 5px; text-align: left; font-weight: bold; border-left: 1px solid rgba(255,255,255,0.2); }");
+      ofl.println("th:first-child { border-left: none; }");
+      ofl.println("td { padding: 5px; border-bottom: 1px solid #eee; color: #555; }");
+      ofl.println("tr:hover td { background-color: #f1f8ff; }");
+      ofl.println(".align-right { text-align: right; }");
+      ofl.println(".center { text-align: center; }");
+      ofl.println(".bold { font-weight: bold; }");
+      ofl.println(".red { color: red; }");
+      ofl.println(".green { color: green; }");
+      ofl.println(".border-top td { border-top: 1px solid #aaa; background-color: #fafafa; font-weight: bold; }");
+      ofl.println(".section-nav { margin: 10px 0 22px 0; }");
+      ofl.println(
+          ".section-nav a { display: inline-block; margin-right: 10px; padding: 6px 10px; background: #fff; border: 1px solid #e6e6e6; border-radius: 8px; text-decoration: none; color: #028af4; }");
+      ofl.println(".section-nav a:hover { background: #f1f8ff; }");
+      ofl.println("</style></head><body>");
+
+      ofl.println("<h1>" + title + "</h1>");
+
+      boolean isCpTable = (table == tableCP);
+      boolean unifiedRates = !Settings.getUseDailyRates();
+
+      if (isCpTable && unifiedRates) {
+        writeKackaLikeCpSections(ofl);
+      } else if (isCpTable && !unifiedRates) {
+        ofl.println(
+            "<p><b>Poznámka:</b> Používáte denní kurzy (ČNB). Souhrny ve stylu Kačky (Souhrn/Výstupy podle roků/akcií) se generují pouze pro jednotný kurz.</p>");
+      }
 
       DefaultTableModel model = (DefaultTableModel) table.getModel();
-      int emptyRow = -1;
-      int finalRow = model.getRowCount() - 1;
 
-      for (int i = 0; i < model.getRowCount(); i++) {
-        if (i == emptyRow) continue;
+      // Group rows by currency
+      java.util.Map<String, java.util.List<Integer>> rowsByCurrency = new java.util.TreeMap<>();
+      java.util.List<Integer> summaryRows = new java.util.ArrayList<>();
 
-        ofl.write("<tr" + ((i == finalRow) ? " class=\"finalRow\"" : "") + ">");
-
-        // Original layout is 16 columns. We output 18 by inserting Poplatky CZK for both legs.
-        for (int n = 0; n < model.getColumnCount(); n++) {
-          // Insert open Poplatky CZK right after open Poplatky (col 5)
-          if (n == 6) {
-            String openFeeCzk = computeFeeCzkCell(model, i, 0, 5);
-            ofl.write("<td>" + openFeeCzk + "</td>");
+      int rowCount = model.getRowCount();
+      for (int i = 0; i < rowCount; i++) {
+        String col0 = (String) model.getValueAt(i, 0);
+        if (col0 == null || col0.trim().isEmpty()) {
+          // Likely a summary row or empty separator
+          // If it has content in other columns, it is summary
+          String colProfit = (String) model.getValueAt(i, 14);
+          if (colProfit != null && !colProfit.trim().isEmpty()) {
+            summaryRows.add(i);
           }
-
-          // Insert close Poplatky CZK right after close Poplatky (col 12)
-          if (n == 13) {
-            String closeFeeCzk = computeFeeCzkCell(model, i, 7, 12);
-            ofl.write("<td>" + closeFeeCzk + "</td>");
-          }
-
-          if ((n == 1) || (n == 7) || (n == 8) || (n == 15)) {
-            ofl.write("<td class=\"left\">");
-          } else {
-            ofl.write("<td>");
-          }
-
-          String s = (String) model.getValueAt(i, n);
-          if (s == null) s = "";
-          if (n != 15) {
-            s = spaces2nbsp(s);
-          }
-          ofl.write(s + "</td>");
+          continue;
         }
 
+        // Determine currency from Column 4 (J. cena) -> "100.00 USD"
+        String priceStr = (String) model.getValueAt(i, 4);
+        String cur = "Ostatní";
+        if (priceStr != null && priceStr.contains(" ")) {
+          cur = priceStr.substring(priceStr.lastIndexOf(" ") + 1).trim();
+        }
+
+        if (!rowsByCurrency.containsKey(cur)) {
+          rowsByCurrency.put(cur, new java.util.ArrayList<>());
+        }
+        rowsByCurrency.get(cur).add(i);
+      }
+
+      // Process each currency group
+      for (String currency : rowsByCurrency.keySet()) {
+        ofl.println("<h2>Měna: " + currency + "</h2>");
+        ofl.println("<table>");
+
+        // Header
+        ofl.println("<thead><tr>");
+        ofl.println(
+            "<th class=\"center\">Otevřeno</th><th>Ticker</th><th class=\"align-right\">Počet</th><th class=\"align-right\">Kurz (O)</th><th class=\"align-right\">Cena (O)</th><th class=\"align-right\">Popl. (O)</th><th class=\"align-right\">Popl. CZK</th><th class=\"align-right\">Výdaj CZK</th>");
+        ofl.println(
+            "<th class=\"center\">Zavřeno</th><th class=\"align-right\">Kurz (Z)</th><th class=\"align-right\">Cena (Z)</th><th class=\"align-right\">Popl. (Z)</th><th class=\"align-right\">Popl. CZK</th><th class=\"align-right\">Příjem CZK</th>");
+        ofl.println("<th class=\"align-right\">Zisk CZK</th><th>Pozn.</th>");
+        ofl.println("</tr></thead>");
+
+        ofl.println("<tbody>");
+
+        double sumProfit = 0;
+        double sumExpense = 0;
+        double sumIncome = 0;
+
+        for (Integer r : rowsByCurrency.get(currency)) {
+          ofl.println("<tr>");
+
+          // 0: Otevřeno
+          ofl.println("<td class=\"center\">" + val(model, r, 0) + "</td>"); // Date
+          // 1: Ticker
+          ofl.println("<td><b>" + val(model, r, 1) + "</b></td>");
+          // 2: Počet
+          ofl.println("<td class=\"align-right\">" + val(model, r, 2) + "</td>");
+          // 3: Kurz (Open Rate)
+          ofl.println("<td class=\"align-right\">" + val(model, r, 3) + "</td>");
+          // 4: Cena (Open Price) -> Strip currency
+          ofl.println("<td class=\"align-right\">" + stripCur(val(model, r, 4)) + "</td>");
+          // 5: Popl (Open)
+          ofl.println("<td class=\"align-right\">" + stripCur(val(model, r, 5)) + "</td>");
+          // Computed: Popl CZK (Open)
+          String openFeeCzk = computeFeeCzkCell(model, r, 0, 5);
+          ofl.println("<td class=\"align-right text-muted\">" + openFeeCzk + "</td>");
+          // 6: Otevření CZK (Expense)
+          String expStr = val(model, r, 6);
+          ofl.println("<td class=\"align-right\">" + expStr + "</td>");
+          sumExpense += parseDouble(expStr);
+
+          // 7: Zavřeno
+          ofl.println("<td class=\"center\">" + val(model, r, 7) + "</td>");
+          // 10: Kurz (Close Rate)
+          ofl.println("<td class=\"align-right\">" + val(model, r, 10) + "</td>");
+          // 11: Cena (Close Price)
+          ofl.println("<td class=\"align-right\">" + stripCur(val(model, r, 11)) + "</td>");
+          // 12: Popl (Close)
+          ofl.println("<td class=\"align-right\">" + stripCur(val(model, r, 12)) + "</td>");
+          // Computed: Popl CZK (Close)
+          String closeFeeCzk = computeFeeCzkCell(model, r, 7, 12);
+          ofl.println("<td class=\"align-right text-muted\">" + closeFeeCzk + "</td>");
+          // 13: Zavření CZK (Income)
+          String incStr = val(model, r, 13);
+          ofl.println("<td class=\"align-right\">" + incStr + "</td>");
+          sumIncome += parseDouble(incStr);
+
+          // 14: Výsledek CZK (Profit)
+          String profitStr = val(model, r, 14);
+          double profit = parseDouble(profitStr);
+          String colorClass = profit < 0 ? "red" : "green";
+          ofl.println("<td class=\"align-right bold " + colorClass + "\">" + profitStr + "</td>");
+          sumProfit += profit;
+
+          // 15: Pozn
+          ofl.println("<td>" + val(model, r, 15) + "</td>");
+
+          ofl.println("</tr>");
+        }
+
+        // Footer / Totals for Currency
+        java.text.DecimalFormat df = new java.text.DecimalFormat("0.00");
+        ofl.println("<tr class=\"border-top\">");
+        ofl.println("<td colspan=\"7\">Celkem " + currency + "</td>");
+        ofl.println("<td class=\"align-right\">" + df.format(sumExpense) + "</td>");
+        ofl.println("<td colspan=\"5\"></td>");
+        ofl.println("<td class=\"align-right\">" + df.format(sumIncome) + "</td>");
+        String sumColor = sumProfit < 0 ? "red" : "green";
+        ofl.println("<td class=\"align-right " + sumColor + "\">" + df.format(sumProfit) + "</td>");
+        ofl.println("<td></td>");
         ofl.println("</tr>");
+
+        ofl.println("</tbody></table>");
+      }
+
+      // Global Summary from original table rows (if found) or computed
+      if (!summaryRows.isEmpty()) {
+        ofl.println("<h2>Celkové součty (všechny měny v CZK)</h2>");
+        ofl.println("<table><thead><tr><th>Popis</th><th class=\"align-right\">Hodnota</th></tr></thead><tbody>");
+        for (Integer r : summaryRows) {
+          String label = val(model, r, 5); // "Příjem:", "Výdej:", "Zisk:" are usually in col 5
+          if (label.isEmpty())
+            label = "Součet";
+          // Value is scattered.
+          // Income/Expense sums are in col 14 or scattered.
+          // Let's rely on what's visible. Column 14 has totals often.
+          String val14 = val(model, r, 14);
+          if (!val14.isEmpty()) {
+            ofl.println("<tr><td>" + label + "</td><td class=\"align-right bold\">" + val14 + "</td></tr>");
+          }
+        }
+        ofl.println("</tbody></table>");
       }
 
       ofl.println("</body></html>");
+    }
+  }
+
+  private String val(DefaultTableModel m, int r, int c) {
+    if (m.getValueAt(r, c) == null)
+      return "";
+    return ((String) m.getValueAt(r, c)).trim();
+  }
+
+  private String stripCur(String s) {
+    if (s == null)
+      return "";
+    int idx = s.lastIndexOf(" ");
+    if (idx > 0)
+      return s.substring(0, idx).trim(); // Remove currency suffix
+    return s;
+  }
+
+  private static String htmlEscape(String s) {
+    if (s == null)
+      return "";
+    return s.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;");
+  }
+
+  private void writeKackaLikeCpSections(java.io.PrintWriter ofl) {
+    if (yearComputed == 0)
+      return;
+
+    // Work on a copy, sorted by income date.
+    java.util.List<CpTaxExportTrade> trades = new java.util.ArrayList<>(lastComputedCpTaxTrades);
+    trades.removeIf(t -> t == null || t.incomeExecutionDate == null);
+    trades.sort((a, b) -> a.incomeExecutionDate.compareTo(b.incomeExecutionDate));
+
+    java.util.Map<String, java.util.List<CpTaxExportTrade>> byCur = new java.util.TreeMap<>();
+    java.util.Map<String, java.util.List<CpTaxExportTrade>> byTicker = new java.util.TreeMap<>();
+    for (CpTaxExportTrade t : trades) {
+      String cur = t.currency != null ? t.currency : "CZK";
+      byCur.computeIfAbsent(cur, k -> new java.util.ArrayList<>()).add(t);
+
+      String ticker = t.ticker != null ? t.ticker : "(bez tickeru)";
+      byTicker.computeIfAbsent(ticker, k -> new java.util.ArrayList<>()).add(t);
+    }
+
+    java.text.DecimalFormat f2 = new java.text.DecimalFormat("0.00");
+    f2.setGroupingUsed(true);
+    f2.setGroupingSize(3);
+    java.text.DecimalFormat fr = new java.text.DecimalFormat("0.00");
+    fr.setGroupingUsed(true);
+    fr.setGroupingSize(3);
+
+    ofl.println("<div class=\"section-nav\">" +
+        "<a href=\"#kacka-souhrn\">Souhrn</a>" +
+        "<a href=\"#kacka-roky\">Výstupy podle jednotlivých roků</a>" +
+        "<a href=\"#kacka-akcie\">Výstupy podle jednotlivých akcií</a>" +
+        "</div>");
+
+    // Souhrn
+    ofl.println("<h2 id=\"kacka-souhrn\">Souhrn</h2>");
+    ofl.println("<table>");
+    ofl.println("<thead><tr>");
+    ofl.println("<th colspan=\"5\">Souhrn pro rok " + yearComputed + "</th>");
+    ofl.println("</tr>");
+    ofl.println("<tr>");
+    ofl.println("<th>Měna</th>");
+    ofl.println("<th class=\"align-right\">Kurs</th>");
+    ofl.println("<th class=\"align-right\">Daňové příjmy (CZK)</th>");
+    ofl.println("<th class=\"align-right\">Daňové výdaje (CZK)</th>");
+    ofl.println("<th class=\"align-right\">Zisk (CZK)</th>");
+    ofl.println("</tr></thead>");
+    ofl.println("<tbody>");
+
+    for (String cur : byCur.keySet()) {
+      double income = 0;
+      double expense = 0;
+      double profit = 0;
+      for (CpTaxExportTrade t : byCur.get(cur)) {
+        income += t.taxIncomeCZK;
+        expense += t.taxExpenseCZK;
+        profit += t.profitCZK;
+      }
+
+      double rate = 1.0;
+      try {
+        rate = Settings.getRatio(cur, yearComputed);
+      } catch (Exception e) {
+        rate = 1.0;
+      }
+
+      String id = "id" + yearComputed + htmlEscape(cur);
+      ofl.println("<tr>");
+      ofl.println("<td><a href=\"#" + id + "\">Obchody v " + htmlEscape(cur) + "</a></td>");
+      ofl.println("<td class=\"align-right\">" + fr.format(rate) + "</td>");
+      ofl.println("<td class=\"align-right\">" + f2.format(income) + "</td>");
+      ofl.println("<td class=\"align-right\">" + f2.format(expense) + "</td>");
+      String pClass = profit < 0 ? "red" : "green";
+      ofl.println("<td class=\"align-right bold " + pClass + "\">" + f2.format(profit) + "</td>");
+      ofl.println("</tr>");
+    }
+    ofl.println("</tbody></table>");
+
+    // Výstupy podle jednotlivých roků (for selected year)
+    ofl.println("<h2 id=\"kacka-roky\">Výstupy podle jednotlivých roků</h2>");
+    ofl.println("<div class=\"section-nav\">" +
+        "<a href=\"#id" + yearComputed + "\">" + yearComputed + "</a>" +
+        "</div>");
+
+    for (String cur : byCur.keySet()) {
+      String id = "id" + yearComputed + htmlEscape(cur);
+      ofl.println("<table id=\"" + id + "\">");
+      ofl.println("<thead><tr>");
+      ofl.println("<th colspan=\"6\">Rok " + yearComputed + " Měna: " + htmlEscape(cur) + "</th>");
+      ofl.println("</tr><tr>");
+      ofl.println("<th>Datum obchodu</th>");
+      ofl.println("<th>Vypořádání</th>");
+      ofl.println("<th>CP</th>");
+      ofl.println("<th class=\"align-right\">Zisk (CZK)</th>");
+      ofl.println("<th class=\"align-right\">Daňové příjmy (CZK)</th>");
+      ofl.println("<th class=\"align-right\">Daňové výdaje (CZK)</th>");
+      ofl.println("</tr></thead><tbody>");
+
+      for (CpTaxExportTrade t : byCur.get(cur)) {
+        String ticker = t.ticker != null ? t.ticker : "";
+        String tickerAnchor = "id" + htmlEscape(ticker);
+        String tradeDate = t.incomeTradeDate != null ? formatDateTime(t.incomeTradeDate) : "";
+        String execDate = t.incomeExecutionDate != null ? formatDateTime(t.incomeExecutionDate) : "";
+        String pClass = t.profitCZK < 0 ? "red" : "green";
+        ofl.println("<tr>");
+        ofl.println("<td>" + htmlEscape(tradeDate) + "</td>");
+        ofl.println("<td>" + htmlEscape(execDate) + "</td>");
+        ofl.println("<td><a href=\"#" + tickerAnchor + "\">" + htmlEscape(ticker) + "</a></td>");
+        ofl.println("<td class=\"align-right bold " + pClass + "\">" + f2.format(t.profitCZK) + "</td>");
+        ofl.println("<td class=\"align-right\">" + f2.format(t.taxIncomeCZK) + "</td>");
+        ofl.println("<td class=\"align-right\">" + f2.format(t.taxExpenseCZK) + "</td>");
+        ofl.println("</tr>");
+      }
+      ofl.println("</tbody></table>");
+    }
+
+    // Výstupy podle jednotlivých akcií (Kačka-like timeline)
+    ofl.println("<h2 id=\"kacka-akcie\">Výstupy podle jednotlivých akcií</h2>");
+
+    java.util.Set<String> tickersOfInterest = new java.util.TreeSet<>(byTicker.keySet());
+    writeKackaLikeCpTickerTimeline(ofl, tickersOfInterest);
+  }
+
+  private static class SellAgg {
+    String currency;
+    double profitCur;
+    double costBaseCur;
+    double taxIncomeCZK;
+    double taxExpenseCZK;
+  }
+
+  private void writeKackaLikeCpTickerTimeline(java.io.PrintWriter ofl, java.util.Set<String> tickersOfInterest) {
+    if (tickersOfInterest == null || tickersOfInterest.isEmpty())
+      return;
+
+    // Small Kačka-like icons
+    ofl.println("<style>");
+    ofl.println(
+        ".kicon { display:inline-block; width:16px; height:16px; border-radius:50%; line-height:16px; text-align:center; font-weight:bold; font-size:11px; color:#fff; }");
+    ofl.println(".kicon.buy { background:#2e8b57; }");
+    ofl.println(".kicon.sell { background:#c0392b; }");
+    ofl.println(".krow-ca td { background:#fcfcfc; color:#666; }");
+    ofl.println("</style>");
+
+    // Build per-transaction sell aggregates and per-component timelines using a GLOBAL
+    // FIFO replay. Corporate actions (TRANS_SUB/TRANS_ADD) often span multiple tickers
+    // (e.g. ATNF -> ETHZ, CS -> UBS). Replaying per ticker breaks transformation pairing
+    // and triggers "pouze jedna transformace" errors.
+    java.util.Map<Integer, SellAgg> sellAggBySerial = new java.util.HashMap<>();
+
+    TransactionSet txs = mainWindow.getTransactionDatabase();
+    txs.sort();
+
+    // End of year (inclusive)
+    GregorianCalendar cal = new GregorianCalendar(yearComputed, 12 - 1, 31, 23, 59, 59);
+    cal.set(GregorianCalendar.MILLISECOND, 999);
+    java.util.Date endOfYear = cal.getTime();
+
+    // Helper: relevant directions
+    java.util.function.Predicate<Transaction> isRelevant = (tx) -> {
+      if (tx == null)
+        return false;
+      int d = tx.getDirection();
+      return d == Transaction.DIRECTION_SBUY || d == Transaction.DIRECTION_SSELL || d == Transaction.DIRECTION_TRANS_ADD
+          || d == Transaction.DIRECTION_TRANS_SUB;
+    };
+
+    // 1) Collect candidate transactions up to end-of-year
+    java.util.List<Transaction> candidates = new java.util.ArrayList<>();
+    for (Iterator<Transaction> it = txs.iterator(); it.hasNext();) {
+      Transaction tx = it.next();
+      if (!isRelevant.test(tx))
+        continue;
+      java.util.Date eff = tx.getExecutionDate() != null ? tx.getExecutionDate() : tx.getDate();
+      if (eff == null)
+        continue;
+      if (eff.after(endOfYear))
+        continue;
+      if (tx.getTicker() == null)
+        continue;
+      candidates.add(tx);
+    }
+
+    // 2) Build union-find components from corporate actions (TRANS_SUB/TRANS_ADD pairs)
+    class UF {
+      private final java.util.Map<String, String> parent = new java.util.HashMap<>();
+
+      String norm(String t) {
+        return t == null ? null : t.trim().toUpperCase();
+      }
+
+      String find(String t) {
+        t = norm(t);
+        if (t == null)
+          return null;
+        String p = parent.get(t);
+        if (p == null) {
+          parent.put(t, t);
+          return t;
+        }
+        if (!p.equals(t))
+          parent.put(t, find(p));
+        return parent.get(t);
+      }
+
+      void union(String a, String b) {
+        a = find(a);
+        b = find(b);
+        if (a == null || b == null)
+          return;
+        if (!a.equals(b))
+          parent.put(a, b);
+      }
+
+      java.util.Set<String> all() {
+        return new java.util.HashSet<>(parent.keySet());
+      }
+    }
+
+    UF uf = new UF();
+    java.util.Map<Long, java.util.List<Transaction>> transByTime = new java.util.HashMap<>();
+    for (Transaction tx : candidates) {
+      int d = tx.getDirection();
+      if (d != Transaction.DIRECTION_TRANS_ADD && d != Transaction.DIRECTION_TRANS_SUB)
+        continue;
+      if (tx.getDate() == null)
+        continue;
+      long key = tx.getDate().getTime();
+      transByTime.computeIfAbsent(Long.valueOf(key), k -> new java.util.ArrayList<>()).add(tx);
+      uf.find(tx.getTicker());
+    }
+
+    for (java.util.List<Transaction> group : transByTime.values()) {
+      if (group == null || group.size() < 2)
+        continue;
+      Transaction sub = null;
+      Transaction add = null;
+      for (Transaction tx : group) {
+        if (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB)
+          sub = tx;
+        else if (tx.getDirection() == Transaction.DIRECTION_TRANS_ADD)
+          add = tx;
+      }
+      if (sub != null && add != null) {
+        uf.union(sub.getTicker(), add.getTicker());
+      }
+    }
+
+    // 3) Determine which components we want to print:
+    // start from tickersOfInterest (taxable trades in selected year) and include all
+    // tickers connected via corporate actions.
+    java.util.Set<String> interest = new java.util.HashSet<>();
+    for (String t : tickersOfInterest) {
+      if (t == null)
+        continue;
+      interest.add(t.trim().toUpperCase());
+    }
+
+    java.util.Set<String> expandedTickers = new java.util.HashSet<>();
+    // Ensure the UF knows about interest tickers too
+    for (String t : interest)
+      uf.find(t);
+
+    java.util.Map<String, java.util.Set<String>> compMembers = new java.util.HashMap<>();
+    for (String t : uf.all()) {
+      String r = uf.find(t);
+      compMembers.computeIfAbsent(r, k -> new java.util.HashSet<>()).add(t);
+    }
+
+    java.util.Set<String> compRootsToPrint = new java.util.HashSet<>();
+    for (String t : interest) {
+      String r = uf.find(t);
+      if (r == null)
+        continue;
+      compRootsToPrint.add(r);
+      java.util.Set<String> mem = compMembers.get(r);
+      if (mem != null)
+        expandedTickers.addAll(mem);
+      else
+        expandedTickers.add(t);
+    }
+
+    // Also include tickers that have no transformations but are in interest
+    for (String t : interest) {
+      if (!expandedTickers.contains(t))
+        expandedTickers.add(t);
+    }
+
+    // 4) Global FIFO replay for all expanded tickers
+    java.util.List<Transaction> global = new java.util.ArrayList<>();
+    for (Transaction tx : candidates) {
+      String t = tx.getTicker() != null ? tx.getTicker().trim().toUpperCase() : null;
+      if (t == null)
+        continue;
+      if (!expandedTickers.contains(t))
+        continue;
+      global.add(tx);
+    }
+    global.sort((a, b) -> {
+      int c1 = a.getDate().compareTo(b.getDate());
+      if (c1 != 0)
+        return c1;
+      return Integer.compare(a.getSerial(), b.getSerial());
+    });
+
+    // Map (ticker|execMillis) to transaction serial for short autoclose mapping.
+    java.util.Map<String, Integer> serialByTickerAndExec = new java.util.HashMap<>();
+    for (Transaction tx : global) {
+      if (tx.getTicker() == null)
+        continue;
+      if (tx.getDirection() != Transaction.DIRECTION_SSELL)
+        continue;
+      java.util.Date eff = tx.getExecutionDate() != null ? tx.getExecutionDate() : tx.getDate();
+      if (eff == null)
+        continue;
+      String key = tx.getTicker().trim().toUpperCase() + "|" + eff.getTime();
+      serialByTickerAndExec.put(key, Integer.valueOf(tx.getSerial()));
+    }
+
+    Stocks stocks = new Stocks();
+    for (Transaction tx : global) {
+      try {
+        boolean useExec = false;
+        int d = tx.getDirection();
+        if ((d == Transaction.DIRECTION_SBUY || d == Transaction.DIRECTION_SSELL) && tx.getExecutionDate() != null)
+          useExec = true;
+        Stocks.StockTrade[] trades = stocks.applyTransaction(tx, useExec);
+        if (trades == null)
+          continue;
+
+        for (Stocks.StockTrade st : trades) {
+          int ownerSerial = tx.getSerial();
+
+          String cur = null;
+          if (st.close != null && st.close.priceCurrency != null)
+            cur = st.close.priceCurrency;
+          else if (st.open != null && st.open.priceCurrency != null)
+            cur = st.open.priceCurrency;
+          cur = cur != null ? cur.trim().toUpperCase() : "CZK";
+
+          double openCash = -st.open.amount * st.open.price - st.open.fee;
+          double closeCash = st.close.amount * st.close.price - st.close.fee;
+          double profitCur = openCash + closeCash;
+
+          double base = 0.0;
+          if (openCash < 0)
+            base = -openCash;
+          else if (closeCash < 0)
+            base = -closeCash;
+
+          SellAgg agg = sellAggBySerial.get(ownerSerial);
+          if (agg == null) {
+            agg = new SellAgg();
+            agg.currency = cur;
+            sellAggBySerial.put(ownerSerial, agg);
+          }
+          agg.currency = cur;
+          agg.profitCur += profitCur;
+          agg.costBaseCur += base;
+
+          GregorianCalendar yc = new GregorianCalendar();
+          yc.setTime(st.getIncomeDate());
+          int incomeYear = yc.get(GregorianCalendar.YEAR);
+          if (incomeYear == yearComputed) {
+            boolean overTest = Stocks.isOverTaxFreeDuration(st.open.executionDate, st.close.executionDate);
+            if (!overTest) {
+              agg.taxIncomeCZK += (st.openCreditCZK + st.closeCreditCZK);
+              agg.taxExpenseCZK += -(st.openDebitCZK + st.closeDebitCZK);
+            }
+          }
+        }
+      } catch (Exception e) {
+        // Keep export resilient
+        System.err.println("Failed to compute Kačka-like FIFO data: " + e.getMessage());
+      }
+    }
+
+    // Also include synthetic autoclose of open shorts in the selected year.
+    try {
+      Stocks.StockTrade[] shorts = stocks.autocloseShortTransactions(yearComputed);
+      if (shorts != null) {
+        for (Stocks.StockTrade st : shorts) {
+          GregorianCalendar yc = new GregorianCalendar();
+          yc.setTime(st.getIncomeDate());
+          if (yc.get(GregorianCalendar.YEAR) != yearComputed)
+            continue;
+
+          if (st.open == null || st.open.executionDate == null || st.open.ticker == null)
+            continue;
+
+          String key = st.open.ticker.trim().toUpperCase() + "|" + st.open.executionDate.getTime();
+          Integer ownerSerialObj = serialByTickerAndExec.get(key);
+          if (ownerSerialObj == null)
+            continue;
+          int ownerSerial = ownerSerialObj.intValue();
+
+          String cur = null;
+          if (st.open != null && st.open.priceCurrency != null)
+            cur = st.open.priceCurrency;
+          else if (st.close != null && st.close.priceCurrency != null)
+            cur = st.close.priceCurrency;
+          cur = cur != null ? cur.trim().toUpperCase() : "CZK";
+
+          double openCash = -st.open.amount * st.open.price - st.open.fee;
+          double closeCash = st.close.amount * st.close.price - st.close.fee;
+          double profitCur = openCash + closeCash;
+
+          SellAgg agg = sellAggBySerial.get(ownerSerial);
+          if (agg == null) {
+            agg = new SellAgg();
+            agg.currency = cur;
+            sellAggBySerial.put(ownerSerial, agg);
+          }
+          agg.currency = cur;
+          agg.profitCur += profitCur;
+          if (openCash < 0)
+            agg.costBaseCur += -openCash;
+          agg.taxIncomeCZK += (st.openCreditCZK + st.closeCreditCZK);
+          agg.taxExpenseCZK += -(st.openDebitCZK + st.closeDebitCZK);
+        }
+      }
+    } catch (Exception e) {
+      // ignore
+    }
+
+    // 5) Build per-component timelines
+    java.util.Map<String, java.util.List<Transaction>> txByComponent = new java.util.HashMap<>();
+    for (Transaction tx : global) {
+      String t = tx.getTicker() != null ? tx.getTicker().trim().toUpperCase() : null;
+      if (t == null)
+        continue;
+      String r = uf.find(t);
+      if (r == null)
+        r = t;
+      if (!compRootsToPrint.contains(r) && !interest.contains(t))
+        continue;
+      txByComponent.computeIfAbsent(r, k -> new java.util.ArrayList<>()).add(tx);
+    }
+
+    // Determine display name for each component.
+    java.util.Map<String, String> displayNameByRoot = new java.util.HashMap<>();
+    for (String root : txByComponent.keySet()) {
+      java.util.List<Transaction> list = txByComponent.get(root);
+      list.sort((a, b) -> {
+        int c1 = a.getDate().compareTo(b.getDate());
+        if (c1 != 0)
+          return c1;
+        return Integer.compare(a.getSerial(), b.getSerial());
+      });
+
+      String display = null;
+      for (Transaction tx : list) {
+        if (tx.getDirection() == Transaction.DIRECTION_TRANS_ADD && tx.getTicker() != null) {
+          display = tx.getTicker().trim().toUpperCase();
+        }
+      }
+      if (display == null) {
+        for (Transaction tx : list) {
+          if (tx.getTicker() != null) {
+            display = tx.getTicker().trim().toUpperCase();
+          }
+        }
+      }
+      if (display == null)
+        display = root;
+      displayNameByRoot.put(root, display);
+    }
+
+    // Nav links (sorted by display name)
+    java.util.List<String> rootsSorted = new java.util.ArrayList<>(txByComponent.keySet());
+    rootsSorted.sort((a, b) -> displayNameByRoot.get(a).compareTo(displayNameByRoot.get(b)));
+
+    ofl.println("<div class=\"section-nav\">");
+    for (String root : rootsSorted) {
+      String disp = displayNameByRoot.get(root);
+      String anchor = "id" + htmlEscape(disp);
+      ofl.println("<a href=\"#" + anchor + "\">" + htmlEscape(disp) + "</a>");
+    }
+    ofl.println("</div>");
+
+    // Nav links
+    ofl.println("<div class=\"section-nav\">");
+    java.text.DecimalFormat fQty = new java.text.DecimalFormat("0.####");
+    fQty.setGroupingUsed(true);
+    fQty.setGroupingSize(3);
+    java.text.DecimalFormat fMoney = new java.text.DecimalFormat("0.00");
+    fMoney.setGroupingUsed(true);
+    fMoney.setGroupingSize(3);
+    java.text.DecimalFormat fPct = new java.text.DecimalFormat("0.00");
+
+    for (String root : rootsSorted) {
+      java.util.List<Transaction> list = txByComponent.get(root);
+      if (list == null || list.isEmpty())
+        continue;
+
+      list.sort((a, b) -> {
+        int c1 = a.getDate().compareTo(b.getDate());
+        if (c1 != 0)
+          return c1;
+        return Integer.compare(a.getSerial(), b.getSerial());
+      });
+
+      String display = displayNameByRoot.get(root);
+      String headerCur = "CZK";
+      for (Transaction tx : list) {
+        if (tx != null && tx.getPriceCurrency() != null) {
+          headerCur = tx.getPriceCurrency().trim().toUpperCase();
+          break;
+        }
+      }
+
+      String tickerAnchor = "id" + htmlEscape(display);
+      ofl.println("<table id=\"" + tickerAnchor + "\">");
+      ofl.println("<thead>");
+      ofl.println("<tr><th class=\"bold\" colspan=\"12\">" + htmlEscape(display) + " ( " + htmlEscape(headerCur)
+          + " )</th></tr>");
+      ofl.println("<tr>");
+      ofl.println("<th></th>");
+      ofl.println("<th>Datum obchodu</th>");
+      ofl.println("<th>Vypořádání</th>");
+      ofl.println("<th class=\"align-right\">Počet</th>");
+      ofl.println("<th class=\"align-right\">Cena</th>");
+      ofl.println("<th class=\"align-right\">Poplatky</th>");
+      ofl.println("<th class=\"align-right\">Objem</th>");
+      ofl.println("<th class=\"align-right\">Zisk</th>");
+      ofl.println("<th class=\"align-right\">%</th>");
+      ofl.println("<th class=\"align-right\">Daňové příjmy (CZK)</th>");
+      ofl.println("<th class=\"align-right\">Daňové výdaje (CZK)</th>");
+      ofl.println("<th class=\"align-right\">Stav CP</th>");
+      ofl.println("</tr>");
+      ofl.println("</thead><tbody>");
+
+      double pos = 0.0;
+      double sumFeesCur = 0.0;
+      double sumVolumeCur = 0.0;
+      double sumProfitCur = 0.0;
+      double sumIncomeCZK = 0.0;
+      double sumExpenseCZK = 0.0;
+
+      for (Transaction tx : list) {
+        boolean isBuy = tx.getDirection() == Transaction.DIRECTION_SBUY;
+        boolean isSell = tx.getDirection() == Transaction.DIRECTION_SSELL;
+        boolean isTransSub = tx.getDirection() == Transaction.DIRECTION_TRANS_SUB;
+        boolean isTransAdd = tx.getDirection() == Transaction.DIRECTION_TRANS_ADD;
+
+        double qty = tx.getAmount() != null ? tx.getAmount().doubleValue() : 0.0;
+        double price = tx.getPrice() != null ? tx.getPrice().doubleValue() : 0.0;
+        double fee = tx.getFee() != null ? tx.getFee().doubleValue() : 0.0;
+
+        String priceCur = tx.getPriceCurrency() != null ? tx.getPriceCurrency().trim().toUpperCase() : headerCur;
+        String feeCur = tx.getFeeCurrency() != null ? tx.getFeeCurrency().trim().toUpperCase() : priceCur;
+
+        // Convert fee into price currency for Objem / totals.
+        double feeInPriceCur = fee;
+        if (fee > 0 && feeCur != null && priceCur != null && !feeCur.equalsIgnoreCase(priceCur)
+            && tx.getExecutionDate() != null) {
+          try {
+            double feeCzk = fee * Settings.getExchangeRate(feeCur, tx.getExecutionDate());
+            double priceRate = Settings.getExchangeRate(priceCur, tx.getExecutionDate());
+            if (priceRate != 0)
+              feeInPriceCur = feeCzk / priceRate;
+          } catch (Exception e) {
+            // fallback: keep as-is
+          }
+        }
+
+        // Objem in trade currency (Kačka includes fees)
+        Double volume = null;
+        if (isBuy) {
+          volume = -(qty * price + feeInPriceCur);
+        } else if (isSell) {
+          volume = (qty * price - feeInPriceCur);
+        }
+
+        if (volume != null) {
+          sumFeesCur += feeInPriceCur;
+          sumVolumeCur += volume.doubleValue();
+        }
+
+        // Running position
+        if (isBuy)
+          pos += qty;
+        else if (isSell)
+          pos -= qty;
+        else if (isTransSub)
+          pos -= qty;
+        else if (isTransAdd)
+          pos += qty;
+        // Component-level position
+
+        ofl.println("<tr>");
+        if (isBuy)
+          ofl.println("<td class=\"center\"><span class=\"kicon buy\">B</span></td>");
+        else if (isSell)
+          ofl.println("<td class=\"center\"><span class=\"kicon sell\">S</span></td>");
+        else if (isTransSub)
+          ofl.println("<td class=\"center\"><span class=\"kicon\" style=\"background:#6c757d\" title=\"Corporate action: TRANS_SUB\">CA</span></td>");
+        else if (isTransAdd)
+          ofl.println("<td class=\"center\"><span class=\"kicon\" style=\"background:#6c757d\" title=\"Corporate action: TRANS_ADD\">CA</span></td>");
+        else
+          ofl.println("<td></td>");
+
+        java.util.Date effDate = tx.getExecutionDate() != null ? tx.getExecutionDate() : tx.getDate();
+        ofl.println("<td>" + htmlEscape(formatDateTime(tx.getDate())) + "</td>");
+        ofl.println("<td>" + htmlEscape(formatDateTime(effDate)) + "</td>");
+        ofl.println("<td class=\"align-right\">" + htmlEscape(fQty.format(qty)) + "</td>");
+
+        if (isTransSub || isTransAdd) {
+          ofl.println("<td class=\"align-right\">" + htmlEscape(isTransSub ? "Transformace SUB" : "Transformace ADD")
+              + "</td>");
+          ofl.println("<td class=\"align-right\"></td>");
+          ofl.println("<td class=\"align-right\"></td>");
+        } else {
+          ofl.println("<td class=\"align-right\">" + htmlEscape(fMoney.format(price)) + "</td>");
+          ofl.println("<td class=\"align-right\">" + htmlEscape(fMoney.format(feeInPriceCur)) + "</td>");
+          ofl.println(
+              "<td class=\"align-right\">" + (volume == null ? "" : htmlEscape(fMoney.format(volume.doubleValue())))
+                  + "</td>");
+        }
+
+        // Zisk/% and tax columns: show only when we have a computed aggregate for this transaction.
+        SellAgg agg = sellAggBySerial.get(tx.getSerial());
+        if (agg != null) {
+          String pClass = agg.profitCur < 0 ? "red" : "green";
+          double pct = 0.0;
+          if (agg.costBaseCur > 0)
+            pct = (agg.profitCur / agg.costBaseCur) * 100.0;
+          ofl.println("<td class=\"align-right bold " + pClass + "\">" + htmlEscape(fMoney.format(agg.profitCur))
+              + "</td>");
+          ofl.println("<td class=\"align-right\">" + htmlEscape(fPct.format(pct)) + "%</td>");
+          ofl.println("<td class=\"align-right\">" + htmlEscape(fMoney.format(agg.taxIncomeCZK)) + "</td>");
+          ofl.println("<td class=\"align-right\">" + htmlEscape(fMoney.format(agg.taxExpenseCZK)) + "</td>");
+          sumProfitCur += agg.profitCur;
+          sumIncomeCZK += agg.taxIncomeCZK;
+          sumExpenseCZK += agg.taxExpenseCZK;
+        } else {
+          ofl.println("<td class=\"align-right\"></td>");
+          ofl.println("<td class=\"align-right\"></td>");
+          ofl.println("<td class=\"align-right\"></td>");
+          ofl.println("<td class=\"align-right\"></td>");
+        }
+
+        ofl.println("<td class=\"align-right\">" + htmlEscape(fQty.format(pos)) + "</td>");
+        ofl.println("</tr>");
+      }
+
+      // Totals row
+      ofl.println("<tr class=\"border-top\">");
+      ofl.println("<td colspan=\"5\">Celkem " + htmlEscape(display) + "</td>");
+      ofl.println("<td class=\"align-right\">" + htmlEscape(fMoney.format(sumFeesCur)) + "</td>");
+      ofl.println("<td class=\"align-right\">" + htmlEscape(fMoney.format(sumVolumeCur)) + "</td>");
+      String pClass = sumProfitCur < 0 ? "red" : "green";
+      ofl.println("<td class=\"align-right bold " + pClass + "\">" + htmlEscape(fMoney.format(sumProfitCur))
+          + "</td>");
+      ofl.println("<td></td>");
+      ofl.println("<td class=\"align-right\">" + htmlEscape(fMoney.format(sumIncomeCZK)) + "</td>");
+      ofl.println("<td class=\"align-right\">" + htmlEscape(fMoney.format(sumExpenseCZK)) + "</td>");
+      ofl.println("<td></td>");
+      ofl.println("</tr>");
+
+      ofl.println("</tbody></table>");
+    }
+  }
+
+  private double parseDouble(String s) {
+    if (s == null)
+      return 0.0;
+    s = s.trim();
+    if (s.isEmpty() || s.equals("-"))
+      return 0.0;
+
+    try {
+      boolean negative = false;
+
+      // Normalize minus signs (Unicode variants to standard ASCII minus)
+      // \u2212 (Minus Sign), \u2013 (En Dash), \u2014 (Em Dash)
+      s = s.replace('\u2212', '-').replace('\u2013', '-').replace('\u2014', '-');
+
+      // Normalize spaces (remove standard spaces, NBSP \u00A0, Narrow NBSP \u202F)
+      s = s.replace(" ", "").replace("\u00A0", "").replace("\u202F", "");
+
+      // Negative values can be encoded as (123.45)
+      if (s.startsWith("(") && s.endsWith(")") && s.length() > 2) {
+        negative = true;
+        s = s.substring(1, s.length() - 1);
+      }
+
+      if (s.startsWith("-")) {
+        negative = true;
+        s = s.substring(1);
+      } else if (s.startsWith("+")) {
+        s = s.substring(1);
+      }
+
+      // Normalize thousands/decimal separators.
+      // Supports:
+      // - Czech: 123 456,78  -> after space removal: 123456,78
+      // - US:    123,456.78
+      // - EU:    123.456,78
+      int lastComma = s.lastIndexOf(',');
+      int lastDot = s.lastIndexOf('.');
+      if (lastComma >= 0 && lastDot >= 0) {
+        if (lastDot > lastComma) {
+          // Decimal '.' and ',' are thousands
+          s = s.replace(",", "");
+        } else {
+          // Decimal ',' and '.' are thousands
+          s = s.replace(".", "");
+          s = s.replace(',', '.');
+        }
+      } else if (lastComma >= 0) {
+        // Only comma -> decimal comma
+        s = s.replace(',', '.');
+      }
+
+      double v = Double.parseDouble(s);
+      return negative ? -v : v;
+    } catch (NumberFormatException e) {
+      // If parsing fails, return 0.0 which maps to green (neutral/gain)
+      // Ideally we should log this or output visual warning, but 0.0 is safe fallback
+      System.err.println("Failed to parse double: '" + s + "'");
+      return 0.0;
     }
   }
 
@@ -561,17 +1469,22 @@ public class ComputeWindow extends javax.swing.JDialog {
     try {
       String dateStr = (String) model.getValueAt(rowIndex, dateCol);
       String feeStr = (String) model.getValueAt(rowIndex, feeCol);
-      if (dateStr == null || feeStr == null) return "-";
+      if (dateStr == null || feeStr == null)
+        return "-";
       dateStr = dateStr.trim();
       feeStr = feeStr.trim();
-      if (dateStr.isEmpty() || dateStr.equals("-")) return "-";
-      if (feeStr.isEmpty() || feeStr.equals("-")) return "-";
+      if (dateStr.isEmpty() || dateStr.equals("-"))
+        return "-";
+      if (feeStr.isEmpty() || feeStr.equals("-"))
+        return "-";
 
       String[] parts = feeStr.split(" ", 2);
-      if (parts.length != 2) return "-";
-      double fee = Double.parseDouble(parts[0].replace(',', '.'));
+      if (parts.length != 2)
+        return "-";
+      double fee = Double.parseDouble(parts[0].replace(',', '.').replace(" ", "")); // Handle NBSP in parsing
       String cur = parts[1].trim();
-      if (cur.isEmpty()) return "-";
+      if (cur.isEmpty())
+        return "-";
 
       LocalDateTime ldt = LocalDateTime.parse(dateStr, CZ_DATE_TIME_FMT);
       java.util.Date d = java.util.Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant());
@@ -626,6 +1539,8 @@ public class ComputeWindow extends javax.swing.JDialog {
     ((DefaultTableModel) tableCP.getModel()).setNumRows(0);
     ((DefaultTableModel) tableDer.getModel()).setNumRows(0);
     ((DefaultTableModel) tableCash.getModel()).setNumRows(0);
+
+    lastComputedCpTaxTrades.clear();
 
   }
 
@@ -1661,8 +2576,37 @@ public class ComputeWindow extends javax.swing.JDialog {
             stats.cash_sumCZK += t.profitCZK;
           else
             stats.der_sumCZK += t.profitCZK;
-        } else
+
+          // Persist CP tax-trade export data (for Kačka-like summaries in HTML new).
+          if (cp) {
+            CpTaxExportTrade te = new CpTaxExportTrade();
+            te.ticker = t.close != null && t.close.ticker != null ? t.close.ticker : t.open.ticker;
+            te.openTradeDate = t.open.tradeDate;
+            te.openExecutionDate = t.open.executionDate;
+            te.closeTradeDate = t.close != null ? t.close.tradeDate : null;
+            te.closeExecutionDate = t.close != null ? t.close.executionDate : null;
+
+            // Income year is based on executionDate (t.getIncomeDate uses open.date/close.date).
+            te.incomeExecutionDate = t.getIncomeDate();
+            te.incomeTradeDate = t.open.amount < 0 ? t.open.tradeDate : (t.close != null ? t.close.tradeDate : null);
+
+            // Currency for per-currency reporting.
+            String cur = null;
+            if (t.open != null && t.open.priceCurrency != null)
+              cur = t.open.priceCurrency;
+            else if (t.close != null && t.close.priceCurrency != null)
+              cur = t.close.priceCurrency;
+            te.currency = cur != null ? cur.trim().toUpperCase() : "CZK";
+
+            // Tax numbers in CZK.
+            te.taxIncomeCZK = t.openCreditCZK + t.closeCreditCZK;
+            te.taxExpenseCZK = -(t.openDebitCZK + t.closeDebitCZK);
+            te.profitCZK = t.profitCZK;
+            lastComputedCpTaxTrades.add(te);
+          }
+        } else {
           rowData.add("-");
+        }
 
         if ((overTaxFreeDuration != IncludeOverTaxFreeDuration.INCLUDE) && (cpOverTaxFreeDuration)) {
           if (t.open.date.before(Stocks.TAX_FREE_DURATION_BOUNDARY))

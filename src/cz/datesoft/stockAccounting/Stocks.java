@@ -485,6 +485,22 @@ public class Stocks {
     public Date date;
 
     /**
+     * Trade date/time (when the trade was executed).
+     *
+     * Note: For some generated half-trades (e.g. synthetic autoclose), this may be
+     * equal to {@link #date}.
+     */
+    public Date tradeDate;
+
+    /**
+     * Execution/settlement date/time.
+     *
+     * Historically, {@link #date} stored this value; we keep it for
+     * backward-compatibility.
+     */
+    public Date executionDate;
+
+    /**
      * Ticker
      */
     public String ticker;
@@ -517,6 +533,21 @@ public class Stocks {
     public HalfTrade(Date date, String ticker, double amount, double price, double fee, String priceCurrency,
         String feeCurrency) {
       this.date = date;
+      this.tradeDate = date;
+      this.executionDate = date;
+      this.ticker = ticker;
+      this.amount = amount;
+      this.price = price;
+      this.fee = fee;
+      this.priceCurrency = priceCurrency;
+      this.feeCurrency = feeCurrency;
+    }
+
+    public HalfTrade(Date executionDate, Date tradeDate, String ticker, double amount, double price, double fee,
+        String priceCurrency, String feeCurrency) {
+      this.date = executionDate;
+      this.executionDate = executionDate;
+      this.tradeDate = tradeDate != null ? tradeDate : executionDate;
       this.ticker = ticker;
       this.amount = amount;
       this.price = price;
@@ -813,16 +844,16 @@ public class Stocks {
 
           // Get what we bought
           double openfee = f.decreaseAmount(am);
-          Stocks.HalfTrade open = new Stocks.HalfTrade(f.getOpened(), f.getOriginalTicker(), -am * f.getOAMRatio(),
-              f.getPrice(), openfee, f.getPriceCurrency(), f.getFeeCurrency());
+          Stocks.HalfTrade open = new Stocks.HalfTrade(f.getOpened(), f.tradeDate, f.getOriginalTicker(),
+              -am * f.getOAMRatio(), f.getPrice(), openfee, f.getPriceCurrency(), f.getFeeCurrency());
           if (f.isEmpty()) {
             // We can remove this fragment
             deletedFragments.add(f);
           }
 
           // And what we sold
-          Stocks.HalfTrade close = new Stocks.HalfTrade(clearingDate, ticker, -am, price, fee, priceCurrency,
-              feeCurrency);
+          Stocks.HalfTrade close = new Stocks.HalfTrade(clearingDate, tradeDate, ticker, -am, price, fee,
+              priceCurrency, feeCurrency);
 
           // Add trade
           trades.add(new StockTrade(secType, open, close, f.getSplits(), f.getRenames()));
@@ -833,13 +864,13 @@ public class Stocks {
           /* We need more fragments - use this one wholy */
 
           // Create buy halftrade
-          Stocks.HalfTrade open = new Stocks.HalfTrade(f.getOpened(), f.getOriginalTicker(),
+          Stocks.HalfTrade open = new Stocks.HalfTrade(f.getOpened(), f.tradeDate, f.getOriginalTicker(),
               f.getAmount() * f.getOAMRatio(), f.getPrice(), f.getFee(), f.getPriceCurrency(), f.getFeeCurrency());
 
           // And what we sold
           double closeFee = ((double) Math.round(fee * Math.abs(((double) f.getAmount()) / am) * 100)) / 100;
-          Stocks.HalfTrade close = new Stocks.HalfTrade(clearingDate, ticker, f.getAmount(), price, closeFee,
-              priceCurrency, feeCurrency);
+          Stocks.HalfTrade close = new Stocks.HalfTrade(clearingDate, tradeDate, ticker, f.getAmount(), price,
+              closeFee, priceCurrency, feeCurrency);
 
           // Add trade
           trades.add(new StockTrade(secType, open, close, f.getSplits(), f.getRenames()));
@@ -1320,8 +1351,10 @@ public class Stocks {
           cal.setTime(f.opened);
           if (cal.get(GregorianCalendar.YEAR) == year) {
             /* In the correct year - generate pseudo - trade */
-            HalfTrade open = new HalfTrade(f.opened, ticker, f.amount, f.price, f.fee, f.priceCurrency, f.feeCurrency);
-            HalfTrade close = new HalfTrade(endOfYear, ticker, -f.amount, 0, 0, f.priceCurrency, f.feeCurrency);
+            HalfTrade open = new HalfTrade(f.opened, f.tradeDate, ticker, f.amount, f.price, f.fee, f.priceCurrency,
+                f.feeCurrency);
+            HalfTrade close = new HalfTrade(endOfYear, endOfYear, ticker, -f.amount, 0, 0, f.priceCurrency,
+                f.feeCurrency);
 
             // Generate complete "trade"
             StockTrade st = new StockTrade(i.secType, open, close, f.getSplits(), f.getRenames());

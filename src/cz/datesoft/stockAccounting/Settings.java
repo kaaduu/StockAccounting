@@ -238,6 +238,42 @@ public class Settings {
   }
 
   /**
+   * Get last opened file path
+   */
+  public static String getLastOpenedFile() {
+    Preferences p = Preferences.userNodeForPackage(Settings.class);
+    return p.get("lastOpenedFile", null);
+  }
+
+  /**
+   * Set last opened file path
+   */
+  public static void setLastOpenedFile(String path) {
+    Preferences p = Preferences.userNodeForPackage(Settings.class);
+    if (path == null) {
+      p.remove("lastOpenedFile");
+    } else {
+      p.put("lastOpenedFile", path);
+    }
+  }
+
+  /**
+   * Get auto-load last file setting
+   */
+  public static boolean getAutoLoadLastFile() {
+    Preferences p = Preferences.userNodeForPackage(Settings.class);
+    return p.getBoolean("autoLoadLastFile", false);
+  }
+
+  /**
+   * Set auto-load last file setting
+   */
+  public static void setAutoLoadLastFile(boolean autoLoad) {
+    Preferences p = Preferences.userNodeForPackage(Settings.class);
+    p.putBoolean("autoLoadLastFile", autoLoad);
+  }
+
+  /**
    * Ratios getter
    */
   public static SortedSet<CurrencyRatio> getRatios() {
