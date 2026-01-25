@@ -46,6 +46,12 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Import (IBKR Flex): informace o verzi CSV se zobrazuje vedle výběru formátu; u CSV v2 se v tooltipu vypíší obsažené sekce (např. Trades, Corporate Actions).
 - Import (IBKR Flex, CSV v2): tooltip se nyní zobrazuje seskupeně podle účtu (BOA) a varování o chybějících povinných sekcích se vyhodnocuje pro každý účet zvlášť.
 - Import (IBKR Flex, CSV v2): vedle informace o verzi CSV je tlačítko „Detaily...“, které otevře okno se seznamem sekcí seskupeným podle účtu (podobné dialogu „Nápověda → Logy“).
+- Import (IBKR Flex, CSV v2): zpracování sekce `CTRN` (Cash Transactions) jako dividend (Dividends / Payment In Lieu Of Dividends) a srážkové daně/poplatků (Withholding Tax / Other Fees) včetně podpory tickeru `CASH.internal`.
+- Import (IBKR Flex, CSV v2): pro dividendy z `CTRN` se ukládá `TransactionID` do sloupce „ID transakce“.
+- Import (IBKR Flex): přidán režim „Pouze dividendy“.
+- Import (IBKR Flex): režim „Obchody + transformace“ přejmenován na „Vše (obchody + transformace + dividendy)“.
+- Nastavení → Kurzy měn: přidán export jednotných kurzů do JSON.
+- Hlavní okno: možnost označit řádky jako „Ignorovat“ (šedé) – takové řádky se nepočítají do dividend ani obchodních výpočtů.
 
 ### Opraveno
 - Import (IBKR Flex): při „Načíst ze souboru" se nyní vždy vymaže předchozí náhled před načtením nového souboru, aby nedocházelo k matoucímu zobrazení starých dat.

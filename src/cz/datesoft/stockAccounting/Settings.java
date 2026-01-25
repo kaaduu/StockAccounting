@@ -1311,6 +1311,54 @@ public class Settings {
   }
 
   /**
+   * Export unified exchange rates ("jednotny kurz") to JSON file.
+   * This exports Settings.ratios (currency|year => ratio).
+   */
+  public static void exportUnifiedRatesJson(java.io.File file) throws Exception {
+    if (ratios == null || ratios.isEmpty()) {
+      throw new Exception("Žádné jednotné kurzy k exportu");
+    }
+
+    java.io.PrintWriter writer = null;
+    try {
+      writer = new java.io.PrintWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), "UTF-8"));
+
+      java.util.List<CurrencyRatio> list = new java.util.ArrayList<CurrencyRatio>(ratios);
+      // CurrencyRatio.compareTo sorts by year desc, then currency. For export, use year asc, then currency.
+      java.util.Collections.sort(list, new java.util.Comparator<CurrencyRatio>() {
+        public int compare(CurrencyRatio a, CurrencyRatio b) {
+          if (a == null && b == null) return 0;
+          if (a == null) return -1;
+          if (b == null) return 1;
+          if (a.getYear() < b.getYear()) return -1;
+          if (a.getYear() > b.getYear()) return 1;
+          return a.getCurrency().compareTo(b.getCurrency());
+        }
+      });
+
+      writer.println("{");
+      writer.println("  \"type\": \"unifiedRates\",");
+      writer.println("  \"rates\": [");
+
+      for (int i = 0; i < list.size(); i++) {
+        CurrencyRatio r = list.get(i);
+        if (r == null) continue;
+        String comma = (i == list.size() - 1) ? "" : ",";
+        // currency is [A-Z]+; safe for JSON
+        writer.println("    {\"currency\": \"" + r.getCurrency() + "\", \"year\": " + r.getYear() + ", \"rate\": "
+            + java.lang.Double.toString(r.getRatio()) + "}" + comma);
+      }
+
+      writer.println("  ]");
+      writer.println("}");
+    } finally {
+      if (writer != null) {
+        writer.close();
+      }
+    }
+  }
+
+  /**
    * Import daily rates from CSV file
    */
   public static ImportResult importRates(java.io.File file, ConflictResolutionStrategy strategy) throws Exception {

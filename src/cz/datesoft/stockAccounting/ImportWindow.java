@@ -111,6 +111,7 @@ public class ImportWindow extends javax.swing.JFrame {
   private static final int IBKR_MODE_TRADES_AND_TRANS = 0;
   private static final int IBKR_MODE_TRADES_ONLY = 1;
   private static final int IBKR_MODE_TRANS_ONLY = 2;
+  private static final int IBKR_MODE_DIVI_ONLY = 3;
 
   // Obsolete format warning
   private static final String OBSOLETE_FORMAT_WARNING = "\u26a0\ufe0f Obsolete - code unmaintained";
@@ -791,11 +792,13 @@ public class ImportWindow extends javax.swing.JFrame {
       parser.setIncludeCorporateActions(cbIBKRFlexIncludeCorporateActions == null || cbIBKRFlexIncludeCorporateActions.isSelected());
       parser.setAllowedCorporateActionTypes(getSelectedIbkrCorporateActionTypes());
       int mode = getIbkrImportMode();
-      parser.setIncludeTrades(mode != IBKR_MODE_TRANS_ONLY);
+      parser.setIncludeTrades(mode != IBKR_MODE_TRANS_ONLY && mode != IBKR_MODE_DIVI_ONLY);
       if (mode == IBKR_MODE_TRADES_ONLY) {
         parser.setIncludeCorporateActions(false);
       } else if (mode == IBKR_MODE_TRANS_ONLY) {
         parser.setIncludeCorporateActions(true);
+      } else if (mode == IBKR_MODE_DIVI_ONLY) {
+        parser.setIncludeCorporateActions(false);
       }
       Vector<Transaction> parsedTransactions = parser.parseCsvReport(lastIbkrCsvContent);
       lastIBKRParser = parser;
@@ -1306,24 +1309,30 @@ public class ImportWindow extends javax.swing.JFrame {
 
     int mode = getIbkrImportMode();
     boolean transOnly = (mode == IBKR_MODE_TRANS_ONLY);
+    boolean diviOnly = (mode == IBKR_MODE_DIVI_ONLY);
 
     // Disable trade filters when importing only transformations
     if (bIBKRFlexAssetFilter != null) {
-      bIBKRFlexAssetFilter.setEnabled(!transOnly);
+      bIBKRFlexAssetFilter.setEnabled(!transOnly && !diviOnly);
     }
 
     if (cbUpdateDuplicates != null) {
-      cbUpdateDuplicates.setEnabled(!transOnly);
+      cbUpdateDuplicates.setEnabled(!transOnly && !diviOnly);
     }
 
     boolean enableCaTypes = (cbIBKRFlexIncludeCorporateActions != null && cbIBKRFlexIncludeCorporateActions.isSelected());
-    if (mode == IBKR_MODE_TRADES_ONLY) {
+    if (mode == IBKR_MODE_TRADES_ONLY || diviOnly) {
       enableCaTypes = false;
     }
     if (cbIBKRFlexCaRS != null) cbIBKRFlexCaRS.setEnabled(enableCaTypes);
     if (cbIBKRFlexCaTC != null) cbIBKRFlexCaTC.setEnabled(enableCaTypes);
     if (cbIBKRFlexCaIC != null) cbIBKRFlexCaIC.setEnabled(enableCaTypes);
     if (cbIBKRFlexCaTO != null) cbIBKRFlexCaTO.setEnabled(enableCaTypes);
+
+    // Hide/disable transformations include checkbox when it does not apply
+    if (cbIBKRFlexIncludeCorporateActions != null) {
+      cbIBKRFlexIncludeCorporateActions.setEnabled(!diviOnly);
+    }
   }
 
   private void setIbkrFlexUiVisible(boolean visible) {
@@ -2703,11 +2712,12 @@ public class ImportWindow extends javax.swing.JFrame {
       cbIBKRFlexCaIC.setSelected(false);
       cbIBKRFlexCaTO.setSelected(false);
       cbIBKRFlexImportMode = new javax.swing.JComboBox<>(new String[] {
-        "Obchody + transformace",
+        "Vše (obchody + transformace + dividendy)",
         "Pouze obchody",
-        "Pouze transformace"
+        "Pouze transformace",
+        "Pouze dividendy"
       });
-      cbIBKRFlexImportMode.setToolTipText("Určuje, zda se mají importovat obchody, transformace nebo obojí");
+      cbIBKRFlexImportMode.setToolTipText("Určuje, které typy dat se mají importovat (dividendy se načítají ze sekce CTRN, pokud je v CSV přítomná)");
       lblIBKRFlexStatus = new javax.swing.JLabel("Vyberte zdroj dat: API nebo lokální soubor");
       pIBKRFlexButtons = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
 
@@ -3207,11 +3217,13 @@ public class ImportWindow extends javax.swing.JFrame {
       importer.setAllowedAssetClasses(getSelectedIbkrAssetClasses());
       importer.setIncludeCorporateActions(cbIBKRFlexIncludeCorporateActions == null || cbIBKRFlexIncludeCorporateActions.isSelected());
       int mode = getIbkrImportMode();
-      importer.setIncludeTrades(mode != IBKR_MODE_TRANS_ONLY);
+      importer.setIncludeTrades(mode != IBKR_MODE_TRANS_ONLY && mode != IBKR_MODE_DIVI_ONLY);
       if (mode == IBKR_MODE_TRADES_ONLY) {
         importer.setIncludeCorporateActions(false);
       } else if (mode == IBKR_MODE_TRANS_ONLY) {
         importer.setIncludeCorporateActions(true);
+      } else if (mode == IBKR_MODE_DIVI_ONLY) {
+        importer.setIncludeCorporateActions(false);
       }
       importer.setParentFrame(mainWindow);
       

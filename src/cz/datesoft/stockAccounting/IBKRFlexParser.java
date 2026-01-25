@@ -88,6 +88,13 @@ public class IBKRFlexParser {
     private int COL_ACTION_ID = -1;          // "ActionID"
     private boolean columnsDetected = false;
 
+    // Cash transactions (CTRN) section columns
+    private int COL_CTRN_DATETIME = -1;      // "Date/Time"
+    private int COL_CTRN_SETTLE_DATE = -1;   // "SettleDate"
+    private int COL_CTRN_AMOUNT = -1;        // "Amount"
+    private int COL_CTRN_TYPE = -1;          // "Type" (Dividends / Withholding Tax / Payment In Lieu / Other Fees)
+    private int COL_CTRN_TRANSACTION_ID = -1; // "TransactionID"
+
     private void resetDetectedColumns() {
         COL_DATE = -1;
         COL_SETTLEMENT_DATE = -1;
@@ -115,6 +122,11 @@ public class IBKRFlexParser {
         COL_CA_ACTION_DESCRIPTION = -1;
         COL_CA_TYPE = -1;
         COL_ACTION_ID = -1;
+        COL_CTRN_DATETIME = -1;
+        COL_CTRN_SETTLE_DATE = -1;
+        COL_CTRN_AMOUNT = -1;
+        COL_CTRN_TYPE = -1;
+        COL_CTRN_TRANSACTION_ID = -1;
         columnsDetected = false;
     }
 
@@ -285,6 +297,7 @@ public class IBKRFlexParser {
         TRADES,
         OPTIONS_SUMMARY,
         CORPORATE_ACTIONS,
+        CASH_TRANSACTIONS,
         UNKNOWN
     }
 
@@ -371,6 +384,16 @@ public class IBKRFlexParser {
         boolean hasActionId = lower.contains("\"actionid\"") || lower.contains("actionid");
         if (hasActionDescription && hasActionId) {
             return SectionType.CORPORATE_ACTIONS;
+        }
+
+        // Cash transactions section (dividends, withholding tax, fees, interest)
+        boolean hasAvailableForTradingDate = lower.contains("availablefortradingdate") || lower.contains("available for trading date");
+        boolean hasSettleDate = lower.contains("settledate") || lower.contains("settle date");
+        boolean hasAmount = lower.contains(",amount,") || lower.contains("\"amount\"") || lower.contains("amount,") || lower.contains(",amount");
+        boolean hasDateTimeSlash = lower.contains("date/time") || lower.contains("date / time");
+        // CTRN has a specific combination: Date/Time, SettleDate, AvailableForTradingDate, Amount.
+        if (hasDateTimeSlash && hasSettleDate && hasAvailableForTradingDate && hasAmount) {
+            return SectionType.CASH_TRANSACTIONS;
         }
 
         return SectionType.UNKNOWN;
@@ -933,10 +956,10 @@ public class IBKRFlexParser {
             else if (h.equals("settledatetarget") || h.equals("settledate") || h.equals("settledatesource")
                     || (h.contains("settlement") && h.contains("date"))) {
                 COL_SETTLEMENT_DATE = i;
-            }
-            // Corporate actions type (RS/TC/IC/TO) - in corporate section "Type" means action type
-            else if (h.equals("type")) {
-                COL_CA_TYPE = i;
+                // v2 CTRN uses SettleDate for cash transaction settlement.
+                if (COL_CTRN_SETTLE_DATE < 0) {
+                    COL_CTRN_SETTLE_DATE = i;
+                }
             }
             // Transaction type
             else if (h.equals("transactiontype") || h.equals("transaction type")) {
@@ -1023,13 +1046,31 @@ public class IBKRFlexParser {
             else if (h.equals("datetime") || h.equals("tradedatetime")) {
                 COL_DATETIME = i;
             }
-            // Corporate actions: Date/Time (note the slash)
+            // Date/Time (note the slash) - used by corporate actions and cash transactions
             else if (h.equals("date/time") || h.equals("date / time")) {
                 COL_CA_DATETIME = i;
+                COL_CTRN_DATETIME = i;
+            }
+            // Cash transactions (CTRN)
+            else if (h.equals("settledate") || h.equals("settle date") || h.equals("settledatetarget") || h.equals("settledatesource")) {
+                COL_CTRN_SETTLE_DATE = i;
+            }
+            else if (h.equals("amount")) {
+                COL_CTRN_AMOUNT = i;
+            }
+            // Note: "Type" is ambiguous (Corporate Actions type vs Cash transaction type). We store both.
+            else if (h.equals("type")) {
+                COL_CTRN_TYPE = i;
+                if (COL_CA_TYPE < 0) {
+                    COL_CA_TYPE = i;
+                }
             }
             // Transaction ID (prefer column detection over hardcoded index)
             else if (h.equals("transactionid") || h.equals("transaction id") || h.equals("ibexecid")) {
                 COL_TRANSACTION_ID = i;
+                if (COL_CTRN_TRANSACTION_ID < 0) {
+                    COL_CTRN_TRANSACTION_ID = i;
+                }
             }
             // IB Order ID (shared across fills, needed for consolidation)
             else if (h.equals("iborderid") || h.equals("ib order id")) {
@@ -1038,6 +1079,12 @@ public class IBKRFlexParser {
             // Multiplier (contract size for options/futures)
             else if (h.equals("multiplier")) {
                 COL_MULTIPLIER = i;
+            }
+            // CA type (RS/TC/IC/TO)
+            else if (h.equals("type")) {
+                // Note: also used in CTRN; we store both and validate per-section.
+                COL_CA_TYPE = i;
+                COL_CTRN_TYPE = i;
             }
         }
 
@@ -1077,6 +1124,12 @@ public class IBKRFlexParser {
         logger.info("  CA ActionDescription: " + COL_CA_ACTION_DESCRIPTION);
         logger.info("  CA Type: " + COL_CA_TYPE);
         logger.info("  ActionID: " + COL_ACTION_ID);
+
+        logger.info("  CTRN Date/Time: " + COL_CTRN_DATETIME);
+        logger.info("  CTRN SettleDate: " + COL_CTRN_SETTLE_DATE);
+        logger.info("  CTRN Amount: " + COL_CTRN_AMOUNT);
+        logger.info("  CTRN Type: " + COL_CTRN_TYPE);
+        logger.info("  CTRN TransactionID: " + COL_CTRN_TRANSACTION_ID);
         
         // Warnings for optional but useful columns
         if (COL_BUY_SELL < 0) {
@@ -1117,6 +1170,17 @@ public class IBKRFlexParser {
             if (COL_QUANTITY < 0) missing.add("Quantity");
             if (!missing.isEmpty()) {
                 throw new RuntimeException("Cannot parse IBKR CSV Corporate Actions section - missing required columns: " + missing);
+            }
+        }
+
+        if (sectionType == SectionType.CASH_TRANSACTIONS) {
+            java.util.List<String> missing = new java.util.ArrayList<>();
+            if (COL_CTRN_DATETIME < 0 && COL_CA_DATETIME < 0) missing.add("Date/Time");
+            if (COL_CTRN_SETTLE_DATE < 0 && COL_SETTLEMENT_DATE < 0) missing.add("SettleDate");
+            if (COL_CTRN_AMOUNT < 0) missing.add("Amount");
+            if (COL_CTRN_TYPE < 0) missing.add("Type");
+            if (!missing.isEmpty()) {
+                throw new RuntimeException("Cannot parse IBKR CSV Cash Transactions section - missing required columns: " + missing);
             }
         }
     }
@@ -1420,6 +1484,12 @@ public class IBKRFlexParser {
             }
         }
 
+            // Cash transactions (CTRN) can be treated as dividends/taxes in newer v2 exports.
+            // We only parse these when the current section is explicitly detected as CASH_TRANSACTIONS.
+            if (currentSectionType == SectionType.CASH_TRANSACTIONS) {
+                return parseCashTransaction(fields);
+            }
+
         // Parse trade date - prefer DateTime (has time component) over Date
         String dateStr;
         if (COL_DATETIME >= 0 && COL_DATETIME < fields.length && !fields[COL_DATETIME].trim().isEmpty()) {
@@ -1568,6 +1638,118 @@ public class IBKRFlexParser {
         }
 
         return transaction;
+    }
+
+    private Transaction parseCashTransaction(String[] fields) {
+        try {
+            // Required fields
+            int idxDateTime = COL_CTRN_DATETIME >= 0 ? COL_CTRN_DATETIME : COL_CA_DATETIME;
+            if (idxDateTime < 0 || idxDateTime >= fields.length) return null;
+            if (COL_CTRN_AMOUNT < 0 || COL_CTRN_AMOUNT >= fields.length) return null;
+            if (COL_CTRN_TYPE < 0 || COL_CTRN_TYPE >= fields.length) return null;
+
+            String type = fields[COL_CTRN_TYPE].trim();
+            if (type.isEmpty()) return null;
+
+            String dateTimeStr = fields[idxDateTime].trim();
+            if (dateTimeStr.isEmpty()) return null;
+
+            Date tradeDate = parseDate(dateTimeStr);
+
+            Date settlementDate = tradeDate;
+            int idxSettle = COL_CTRN_SETTLE_DATE >= 0 ? COL_CTRN_SETTLE_DATE : COL_SETTLEMENT_DATE;
+            if (idxSettle >= 0 && idxSettle < fields.length) {
+                String settleStr = fields[idxSettle].trim();
+                if (!settleStr.isEmpty()) {
+                    try {
+                        settlementDate = parseDate(settleStr);
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+
+            String currency = (COL_CURRENCY >= 0 && COL_CURRENCY < fields.length)
+                ? fields[COL_CURRENCY].trim()
+                : "USD";
+            if (currency.isEmpty()) currency = "USD";
+
+            String ticker = (COL_SYMBOL >= 0 && COL_SYMBOL < fields.length)
+                ? fields[COL_SYMBOL].trim()
+                : "";
+
+            // Some withholding tax rows are not tied to a symbol (interest withholding, etc.).
+            if (ticker.isEmpty() && type.equalsIgnoreCase("Withholding Tax")) {
+                ticker = "CASH.internal";
+            }
+            if (ticker.isEmpty()) {
+                // Do not import cash rows that we cannot attribute.
+                return null;
+            }
+
+            double amount = parseDouble(fields[COL_CTRN_AMOUNT]);
+            if (amount == 0.0) {
+                return null;
+            }
+
+            int direction;
+            if (type.equalsIgnoreCase("Dividends") || type.equalsIgnoreCase("Payment In Lieu Of Dividends")) {
+                direction = Transaction.DIRECTION_DIVI_BRUTTO;
+            } else if (type.equalsIgnoreCase("Withholding Tax")) {
+                direction = Transaction.DIRECTION_DIVI_TAX;
+            } else if (type.equalsIgnoreCase("Other Fees")) {
+                // Import dividend-related fees as tax-like costs.
+                // This matches user expectation: include ADR dividend fees in dividend analysis.
+                direction = Transaction.DIRECTION_DIVI_TAX;
+            } else {
+                return null;
+            }
+
+            // Amount for dividends engine is stored in price, with amount=1.
+            double price = amount;
+
+            String description = (COL_NAME >= 0 && COL_NAME < fields.length) ? fields[COL_NAME].trim() : "";
+            String code = (COL_CODE >= 0 && COL_CODE < fields.length) ? fields[COL_CODE].trim() : "";
+
+            Transaction tx = new Transaction(
+                0,
+                tradeDate,
+                direction,
+                ticker,
+                1.0,
+                price,
+                currency,
+                0.0,
+                currency,
+                "",
+                settlementDate,
+                description
+            );
+
+            tx.setBroker("IB");
+            if (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length) {
+                String accountId = fields[COL_CLIENT_ACCOUNT_ID].trim();
+                if (!accountId.isEmpty()) tx.setAccountId(accountId);
+            }
+            // Use TransactionID when present
+            int idxTxnId = COL_CTRN_TRANSACTION_ID >= 0 ? COL_CTRN_TRANSACTION_ID : COL_TRANSACTION_ID;
+            if (idxTxnId >= 0 && idxTxnId < fields.length) {
+                String txnId = fields[idxTxnId].trim();
+                if (!txnId.isEmpty()) tx.setTxnId(txnId);
+            }
+            if (!code.isEmpty()) tx.setCode(code);
+
+            // Add extra context so user can distinguish cash types
+            if (!type.isEmpty()) {
+                String base = description == null ? "" : description;
+                String note = base + "|Broker:IB|Type:" + type;
+                tx.setNote(note);
+            }
+
+            return tx;
+        } catch (Exception e) {
+            logger.warning("Failed to parse cash transaction row: " + e.getMessage());
+            return null;
+        }
     }
 
     /**

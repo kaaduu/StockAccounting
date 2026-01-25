@@ -99,7 +99,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
   /** Column names */
   private String[] columnNames = { "Datum", "Typ", "Směr", "Ticker", "Množství", "Kurs", "Měna kursu", "Poplatky",
-      "Měna poplatků", "Trh", "Datum vypořádání", "Broker", "ID účtu", "ID transakce", "Efekt", "Note" };
+      "Měna poplatků", "Trh", "Datum vypořádání", "Broker", "ID účtu", "ID transakce", "Efekt", "Note", "Ignorovat" };
 
   /**
    * File we are stored in
@@ -433,6 +433,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         return tx.getEffect();
       case 15:
         return tx.getNote();
+      case 16:
+        return tx.isDisabled();
       default:
         return null;
     }
@@ -535,6 +537,17 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         fireTableCellUpdated(row, 13); // TxnID
         fireTableCellUpdated(row, 14); // Effect
         break;
+      case 16: // Ignorovat
+        boolean disable;
+        if (value instanceof Boolean) {
+          disable = (Boolean) value;
+        } else {
+          String s2 = value == null ? "" : value.toString().trim();
+          disable = s2.equalsIgnoreCase("ano") || s2.equals("1") || s2.equalsIgnoreCase("true") || s2.equalsIgnoreCase("y");
+        }
+        tx.setDisabled(disable);
+        fireTableCellUpdated(row, col);
+        break;
     }
 
     modified = true;
@@ -576,6 +589,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       case 7:
       case 4:
         return Double.class;
+      case 16:
+        return Boolean.class;
       default:
         return Object.class;
     }
@@ -598,6 +613,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     if (column >= 11 && column <= 14) {
       return false;
     }
+    // Ignorovat is editable only for real rows (not the extra last empty row)
+    if (column == 16) {
+      return row < ((filteredRows != null) ? filteredRows : rows).size();
+    }
     return true;
   }
 
@@ -612,6 +631,14 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     Vector<Transaction> v = (filteredRows != null) ? filteredRows : rows;
 
     return v.get(row);
+  }
+
+  public void toggleDisabledAt(int row) {
+    Transaction tx = getRowAt(row);
+    if (tx == null) return;
+    tx.setDisabled(!tx.isDisabled());
+    modified = true;
+    fireTableRowsUpdated(row, row);
   }
 
   /**

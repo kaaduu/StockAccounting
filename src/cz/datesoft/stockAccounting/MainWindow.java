@@ -55,21 +55,29 @@ public class MainWindow extends javax.swing.JFrame {
       // Check if this row was recently inserted/updated (import highlighting)
       if (!isSelected) {
         try {
-          if (Settings.getHighlightInsertedEnabled() && transactions.isRecentlyInserted(row)) {
-            c.setBackground(Settings.getHighlightInsertedColor());
-          } else if (Settings.getHighlightUpdatedEnabled() && transactions.isRecentlyUpdated(row)) {
-            c.setBackground(Settings.getHighlightUpdatedColor());
-
-            int modelCol = table.convertColumnIndexToModel(column);
-            if (transactions.isRecentlyUpdatedColumn(row, modelCol)) {
-              c.setFont(table.getFont().deriveFont(java.awt.Font.BOLD));
-            }
+          Transaction tx = transactions.getRowAt(row);
+          if (tx != null && tx.isDisabled()) {
+            c.setBackground(new java.awt.Color(245, 245, 245));
+            c.setForeground(new java.awt.Color(130, 130, 130));
           } else {
-            c.setBackground(java.awt.Color.WHITE);
+            c.setForeground(java.awt.Color.BLACK);
+            if (Settings.getHighlightInsertedEnabled() && transactions.isRecentlyInserted(row)) {
+              c.setBackground(Settings.getHighlightInsertedColor());
+            } else if (Settings.getHighlightUpdatedEnabled() && transactions.isRecentlyUpdated(row)) {
+              c.setBackground(Settings.getHighlightUpdatedColor());
+
+              int modelCol = table.convertColumnIndexToModel(column);
+              if (transactions.isRecentlyUpdatedColumn(row, modelCol)) {
+                c.setFont(table.getFont().deriveFont(java.awt.Font.BOLD));
+              }
+            } else {
+              c.setBackground(java.awt.Color.WHITE);
+            }
           }
         } catch (Exception e) {
           // Safety: if checking fails, just use white background
           c.setBackground(java.awt.Color.WHITE);
+          c.setForeground(java.awt.Color.BLACK);
         }
       }
 
@@ -94,21 +102,29 @@ public class MainWindow extends javax.swing.JFrame {
       // Check if this row was recently inserted/updated (import highlighting)
       if (!isSelected) {
         try {
-          if (Settings.getHighlightInsertedEnabled() && transactions.isRecentlyInserted(row)) {
-            c.setBackground(Settings.getHighlightInsertedColor());
-          } else if (Settings.getHighlightUpdatedEnabled() && transactions.isRecentlyUpdated(row)) {
-            c.setBackground(Settings.getHighlightUpdatedColor());
-
-            int modelCol = table.convertColumnIndexToModel(column);
-            if (transactions.isRecentlyUpdatedColumn(row, modelCol)) {
-              c.setFont(table.getFont().deriveFont(java.awt.Font.BOLD));
-            }
+          Transaction tx = transactions.getRowAt(row);
+          if (tx != null && tx.isDisabled()) {
+            c.setBackground(new java.awt.Color(245, 245, 245));
+            c.setForeground(new java.awt.Color(130, 130, 130));
           } else {
-            c.setBackground(java.awt.Color.WHITE);
+            c.setForeground(java.awt.Color.BLACK);
+            if (Settings.getHighlightInsertedEnabled() && transactions.isRecentlyInserted(row)) {
+              c.setBackground(Settings.getHighlightInsertedColor());
+            } else if (Settings.getHighlightUpdatedEnabled() && transactions.isRecentlyUpdated(row)) {
+              c.setBackground(Settings.getHighlightUpdatedColor());
+
+              int modelCol = table.convertColumnIndexToModel(column);
+              if (transactions.isRecentlyUpdatedColumn(row, modelCol)) {
+                c.setFont(table.getFont().deriveFont(java.awt.Font.BOLD));
+              }
+            } else {
+              c.setBackground(java.awt.Color.WHITE);
+            }
           }
         } catch (Exception e) {
           // Safety: if checking fails, just use white background
           c.setBackground(java.awt.Color.WHITE);
+          c.setForeground(java.awt.Color.BLACK);
         }
       }
 
@@ -539,11 +555,20 @@ public class MainWindow extends javax.swing.JFrame {
     });
 
     bClearColors = new javax.swing.JButton();
+    bToggleDisabled = new javax.swing.JButton();
     bClearColors.setText("Vyčistit barvy");
     bClearColors.setToolTipText("Zruší zvýraznění nových/aktualizovaných řádků");
     bClearColors.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bClearColorsActionPerformed(evt);
+      }
+    });
+
+    bToggleDisabled.setText("Ignorovat");
+    bToggleDisabled.setToolTipText("Přepne ignorování vybraných řádků (ignorované řádky jsou šedé a nevstupují do výpočtů)");
+    bToggleDisabled.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bToggleDisabledActionPerformed(evt);
       }
     });
 
@@ -864,6 +889,12 @@ public class MainWindow extends javax.swing.JFrame {
     jPanel2.add(bClearColors, gridBagConstraints);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 13;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 5, 0);
+    jPanel2.add(bToggleDisabled, gridBagConstraints);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
     getContentPane().add(jPanel2, java.awt.BorderLayout.NORTH);
 
     table.setModel(new javax.swing.table.DefaultTableModel(
@@ -1134,8 +1165,12 @@ public class MainWindow extends javax.swing.JFrame {
     table.getColumnModel().getColumn(15).setPreferredWidth(200);
     table.getColumnModel().getColumn(15).setMaxWidth(500);
 
+    // Ignorovat
+    table.getColumnModel().getColumn(16).setPreferredWidth(80);
+    table.getColumnModel().getColumn(16).setMaxWidth(100);
+
     // Apply highlighted cell renderer to all non-date columns
-    for (int i = 1; i <= 15; i++) {
+    for (int i = 1; i <= 16; i++) {
       if (i != 0 && i != 10) { // Skip date columns
         table.getColumnModel().getColumn(i).setCellRenderer(highlightRenderer);
       }
@@ -1283,6 +1318,36 @@ public class MainWindow extends javax.swing.JFrame {
       table.repaint();
     } catch (Exception e) {
       // ignore
+    }
+  }
+
+  private void bToggleDisabledActionPerformed(java.awt.event.ActionEvent evt) {
+    try {
+      int[] selected = table.getSelectedRows();
+      if (selected == null || selected.length == 0) {
+        JOptionPane.showMessageDialog(this, "Nejprve vyberte alespoň jeden řádek.", "Ignorovat",
+            JOptionPane.INFORMATION_MESSAGE);
+        return;
+      }
+
+      int toggled = 0;
+      for (int viewRow : selected) {
+        if (viewRow < 0) continue;
+        int modelRow = table.convertRowIndexToModel(viewRow);
+        if (modelRow < 0) continue;
+        // Ignore the extra last empty row
+        if (modelRow >= transactions.rows.size()) continue;
+        transactions.toggleDisabledAt(modelRow);
+        toggled++;
+      }
+
+      if (toggled > 0) {
+        lastStatusMessage = " | Ignorování přepnuto pro " + toggled + " řádků";
+        updateStatusBar();
+        table.repaint();
+      }
+    } catch (Exception e) {
+      JOptionPane.showMessageDialog(this, "Chyba: " + e.getMessage(), "Ignorovat", JOptionPane.ERROR_MESSAGE);
     }
   }
 
@@ -2374,6 +2439,7 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JCheckBox cbShowSeconds;
   private javax.swing.JButton bCopy;
   private javax.swing.JButton bClearColors;
+  private javax.swing.JButton bToggleDisabled;
   // End of variables declaration//GEN-END:variables
 
 }
