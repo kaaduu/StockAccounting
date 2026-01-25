@@ -25,6 +25,8 @@ import javax.swing.JTable;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.awt.Color;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
 
 /**
  *
@@ -181,11 +183,14 @@ public class AccountStateWindow extends javax.swing.JDialog {
   }
 
   private static double parseDouble(Object o) {
-    if (o == null) return 0.0;
-    if (o instanceof Number) return ((Number) o).doubleValue();
+    if (o == null)
+      return 0.0;
+    if (o instanceof Number)
+      return ((Number) o).doubleValue();
     try {
       String s = o.toString().trim().replace(',', '.');
-      if (s.isEmpty()) return 0.0;
+      if (s.isEmpty())
+        return 0.0;
       return Double.parseDouble(s);
     } catch (Exception e) {
       return 0.0;
@@ -273,6 +278,13 @@ public class AccountStateWindow extends javax.swing.JDialog {
   private String _twsSelectedAccount = null;
   private TwsCompareStats _twsLastStats = null;
 
+  // Tax Test components
+  private javax.swing.JPanel pTaxTest;
+  private javax.swing.JTree taxTree;
+  private javax.swing.JButton bUpdatePrices;
+  private javax.swing.JLabel lPricesStatus;
+  private javax.swing.JPanel pOverview; // Access for constructor to add date chooser
+
   /** Creates new form AccountStateWindow */
   public AccountStateWindow(java.awt.Frame parent, boolean modal) {
     super(parent, modal);
@@ -294,13 +306,18 @@ public class AccountStateWindow extends javax.swing.JDialog {
     gbc.weightx = 1;
     gbc.fill = GridBagConstraints.BOTH;
     gbc.insets = new java.awt.Insets(5, 5, 5, 0);
-    getContentPane().add(_endDate, gbc);
-
     _endDate.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
       public void propertyChange(java.beans.PropertyChangeEvent evt) {
         recompute(_endDate.getDate());
       }
     });
+
+    // Add date chooser to overview panel
+    // Original was in contentPane, now we need to add to pOverview which is
+    // initialized in initComponents
+    if (pOverview != null) {
+      pOverview.add(_endDate, gbc);
+    }
 
     getContentPane().doLayout();
   }
@@ -309,6 +326,8 @@ public class AccountStateWindow extends javax.swing.JDialog {
    * Recompute state
    */
   private void recompute(Date endDate) {
+    if (endDate == null)
+      return;
     boolean useExecutionDate = (cbStateType.getSelectedIndex() == 1);
 
     // Make date 0:0:0
@@ -370,6 +389,9 @@ public class AccountStateWindow extends javax.swing.JDialog {
         applyTwsToTable();
       }
     }
+
+    // Update Tax Test tree
+    updateTaxTree();
   }
 
   /**
@@ -594,6 +616,36 @@ public class AccountStateWindow extends javax.swing.JDialog {
     getContentPane().add(cbOpenDetails, gridBagConstraints);
 
     pack();
+
+    // Move everything from content pane to a new Overview panel
+    javax.swing.JPanel pOverview = new javax.swing.JPanel();
+    pOverview.setLayout(new java.awt.GridBagLayout());
+
+    java.awt.Container contentPane = getContentPane();
+    java.awt.Component[] comps = contentPane.getComponents();
+    // We need to preserve constraints. GridBagLayout stores constraints in the
+    // layout manager.
+    java.awt.GridBagLayout layout = (java.awt.GridBagLayout) contentPane.getLayout();
+
+    for (java.awt.Component comp : comps) {
+      java.awt.GridBagConstraints gbc = layout.getConstraints(comp);
+      pOverview.add(comp, gbc);
+    }
+    contentPane.removeAll();
+    contentPane.setLayout(new java.awt.BorderLayout());
+
+    // Create TabbedPane
+    javax.swing.JTabbedPane tabbedPane = new javax.swing.JTabbedPane();
+    tabbedPane.addTab("Přehled", pOverview);
+
+    // Initialize user field for external access (DateChooser)
+    this.pOverview = pOverview;
+
+    // Tax Test Tab
+    initTaxTestTab();
+    tabbedPane.addTab("Daňový test", pTaxTest);
+
+    contentPane.add(tabbedPane, java.awt.BorderLayout.CENTER);
   }// </editor-fold>//GEN-END:initComponents
 
   private void cbStateTypeActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_cbStateTypeActionPerformed
@@ -626,7 +678,8 @@ public class AccountStateWindow extends javax.swing.JDialog {
   }
 
   private void updateTwsSelectedAccount() {
-    if (cbTwsAccount == null) return;
+    if (cbTwsAccount == null)
+      return;
     Object sel = cbTwsAccount.getSelectedItem();
     if (sel == null) {
       _twsSelectedAccount = null;
@@ -644,7 +697,7 @@ public class AccountStateWindow extends javax.swing.JDialog {
     // Do not run in EDT
     bLoadTws.setEnabled(false);
     lTwsStatus.setText("Načítám pozice z TWS...");
-    
+
     javax.swing.SwingWorker<IbkrTwsPositionsClient.PositionsResult, Void> w = new javax.swing.SwingWorker<>() {
       @Override
       protected IbkrTwsPositionsClient.PositionsResult doInBackground() throws Exception {
@@ -712,7 +765,8 @@ public class AccountStateWindow extends javax.swing.JDialog {
       if (_twsSelectedAccount == null) {
         // Sum all
         for (java.util.Map<String, Double> m : _twsPositionsByAccount.values()) {
-          if (m == null) continue;
+          if (m == null)
+            continue;
           for (java.util.Map.Entry<String, Double> e : m.entrySet()) {
             merged.put(e.getKey(), merged.getOrDefault(e.getKey(), 0.0) + (e.getValue() == null ? 0.0 : e.getValue()));
           }
@@ -735,7 +789,8 @@ public class AccountStateWindow extends javax.swing.JDialog {
     for (int i = 0; i < m.getRowCount(); i++) {
       String ticker = (String) m.getValueAt(i, 0);
       String localKey = IbkrTwsPositionsClient.normalizeTicker(ticker);
-      if (localKey == null) continue;
+      if (localKey == null)
+        continue;
 
       localCount++;
 
@@ -793,8 +848,10 @@ public class AccountStateWindow extends javax.swing.JDialog {
   }
 
   private void updateTwsStatusSummary(java.util.Set<String> errors) {
-    if (lTwsStatus == null) return;
-    if (_twsLastStats == null) return;
+    if (lTwsStatus == null)
+      return;
+    if (_twsLastStats == null)
+      return;
 
     String base = "TWS: " + _twsLastStats.twsTickers + " tickerů";
     String cmp = ", nesedí: " + _twsLastStats.mismatch + "/" + _twsLastStats.compared;
@@ -805,6 +862,299 @@ public class AccountStateWindow extends javax.swing.JDialog {
       msg += " (varování: " + errors.iterator().next() + ")";
     }
     lTwsStatus.setText(msg);
+  }
+
+  // --- Tax Test Logic ---
+
+  private void initTaxTestTab() {
+    pTaxTest = new javax.swing.JPanel(new java.awt.BorderLayout());
+
+    // Tree
+    taxTree = new javax.swing.JTree(new DefaultMutableTreeNode("Root"));
+    taxTree.setRootVisible(false);
+    javax.swing.JScrollPane treeScroll = new javax.swing.JScrollPane(taxTree);
+    pTaxTest.add(treeScroll, java.awt.BorderLayout.CENTER);
+
+    // Add expansion listener for smart expand
+    taxTree.addTreeExpansionListener(new javax.swing.event.TreeExpansionListener() {
+      public void treeExpanded(javax.swing.event.TreeExpansionEvent event) {
+        javax.swing.tree.DefaultMutableTreeNode node = (javax.swing.tree.DefaultMutableTreeNode) event.getPath()
+            .getLastPathComponent();
+
+        // Check if it is a Year node (starts with "Expirace")
+        if (node.getUserObject() instanceof String) {
+          String str = (String) node.getUserObject();
+          if (str.startsWith("Expirace ")) {
+            // Expand all children (Months)
+            // Use invokeLater to avoid mutation during event notification
+            final javax.swing.tree.TreePath parentPath = event.getPath();
+            javax.swing.SwingUtilities.invokeLater(new Runnable() {
+              public void run() {
+                java.util.Enumeration children = node.children();
+                while (children.hasMoreElements()) {
+                  javax.swing.tree.DefaultMutableTreeNode child = (javax.swing.tree.DefaultMutableTreeNode) children
+                      .nextElement();
+                  taxTree.expandPath(parentPath.pathByAddingChild(child));
+                }
+              }
+            });
+          }
+        }
+      }
+
+      public void treeCollapsed(javax.swing.event.TreeExpansionEvent event) {
+      }
+    });
+
+    // Bottom panel
+    javax.swing.JPanel pBottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+
+    bUpdatePrices = new javax.swing.JButton("Aktualizovat ceny (Yahoo)");
+    bUpdatePrices.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        updateStockPrices();
+      }
+    });
+    pBottom.add(bUpdatePrices);
+
+    lPricesStatus = new javax.swing.JLabel(" ");
+    pBottom.add(lPricesStatus);
+
+    pTaxTest.add(pBottom, java.awt.BorderLayout.SOUTH);
+
+    // Initial build
+    updateTaxTree();
+  }
+
+  private void updateTaxTree() {
+    if (_stocks == null)
+      return;
+
+    DefaultMutableTreeNode root = new DefaultMutableTreeNode("Root");
+    DefaultMutableTreeNode nodeExempt = new DefaultMutableTreeNode("Osvobozeno (držené > 3 roky)");
+    DefaultMutableTreeNode nodeTaxed = new DefaultMutableTreeNode("Neosvobozeno (držené < 3 roky)");
+
+    root.add(nodeExempt);
+    root.add(nodeTaxed);
+
+    // Map: Year -> Month -> List of Items
+    java.util.Map<Integer, java.util.Map<Integer, java.util.List<TaxTreeItem>>> taxedItems = new java.util.TreeMap<>();
+    // Map: Ticker -> Aggregated Item
+    java.util.Map<String, TaxTreeItem> exemptAggregation = new java.util.TreeMap<>();
+
+    String[] tickers = _stocks.getStockTickers();
+    java.util.Arrays.sort(tickers);
+
+    Date now = new Date();
+    java.util.Calendar cal = java.util.Calendar.getInstance();
+    int currentYear = cal.get(java.util.Calendar.YEAR);
+
+    for (String ticker : tickers) {
+      // Skip Cash
+      if (_stocks.getSecurityType(ticker) == Stocks.SecType.CASH)
+        continue;
+
+      Vector<Stocks.StockFragment> fragments = _stocks.getSecurityFragments(ticker);
+      if (fragments == null)
+        continue;
+
+      for (Stocks.StockFragment f : fragments) {
+        if (Math.abs(f.getAmount()) <= 0.000001)
+          continue; // Skip closed
+
+        // Calculate expiration (Opened + 3 years)
+        cal.setTime(f.getOpened());
+        cal.add(java.util.Calendar.YEAR, 3);
+        Date expiration = cal.getTime();
+
+        TaxTreeItem item = new TaxTreeItem(ticker, f.getAmount(), f.getPrice(), f.getOpened(), expiration);
+
+        if (Stocks.isOverTaxFreeDuration(f.getOpened(), now)) {
+          // Aggregate Exempt
+          if (exemptAggregation.containsKey(ticker)) {
+            TaxTreeItem existing = exemptAggregation.get(ticker);
+            // Update weighted average price
+            double totalValue = (existing.amount * existing.openPrice) + (item.amount * item.openPrice);
+            existing.amount += item.amount;
+            if (Math.abs(existing.amount) > 0.000001) {
+              existing.openPrice = totalValue / existing.amount;
+            }
+            existing.isAggregated = true;
+          } else {
+            exemptAggregation.put(ticker, item);
+          }
+        } else {
+          // Determine year and month of expiration
+          cal.setTime(expiration);
+          int y = cal.get(java.util.Calendar.YEAR);
+          int m = cal.get(java.util.Calendar.MONTH); // 0-based
+
+          taxedItems.putIfAbsent(y, new java.util.TreeMap<>());
+          taxedItems.get(y).putIfAbsent(m, new java.util.ArrayList<>());
+          taxedItems.get(y).get(m).add(item);
+        }
+      }
+    }
+
+    // Fill Exempt (Aggregated)
+    for (TaxTreeItem item : exemptAggregation.values()) {
+      nodeExempt.add(new DefaultMutableTreeNode(item));
+    }
+
+    // Fill Taxed
+    DefaultMutableTreeNode nodeToExpand = null;
+    for (Integer year : taxedItems.keySet()) {
+      DefaultMutableTreeNode nodeYear = new DefaultMutableTreeNode("Expirace " + year);
+      nodeTaxed.add(nodeYear);
+
+      // Auto-expand current year
+      if (year == currentYear) {
+        nodeToExpand = nodeYear;
+      }
+
+      java.util.Map<Integer, java.util.List<TaxTreeItem>> months = taxedItems.get(year);
+      for (Integer month : months.keySet()) {
+        String monthName = getMonthName(month);
+        DefaultMutableTreeNode nodeMonth = new DefaultMutableTreeNode(monthName);
+        nodeYear.add(nodeMonth);
+
+        for (TaxTreeItem item : months.get(month)) {
+          nodeMonth.add(new DefaultMutableTreeNode(item));
+        }
+      }
+    }
+
+    ((DefaultTreeModel) taxTree.getModel()).setRoot(root);
+    taxTree.expandRow(0); // Root
+    taxTree.expandRow(1); // Exempt is normally first child
+    int rowTaxed = 1 + (nodeExempt.getChildCount() > 0 ? nodeExempt.getChildCount() : 0) + 1; // 0 + 1(Exempt) +
+                                                                                              // count + 1(Taxed)
+    taxTree.expandRow(rowTaxed); // Expand "Neosvobozeno"
+
+    if (nodeToExpand != null) {
+      javax.swing.tree.TreePath path = new javax.swing.tree.TreePath(nodeToExpand.getPath());
+      taxTree.expandPath(path);
+    }
+  }
+
+  private String getMonthName(int m) {
+    String[] months = { "Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen",
+        "Listopad", "Prosinec" };
+    if (m >= 0 && m < 12)
+      return months[m];
+    return "Měsíc " + (m + 1);
+  }
+
+  private void updateStockPrices() {
+    // Collect tickers
+    if (_stocks == null)
+      return;
+
+    bUpdatePrices.setEnabled(false);
+    lPricesStatus.setText("Načítám ceny...");
+
+    final java.util.List<String> tickers = new java.util.ArrayList<>();
+    DefaultMutableTreeNode root = (DefaultMutableTreeNode) taxTree.getModel().getRoot();
+
+    // Traverse tree to find leaves with items
+    java.util.Enumeration en = root.depthFirstEnumeration();
+    while (en.hasMoreElements()) {
+      DefaultMutableTreeNode node = (DefaultMutableTreeNode) en.nextElement();
+      if (node.getUserObject() instanceof TaxTreeItem) {
+        String t = ((TaxTreeItem) node.getUserObject()).ticker;
+        if (!tickers.contains(t))
+          tickers.add(t);
+      }
+    }
+
+    // Async fetch
+    new javax.swing.SwingWorker<java.util.Map<String, Double>, Void>() {
+      @Override
+      protected java.util.Map<String, Double> doInBackground() throws Exception {
+        return new StockPriceFetcher().fetchPrices(tickers);
+      }
+
+      @Override
+      protected void done() {
+        try {
+          java.util.Map<String, Double> prices = get();
+          lPricesStatus.setText("Načteno " + prices.size() + " cen.");
+
+          // Update tree objects
+          DefaultMutableTreeNode root = (DefaultMutableTreeNode) taxTree.getModel().getRoot();
+          java.util.Enumeration en = root.depthFirstEnumeration();
+          while (en.hasMoreElements()) {
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) en.nextElement();
+            if (node.getUserObject() instanceof TaxTreeItem) {
+              TaxTreeItem item = (TaxTreeItem) node.getUserObject();
+              if (prices.containsKey(item.ticker)) {
+                item.currentPrice = prices.get(item.ticker);
+              }
+            }
+          }
+
+          // Refresh tree
+          ((DefaultTreeModel) taxTree.getModel()).reload();
+
+        } catch (Exception e) {
+          lPricesStatus.setText("Chyba: " + e.getMessage());
+          e.printStackTrace();
+        } finally {
+          bUpdatePrices.setEnabled(true);
+        }
+      }
+    }.execute();
+  }
+
+  private static class TaxTreeItem {
+    String ticker;
+    double amount;
+    double openPrice;
+    Date opened;
+    Date expires;
+    Double currentPrice = null;
+    boolean isAggregated = false;
+
+    public TaxTreeItem(String ticker, double amount, double openPrice, Date opened, Date expires) {
+      this.ticker = ticker;
+      this.amount = amount;
+      this.openPrice = openPrice;
+      this.opened = opened;
+      this.expires = expires;
+    }
+
+    @Override
+    public String toString() {
+      SimpleDateFormat df = new SimpleDateFormat("dd.MM.yyyy");
+      StringBuilder sb = new StringBuilder();
+      sb.append(ticker).append(": ").append(formatAmount(amount)).append(" ks");
+
+      if (isAggregated) {
+        sb.append(" (průměrná cena ").append(String.format("%.2f", openPrice)).append(")");
+      } else {
+        sb.append(" (nákup ").append(df.format(opened)).append(" za ").append(openPrice).append(")");
+      }
+
+      if (currentPrice != null) {
+        double val = amount * currentPrice;
+        double cost = amount * openPrice;
+        double profit = val - cost;
+        double pct = (cost != 0) ? (profit / cost * 100) : 0;
+
+        sb.append(" | Cena: ").append(currentPrice);
+        sb.append(" | Hodnota: ").append(String.format("%.2f", val));
+        sb.append(" | Zisk: ").append(String.format("%.2f", profit)).append(" (").append(String.format("%.1f", pct))
+            .append("%)");
+      }
+      return sb.toString();
+    }
+
+    private String formatAmount(double d) {
+      if (Math.abs(d - (long) d) < 0.000001)
+        return String.format("%d", (long) d);
+      else
+        return String.format("%.4f", d);
+    }
   }
 
   // Variables declaration - do not modify//GEN-BEGIN:variables
