@@ -1171,6 +1171,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     jPanel5.add(jSeparator3, gridBagConstraints);
 
     bFetchRates = new javax.swing.JButton();
+    bExportUnifiedRatesJson = new javax.swing.JButton();
     bFetchRates.setText("Načíst kurzy");
     bFetchRates.setToolTipText("Načíst jednotné kurzy z ČNB");
     bFetchRates.addActionListener(new java.awt.event.ActionListener() {
@@ -1179,6 +1180,15 @@ public class SettingsWindow extends javax.swing.JDialog {
       }
     });
     jPanel5.add(bFetchRates, new java.awt.GridBagConstraints());
+
+    bExportUnifiedRatesJson.setText("Export JSON");
+    bExportUnifiedRatesJson.setToolTipText("Exportovat jednotné kurzy do JSON souboru");
+    bExportUnifiedRatesJson.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bExportUnifiedRatesJsonActionPerformed(evt);
+      }
+    });
+    jPanel5.add(bExportUnifiedRatesJson, new java.awt.GridBagConstraints());
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridy = 1;
@@ -1824,6 +1834,46 @@ public class SettingsWindow extends javax.swing.JDialog {
     JOptionPane.showMessageDialog(this,
         "Kurzy byly úspěšně načteny a uloženy.\nZměněné hodnoty jsou zvýrazněny žlutě.",
         "Hotovo", JOptionPane.INFORMATION_MESSAGE);
+  }
+
+  private void bExportUnifiedRatesJsonActionPerformed(java.awt.event.ActionEvent evt) {
+    try {
+      javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+      chooser.setAcceptAllFileFilterUsed(true);
+      chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("JSON soubory", "json"));
+      chooser.setSelectedFile(new java.io.File("unified_rates.json"));
+
+      if (chooser.showSaveDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
+        return;
+      }
+
+      java.io.File file = chooser.getSelectedFile();
+      if (file != null) {
+        String name = file.getName();
+        if (!name.toLowerCase().endsWith(".json")) {
+          file = new java.io.File(file.getParentFile(), name + ".json");
+        }
+      }
+
+      if (file.exists()) {
+        int confirm = javax.swing.JOptionPane.showConfirmDialog(this,
+            "Soubor již existuje. Přepsat?\n\n" + file.getName(),
+            "Potvrdit přepsání", javax.swing.JOptionPane.YES_NO_OPTION, javax.swing.JOptionPane.WARNING_MESSAGE);
+        if (confirm != javax.swing.JOptionPane.YES_OPTION) {
+          return;
+        }
+      }
+
+      Settings.exportUnifiedRatesJson(file);
+
+      javax.swing.JOptionPane.showMessageDialog(this,
+          "Jednotné kurzy byly exportovány do souboru:\n" + file.getName(),
+          "Export dokončen", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+    } catch (Exception ex) {
+      javax.swing.JOptionPane.showMessageDialog(this,
+          "Chyba při exportu: " + ex.getMessage(),
+          "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);
+    }
   }
 
   /**
@@ -2759,6 +2809,7 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JSeparator jSeparator2;
   private javax.swing.JSeparator jSeparator3;
   private javax.swing.JButton bFetchRates;
+  private javax.swing.JButton bExportUnifiedRatesJson;
   private javax.swing.JTabbedPane jTabbedPane1;
   private javax.swing.JList lHolidays;
   private javax.swing.JList lMarkets;

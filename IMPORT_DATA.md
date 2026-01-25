@@ -250,6 +250,24 @@ Example (first lines):
 
 **Mandatory sections** (v2): the file is expected to include at least `Trades` and `Corporate Actions` sections. If any of these are missing, StockAccounting shows a warning during import preview.
 
+### Dividendy a daně (IBKR v2)
+
+V novějších Flex exportech (v2) nejsou dividendy v sekci Trades (TRNT), ale typicky v sekci `CTRN` (Cash Transactions).
+
+- `Type=Dividends` a `Type=Payment In Lieu Of Dividends` se importují jako **hrubá dividenda** (`DIRECTION_DIVI_BRUTTO`).
+- `Type=Withholding Tax` a dividendové poplatky (`Type=Other Fees` s popisem obsahujícím `CASH DIVIDEND ... - FEE`) se importují jako **daň z dividendy** (`DIRECTION_DIVI_TAX`).
+- Pokud je `Withholding Tax` bez tickeru/symbolu (např. úrokové srážky), importuje se s tickerem `CASH.internal`.
+
+### Ignorované řádky
+
+V hlavním okně lze řádky označit jako „Ignorovat“. Tyto řádky jsou zobrazeny šedě a nevstupují do výpočtů (dividendy, obchodní analýzy). Stav se ukládá do `.dat` souboru.
+
+Poznámka (IBKR Flex): v importním okně je režim „Vše (obchody + transformace + dividendy)", který načítá všechny dostupné sekce (TRNT/CORP/CTRN) podle obsahu exportu.
+
+### Export jednotných kurzů (JSON)
+
+V Nastavení → Kurzy měn lze exportovat jednotné kurzy (měna/rok/kurz) do JSON souboru.
+
 ### Field Mapping Table
 
 | Column Name     | Data Type | Description                          | Used In Output     | Example Value       |

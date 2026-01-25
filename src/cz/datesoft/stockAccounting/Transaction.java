@@ -76,6 +76,9 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   String txnId;
   String code;
 
+  /** Disabled transaction: visible but ignored by computations */
+  boolean disabled;
+
     /** Note */
   String note;
   
@@ -244,6 +247,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.txnId = null;
     this.code = null;
     this.note = null;
+    this.disabled = false;
     
     String a[];
     for(;;)
@@ -308,6 +312,10 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       else if (a[0].equals("code"))
       {
         if (!a[1].equals("null")) this.code = a[1];
+      }
+      else if (a[0].equals("disabled"))
+      {
+        this.disabled = (a[1] != null) && (a[1].equals("1") || a[1].equalsIgnoreCase("true"));
       }
     }
 
@@ -619,6 +627,14 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     }
   }
 
+  public boolean isDisabled() {
+    return disabled;
+  }
+
+  public void setDisabled(boolean disabled) {
+    this.disabled = disabled;
+  }
+
   public void setDirection(String direction)
   {
     if (direction == null) return;
@@ -902,6 +918,10 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
    */
   public boolean isFilledIn()
   {
+    if (disabled) {
+      // Allow saving disabled rows even if some fields are incomplete.
+      return (serial != 0) && (date != null) && (ticker != null);
+    }
     switch(direction) {
       case DIRECTION_TRANS_ADD:
       case DIRECTION_TRANS_SUB:
@@ -935,6 +955,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     ofl.println(prefix+"accountId="+getAccountId());
     ofl.println(prefix+"txnId="+getTxnId());
     ofl.println(prefix+"code="+getCode());
+    ofl.println(prefix+"disabled=" + (disabled ? "1" : "0"));
     ofl.println(prefix+"note="+note);
   }
   

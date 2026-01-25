@@ -1,4 +1,8 @@
-/dist/
-/build/
-/nbproject/private/
-/wiki/
+# Build outputs
+build/
+dist/
+nbproject/private/
+wiki/
+
+# Local datasets / sample exports
+data/

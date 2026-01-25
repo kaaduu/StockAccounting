@@ -1576,7 +1576,16 @@ public class ComputeWindow extends javax.swing.JDialog {
         Transaction tx = i.next();
 
         // Check if we are not over the year
-        cal.setTime(tx.getExecutionDate());
+        if (tx.isDisabled()) {
+          continue;
+        }
+
+        java.util.Date exDate = tx.getExecutionDate() != null ? tx.getExecutionDate() : tx.getDate();
+        if (exDate == null) {
+          continue;
+        }
+
+        cal.setTime(exDate);
         int ty = cal.get(GregorianCalendar.YEAR);
         if (ty != year)
           continue; // Ignore this transaction - we can't just break, since execution dates may not

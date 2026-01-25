@@ -985,6 +985,9 @@ public class Stocks {
    *         empty array for no trades, so beware!
    */
   public StockTrade[] applyTransaction(Transaction tx, boolean useExecutionDate) throws TradingException {
+    if (tx != null && tx.isDisabled()) {
+      return null;
+    }
     // Do not count dividends
     if ((tx.direction == Transaction.DIRECTION_DIVI_BRUTTO) || (tx.direction == Transaction.DIRECTION_DIVI_NETTO15)
         || (tx.direction == Transaction.DIRECTION_DIVI_TAX) || (tx.direction == Transaction.DIRECTION_DIVI_UNKNOWN))

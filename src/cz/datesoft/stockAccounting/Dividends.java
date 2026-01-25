@@ -78,6 +78,8 @@ public class Dividends
    */
   public void applyTransaction(Transaction tx) throws DividendException
   {
+    if (tx == null) return;
+    if (tx.isDisabled()) return;
     if (tx.direction == tx.DIRECTION_DIVI_UNKNOWN) throw new DividendException("Zaznam o dividende z "+tx.date+" u tickeru "+tx.ticker+" je nastaven na typ 'D-Neznámá'. Aby mohly být zúčtovány dividendy, musíte jej ručně nastavit na správný typ!");
 
     switch(tx.direction) {
@@ -95,7 +97,9 @@ public class Dividends
     
     // Get time at start of the day
     GregorianCalendar cal = new GregorianCalendar();
-    cal.setTime(tx.executionDate);    
+    // Some imports may not have executionDate set (older data / special cash rows).
+    // Fall back to trade date in that case.
+    cal.setTime(tx.executionDate != null ? tx.executionDate : tx.date);
     cal.set(cal.HOUR_OF_DAY,0);
     cal.set(cal.MINUTE,0);
     cal.set(cal.SECOND,0);
