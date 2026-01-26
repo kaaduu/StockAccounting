@@ -1918,6 +1918,36 @@ public class MainWindow extends javax.swing.JFrame {
     cbEffectFilter.setSelectedIndex(0);
   }
 
+  /**
+   * Helper for ComputeWindow: show/filter year-end settlement date edge cases.
+   */
+  public void focusAndFilterYearEndSettlement(java.util.Date from, java.util.Date to) {
+    try {
+      if (from != null)
+        dcFrom.setDate(from);
+      if (to != null)
+        dcTo.setDate(to);
+
+      // Focus on settlement date editor column if present.
+      try {
+        table.requestFocusInWindow();
+        // Column 10 is settlement date in the model.
+        int viewCol = table.convertColumnIndexToView(10);
+        if (viewCol >= 0) {
+          table.setColumnSelectionInterval(viewCol, viewCol);
+        }
+      } catch (Exception e) {
+        // ignore
+      }
+
+      applyFilter();
+
+      setTransientStatusMessage("Filtrované: obchody 29.–31.12 (ověřte Datum vypořádání)", 12000L);
+    } catch (Exception e) {
+      // ignore
+    }
+  }
+
   private void miSaveAsActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_miSaveAsActionPerformed
   {// GEN-HEADEREND:event_miSaveAsActionPerformed
     saveAsTransactions();

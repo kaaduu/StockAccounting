@@ -102,7 +102,21 @@ public class ComputeWindow extends javax.swing.JDialog {
     msg.append(
         "Doporučení: ověřte skutečné datum vypořádání u brokera (zejména u obchodů 31.12) a případně jej ručně upravte ve sloupci 'Datum vypořádání'.");
 
-    JOptionPane.showMessageDialog(this, msg.toString(), "Upozornění: datum vypořádání", JOptionPane.WARNING_MESSAGE);
+    Object[] options = new Object[] { "OK", "Filtrovat v hlavním okně" };
+    int res = JOptionPane.showOptionDialog(this, msg.toString(), "Upozornění: datum vypořádání",
+        JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+
+    if (res == 1 && mainWindow != null) {
+      try {
+        java.util.GregorianCalendar from = new java.util.GregorianCalendar(year, java.util.Calendar.DECEMBER, 29, 0, 0, 0);
+        from.set(java.util.Calendar.MILLISECOND, 0);
+        java.util.GregorianCalendar to = new java.util.GregorianCalendar(year, java.util.Calendar.DECEMBER, 31, 23, 59, 59);
+        to.set(java.util.Calendar.MILLISECOND, 0);
+        mainWindow.focusAndFilterYearEndSettlement(from.getTime(), to.getTime());
+      } catch (Exception e) {
+        // ignore
+      }
+    }
   }
 
   /**
@@ -1632,10 +1646,9 @@ public class ComputeWindow extends javax.swing.JDialog {
       // Clear model
       model.setNumRows(0);
 
-      // Show error message
-      JOptionPane.showMessageDialog(this,
-          "V průběhu výpočtu došlo k chybě:\n\n" + ex.getMessage() + "\n\nVýpočet byl přerušen.", "Chyba",
-          JOptionPane.ERROR_MESSAGE);
+       UiDialogs.error(this,
+           "V průběhu výpočtu došlo k chybě:\n\n" + ex.getMessage() + "\n\nVýpočet byl přerušen.",
+           "Chyba", ex);
 
       return;
     }
