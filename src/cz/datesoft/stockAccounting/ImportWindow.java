@@ -842,10 +842,13 @@ public class ImportWindow extends javax.swing.JFrame {
       parser.setIncludeTrades(mode != IBKR_MODE_TRANS_ONLY && mode != IBKR_MODE_DIVI_ONLY);
       if (mode == IBKR_MODE_TRADES_ONLY) {
         parser.setIncludeCorporateActions(false);
+        parser.setIncludeCashTransactions(false);
       } else if (mode == IBKR_MODE_TRANS_ONLY) {
         parser.setIncludeCorporateActions(true);
+        parser.setIncludeCashTransactions(false);
       } else if (mode == IBKR_MODE_DIVI_ONLY) {
         parser.setIncludeCorporateActions(false);
+        parser.setIncludeCashTransactions(true);
       }
       Vector<Transaction> parsedTransactions = parser.parseCsvReport(lastIbkrCsvContent);
       lastIBKRParser = parser;
@@ -1389,6 +1392,10 @@ public class ImportWindow extends javax.swing.JFrame {
     // Hide/disable transformations include checkbox when it does not apply
     if (cbIBKRFlexIncludeCorporateActions != null) {
       cbIBKRFlexIncludeCorporateActions.setEnabled(!diviOnly);
+    }
+
+    if (lblIBKRFlexStatus != null) {
+      // Do not overwrite runtime status (fetch/preview/dirty states) here.
     }
   }
 
@@ -3299,10 +3306,13 @@ public class ImportWindow extends javax.swing.JFrame {
       importer.setIncludeTrades(mode != IBKR_MODE_TRANS_ONLY && mode != IBKR_MODE_DIVI_ONLY);
       if (mode == IBKR_MODE_TRADES_ONLY) {
         importer.setIncludeCorporateActions(false);
+        importer.setIncludeCashTransactions(false);
       } else if (mode == IBKR_MODE_TRANS_ONLY) {
         importer.setIncludeCorporateActions(true);
+        importer.setIncludeCashTransactions(false);
       } else if (mode == IBKR_MODE_DIVI_ONLY) {
         importer.setIncludeCorporateActions(false);
+        importer.setIncludeCashTransactions(true);
       }
       importer.setParentFrame(mainWindow);
       
@@ -3853,6 +3863,37 @@ public class ImportWindow extends javax.swing.JFrame {
       sb.append("Soubor: ").append(lastIbkrSourceLabel.trim()).append("\n");
     }
     sb.append("\n");
+
+    // ACCT (account/owner details), if present
+    java.util.Map<String, java.util.Map<String, String>> acct = lastIBKRParser.getAccountInfoByAccountId();
+    if (acct != null && !acct.isEmpty()) {
+      sb.append("ACCT (účet / vlastník)\n");
+      for (java.util.Map.Entry<String, java.util.Map<String, String>> e : acct.entrySet()) {
+        String acc = e.getKey() != null ? e.getKey().trim() : "";
+        if (acc.isEmpty()) acc = "(unknown)";
+        sb.append("- ").append(acc);
+        java.util.Map<String, String> m = e.getValue();
+        if (m != null) {
+          String title = m.get("AccountTitle");
+          String alias = m.get("AccountAlias");
+          if (title != null && !title.trim().isEmpty()) sb.append(" | ").append(title.trim());
+          if (alias != null && !alias.trim().isEmpty()) sb.append(" | ").append(alias.trim());
+        }
+        sb.append("\n");
+      }
+      sb.append("\n");
+    }
+
+    // Trades consolidation (IBOrderID) stats
+    int grp = lastIBKRParser.getIbOrderGroupCount();
+    int cg = lastIBKRParser.getIbOrderConsolidatedGroupCount();
+    int fills = lastIBKRParser.getIbOrderConsolidatedFillCount();
+    if (grp > 0) {
+      sb.append("Obchody (IBOrderID)\n");
+      sb.append("- skupin: ").append(grp).append("\n");
+      sb.append("- konsolidováno: ").append(cg).append(" skupin (fillů: ").append(fills).append(")\n");
+      sb.append("\n");
+    }
 
     java.util.List<IBKRFlexParser.FlexAccountSections> accounts = lastIBKRParser.getFlexAccountSections();
     java.util.Map<String, java.util.List<String>> missingByAcc = lastIBKRParser.getMissingMandatoryV2SectionsByAccount();
