@@ -298,6 +298,7 @@ public class IBKRFlexParser {
         OPTIONS_SUMMARY,
         CORPORATE_ACTIONS,
         CASH_TRANSACTIONS,
+        ACCOUNT_INFO,
         UNKNOWN
     }
 
@@ -308,6 +309,18 @@ public class IBKRFlexParser {
 
     private boolean includeTrades = true;
 
+    // Cash transactions (CTRN) inclusion (dividends/withholding/fees)
+    private boolean includeCashTransactions = true;
+
+    // v2 ACCT section (account/owner details)
+    private String[] currentAcctHeaders = null;
+    private final java.util.Map<String, java.util.Map<String, String>> accountInfoByAccountId = new java.util.LinkedHashMap<>();
+
+    // IBOrderID consolidation stats
+    private int ibOrderGroupCount = 0;
+    private int ibOrderConsolidatedGroupCount = 0;
+    private int ibOrderConsolidatedFillCount = 0;
+
     private java.util.Set<String> allowedCorporateActionTypes = null; // null => allow all
 
     public void setIncludeCorporateActions(boolean includeCorporateActions) {
@@ -316,6 +329,34 @@ public class IBKRFlexParser {
 
     public void setIncludeTrades(boolean includeTrades) {
         this.includeTrades = includeTrades;
+    }
+
+    public void setIncludeCashTransactions(boolean includeCashTransactions) {
+        this.includeCashTransactions = includeCashTransactions;
+    }
+
+    public boolean isIncludeCashTransactions() {
+        return includeCashTransactions;
+    }
+
+    public java.util.Map<String, java.util.Map<String, String>> getAccountInfoByAccountId() {
+        java.util.Map<String, java.util.Map<String, String>> out = new java.util.LinkedHashMap<>();
+        for (java.util.Map.Entry<String, java.util.Map<String, String>> e : accountInfoByAccountId.entrySet()) {
+            out.put(e.getKey(), java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(e.getValue())));
+        }
+        return java.util.Collections.unmodifiableMap(out);
+    }
+
+    public int getIbOrderGroupCount() {
+        return ibOrderGroupCount;
+    }
+
+    public int getIbOrderConsolidatedGroupCount() {
+        return ibOrderConsolidatedGroupCount;
+    }
+
+    public int getIbOrderConsolidatedFillCount() {
+        return ibOrderConsolidatedFillCount;
     }
 
     public void setAllowedCorporateActionTypes(java.util.Set<String> allowedTypes) {
@@ -363,6 +404,12 @@ public class IBKRFlexParser {
     private SectionType detectSectionType(String headerLine) {
         String lower = headerLine.toLowerCase();
 
+        // ACCT / account info (v2)
+        if (lower.contains("accounttitle") || lower.contains("account title") ||
+            lower.contains("accountalias") || lower.contains("account alias")) {
+            return SectionType.ACCOUNT_INFO;
+        }
+
         // Trades / executions section
         boolean hasTransactionType = lower.contains("\"transactiontype\"") || lower.contains(",transactiontype,") || lower.contains("transactiontype,") || lower.contains(",transactiontype");
         boolean hasTradePrice = lower.contains("\"tradeprice\"") || lower.contains(",tradeprice,") || lower.contains("tradeprice,") || lower.contains(",tradeprice");
@@ -397,6 +444,40 @@ public class IBKRFlexParser {
         }
 
         return SectionType.UNKNOWN;
+    }
+
+    private void detectAccountInfoHeaders(String headerLine) {
+        currentAcctHeaders = splitCsvLine(headerLine);
+    }
+
+    private void parseAccountInfoRow(String currentAccountId, String[] fields) {
+        if (currentAcctHeaders == null || fields == null) return;
+
+        java.util.Map<String, String> m = new java.util.LinkedHashMap<>();
+        int n = Math.min(currentAcctHeaders.length, fields.length);
+        for (int i = 0; i < n; i++) {
+            String k = currentAcctHeaders[i] != null ? currentAcctHeaders[i].trim() : "";
+            if (k.isEmpty()) continue;
+            String v = fields[i] != null ? fields[i].trim() : "";
+            if (v.isEmpty()) continue;
+            m.put(k, v);
+        }
+        if (m.isEmpty()) return;
+
+        String acc = null;
+        if (m.containsKey("ClientAccountID")) {
+            acc = m.get("ClientAccountID");
+        } else if (m.containsKey("AccountId")) {
+            acc = m.get("AccountId");
+        }
+        if (acc == null || acc.trim().isEmpty()) {
+            acc = currentAccountId;
+        }
+        if (acc == null) acc = "";
+        acc = acc.trim();
+        if (acc.isEmpty()) return;
+
+        accountInfoByAccountId.putIfAbsent(acc, m);
     }
 
     private static class RawCorporateActionRow {
@@ -687,6 +768,12 @@ public class IBKRFlexParser {
         flexSectionsByAccount.clear();
         missingMandatoryV2SectionsByAccount.clear();
         resetDetectedColumns();
+
+        ibOrderGroupCount = 0;
+        ibOrderConsolidatedGroupCount = 0;
+        ibOrderConsolidatedFillCount = 0;
+        accountInfoByAccountId.clear();
+        currentAcctHeaders = null;
         
         Vector<Transaction> transactions = new Vector<>();
         int corporateActionCount = 0;
@@ -701,6 +788,7 @@ public class IBKRFlexParser {
         // v2: track current account and current section context
         String currentAccountId = "";
         boolean inV2 = false;
+        String currentV2SectionCode = "";
 
         try (BufferedReader reader = new BufferedReader(new StringReader(csvContent))) {
             String line;
@@ -743,6 +831,9 @@ public class IBKRFlexParser {
 
                         noteFlexControlLine(fieldsForControl);
                         if (ctl.equals("BOS")) {
+                            currentV2SectionCode = (fieldsForControl.length > 1) ? stripOuterQuotes(fieldsForControl[1]) : "";
+                            if (currentV2SectionCode == null) currentV2SectionCode = "";
+                            currentV2SectionCode = currentV2SectionCode.trim();
                             v2ExpectSectionHeader = true;
                             // Next non-empty line should be the section header.
                         }
@@ -752,6 +843,8 @@ public class IBKRFlexParser {
                             v2ExpectSectionHeader = false;
                             currentSectionType = SectionType.UNKNOWN;
                             resetDetectedColumns();
+                            currentAcctHeaders = null;
+                            currentV2SectionCode = "";
                         }
                         continue;
                     }
@@ -783,6 +876,20 @@ public class IBKRFlexParser {
                     currentSectionType = detectSectionType(line);
                     if (inV2 && currentSectionType == SectionType.UNKNOWN) {
                         // v2 can contain arbitrary sections (ACCT/POST/CTRN/...) that we do not parse.
+                        if ("ACCT".equalsIgnoreCase(currentV2SectionCode)) {
+                            currentSectionType = SectionType.ACCOUNT_INFO;
+                            detectAccountInfoHeaders(line);
+                            headerDetected = true;
+                            v2ExpectSectionHeader = false;
+                            continue;
+                        }
+                        headerDetected = true;
+                        v2ExpectSectionHeader = false;
+                        continue;
+                    }
+
+                    if (currentSectionType == SectionType.ACCOUNT_INFO) {
+                        detectAccountInfoHeaders(line);
                         headerDetected = true;
                         v2ExpectSectionHeader = false;
                         continue;
@@ -798,6 +905,11 @@ public class IBKRFlexParser {
                 if (line.startsWith("\"ClientAccountID\"") || (inV2 && line.startsWith("ClientAccountID,"))) {
                     currentSectionType = detectSectionType(line);
                     if (inV2 && currentSectionType == SectionType.UNKNOWN) {
+                        v2ExpectSectionHeader = false;
+                        continue;
+                    }
+                    if (currentSectionType == SectionType.ACCOUNT_INFO) {
+                        detectAccountInfoHeaders(line);
                         v2ExpectSectionHeader = false;
                         continue;
                     }
@@ -821,8 +933,17 @@ public class IBKRFlexParser {
                     continue;
                 }
 
+                if (currentSectionType == SectionType.ACCOUNT_INFO) {
+                    parseAccountInfoRow(currentAccountId, fieldsForControl);
+                    continue;
+                }
+
                     // Allow importing only corporate actions
                     if (!includeTrades && currentSectionType == SectionType.TRADES) {
+                        continue;
+                    }
+
+                    if (!includeCashTransactions && currentSectionType == SectionType.CASH_TRANSACTIONS) {
                         continue;
                     }
 
@@ -881,9 +1002,12 @@ public class IBKRFlexParser {
         }
 
         // Process grouped orders: create consolidated transactions
+        ibOrderGroupCount = orderGroups.size();
         for (Map.Entry<String, List<RawExchTradeRow>> entry : orderGroups.entrySet()) {
             List<RawExchTradeRow> group = entry.getValue();
             if (group.size() > 1) { // Only consolidate if multiple fills
+                ibOrderConsolidatedGroupCount++;
+                ibOrderConsolidatedFillCount += group.size();
                 Transaction consolidated = consolidateGroup(group);
                 if (consolidated != null) {
                     transactions.add(consolidated);
@@ -1182,6 +1306,11 @@ public class IBKRFlexParser {
             if (!missing.isEmpty()) {
                 throw new RuntimeException("Cannot parse IBKR CSV Cash Transactions section - missing required columns: " + missing);
             }
+        }
+
+        if (sectionType == SectionType.ACCOUNT_INFO) {
+            // Free-form; no strict requirements.
+            return;
         }
     }
 

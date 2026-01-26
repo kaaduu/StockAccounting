@@ -34,6 +34,14 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 ### Opraveno
 - Import → IBKR Flex: „Načíst z IBKR“ nyní používá stejnou logiku náhledu jako „Načíst ze souboru“ (včetně detekce CSV v2 sekcí, normalizace kolizí a konzistentního vyhodnocení duplikátů).
 
+## [IBKR Flex: režim obsahu a detaily ACCT] - 2026-01-26
+
+### Opraveno
+- Import → IBKR Flex: režimy „Pouze obchody“ a „Pouze transformace“ už neobsahují dividendy (CTRN).
+
+### Přidáno
+- Import → IBKR Flex → Detaily: pokud je v CSV v2 přítomná sekce ACCT, zobrazí se základní informace o účtu/vlastníkovi a souhrn konsolidace obchodů podle IBOrderID.
+
 ## [Nastavení: výběr vzhledu aplikace] - 2026-01-26
 
 ### Přidáno
