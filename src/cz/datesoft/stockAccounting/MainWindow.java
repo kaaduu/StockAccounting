@@ -206,6 +206,42 @@ public class MainWindow extends javax.swing.JFrame {
   // Dollar icon image
   private javax.swing.ImageIcon dollarIcon;
 
+  // Quick filter UI
+  private javax.swing.JTextField tfQuickFilter;
+  private javax.swing.JToggleButton bToggleAdvancedFilters;
+  private boolean advancedFiltersVisible;
+
+  private void toggleAdvancedFilters() {
+    toggleAdvancedFilters(!advancedFiltersVisible);
+  }
+
+  private void toggleAdvancedFilters(boolean visible) {
+    advancedFiltersVisible = visible;
+    if (bToggleAdvancedFilters != null) {
+      bToggleAdvancedFilters.setSelected(visible);
+    }
+
+    // Advanced widgets live in the second row and beyond; quick filter stays visible.
+    java.awt.Component[] comps = jPanel2 != null ? jPanel2.getComponents() : null;
+    if (comps != null) {
+      for (java.awt.Component c : comps) {
+        if (c == null) continue;
+        if (c == tfQuickFilter || c == bToggleAdvancedFilters) continue;
+        // Always keep action buttons on the right visible.
+        if (c == bDelete || c == bUndoDelete || c == bUndoImport || c == bSort || c == bCopy || c == bClearColors || c == bToggleDisabled || c == bClearTxnId)
+          continue;
+
+        // Hide everything else when collapsed.
+        c.setVisible(visible);
+      }
+    }
+
+    if (jPanel2 != null) {
+      jPanel2.revalidate();
+      jPanel2.repaint();
+    }
+  }
+
   /** Creates new form MainWindow */
   public MainWindow() {
     initComponents();
@@ -423,6 +459,8 @@ public class MainWindow extends javax.swing.JFrame {
     cbMarkets = new javax.swing.JComboBox();
     cbType = new javax.swing.JComboBox();
     jPanel2 = new javax.swing.JPanel();
+    tfQuickFilter = new javax.swing.JTextField();
+    bToggleAdvancedFilters = new javax.swing.JToggleButton();
     bApplyFilter = new javax.swing.JButton();
     bClearFilter = new javax.swing.JButton();
     jLabel2 = new javax.swing.JLabel();
@@ -586,6 +624,44 @@ public class MainWindow extends javax.swing.JFrame {
     getContentPane().setLayout(new java.awt.BorderLayout());
 
     jPanel2.setLayout(new java.awt.GridBagLayout());
+
+    // Quick filter (Ticker/Trh/Note)
+    bToggleAdvancedFilters.setText("Filtry…");
+    bToggleAdvancedFilters.setToolTipText("Zobrazit/skrýt pokročilé filtry");
+    bToggleAdvancedFilters.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        toggleAdvancedFilters();
+      }
+    });
+
+    tfQuickFilter.setToolTipText("Rychlý filtr (Ticker/Trh/Note). Enter = použít; Esc = vymazat.");
+    tfQuickFilter.addKeyListener(new java.awt.event.KeyAdapter() {
+      @Override
+      public void keyPressed(java.awt.event.KeyEvent evt) {
+        if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
+          tfQuickFilter.setText("");
+          applyFilter();
+          return;
+        }
+        if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+          applyFilter();
+        }
+      }
+    });
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(bToggleAdvancedFilters, gridBagConstraints);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    jPanel2.add(tfQuickFilter, gridBagConstraints);
 
     bApplyFilter.setText("Filtrovat");
     bApplyFilter.addActionListener(new java.awt.event.ActionListener() {
@@ -781,7 +857,7 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
     jPanel2.add(bSort, gridBagConstraints);
 
-    // ===== ROW 1: Metadata Filters (with left indentation for visual hierarchy)
+    // ===== ROW 1: Metadata Filters (advanced)
     // =====
 
     // Row 1: Note filter
@@ -882,6 +958,10 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.gridy = 1;
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 5, 0);
     jPanel2.add(bToggleDisabled, gridBagConstraints);
+
+    // Start with advanced filters hidden by default (quick filter only).
+    advancedFiltersVisible = true;
+    toggleAdvancedFilters(false);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     getContentPane().add(jPanel2, java.awt.BorderLayout.NORTH);
@@ -1802,6 +1882,21 @@ public class MainWindow extends javax.swing.JFrame {
     if (effect != null && effect.length() == 0)
       effect = null;
 
+    // Quick filter (maps into ticker/market/note). If set, it takes precedence.
+    String q = tfQuickFilter != null ? tfQuickFilter.getText() : null;
+    if (q != null) {
+      q = q.trim();
+      if (q.isEmpty()) {
+        q = null;
+      }
+    }
+    if (q != null) {
+      ticker = q;
+      market = q;
+      note = q;
+      // Keep advanced filters untouched (type/broker/account/effect/date) so users can combine.
+    }
+
     // Track current ticker filter for status bar display
     currentTickerFilter = ticker;
 
@@ -1879,10 +1974,7 @@ public class MainWindow extends javax.swing.JFrame {
       try {
         openFile(selectedFile);
       } catch (Exception e) {
-        // e.printStackTrace(); // Handled in openFile or caught here?
-        // Previous impl printed stack trace here.
-        e.printStackTrace();
-        JOptionPane.showMessageDialog(this, "Při načítání souboru nastala chyba: " + e);
+        UiDialogs.error(this, "Při načítání souboru nastala chyba: " + e.getMessage(), "Chyba", e);
       }
     }
   }

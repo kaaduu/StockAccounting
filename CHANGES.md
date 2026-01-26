@@ -44,6 +44,7 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 ### Změněno
 - Import/Compute/About/Main: odstraněny některé pevné velikosti a typografie, okna se lépe přizpůsobují různým obrazovkám.
 - Dialogy pro chyby nyní umí zobrazit detaily (stacktrace) a zapisují se do logů.
+- Hlavní okno: přidán rychlý filtr (Ticker/Trh/Note) a možnost skrýt/zobrazit pokročilé filtry.
 
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
