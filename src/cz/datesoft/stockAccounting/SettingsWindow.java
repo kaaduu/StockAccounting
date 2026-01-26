@@ -1308,7 +1308,6 @@ public class SettingsWindow extends javax.swing.JDialog {
     bCancel.setText("Storno");
     bCancel.setMaximumSize(new java.awt.Dimension(100, 23));
     bCancel.setMinimumSize(new java.awt.Dimension(100, 23));
-    bCancel.setPreferredSize(new java.awt.Dimension(70, 23));
     bCancel.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bCancelActionPerformed(evt);
@@ -1318,7 +1317,6 @@ public class SettingsWindow extends javax.swing.JDialog {
     bOK.setText("OK");
     bOK.setMaximumSize(new java.awt.Dimension(100, 23));
     bOK.setMinimumSize(new java.awt.Dimension(100, 23));
-    bOK.setPreferredSize(new java.awt.Dimension(70, 23));
     bOK.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bOKActionPerformed(evt);

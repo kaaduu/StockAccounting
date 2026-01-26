@@ -496,24 +496,19 @@ public class MainWindow extends javax.swing.JFrame {
         new javax.swing.DefaultComboBoxModel(new String[] { "", "Assignment", "Exercise", "Expired" }));
 
     // Set sizes and handlers for filter combo boxes
-    cbBrokerFilter.setMinimumSize(new java.awt.Dimension(80, 20));
-    cbBrokerFilter.setPreferredSize(new java.awt.Dimension(80, 20));
+    // Let layout decide sizes; fixed widths break HiDPI and narrow windows.
     cbBrokerFilter.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         applyFilter(); // Apply filter on selection change
       }
     });
 
-    cbAccountIdFilter.setMinimumSize(new java.awt.Dimension(100, 20));
-    cbAccountIdFilter.setPreferredSize(new java.awt.Dimension(100, 20));
     cbAccountIdFilter.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         applyFilter(); // Apply filter on selection change
       }
     });
 
-    cbEffectFilter.setMinimumSize(new java.awt.Dimension(100, 20));
-    cbEffectFilter.setPreferredSize(new java.awt.Dimension(100, 20));
     cbEffectFilter.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         applyFilter(); // Apply filter on selection change
@@ -618,8 +613,7 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(jLabel2, gridBagConstraints);
 
-    dcFrom.setMinimumSize(new java.awt.Dimension(90, 20));
-    dcFrom.setPreferredSize(new java.awt.Dimension(90, 20));
+    // Let layout decide date chooser size.
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(dcFrom, gridBagConstraints);
@@ -629,8 +623,7 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(jLabel3, gridBagConstraints);
 
-    dcTo.setMinimumSize(new java.awt.Dimension(120, 20));
-    dcTo.setPreferredSize(new java.awt.Dimension(120, 20));
+    // Let layout decide date chooser size.
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(dcTo, gridBagConstraints);
@@ -640,8 +633,7 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(jLabel4, gridBagConstraints);
 
-    tfTicker.setMinimumSize(new java.awt.Dimension(60, 20));
-    tfTicker.setPreferredSize(new java.awt.Dimension(60, 20));
+    // Let layout decide text field size.
     tfTicker.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         tfTickerActionPerformed(evt);
@@ -661,8 +653,7 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(jLabel5, gridBagConstraints);
 
-    tfMarket.setMinimumSize(new java.awt.Dimension(60, 20));
-    tfMarket.setPreferredSize(new java.awt.Dimension(60, 20));
+    // Let layout decide text field size.
     tfMarket.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         tfMarketActionPerformed(evt);
@@ -685,8 +676,7 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
     jPanel2.add(jLabel6, gridBagConstraints);
 
-    cbTypeFilter.setMinimumSize(new java.awt.Dimension(80, 20));
-    cbTypeFilter.setPreferredSize(new java.awt.Dimension(80, 20));
+    // Let layout decide combobox size.
     cbTypeFilter.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         applyFilter(); // Apply filter on selection change
@@ -802,8 +792,7 @@ public class MainWindow extends javax.swing.JFrame {
     gridBagConstraints.insets = new java.awt.Insets(5, 20, 5, 0); // 20px left indent
     jPanel2.add(jLabel7, gridBagConstraints);
 
-    tfNote.setMinimumSize(new java.awt.Dimension(150, 20));
-    tfNote.setPreferredSize(new java.awt.Dimension(150, 20));
+    // Let layout decide note field size.
     tfNote.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         tfNoteActionPerformed(evt);
@@ -925,6 +914,13 @@ public class MainWindow extends javax.swing.JFrame {
     // Create status bar layout
     jLabel1.setText("Záznamů: 0");
     jLabel1.setBorder(javax.swing.BorderFactory.createEmptyBorder(2, 5, 2, 5));
+
+    // Slightly increase row height for readability
+    try {
+      table.setRowHeight(Math.max(24, table.getRowHeight()));
+    } catch (Exception e) {
+      // ignore
+    }
 
     jPanel1.setLayout(new java.awt.BorderLayout());
     jPanel1.setBorder(javax.swing.BorderFactory.createEtchedBorder());
@@ -1077,8 +1073,8 @@ public class MainWindow extends javax.swing.JFrame {
 
     pack();
 
-    // Set reasonable minimum size for two-row filter layout
-    setMinimumSize(new java.awt.Dimension(1200, 600));
+    // Keep a reasonable minimum size but allow smaller screens.
+    setMinimumSize(new java.awt.Dimension(980, 600));
   }// </editor-fold>//GEN-END:initComponents
 
   private void formWindowClosing(java.awt.event.WindowEvent evt)// GEN-FIRST:event_formWindowClosing
