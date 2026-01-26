@@ -21,6 +21,15 @@ public final class UiTheme {
       javax.swing.UIManager.put("ScrollBar.thumbInsets", new java.awt.Insets(2, 2, 2, 2));
       javax.swing.UIManager.put("ScrollBar.trackArc", 999);
 
+      // Table defaults (readability)
+      javax.swing.UIManager.put("Table.rowHeight", Integer.valueOf(24));
+      javax.swing.UIManager.put("Table.showHorizontalLines", Boolean.TRUE);
+      javax.swing.UIManager.put("Table.showVerticalLines", Boolean.FALSE);
+      javax.swing.UIManager.put("Table.intercellSpacing", new java.awt.Dimension(0, 1));
+
+      // Dialog/button defaults
+      javax.swing.UIManager.put("OptionPane.buttonPadding", Integer.valueOf(10));
+
       switch (theme) {
         case Settings.THEME_SYSTEM:
           javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());

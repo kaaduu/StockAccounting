@@ -136,18 +136,53 @@ public class ComputeWindow extends javax.swing.JDialog {
 
   private final java.util.List<CpTaxExportTrade> lastComputedCpTaxTrades = new java.util.ArrayList<>();
 
+  private void saveWindowBounds() {
+    try {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      java.awt.Point pt = getLocationOnScreen();
+      java.awt.Dimension d = getSize();
+      p.putInt("computeWindow.x", pt.x);
+      p.putInt("computeWindow.y", pt.y);
+      p.putInt("computeWindow.w", d.width);
+      p.putInt("computeWindow.h", d.height);
+    } catch (Exception e) {
+      // ignore
+    }
+  }
+
   /** Creates new form ComputeDialog */
   public ComputeWindow(java.awt.Frame parent, boolean modal) {
     super(parent, modal);
     mainWindow = (MainWindow) parent;
     initComponents();
 
-    // works better on multiple monitors environment
-    GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-    int width = gd.getDisplayMode().getWidth();
-    int height = gd.getDisplayMode().getHeight();
-    // Maximize window
-    setBounds(0, 0, width, height);
+    // Respect user window management (no forced fullscreen).
+    setLocationByPlatform(true);
+    try {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      int w = p.getInt("computeWindow.w", 1100);
+      int h = p.getInt("computeWindow.h", 760);
+      int x = p.getInt("computeWindow.x", Integer.MIN_VALUE);
+      int y = p.getInt("computeWindow.y", Integer.MIN_VALUE);
+      setSize(new java.awt.Dimension(Math.max(900, w), Math.max(650, h)));
+      if (x != Integer.MIN_VALUE && y != Integer.MIN_VALUE) {
+        setLocation(x, y);
+      }
+    } catch (Exception e) {
+      setSize(new java.awt.Dimension(1100, 760));
+    }
+
+    addComponentListener(new java.awt.event.ComponentAdapter() {
+      @Override
+      public void componentMoved(java.awt.event.ComponentEvent e) {
+        saveWindowBounds();
+      }
+
+      @Override
+      public void componentResized(java.awt.event.ComponentEvent e) {
+        saveWindowBounds();
+      }
+    });
     // setLocation(0, 0);
     // setSize(java.awt.Toolkit.getDefaultToolkit().getScreenSize()); #worked well
     // on single monitor only
@@ -161,7 +196,6 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     // Initialize conversion method toggle
     cbUseDailyRatesCompute = new javax.swing.JCheckBox();
-    cbUseDailyRatesCompute.setFont(new java.awt.Font("Tahoma", 1, 11));
     cbUseDailyRatesCompute.setText("Používat denní kurzy");
     cbUseDailyRatesCompute.setSelected(Settings.getUseDailyRates());
     cbUseDailyRatesCompute.addActionListener(new java.awt.event.ActionListener() {
@@ -2039,7 +2073,7 @@ public class ComputeWindow extends javax.swing.JDialog {
     gridBagConstraints.weighty = 2.0;
     getContentPane().add(jTabbedPane1, gridBagConstraints);
 
-    jLabel2.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+    jLabel2.setFont(jLabel2.getFont().deriveFont(java.awt.Font.BOLD));
     jLabel2.setText("Dividendy:     ");
     jPanel2.add(jLabel2);
 

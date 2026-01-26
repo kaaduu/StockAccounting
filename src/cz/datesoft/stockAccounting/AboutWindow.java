@@ -30,8 +30,9 @@ public class AboutWindow extends javax.swing.JDialog
      super(parent, modal);
      initComponents();
 
-     setLocationByPlatform(true);
-     setSize(750, 380); // Increased height for version and system info
+      setLocationByPlatform(true);
+      // Prefer pack-based sizing; allow user resize.
+      setResizable(true);
     
      // Set icon
      iconButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("images/dolar.png")));
@@ -54,7 +55,8 @@ public class AboutWindow extends javax.swing.JDialog
           "  </body>\n" +
           "</html>\n";
 
-     jEditorPane1.setText(htmlContent);
+      jEditorPane1.setText(htmlContent);
+      pack();
     
     //Enable link handler (open link in browser)
     jEditorPane1.addHyperlinkListener(new HyperlinkListener() {
@@ -173,10 +175,9 @@ public class AboutWindow extends javax.swing.JDialog
         iconButton.setFocusable(false);
 
         jEditorPane1.setEditable(false);
-        jEditorPane1.setBackground(new java.awt.Color(255, 255, 102));
-        jEditorPane1.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        jEditorPane1.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 8, 8, 8));
         jEditorPane1.setContentType("text/html"); // NOI18N
-        jEditorPane1.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        jEditorPane1.setFont(jEditorPane1.getFont().deriveFont(java.awt.Font.BOLD));
         jEditorPane1.setText("<html>\n  <head>\n\n  </head>\n  <body>\n    <p style=\"margin-top: 0\">\n      Akciové účetnictví verze 2022-05 rev 1 (<a href=\"http://lemming.ucw.cz/ucetnictvi/\">vychazi z puvodni verze 1.2.7</a> - Michal Kára)<br> \n     Zdrojove kody na <a href=\"https://github.com/kaaduu/StockAccounting\">githubu</a> - vydano pod licencí GPL\n    </p>\n  </body>\n</html>\n");
         jEditorPane1.setToolTipText("");
         jEditorPane1.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
@@ -195,7 +196,7 @@ public class AboutWindow extends javax.swing.JDialog
         jEditorPane2.setEditable(false);
         jEditorPane2.setBorder(null);
         jEditorPane2.setContentType("text/html"); // NOI18N
-        jEditorPane2.setFont(new java.awt.Font("Tahoma", 2, 10)); // NOI18N
+        jEditorPane2.setFont(jEditorPane2.getFont().deriveFont(java.awt.Font.PLAIN, 12f));
         jEditorPane2.setText("<html>\n  <head>\n    <style type=\"text/css\">\n     .style1 { color: #000000; font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 8px;  }\n     .style2 { font-family: Verdana, Arial, Helvetica, sans-serif;\tcolor: red;\t font-size:0.9em; }\n  </style>  \n  </head>\n  <body>\n<div class=\"style2\">\nUpozornění: Použití tohoto programu je pouze na vlastní nebezpečí!\nAutor neručí za jeho metodickou ani výpočetní správnost!<br>\n</div>\n<div class=\"style1\">\nPlná historie změn v <a href=\"https://github.com/kaaduu/StockAccounting/blob/master/CHANGES.md\">CHANGES.md na GitHubu</a><br>\n<b>Podpora importu pro:<b><br>\n<ul>\n<li>Interactive Brokers - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Interactive-Brokers-tradelog\">TradeLog</a>  (tlg |)\n<li>Interactive Brokers - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Interactive-Brokers---FlexiQuery\">FlexQuery</a> (csv ,)\n<li>FIO - <a href=\"http://lemming.ucw.cz/ucetnictvi/importWindow.html\">csv obchodu</a> (csv ;) \n<li>Trading 212 Invest - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Trading-212-Invest-csv\">export csv</a>\n<li>Revolut - <a href=\"https://github.com/kaaduu/StockAccounting/wiki/Revolut-csv\">export csv</a>\n</ul>\n\n</div>\n</body>\n</html>\n");
         jEditorPane2.setOpaque(false);
 
@@ -229,6 +230,7 @@ public class AboutWindow extends javax.swing.JDialog
         );
 
         pack();
+        setMinimumSize(new java.awt.Dimension(720, 360));
     }// </editor-fold>//GEN-END:initComponents
 
   private void bCloseActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_bCloseActionPerformed

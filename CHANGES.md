@@ -39,6 +39,12 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 ### Přidáno
 - Nastavení → System: volba vzhledu (System/FlatLaf Light/Dark/IntelliJ/Darcula). Změna se projeví po restartu.
 
+## [UI: modernizace vzhledu a použitelnosti] - 2026-01-26
+
+### Změněno
+- Import/Compute/About/Main: odstraněny některé pevné velikosti a typografie, okna se lépe přizpůsobují různým obrazovkám.
+- Dialogy pro chyby nyní umí zobrazit detaily (stacktrace) a zapisují se do logů.
+
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
 ### Opraveno

@@ -134,7 +134,7 @@ public class ImportWindow extends javax.swing.JFrame {
     // Set window properties
     this.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
     this.setLocationByPlatform(true);
-    this.setSize(800, 550);
+    // Prefer pack-based sizing + reasonable minimum.
     this.setResizable(true); // Enable maximize button
 
     // Initialize import state (constructor automatically loads from Settings)
@@ -143,7 +143,7 @@ public class ImportWindow extends javax.swing.JFrame {
     GridBagConstraints gbc;
 
     startDate = new JDateChooser();
-    startDate.setPreferredSize(new Dimension(200, 20));
+    // Let layout decide width
 
     gbc = new GridBagConstraints();
     gbc.gridx = 1;
@@ -161,7 +161,7 @@ public class ImportWindow extends javax.swing.JFrame {
     // Removed automatic import trigger on date change - import should only happen on explicit user action
 
     endDate = new JDateChooser();
-    endDate.setPreferredSize(new Dimension(100, 20));
+    // Let layout decide width
 
     gbc = new GridBagConstraints();
     gbc.gridx = 3;
@@ -173,6 +173,15 @@ public class ImportWindow extends javax.swing.JFrame {
     getContentPane().add(endDate, gbc);
 
     endDate.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
+      public void propertyChange(java.beans.PropertyChangeEvent evt) {
+        if (evt != null && evt.getPropertyName() != null && !"date".equals(evt.getPropertyName())) {
+          return;
+        }
+        loadImport();
+      }
+    });
+
+    startDate.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
       public void propertyChange(java.beans.PropertyChangeEvent evt) {
         if (evt != null && evt.getPropertyName() != null && !"date".equals(evt.getPropertyName())) {
           return;
@@ -205,6 +214,9 @@ public class ImportWindow extends javax.swing.JFrame {
 
     // Busy overlay (glass pane) for long-running preview loads
     initBusyOverlay();
+
+    pack();
+    setMinimumSize(new java.awt.Dimension(900, 620));
   }
 
   private void initBusyOverlay() {
@@ -1644,13 +1656,13 @@ public class ImportWindow extends javax.swing.JFrame {
        currentImportFormat = 0; // Clear programmatic override on error
      } catch (java.io.IOException e) {
        System.out.println("[IMPORT:ERROR] IOException during import: " + e.getMessage());
-       JOptionPane.showMessageDialog(this, "Chyba čtení: " + e.getLocalizedMessage());
+       UiDialogs.error(this, "Chyba čtení: " + e.getLocalizedMessage(), "Chyba", e);
        currentImportFormat = 0; // Clear programmatic override on error
      } catch (cz.datesoft.stockAccounting.imp.ImportException e) {
        System.out.println("[IMPORT:ERROR] ImportException during import: " + e.getMessage());
        System.out.println("[IMPORT:ERROR] UI state at time of error:");
        logUIComponentStates();
-       JOptionPane.showMessageDialog(this, "Chyba při importu: " + e.getMessage());
+       UiDialogs.error(this, "Chyba při importu: " + e.getMessage(), "Chyba", e);
        currentImportFormat = 0; // Clear programmatic override on error
      }
   }
@@ -1689,7 +1701,7 @@ public class ImportWindow extends javax.swing.JFrame {
           LoadResult r = get();
           applyLoadResult(r);
         } catch (Exception e) {
-          JOptionPane.showMessageDialog(ImportWindow.this, "Chyba při importu: " + e.getMessage());
+          UiDialogs.error(ImportWindow.this, "Chyba při importu: " + e.getMessage(), "Chyba", e);
         } finally {
           hideBusy();
           if (previewReloadRequested) {
