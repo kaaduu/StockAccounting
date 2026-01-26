@@ -2833,19 +2833,31 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       });
       
-      // Build left-aligned button row (stable alignment even when other UI elements are hidden)
-      pIBKRFlexButtons.add(bIBKRFlexFetch);
-      pIBKRFlexButtons.add(bIBKRFlexFile);
-      pIBKRFlexButtons.add(bIBKRFlexClear);
-      pIBKRFlexButtons.add(bIBKRFlexRefreshPreview);
-      pIBKRFlexButtons.add(cbIBKRFlexImportMode);
-      pIBKRFlexButtons.add(cbIBKRFlexIncludeCorporateActions);
-      pIBKRFlexButtons.add(new javax.swing.JLabel("Typy:"));
-      pIBKRFlexButtons.add(cbIBKRFlexCaRS);
-      pIBKRFlexButtons.add(cbIBKRFlexCaTC);
-      pIBKRFlexButtons.add(cbIBKRFlexCaIC);
-      pIBKRFlexButtons.add(cbIBKRFlexCaTO);
-      pIBKRFlexButtons.add(bIBKRFlexAssetFilter);
+      // Build left-aligned button row grouped into compact sections
+      javax.swing.JPanel pSource = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+      pSource.setBorder(javax.swing.BorderFactory.createTitledBorder("1) Zdroj"));
+      pSource.add(bIBKRFlexFetch);
+      pSource.add(bIBKRFlexFile);
+
+      javax.swing.JPanel pPreview = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+      pPreview.setBorder(javax.swing.BorderFactory.createTitledBorder("2) Náhled"));
+      pPreview.add(bIBKRFlexRefreshPreview);
+      pPreview.add(bIBKRFlexClear);
+
+      javax.swing.JPanel pOptions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+      pOptions.setBorder(javax.swing.BorderFactory.createTitledBorder("3) Obsah"));
+      pOptions.add(cbIBKRFlexImportMode);
+      pOptions.add(cbIBKRFlexIncludeCorporateActions);
+      pOptions.add(new javax.swing.JLabel("Typy:"));
+      pOptions.add(cbIBKRFlexCaRS);
+      pOptions.add(cbIBKRFlexCaTC);
+      pOptions.add(cbIBKRFlexCaIC);
+      pOptions.add(cbIBKRFlexCaTO);
+      pOptions.add(bIBKRFlexAssetFilter);
+
+      pIBKRFlexButtons.add(pSource);
+      pIBKRFlexButtons.add(pPreview);
+      pIBKRFlexButtons.add(pOptions);
 
       applyIbkrImportModeToUi();
 
