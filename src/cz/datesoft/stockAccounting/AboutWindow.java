@@ -42,18 +42,21 @@ public class AboutWindow extends javax.swing.JDialog
      String javaInfo = getJavaInfo();
      String systemInfo = getSystemInfo();
 
-      String htmlContent = "<html>\n" +
-          "  <head>\n\n  </head>\n" +
-          "  <body>\n" +
-          "    <p style=\"margin-top: 0\">\n" +
-          "      Akciové účetnictví <strong>verze " + version + "</strong> " +
-          "     Zdrojove kody na <a href=\"https://github.com/kaaduu/StockAccounting\">githubu</a> - vydano pod <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">licencí GPL-3.0</a> (<a href=\"http://www.gnugpl.cz/v3/\">česky</a> / <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">english</a>)<br>\n" +
-          "     <br>\n" +
-          "     <strong>Java Runtime:</strong> " + javaInfo + "<br>\n" +
-          "     <strong>Operační systém:</strong> " + systemInfo + "\n" +
-          "    </p>\n" +
-          "  </body>\n" +
-          "</html>\n";
+       String htmlContent = "<html>" +
+           "<body style='font-family:sans-serif;'>" +
+           "<div style='margin:0 0 10px 0;'>" +
+           "  <div style='font-size:16px;font-weight:700;margin:0 0 2px 0;'>Akciové účetnictví</div>" +
+           "  <div style='font-size:12px;color:#666;margin:0 0 8px 0;'>verze <b>" + version + "</b></div>" +
+           "</div>" +
+           "<div style='margin:0 0 10px 0;'>" +
+           "  Zdrojové kódy: <a href='https://github.com/kaaduu/StockAccounting'>GitHub</a><br/>" +
+           "  Licence: <a href='https://www.gnu.org/licenses/gpl-3.0.html'>GPL-3.0</a>" +
+           "</div>" +
+           "<div style='margin:0 0 10px 0;'>" +
+           "  <b>Java Runtime:</b> " + javaInfo + "<br/>" +
+           "  <b>Operační systém:</b> " + systemInfo + "" +
+           "</div>" +
+           "</body></html>";
 
       jEditorPane1.setText(htmlContent);
       pack();

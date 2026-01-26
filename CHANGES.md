@@ -46,6 +46,7 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Dialogy pro chyby nyní umí zobrazit detaily (stacktrace) a zapisují se do logů.
 - Hlavní okno: přidán rychlý filtr (Ticker/Trh/Note) a možnost skrýt/zobrazit pokročilé filtry.
 - Výpočet: upozornění na datum vypořádání na konci roku nabízí rychlý filtr v hlavním okně.
+- O aplikaci: upraveno rozložení a typografie (čitelnější hierarchie informací).
 
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
