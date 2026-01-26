@@ -48,6 +48,7 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Výpočet: upozornění na datum vypořádání na konci roku nabízí rychlý filtr v hlavním okně.
 - O aplikaci: upraveno rozložení a typografie (čitelnější hierarchie informací).
 - Nastavení → System: přeskupeno do sekcí pro rychlejší orientaci.
+- Import → IBKR Flex: tlačítka přeskupena do kroků (Zdroj/Náhled/Obsah).
 
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
