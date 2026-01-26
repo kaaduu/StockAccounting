@@ -1297,6 +1297,10 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     bFetchRates = new javax.swing.JButton();
     bExportUnifiedRatesJson = new javax.swing.JButton();
+
+    javax.swing.JPanel ratesActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 0));
+    ratesActions.setBorder(javax.swing.BorderFactory.createTitledBorder("Akce"));
+
     bFetchRates.setText("Načíst kurzy");
     bFetchRates.setToolTipText("Načíst jednotné kurzy z ČNB");
     bFetchRates.addActionListener(new java.awt.event.ActionListener() {
@@ -1304,7 +1308,7 @@ public class SettingsWindow extends javax.swing.JDialog {
         bFetchRatesActionPerformed(evt);
       }
     });
-    jPanel5.add(bFetchRates, new java.awt.GridBagConstraints());
+    ratesActions.add(bFetchRates);
 
     bExportUnifiedRatesJson.setText("Export JSON");
     bExportUnifiedRatesJson.setToolTipText("Exportovat jednotné kurzy do JSON souboru");
@@ -1313,7 +1317,9 @@ public class SettingsWindow extends javax.swing.JDialog {
         bExportUnifiedRatesJsonActionPerformed(evt);
       }
     });
-    jPanel5.add(bExportUnifiedRatesJson, new java.awt.GridBagConstraints());
+    ratesActions.add(bExportUnifiedRatesJson);
+
+    jPanel5.add(ratesActions, new java.awt.GridBagConstraints());
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridy = 1;
