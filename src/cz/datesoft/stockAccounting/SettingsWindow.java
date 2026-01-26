@@ -656,13 +656,71 @@ public class SettingsWindow extends javax.swing.JDialog {
     // Build System tab (last)
     pSystem.setLayout(new java.awt.GridBagLayout());
 
+    javax.swing.JPanel pSystemCards = new javax.swing.JPanel();
+    pSystemCards.setLayout(new java.awt.GridBagLayout());
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.weighty = 1.0;
+    pSystem.add(pSystemCards, gridBagConstraints);
+
+    java.awt.GridBagConstraints cSys;
+
+    javax.swing.JPanel cardStartup = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    cardStartup.setBorder(javax.swing.BorderFactory.createTitledBorder("Spuštění"));
+    cSys = new java.awt.GridBagConstraints();
+    cSys.gridx = 0;
+    cSys.gridy = 0;
+    cSys.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    cSys.weightx = 1.0;
+    cSys.insets = new java.awt.Insets(10, 10, 10, 10);
+    pSystemCards.add(cardStartup, cSys);
+
+    javax.swing.JPanel cardFileDialogs = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    cardFileDialogs.setBorder(javax.swing.BorderFactory.createTitledBorder("Dialogy"));
+    cSys = new java.awt.GridBagConstraints();
+    cSys.gridx = 0;
+    cSys.gridy = 1;
+    cSys.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    cSys.weightx = 1.0;
+    cSys.insets = new java.awt.Insets(0, 10, 10, 10);
+    pSystemCards.add(cardFileDialogs, cSys);
+
+    javax.swing.JPanel cardHighlight = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    cardHighlight.setBorder(javax.swing.BorderFactory.createTitledBorder("Zvýraznění po importu"));
+    cSys = new java.awt.GridBagConstraints();
+    cSys.gridx = 0;
+    cSys.gridy = 2;
+    cSys.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    cSys.weightx = 1.0;
+    cSys.insets = new java.awt.Insets(0, 10, 10, 10);
+    pSystemCards.add(cardHighlight, cSys);
+
+    javax.swing.JPanel cardTheme = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    cardTheme.setBorder(javax.swing.BorderFactory.createTitledBorder("Vzhled"));
+    cSys = new java.awt.GridBagConstraints();
+    cSys.gridx = 0;
+    cSys.gridy = 3;
+    cSys.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    cSys.weightx = 1.0;
+    cSys.insets = new java.awt.Insets(0, 10, 10, 10);
+    pSystemCards.add(cardTheme, cSys);
+
+    cSys = new java.awt.GridBagConstraints();
+    cSys.gridx = 0;
+    cSys.gridy = 4;
+    cSys.weighty = 1.0;
+    pSystemCards.add(new javax.swing.JPanel(), cSys);
+
     javax.swing.JLabel lblFileChooser = new javax.swing.JLabel("Výběr souborů:");
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
     gridBagConstraints.gridy = 0;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(lblFileChooser, gridBagConstraints);
+    cardFileDialogs.add(lblFileChooser, gridBagConstraints);
 
     cbFileChooserMode = new javax.swing.JComboBox(new String[] { "Nativní (OS)", "Java (Swing)" });
     cbFileChooserMode.setSelectedIndex(Settings.getFileChooserMode() == Settings.FILE_CHOOSER_SWING ? 1 : 0);
@@ -679,7 +737,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
     gridBagConstraints.weightx = 1.0;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(cbFileChooserMode, gridBagConstraints);
+    cardFileDialogs.add(cbFileChooserMode, gridBagConstraints);
 
     cbShowAboutOnStartup = new javax.swing.JCheckBox("Zobrazit \"O aplikaci\" při startu");
     cbShowAboutOnStartup.setSelected(Settings.getShowAboutOnStartup());
@@ -695,7 +753,8 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridwidth = 2;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(cbShowAboutOnStartup, gridBagConstraints);
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardStartup.add(cbShowAboutOnStartup, gridBagConstraints);
 
     cbAutoMaximized = new javax.swing.JCheckBox("Maximalizovat hlavní okno při startu");
     cbAutoMaximized.setSelected(Settings.getAutoMaximized());
@@ -711,7 +770,8 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridwidth = 2;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(cbAutoMaximized, gridBagConstraints);
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardStartup.add(cbAutoMaximized, gridBagConstraints);
 
     cbAutoLoadLastFile = new javax.swing.JCheckBox("Automaticky načíst poslední otevřený soubor bez dotazu");
     cbAutoLoadLastFile.setSelected(Settings.getAutoLoadLastFile());
@@ -727,7 +787,8 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridwidth = 2;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(cbAutoLoadLastFile, gridBagConstraints);
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardStartup.add(cbAutoLoadLastFile, gridBagConstraints);
 
     // Import highlighting settings
     javax.swing.JLabel lblImportHl = new javax.swing.JLabel("Zvýraznění po importu:");
@@ -736,7 +797,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 4;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(lblImportHl, gridBagConstraints);
+    cardHighlight.add(lblImportHl, gridBagConstraints);
 
     cbHighlightInserted = new javax.swing.JCheckBox("Zvýraznit nové (přidané)");
     cbHighlightInserted.setSelected(Settings.getHighlightInsertedEnabled());
@@ -751,7 +812,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 5;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
-    pSystem.add(cbHighlightInserted, gridBagConstraints);
+    cardHighlight.add(cbHighlightInserted, gridBagConstraints);
 
     bPickInsertedColor = new javax.swing.JButton("Barva nových...");
     bPickInsertedColor.addActionListener(new java.awt.event.ActionListener() {
@@ -769,7 +830,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 5;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
-    pSystem.add(bPickInsertedColor, gridBagConstraints);
+    cardHighlight.add(bPickInsertedColor, gridBagConstraints);
 
     cbHighlightUpdated = new javax.swing.JCheckBox("Zvýraznit aktualizované (duplikáty)");
     cbHighlightUpdated.setSelected(Settings.getHighlightUpdatedEnabled());
@@ -784,7 +845,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 6;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
-    pSystem.add(cbHighlightUpdated, gridBagConstraints);
+    cardHighlight.add(cbHighlightUpdated, gridBagConstraints);
 
     bPickUpdatedColor = new javax.swing.JButton("Barva aktualizovaných...");
     bPickUpdatedColor.addActionListener(new java.awt.event.ActionListener() {
@@ -802,7 +863,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 6;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
-    pSystem.add(bPickUpdatedColor, gridBagConstraints);
+    cardHighlight.add(bPickUpdatedColor, gridBagConstraints);
 
     lHighlightPreviewNew = new javax.swing.JLabel("Náhled: nový");
     lHighlightPreviewNew.setOpaque(true);
@@ -816,14 +877,14 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 7;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
-    pSystem.add(lHighlightPreviewNew, gridBagConstraints);
+    cardHighlight.add(lHighlightPreviewNew, gridBagConstraints);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 1;
     gridBagConstraints.gridy = 7;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
-    pSystem.add(lHighlightPreviewUpdated, gridBagConstraints);
+    cardHighlight.add(lHighlightPreviewUpdated, gridBagConstraints);
 
     // UI theme selector
     javax.swing.JLabel lblUiTheme = new javax.swing.JLabel("Vzhled aplikace:");
@@ -832,7 +893,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 8;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(15, 10, 0, 10);
-    pSystem.add(lblUiTheme, gridBagConstraints);
+    cardTheme.add(lblUiTheme, gridBagConstraints);
 
     cbUiTheme = new javax.swing.JComboBox(new String[] {
         "System (OS)",
@@ -858,13 +919,9 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
     gridBagConstraints.weightx = 1.0;
     gridBagConstraints.insets = new java.awt.Insets(15, 10, 0, 10);
-    pSystem.add(cbUiTheme, gridBagConstraints);
+    cardTheme.add(cbUiTheme, gridBagConstraints);
 
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 0;
-    gridBagConstraints.gridy = 9;
-    gridBagConstraints.weighty = 1.0;
-    pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
+    // Spacer moved to pSystemCards
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridy = 3;

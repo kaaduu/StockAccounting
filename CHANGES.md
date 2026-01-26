@@ -47,6 +47,7 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Hlavní okno: přidán rychlý filtr (Ticker/Trh/Note) a možnost skrýt/zobrazit pokročilé filtry.
 - Výpočet: upozornění na datum vypořádání na konci roku nabízí rychlý filtr v hlavním okně.
 - O aplikaci: upraveno rozložení a typografie (čitelnější hierarchie informací).
+- Nastavení → System: přeskupeno do sekcí pro rychlejší orientaci.
 
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
