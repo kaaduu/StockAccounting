@@ -24,11 +24,13 @@ public class Main {
    */
   public static void main(String[] args)
   {
+    // Load persisted settings first (theme selection is stored there).
+    Settings.load();
+
+    // Apply Look&Feel before any Swing components are created.
     try {
       UiTheme.applyFromSettings();
     } catch (Exception e) { }
-      
-    Settings.load();
     
     mainWindow = new MainWindow();
     
