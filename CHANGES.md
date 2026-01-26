@@ -29,6 +29,11 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 ### Změněno
 - Aplikace používá moderní Swing Look&Feel (FlatLaf) pro čistší a konzistentnější vzhled napříč platformami.
 
+## [IBKR Flex: sjednocení parsování API a souboru] - 2026-01-26
+
+### Opraveno
+- Import → IBKR Flex: „Načíst z IBKR“ nyní používá stejnou logiku náhledu jako „Načíst ze souboru“ (včetně detekce CSV v2 sekcí, normalizace kolizí a konzistentního vyhodnocení duplikátů).
+
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
 ### Opraveno
