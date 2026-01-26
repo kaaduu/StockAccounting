@@ -3,6 +3,10 @@ build/
 dist/
 nbproject/private/
 wiki/
+.gradle/
+
+# Gradle build outputs
+build/
 
 # Local datasets / sample exports
 data/

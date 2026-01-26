@@ -1,73 +1,21 @@
 #!/bin/bash
 
-# Exit on error
 set -e
 
-echo "Building StockAccounting..."
+echo "Building StockAccounting (Gradle)..."
 
-# Create build directory
-mkdir -p build
-rm -rf build/*
+if [ ! -x "./gradlew" ]; then
+  echo "ERROR: ./gradlew not found."
+  echo "This project now builds via Gradle wrapper."
+  exit 1
+fi
 
- # Compile Java files
- echo "Compiling with Java 17 compatibility..."
+./gradlew --no-daemon clean installDist
 
- # Try to find and use Java 17 compiler for consistency
- JAVA17_JAVAC=""
- if [ -f "/usr/lib/jvm/java-17-openjdk-amd64/bin/javac" ]; then
-     JAVA17_JAVAC="/usr/lib/jvm/java-17-openjdk-amd64/bin/javac"
- elif [ -f "/usr/lib/jvm/java-17-openjdk/bin/javac" ]; then
-     JAVA17_JAVAC="/usr/lib/jvm/java-17-openjdk/bin/javac"
- elif command -v javac >/dev/null 2>&1 && javac --help 2>&1 | grep -q "\-\-release"; then
-     JAVA17_JAVAC="javac"
- fi
+rm -rf dist
+mkdir -p dist
 
- if [ -n "$JAVA17_JAVAC" ]; then
-     echo "Using Java 17 compiler: $JAVA17_JAVAC"
-     $JAVA17_JAVAC --release 17 -d build -cp "libjar/*" $(find src -name "*.java")
- else
-     echo "Warning: Java 17 compiler not found. Using available javac."
-     echo "For full Java 17 compatibility, please install JDK 17."
-     javac -source 8 -target 8 -d build -cp "libjar/*" $(find src -name "*.java")
- fi
-
- # Copy resources
- echo "Copying resources..."
- mkdir -p build/cz/datesoft/stockAccounting/images
- cp -v src/cz/datesoft/stockAccounting/images/*.png build/cz/datesoft/stockAccounting/images/
-
- # Generate version information (before JAR creation)
- echo "Generating version information..."
- if command -v git >/dev/null 2>&1; then
-     git describe --tags --always > build/version.txt 2>/dev/null || echo "dev-build" > build/version.txt
- else
-     echo "dev-build" > build/version.txt
- fi
-
- # Create version.properties for runtime access
- echo "version=$(cat build/version.txt)" > build/version.properties
-
- # Create distribution directory
- mkdir -p dist/lib
- rm -rf dist/*
- mkdir -p dist/lib
-
- # Package JAR (now includes version.properties)
- echo "Packaging JAR..."
- jar cfm dist/StockAccounting.jar manifest.mf -C build .
- echo "JAR packaged successfully"
-
- # Copy dependencies
- echo "Copying dependencies..."
- cp libjar/*.jar dist/lib/
-
- # Copy version.properties to dist for reference
- cp build/version.properties dist/ 2>/dev/null || true
-
- # Copy launchers
- echo "Copying launchers..."
- cp run.sh dist/
- cp run.bat dist/ 2>/dev/null || true
- chmod +x dist/run.sh
+# Preserve historical dist layout used by run.sh
+cp -r build/install/StockAccounting/* dist/
 
 echo "Build successful! Distribution ready in 'dist' folder."
