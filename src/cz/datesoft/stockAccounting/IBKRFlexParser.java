@@ -404,12 +404,6 @@ public class IBKRFlexParser {
     private SectionType detectSectionType(String headerLine) {
         String lower = headerLine.toLowerCase();
 
-        // ACCT / account info (v2)
-        if (lower.contains("accounttitle") || lower.contains("account title") ||
-            lower.contains("accountalias") || lower.contains("account alias")) {
-            return SectionType.ACCOUNT_INFO;
-        }
-
         // Trades / executions section
         boolean hasTransactionType = lower.contains("\"transactiontype\"") || lower.contains(",transactiontype,") || lower.contains("transactiontype,") || lower.contains(",transactiontype");
         boolean hasTradePrice = lower.contains("\"tradeprice\"") || lower.contains(",tradeprice,") || lower.contains("tradeprice,") || lower.contains(",tradeprice");
