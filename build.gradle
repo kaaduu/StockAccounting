@@ -6,9 +6,21 @@ plugins {
 group = 'cz.datesoft'
 version = 'dev'
 
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(17)
+  }
+}
+
 // Compile with Java 17 bytecode level.
 tasks.withType(JavaCompile).configureEach {
   options.release = 17
+}
+
+tasks.withType(JavaExec).configureEach {
+  javaLauncher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(17)
+  }
 }
 
 repositories {
