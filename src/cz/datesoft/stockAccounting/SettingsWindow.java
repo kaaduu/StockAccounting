@@ -825,9 +825,44 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
     pSystem.add(lHighlightPreviewUpdated, gridBagConstraints);
 
+    // UI theme selector
+    javax.swing.JLabel lblUiTheme = new javax.swing.JLabel("Vzhled aplikace:");
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
     gridBagConstraints.gridy = 8;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(15, 10, 0, 10);
+    pSystem.add(lblUiTheme, gridBagConstraints);
+
+    cbUiTheme = new javax.swing.JComboBox(new String[] {
+        "System (OS)",
+        "FlatLaf Light",
+        "FlatLaf Dark",
+        "FlatLaf IntelliJ",
+        "FlatLaf Darcula" });
+    cbUiTheme.setSelectedIndex(Settings.getUiTheme());
+    cbUiTheme.setToolTipText("Změna vzhledu vyžaduje restart aplikace.");
+    cbUiTheme.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        int idx = cbUiTheme.getSelectedIndex();
+        Settings.setUiTheme(idx);
+        Settings.save();
+        javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this,
+            "Vzhled bude použit po restartu aplikace.",
+            "Vzhled aplikace", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 8;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(15, 10, 0, 10);
+    pSystem.add(cbUiTheme, gridBagConstraints);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 9;
     gridBagConstraints.weighty = 1.0;
     pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
 
@@ -3088,6 +3123,7 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JLabel lHighlightPreviewUpdated;
   private javax.swing.JCheckBox cbAutoMaximized;
   private javax.swing.JCheckBox cbAutoLoadLastFile;
+  private javax.swing.JComboBox cbUiTheme;
   // End of variables declaration//GEN-END:variables
 
   /**

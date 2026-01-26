@@ -200,6 +200,22 @@ public class Settings {
    */
   private static boolean autoMaximized = false;
 
+  // UI theme (Look&Feel)
+  public static final int THEME_SYSTEM = 0;
+  public static final int THEME_FLAT_LIGHT = 1;
+  public static final int THEME_FLAT_DARK = 2;
+  public static final int THEME_FLAT_INTELLIJ = 3;
+  public static final int THEME_FLAT_DARCULA = 4;
+  private static int uiTheme = THEME_FLAT_LIGHT;
+
+  public static int getUiTheme() {
+    return uiTheme;
+  }
+
+  public static void setUiTheme(int value) {
+    uiTheme = value;
+  }
+
   /**
    * Daily exchange rates map (currency|YYYY-MM-DD => ratio map)
    */
@@ -999,6 +1015,12 @@ public class Settings {
 
     /* Auto maximized */
     autoMaximized = p.getBoolean("autoMaximized", false);
+
+    /* UI theme */
+    uiTheme = p.getInt("uiTheme", THEME_FLAT_LIGHT);
+    if (uiTheme < THEME_SYSTEM || uiTheme > THEME_FLAT_DARCULA) {
+      uiTheme = THEME_FLAT_LIGHT;
+    }
   }
 
   /**
@@ -1081,6 +1103,9 @@ public class Settings {
 
     // Auto maximized
     p.putBoolean("autoMaximized", autoMaximized);
+
+    // UI theme
+    p.putInt("uiTheme", uiTheme);
   }
 
   /**

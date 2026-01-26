@@ -34,6 +34,11 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 ### Opraveno
 - Import → IBKR Flex: „Načíst z IBKR“ nyní používá stejnou logiku náhledu jako „Načíst ze souboru“ (včetně detekce CSV v2 sekcí, normalizace kolizí a konzistentního vyhodnocení duplikátů).
 
+## [Nastavení: výběr vzhledu aplikace] - 2026-01-26
+
+### Přidáno
+- Nastavení → System: volba vzhledu (System/FlatLaf Light/Dark/IntelliJ/Darcula). Změna se projeví po restartu.
+
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
 ### Opraveno
