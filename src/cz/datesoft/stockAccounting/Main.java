@@ -25,7 +25,14 @@ public class Main {
   public static void main(String[] args)
   {
     try {
-      javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+      // Prefer modern cross-platform Look&Feel.
+      com.formdev.flatlaf.FlatLightLaf.setup();
+      javax.swing.UIManager.put("Component.arc", 12);
+      javax.swing.UIManager.put("Button.arc", 12);
+      javax.swing.UIManager.put("TextComponent.arc", 10);
+      javax.swing.UIManager.put("ScrollBar.thumbArc", 999);
+      javax.swing.UIManager.put("ScrollBar.thumbInsets", new java.awt.Insets(2, 2, 2, 2));
+      javax.swing.UIManager.put("ScrollBar.trackArc", 999);
     } catch (Exception e) { }
       
     Settings.load();
