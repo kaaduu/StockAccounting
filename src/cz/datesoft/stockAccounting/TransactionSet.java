@@ -2155,8 +2155,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     String noteRegex = ".*" + note + ".*";
     // String noteRegex = "^this$";
 
-    // Create set
-    // Vector<Transaction> v = new Vector<Transaction>();
+    // Quick filter support: if ticker==market==note (same value), treat it as OR across fields.
+    final String quick = (ticker != null && market != null && note != null && ticker.equals(market) && ticker.equals(note)) ? ticker : null;
+    final boolean quickActive = quick != null && !quick.trim().isEmpty();
+
     Vector<Transaction> v = new Vector<Transaction>();
 
     // Run filter
@@ -2164,35 +2166,74 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       if ((!tx.date.before(from)) && (tx.date.before(to2))) {
         // Date OK
 
-        // Check ticker
-        if (tickerWild) {
-          if (tx.ticker.length() < tpLen)
-            continue; // Too short - cannot match
-          if (!tx.ticker.substring(0, tpLen).equalsIgnoreCase(tickerPrefix))
-            continue; // No match
-        } else {
-          if (ticker != null) {
-            // Smart filtering: include transformation-related tickers
-            // Get all tickers related to the filter ticker through transformations
-            Stocks stocks = getStocksInstance();
-            Set<String> relatedTickers = transformationCache.getRelatedTickers(ticker, stocks);
+        boolean quickPass = true;
+        if (quickActive) {
+          String q = quick.trim();
+          boolean match = false;
 
-            // Debug output for filtering (only when debug enabled)
-            java.util.logging.Logger logger = java.util.logging.Logger.getLogger("cz.datesoft.stockAccounting");
-            if (logger.isLoggable(java.util.logging.Level.FINER)) {
-                System.out.println("SMART FILTER: '" + ticker + "' -> related tickers: " + relatedTickers);
-                System.out.println("SMART FILTER: Cache stats: " + transformationCache.getCacheStats());
+          // Ticker match (includes transformation relatives)
+          try {
+            Stocks stocks = getStocksInstance();
+            Set<String> relatedTickers = transformationCache.getRelatedTickers(q, stocks);
+            if (relatedTickers.contains(tx.ticker.toUpperCase())) {
+              match = true;
             }
-            if (!relatedTickers.contains(tx.ticker.toUpperCase())) {
-              continue; // No match with ticker or its transformation relatives
+          } catch (Exception e) {
+            // ignore
+          }
+
+          // Market match
+          if (!match) {
+            try {
+              if (tx.market != null && tx.market.equalsIgnoreCase(q)) {
+                match = true;
+              }
+            } catch (Exception e) {
+              // ignore
             }
           }
+
+          // Note regex contains
+          if (!match) {
+            try {
+              if (tx.note != null && tx.note.toLowerCase().contains(q.toLowerCase())) {
+                match = true;
+              }
+            } catch (Exception e) {
+              // ignore
+            }
+          }
+
+          quickPass = match;
         }
 
-        // Check market
-        if (market != null) {
-          if (!tx.market.equalsIgnoreCase(market))
-            continue; // Different ticker - does not pass filter
+        if (!quickPass) {
+          continue;
+        }
+
+        if (!quickActive) {
+          // Check ticker
+          if (tickerWild) {
+            if (tx.ticker.length() < tpLen)
+              continue; // Too short - cannot match
+            if (!tx.ticker.substring(0, tpLen).equalsIgnoreCase(tickerPrefix))
+              continue; // No match
+          } else {
+            if (ticker != null) {
+              // Smart filtering: include transformation-related tickers
+              Stocks stocks = getStocksInstance();
+              Set<String> relatedTickers = transformationCache.getRelatedTickers(ticker, stocks);
+              if (!relatedTickers.contains(tx.ticker.toUpperCase())) {
+                continue;
+              }
+            }
+          }
+
+          // Check market
+          if (market != null) {
+            if (!tx.market.equalsIgnoreCase(market))
+              continue;
+          }
         }
 
         // Check type
@@ -2201,17 +2242,14 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
             continue; // Different type - does not pass filter
         }
 
-        // Check note
-
-        if (note != null) {
-          // if (!tx.note.matches(noteRegex)) continue; // No match
-          // Avoid triggering NullPointerException we can't search empty lines
+        // Check note (advanced note filter only)
+        if (!quickActive && note != null) {
           if (tx.note != null) {
             if (!tx.note.matches(noteRegex))
-              continue; // No match
-            // and null notes lines also skip via continue
-          } else
+              continue;
+          } else {
             continue;
+          }
         }
 
         // Check broker
