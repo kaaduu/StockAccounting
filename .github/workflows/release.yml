@@ -28,8 +28,9 @@ jobs:
         run: |
           echo "Checking build output..."
           ls -la dist/
-          if [ ! -f "dist/StockAccounting.jar" ]; then
-            echo "ERROR: StockAccounting.jar not found in dist/"
+          # Gradle distribution layout: dist/lib/StockAccounting.jar
+          if [ ! -f "dist/lib/StockAccounting.jar" ]; then
+            echo "ERROR: StockAccounting.jar not found in dist/lib/"
             exit 1
           fi
           echo "Build verification passed."
