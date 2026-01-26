@@ -3256,14 +3256,6 @@ public class ImportWindow extends javax.swing.JFrame {
           "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);
         return;
       }
-      
-      // Collect all transactions from all years
-      Vector<Transaction> allTransactions = new Vector<>();
-      for (IBKRFlexImporter.ImportYearResult yearResult : result.yearsImported) {
-        allTransactions.addAll(yearResult.transactions);
-      }
-      
-      System.out.println("[IBKR:RESULT:002] Downloaded " + allTransactions.size() + " total transactions");
 
       // Store cached CSV if available so preview can be refreshed without re-downloading
       if (result.yearsImported != null && !result.yearsImported.isEmpty()) {
@@ -3277,68 +3269,24 @@ public class ImportWindow extends javax.swing.JFrame {
           }
         }
       }
-      
-      // Filter to current year only
-      Vector<Transaction> currentYearTransactions = filterToCurrentYear(allTransactions);
-      System.out.println("[IBKR:RESULT:003] Filtered to current year: " + currentYearTransactions.size() + " transactions");
 
-      // Disambiguate rare collisions caused by minute-level timestamp precision.
-      // This keeps IBKR Flex re-import stable: update one existing row, insert the other(s).
-      disambiguateIbkrDuplicateCollisions(mainWindow.getTransactionDatabase(), currentYearTransactions);
-      
-      // Clear existing transactions from preview table
-      System.out.println("[IBKR:UI:001] Clearing existing transactions from preview table");
-      transactions.clear();
-      
-      // Filter out duplicate transactions that already exist in main database
-      System.out.println("[IBKR:DUPLICATE:001] Checking for duplicates against main database");
-      Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase().filterDuplicates(currentYearTransactions);
-      int duplicatesFiltered = currentYearTransactions.size() - filteredTransactions.size();
-      
-      // Clear previous duplicates list
-      duplicatesToUpdate.clear();
-      
-      // If update checkbox is checked, store duplicates for later update
-      if (cbUpdateDuplicates.isSelected() && duplicatesFiltered > 0) {
-        for (Transaction candidate : currentYearTransactions) {
-          if (!filteredTransactions.contains(candidate)) {
-            duplicatesToUpdate.add(candidate);
-          }
-        }
-        System.out.println("[IBKR:DUPLICATE:002] " + duplicatesToUpdate.size() + " duplicates marked for update");
+      // Unify API and file parsing logic:
+      // Use the same cached-CSV preview pipeline as "Načíst ze souboru" so that
+      // parsing, collision normalization, duplicate handling and v2 section details
+      // behave identically.
+      if (lastIbkrCsvContent == null || lastIbkrCsvContent.trim().isEmpty()) {
+        javax.swing.JOptionPane.showMessageDialog(this,
+            "IBKR API nevrátilo CSV data pro náhled.",
+            "IBKR Flex", javax.swing.JOptionPane.ERROR_MESSAGE);
+        return;
       }
-      
-      System.out.println("[IBKR:DUPLICATE:003] Filtered " + duplicatesFiltered + " duplicates, adding " + 
-                         filteredTransactions.size() + " new transactions to preview table");
-      
-      // Add filtered transactions to preview table
-      transactions.rows.addAll(filteredTransactions);
-      transactions.fireTableDataChanged();
-      System.out.println("[IBKR:UI:002] All new transactions added to preview table");
-      
-      // Update UI labels to show preview with duplicate count
-      System.out.println("[IBKR:UI:003] Updating UI labels");
-      String previewText = "Náhled (" + filteredTransactions.size() + " záznamů)";
-      if (duplicatesFiltered > 0) {
-        if (cbUpdateDuplicates.isSelected()) {
-          previewText += " - " + duplicatesFiltered + " duplikátů k aktualizaci";
-        } else {
-          previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
-        }
-      }
-      previewText += ":";
-      lPreview.setText(previewText);
-      lUnimported.setText("Neimportované řádky (0 záznamů):");
-      
-      // Update status label
+
       if (lblIBKRFlexStatus != null) {
-        lblIBKRFlexStatus.setText("Staženo " + filteredTransactions.size() + " transakcí pro rok " + currentYear);
+        lblIBKRFlexStatus.setText("Staženo z IBKR API – připravuji náhled...");
       }
-      
-      // Update button to show merge mode
-      updateIBKRFlexButtonState();
-      
-      System.out.println("[IBKR:COMPLETE:001] Preview population finished successfully");
+      refreshIbkrPreviewFromCachedCsvAsync();
+
+      System.out.println("[IBKR:COMPLETE:001] API download finished - preview refresh scheduled");
       
     } catch (Exception e) {
       String errorMessage = "Chyba při importu z IBKR: " + e.getMessage();
