@@ -905,6 +905,14 @@ public class IBKRFlexParser {
                 if (line.startsWith("\"ClientAccountID\"") || (inV2 && line.startsWith("ClientAccountID,"))) {
                     currentSectionType = detectSectionType(line);
                     if (inV2 && currentSectionType == SectionType.UNKNOWN) {
+                        // v2 can contain arbitrary sections (ACCT/POST/CTRN/...) that we do not parse.
+                        // For ACCT, reuse the BOS section code context.
+                        if ("ACCT".equalsIgnoreCase(currentV2SectionCode)) {
+                            currentSectionType = SectionType.ACCOUNT_INFO;
+                            detectAccountInfoHeaders(line);
+                            v2ExpectSectionHeader = false;
+                            continue;
+                        }
                         v2ExpectSectionHeader = false;
                         continue;
                     }
