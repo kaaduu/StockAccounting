@@ -4,6 +4,20 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Kurzy měn: automatická detekce roků a měn] - 2026-01-26
+
+### Přidáno
+- Nastavení → Kurzy měn: při „Načíst kurzy“ aplikace nově zjistí roky a měny použité v hlavním okně (z „Datum“ i „Datum vypořádání“) a nabídne jejich doplnění do tabulky jednotných kurzů, aby byly zahrnuty do načítání z ČNB.
+
+## [Nápověda: Logy událostí s detaily] - 2026-01-26
+
+### Změněno
+- Nápověda → Logy: seznam událostí je nyní přehlednější (úroveň INFO/WARN/ERROR) a pro vybrané chyby umí zobrazit detail (stacktrace).
+
+### Přidáno
+- Základní logování klíčových akcí (otevření/uložení souboru, IBKR sloučení a chyby, detekce nových roků/měn při načítání kurzů).
+- Logování stahování kurzů: jednotné kurzy z ČNB (start/výsledek/uloženo-odmítnuto) a „Chytré stažení“ denních kurzů (roky/měny + souhrn chyb).
+
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
 ### Opraveno
