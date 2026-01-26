@@ -42,8 +42,11 @@ public class ImportWindow extends javax.swing.JFrame {
   private javax.swing.JComponent busyGlass;
   private javax.swing.JLabel busyLabel;
   private javax.swing.JProgressBar busyBar;
+  private javax.swing.JButton busyCancel;
   private boolean previewLoadInProgress;
   private boolean previewReloadRequested;
+
+  private volatile javax.swing.SwingWorker<?, ?> currentPreviewWorker;
 
   // Preview: updates (duplicates to update)
   // (declared in variables section)
@@ -237,6 +240,21 @@ public class ImportWindow extends javax.swing.JFrame {
     busyBar.setIndeterminate(true);
     busyBar.setPreferredSize(new java.awt.Dimension(260, 14));
 
+    busyCancel = new javax.swing.JButton("Storno");
+    busyCancel.setEnabled(false);
+    busyCancel.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        try {
+          javax.swing.SwingWorker<?, ?> w = currentPreviewWorker;
+          if (w != null) {
+            w.cancel(true);
+          }
+        } catch (Exception e) {
+          // ignore
+        }
+      }
+    });
+
     java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
     gbc.gridx = 0;
     gbc.gridy = 0;
@@ -250,6 +268,13 @@ public class ImportWindow extends javax.swing.JFrame {
     gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
     gbc.weightx = 1.0;
     card.add(busyBar, gbc);
+
+    gbc = new java.awt.GridBagConstraints();
+    gbc.gridx = 0;
+    gbc.gridy = 2;
+    gbc.anchor = java.awt.GridBagConstraints.EAST;
+    gbc.insets = new java.awt.Insets(10, 0, 0, 0);
+    card.add(busyCancel, gbc);
 
     gbc = new java.awt.GridBagConstraints();
     gbc.gridx = 0;
@@ -283,6 +308,11 @@ public class ImportWindow extends javax.swing.JFrame {
     if (startDate != null) startDate.setEnabled(false);
     if (endDate != null) endDate.setEnabled(false);
     if (cbUpdateDuplicates != null) cbUpdateDuplicates.setEnabled(false);
+
+    if (busyCancel != null) {
+      // Enabled only when we have a cancelable worker.
+      busyCancel.setEnabled(currentPreviewWorker != null);
+    }
   }
 
   private void hideBusy() {
@@ -298,6 +328,11 @@ public class ImportWindow extends javax.swing.JFrame {
     if (startDate != null) startDate.setEnabled(true);
     if (endDate != null) endDate.setEnabled(true);
     if (cbUpdateDuplicates != null) cbUpdateDuplicates.setEnabled(true);
+
+    if (busyCancel != null) {
+      busyCancel.setEnabled(false);
+    }
+    currentPreviewWorker = null;
   }
 
   private static boolean matchesAnyExtension(String nameLower, String... extensions) {
@@ -952,6 +987,12 @@ public class ImportWindow extends javax.swing.JFrame {
       @Override
       protected void done() {
         try {
+          if (isCancelled()) {
+            if (lblIBKRFlexStatus != null) {
+              lblIBKRFlexStatus.setText("Náhled zrušen");
+            }
+            return;
+          }
           get();
         } catch (Exception e) {
           // refreshIbkrPreviewFromCachedCsv already set status; keep this minimal
@@ -963,6 +1004,10 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       }
     };
+    currentPreviewWorker = w;
+    if (busyCancel != null) {
+      busyCancel.setEnabled(true);
+    }
     w.execute();
   }
 
@@ -1698,6 +1743,10 @@ public class ImportWindow extends javax.swing.JFrame {
       @Override
       protected void done() {
         try {
+          if (isCancelled()) {
+            AppLog.info("Import: náhled zrušen");
+            return;
+          }
           LoadResult r = get();
           applyLoadResult(r);
         } catch (Exception e) {
@@ -1711,7 +1760,10 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       }
     };
-
+    currentPreviewWorker = worker;
+    if (busyCancel != null) {
+      busyCancel.setEnabled(true);
+    }
     worker.execute();
   }
 

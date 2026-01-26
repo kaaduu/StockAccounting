@@ -51,6 +51,7 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Import → IBKR Flex: tlačítka přeskupena do kroků (Zdroj/Náhled/Obsah).
 - Nastavení → Kurzy měn: akce sjednoceny do přehlednější skupiny.
 - Hlavní tabulka: přidán tooltip popisující stav řádku (Ignorováno/Nově importováno/Aktualizováno).
+- Import: při generování náhledu lze nově bezpečně použít Storno (zrušení náhledu).
 
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
