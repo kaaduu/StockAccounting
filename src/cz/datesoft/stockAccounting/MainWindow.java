@@ -74,6 +74,22 @@ public class MainWindow extends javax.swing.JFrame {
               c.setBackground(java.awt.Color.WHITE);
             }
           }
+
+          // Non-color-only cue: set tooltip to describe row state.
+          if (c instanceof javax.swing.JComponent) {
+            javax.swing.JComponent jc = (javax.swing.JComponent) c;
+            String tip = null;
+            if (tx != null) {
+              if (tx.isDisabled()) {
+                tip = "Ignorováno";
+              } else if (Settings.getHighlightInsertedEnabled() && transactions.isRecentlyInserted(row)) {
+                tip = "Nově importováno";
+              } else if (Settings.getHighlightUpdatedEnabled() && transactions.isRecentlyUpdated(row)) {
+                tip = "Aktualizováno (duplikát)";
+              }
+            }
+            jc.setToolTipText(tip);
+          }
         } catch (Exception e) {
           // Safety: if checking fails, just use white background
           c.setBackground(java.awt.Color.WHITE);
