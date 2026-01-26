@@ -1397,6 +1397,8 @@ public class MainWindow extends javax.swing.JFrame {
     transactions = new TransactionSet();
     System.out.println("DEBUG: New TransactionSet rows.size() = " + transactions.rows.size());
 
+    AppLog.info("Nová databáze");
+
     // Re-add the TableModelListener for automatic status bar updates
     transactions.addTableModelListener(new javax.swing.event.TableModelListener() {
       @Override
@@ -1654,6 +1656,7 @@ public class MainWindow extends javax.swing.JFrame {
    */
   private boolean saveTransactions(File fl) {
     try {
+      AppLog.info("Ukládám soubor: " + (fl == null ? "(null)" : fl.getAbsolutePath()));
       transactions.save(fl);
 
       // Save Trading 212 import state to sidecar file if exists
@@ -1667,11 +1670,13 @@ public class MainWindow extends javax.swing.JFrame {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      AppLog.error("Uložení souboru selhalo: " + e.getMessage(), e);
       JOptionPane.showMessageDialog(this, "Při ukládání souboru nastala chyba: " + e);
 
       return false;
     }
 
+    AppLog.info("Soubor uložen: " + fl.getName());
     return true;
   }
 
@@ -1887,6 +1892,7 @@ public class MainWindow extends javax.swing.JFrame {
   }
 
   public void openFile(File selectedFile) throws Exception {
+    AppLog.info("Otevírám soubor: " + (selectedFile == null ? "(null)" : selectedFile.getAbsolutePath()));
     // Load file
     transactions.load(selectedFile);
 
@@ -1930,6 +1936,8 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Save as last opened file
     Settings.setLastOpenedFile(selectedFile.getAbsolutePath());
+
+    AppLog.info("Soubor načten: " + selectedFile.getName() + " (záznamů: " + transactions.getRowCountRaw() + ")");
   }
 
   private void tfTickerActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_tfTickerActionPerformed
@@ -2023,6 +2031,8 @@ public class MainWindow extends javax.swing.JFrame {
         // Load file
         transactions.loadAdd(selectedFile);
 
+        AppLog.info("Přidávám soubor do databáze: " + selectedFile.getAbsolutePath());
+
         // Refresh metadata filter dropdowns with loaded data
         refreshMetadataFilters();
 
@@ -2043,7 +2053,9 @@ public class MainWindow extends javax.swing.JFrame {
         clearFilter();
 
         updateTitle();
+        AppLog.info("Soubor přidán: " + selectedFile.getName() + " (celkem záznamů: " + transactions.getRowCountRaw() + ")");
       } catch (Exception e) {
+        AppLog.error("Přidání souboru selhalo: " + e.getMessage(), e);
         JOptionPane.showMessageDialog(this, "Při načítání souboru nastala chyba: " + e);
       }
     }
@@ -2139,7 +2151,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     if (lastStatusMessage != null && !lastStatusMessage.isEmpty()) {
       status += lastStatusMessage;
-      logEvent(lastStatusMessage.replaceFirst("^ \\| ", "")); // Remove separator if present
+      AppLog.info(lastStatusMessage.replaceFirst("^ \\| ", "")); // Remove separator if present
       lastStatusMessage = null;
     }
 
@@ -2165,47 +2177,71 @@ public class MainWindow extends javax.swing.JFrame {
   }
 
   /**
-   * List of event logs
-   */
-  private final java.util.List<String> eventLogs = new java.util.ArrayList<>();
-
-  /**
-   * Log an event with timestamp
-   */
-  private void logEvent(String message) {
-    if (message == null || message.trim().isEmpty())
-      return;
-    String timestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
-    eventLogs.add("[" + timestamp + "] " + message);
-  }
-
-  /**
    * Show logs dialog
    */
   private void miShowLogsActionPerformed(java.awt.event.ActionEvent evt) {
-    // 2x wider (was 60, now 120)
-    javax.swing.JTextArea textArea = new javax.swing.JTextArea(20, 120);
-    textArea.setEditable(false);
-    textArea.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+    java.util.List<AppLog.Entry> logs = AppLog.snapshot();
 
-    StringBuilder sb = new StringBuilder();
-    synchronized (eventLogs) {
-      for (String log : eventLogs) {
-        sb.append(log).append("\n");
+    javax.swing.DefaultListModel<String> listModel = new javax.swing.DefaultListModel<>();
+    for (AppLog.Entry e : logs) {
+      listModel.addElement(AppLog.formatSummary(e));
+    }
+
+    if (listModel.isEmpty()) {
+      listModel.addElement("Žádné logy k zobrazení.");
+    }
+
+    javax.swing.JList<String> list = new javax.swing.JList<>(listModel);
+    list.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+    list.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+
+    javax.swing.JTextArea details = new javax.swing.JTextArea();
+    details.setEditable(false);
+    details.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+    details.setLineWrap(false);
+
+    list.addListSelectionListener(e -> {
+      if (e.getValueIsAdjusting())
+        return;
+      int idx = list.getSelectedIndex();
+      if (idx < 0 || idx >= logs.size()) {
+        details.setText("");
+        return;
       }
+      AppLog.Entry ent = logs.get(idx);
+      if (ent == null || ent.details == null || ent.details.trim().isEmpty()) {
+        details.setText("(Bez detailů)");
+      } else {
+        details.setText(ent.details);
+        details.setCaretPosition(0);
+      }
+    });
+
+    if (!logs.isEmpty()) {
+      list.setSelectedIndex(Math.min(logs.size() - 1, listModel.size() - 1));
     }
 
-    if (sb.length() == 0) {
-      sb.append("Žádné logy k zobrazení.");
-    }
+    javax.swing.JScrollPane left = new javax.swing.JScrollPane(list);
+    javax.swing.JScrollPane right = new javax.swing.JScrollPane(details);
 
-    textArea.setText(sb.toString());
-    textArea.setCaretPosition(textArea.getDocument().getLength());
+    javax.swing.JSplitPane split = new javax.swing.JSplitPane(javax.swing.JSplitPane.VERTICAL_SPLIT, left, right);
+    split.setResizeWeight(0.6);
 
-    javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(textArea);
+    javax.swing.JButton bClear = new javax.swing.JButton("Vymazat");
+    bClear.addActionListener(ev -> {
+      AppLog.clear();
+      ((javax.swing.DefaultListModel<String>) list.getModel()).clear();
+      ((javax.swing.DefaultListModel<String>) list.getModel()).addElement("Žádné logy k zobrazení.");
+      details.setText("");
+    });
 
-    // Create resizable dialog instead of simple message dialog
-    javax.swing.JOptionPane pane = new javax.swing.JOptionPane(scrollPane, javax.swing.JOptionPane.PLAIN_MESSAGE);
+    javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout(8, 8));
+    panel.add(split, java.awt.BorderLayout.CENTER);
+    javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT));
+    bottom.add(bClear);
+    panel.add(bottom, java.awt.BorderLayout.SOUTH);
+
+    javax.swing.JOptionPane pane = new javax.swing.JOptionPane(panel, javax.swing.JOptionPane.PLAIN_MESSAGE);
     javax.swing.JDialog dialog = pane.createDialog(this, "Logy událostí");
     dialog.setResizable(true);
     dialog.setVisible(true);
@@ -2226,7 +2262,7 @@ public class MainWindow extends javax.swing.JFrame {
   public void setTransientStatusMessage(String msg, long ttlMs) {
     if (msg == null)
       return;
-    logEvent(msg);
+    AppLog.info(msg);
     transientStatusMessage = msg;
     transientStatusUntilMs = System.currentTimeMillis() + Math.max(0L, ttlMs);
     System.out.println("INFO: " + msg);

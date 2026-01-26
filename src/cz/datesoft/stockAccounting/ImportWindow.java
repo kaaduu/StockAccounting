@@ -3167,6 +3167,8 @@ public class ImportWindow extends javax.swing.JFrame {
         mainWindow.setTransientStatusMessage(
             "IBKR Flex: přidáno " + transactionsAdded + ", aktualizováno " + updatedCount,
             10000L);
+
+        AppLog.info("IBKR Flex: sloučení dokončeno (přidáno " + transactionsAdded + ", aktualizováno " + updatedCount + ")");
         
         // Clear preview for next import
         clearPreview();
@@ -3182,6 +3184,7 @@ public class ImportWindow extends javax.swing.JFrame {
       } catch (Exception e) {
         System.out.println("[IBKR:MERGE:007] ❌ Merge failed: " + e.getMessage());
         e.printStackTrace();
+        AppLog.error("IBKR Flex: sloučení selhalo: " + e.getMessage(), e);
         javax.swing.JOptionPane.showMessageDialog(this, 
             "Chyba při slučování: " + e.getMessage(),
             "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);

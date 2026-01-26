@@ -281,6 +281,39 @@ public class SettingsWindow extends javax.swing.JDialog {
         // Do nothing
       }
     }
+
+    /**
+     * Add a year row if it is missing.
+     * Keeps the table roughly sorted by year descending.
+     */
+    public void addYear(int year) {
+      Integer y = Integer.valueOf(year);
+      if (year2Vector.get(y) != null)
+        return;
+
+      Vector<Object> v = new Vector<Object>();
+      v.add(y);
+      year2Vector.put(y, v);
+
+      // Insert in descending order by year
+      int insertAt = data.size();
+      for (int i = 0; i < data.size(); i++) {
+        Vector<Object> row = data.get(i);
+        if (row == null || row.isEmpty())
+          continue;
+        Object yo = row.get(0);
+        if (!(yo instanceof Integer))
+          continue;
+        int existingYear = ((Integer) yo).intValue();
+        if (existingYear < year) {
+          insertAt = i;
+          break;
+        }
+      }
+
+      data.add(insertAt, v);
+      fireTableDataChanged();
+    }
   }
 
   /**
@@ -1559,10 +1592,182 @@ public class SettingsWindow extends javax.swing.JDialog {
     setVisible(false);
   }// GEN-LAST:event_bCancelActionPerformed
 
+  private static java.lang.Integer extractYear(java.util.Date d) {
+    if (d == null)
+      return null;
+    try {
+      java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+      cal.setTime(d);
+      return java.lang.Integer.valueOf(cal.get(java.util.GregorianCalendar.YEAR));
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private java.util.Set<java.lang.Integer> getUnifiedYearsInModel() {
+    java.util.Set<java.lang.Integer> years = new java.util.HashSet<java.lang.Integer>();
+    if (model == null)
+      return years;
+
+    for (int row = 0; row < model.getRowCount() - 1; row++) {
+      Object yearObj = model.getValueAt(row, 0);
+      if (yearObj instanceof java.lang.Integer) {
+        years.add((java.lang.Integer) yearObj);
+      }
+    }
+    return years;
+  }
+
+  private java.util.Set<java.lang.String> getUnifiedCurrenciesInModel() {
+    java.util.Set<java.lang.String> currencies = new java.util.HashSet<java.lang.String>();
+    if (model == null)
+      return currencies;
+
+    for (int col = 1; col < model.getColumnCount(); col++) {
+      String c = model.getColumnName(col);
+      if (c == null)
+        continue;
+      String s = c.trim();
+      if (s.isEmpty())
+        continue;
+      currencies.add(s.toUpperCase());
+    }
+
+    return currencies;
+  }
+
+  private void ensureUnifiedRatesCoverUsedYearsAndCurrencies() {
+    if (mainWindow == null || model == null || table == null)
+      return;
+
+    TransactionSet ts = null;
+    try {
+      ts = mainWindow.getTransactionDatabase();
+    } catch (Exception e) {
+      ts = null;
+    }
+    if (ts == null)
+      return;
+
+    // Collect years from both "Datum" and "Datum vypořádání".
+    java.util.Set<java.lang.Integer> usedYears = new java.util.TreeSet<java.lang.Integer>();
+    try {
+      for (java.util.Iterator<Transaction> it = ts.iterator(); it.hasNext();) {
+        Transaction tx = it.next();
+        if (tx == null)
+          continue;
+
+        java.lang.Integer y1 = extractYear(tx.getDate());
+        if (y1 != null)
+          usedYears.add(y1);
+
+        java.lang.Integer y2 = extractYear(tx.getExecutionDate());
+        if (y2 != null)
+          usedYears.add(y2);
+      }
+    } catch (Exception e) {
+      // Ignore
+    }
+
+    // Determine missing years.
+    java.util.Set<java.lang.Integer> existingYears = getUnifiedYearsInModel();
+    java.util.List<java.lang.Integer> missingYears = new java.util.ArrayList<java.lang.Integer>();
+    for (java.lang.Integer y : usedYears) {
+      if (y == null)
+        continue;
+      if (!existingYears.contains(y))
+        missingYears.add(y);
+    }
+
+    if (!missingYears.isEmpty()) {
+      java.util.Collections.sort(missingYears);
+      String yearsStr = missingYears.toString().replace("[", "").replace("]", "");
+      int res = JOptionPane.showConfirmDialog(this,
+          "New year detected: " + yearsStr + "\nWant to add?",
+          "New year detected",
+          JOptionPane.YES_NO_OPTION,
+          JOptionPane.QUESTION_MESSAGE);
+
+      if (res == JOptionPane.YES_OPTION) {
+        AppLog.info("Kurzy měn: zjištěny nové roky: " + yearsStr + " (přidáno)");
+        for (java.lang.Integer y : missingYears) {
+          try {
+            model.addYear(y.intValue());
+          } catch (Exception e) {
+            // Ignore individual failures
+          }
+        }
+      } else {
+        AppLog.info("Kurzy měn: zjištěny nové roky: " + yearsStr + " (odmítnuto)");
+      }
+    }
+
+    // Determine missing currencies.
+    java.util.Set<java.lang.String> usedCurrencies = new java.util.HashSet<java.lang.String>();
+    try {
+      usedCurrencies.addAll(Settings.getUsedCurrencies(ts));
+    } catch (Exception e) {
+      // Ignore
+    }
+
+    java.util.Set<java.lang.String> existingCurrencies = getUnifiedCurrenciesInModel();
+    java.util.List<java.lang.String> missingCurrencies = new java.util.ArrayList<java.lang.String>();
+    for (String c : usedCurrencies) {
+      if (c == null)
+        continue;
+      String s = c.trim().toUpperCase();
+      if (s.isEmpty() || s.equals("CZK"))
+        continue;
+      if (s.length() != 3)
+        continue;
+      if (!s.matches("[A-Z]{3}"))
+        continue;
+      if (!existingCurrencies.contains(s))
+        missingCurrencies.add(s);
+    }
+
+    if (!missingCurrencies.isEmpty()) {
+      java.util.Collections.sort(missingCurrencies);
+      String curStr = missingCurrencies.toString().replace("[", "").replace("]", "");
+      int res = JOptionPane.showConfirmDialog(this,
+          "New currency detected: " + curStr + "\nWant to add?",
+          "New currency detected",
+          JOptionPane.YES_NO_OPTION,
+          JOptionPane.QUESTION_MESSAGE);
+
+      if (res == JOptionPane.YES_OPTION) {
+        AppLog.info("Kurzy měn: zjištěny nové měny: " + curStr + " (přidáno)");
+        for (String c : missingCurrencies) {
+          try {
+            int modelIndex = model.addCurrency(c);
+            TableColumn column = new TableColumn(modelIndex);
+            column.setCellRenderer(doubleRenderer);
+            column.setIdentifier(c);
+            table.addColumn(column);
+          } catch (Exception e) {
+            // Ignore individual failures
+          }
+        }
+        // Refresh currencies combo
+        try {
+          refreshCurrenciesCombo();
+        } catch (Exception e) {
+          // Ignore
+        }
+      } else {
+        AppLog.info("Kurzy měn: zjištěny nové měny: " + curStr + " (odmítnuto)");
+      }
+    }
+  }
+
   // Enhanced bFetchRatesActionPerformed method
   // Replace lines 1210-1334 in SettingsWindow.java with this code
 
   private void bFetchRatesActionPerformed(java.awt.event.ActionEvent evt) {
+    // Before fetching, auto-detect years/currencies used in the main window
+    // and offer to add them to the unified rates table.
+    ensureUnifiedRatesCoverUsedYearsAndCurrencies();
+
     // Determine target year
     int selectedYear = -1;
     int selectedRow = table.getSelectedRow();
@@ -1590,6 +1795,14 @@ public class SettingsWindow extends javax.swing.JDialog {
     }
 
     final int targetYear = selectedYear;
+
+    // Precompute basic scope counts for logging.
+    int currencyCount = 0;
+    for (int col = 1; col < model.getColumnCount(); col++) {
+      String currency = model.getColumnName(col);
+      if (currency != null && !currency.trim().isEmpty())
+        currencyCount++;
+    }
 
     // Create progress dialog with progress bar
     final javax.swing.JDialog progressDialog = new javax.swing.JDialog(this, "Načítání kurzů", true);
@@ -1629,6 +1842,13 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     final int totalCount = totalItems;
     final int[] currentCount = { 0 };
+
+    try {
+      String scope = targetYear == -1 ? "všechny roky" : ("rok " + targetYear);
+      AppLog.info("Jednotné kurzy: načítám z ČNB (" + scope + ", měn: " + currencyCount + ", kombinací: " + totalCount + ")");
+    } catch (Exception e) {
+      // ignore
+    }
 
     // Fetch rates in background thread
     final java.util.Map<String, CurrencyRateFetcher.FetchedRate>[] resultHolder = new java.util.Map[1];
@@ -1714,6 +1934,7 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     // Check for errors
     if (errorHolder[0] != null) {
+      AppLog.error("Jednotné kurzy: načítání z ČNB selhalo: " + errorHolder[0].getMessage(), errorHolder[0]);
       JOptionPane.showMessageDialog(this,
           "Chyba při načítání kurzů: " + errorHolder[0].getMessage(),
           "Chyba", JOptionPane.ERROR_MESSAGE);
@@ -1723,6 +1944,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     java.util.Map<String, CurrencyRateFetcher.FetchedRate> fetchedRates = resultHolder[0];
 
     if (fetchedRates == null || fetchedRates.isEmpty()) {
+      AppLog.warn("Jednotné kurzy: z ČNB nebyly načteny žádné kurzy");
       JOptionPane.showMessageDialog(this,
           "Nepodařilo se načíst žádné kurzy. Zkontrolujte připojení k internetu.",
           "Informace", JOptionPane.INFORMATION_MESSAGE);
@@ -1810,6 +2032,8 @@ public class SettingsWindow extends javax.swing.JDialog {
         "Potvrzení", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 
     if (result != JOptionPane.YES_OPTION) {
+      AppLog.info("Jednotné kurzy: uživatel odmítl uložit načtené kurzy (načteno " + fetchedRates.size() + ", změněno "
+          + modifiedCount + ")");
       // User cancelled - restore old values
       for (java.util.Map.Entry<String, Double> entry : oldValues.entrySet()) {
         String[] pos = entry.getKey().split(",");
@@ -1831,6 +2055,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     }
 
     // User accepted - keep the changes
+    AppLog.info("Jednotné kurzy: uloženo (načteno " + fetchedRates.size() + ", změněno " + modifiedCount + ")");
     JOptionPane.showMessageDialog(this,
         "Kurzy byly úspěšně načteny a uloženy.\nZměněné hodnoty jsou zvýrazněny žlutě.",
         "Hotovo", JOptionPane.INFORMATION_MESSAGE);
@@ -2635,6 +2860,14 @@ public class SettingsWindow extends javax.swing.JDialog {
       return;
     }
 
+    try {
+      java.util.List<Integer> yearsSorted = new java.util.ArrayList<Integer>(years);
+      java.util.Collections.sort(yearsSorted);
+      AppLog.info("Denní kurzy: chytré stažení (roky: " + yearsSorted + ", měny: " + currenciesToFetch + ")");
+    } catch (Exception e) {
+      // ignore
+    }
+
     // 3. Fetch in background with progress bar
     final JDialog progressDialog = new JDialog(this, "Načítání denních kurzů", true);
     final JProgressBar progressBar = new JProgressBar(0, years.size());
@@ -2647,6 +2880,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       public void run() {
         int loadedCount = 0;
         int failedCount = 0;
+        final java.util.List<Integer> failedYears = new java.util.ArrayList<Integer>();
         final java.util.HashMap<String, Double> allNewRates = new java.util.HashMap<String, Double>();
         java.util.HashMap<String, Double> existingRates = Settings.getDailyRates();
         if (existingRates != null)
@@ -2668,6 +2902,7 @@ public class SettingsWindow extends javax.swing.JDialog {
             loadedCount++;
           } catch (Exception e) {
             System.err.println("Chyba při načítání roku " + year + ": " + e.getMessage());
+            failedYears.add(Integer.valueOf(year));
             failedCount++;
           }
         }
@@ -2680,6 +2915,16 @@ public class SettingsWindow extends javax.swing.JDialog {
             progressDialog.dispose();
             Settings.setDailyRates(allNewRates);
             refreshDailyRatesTable();
+            try {
+              if (!failedYears.isEmpty()) {
+                java.util.Collections.sort(failedYears);
+                AppLog.warn("Denní kurzy: dokončeno (OK " + fLoaded + ", chyby " + fFailed + ") roky: " + failedYears);
+              } else {
+                AppLog.info("Denní kurzy: dokončeno (OK " + fLoaded + ", chyby " + fFailed + ")");
+              }
+            } catch (Exception e) {
+              // ignore
+            }
             JOptionPane.showMessageDialog(SettingsWindow.this,
                 "Načítání dokončeno.\nÚspěšně načteno roků: " + fLoaded + "\nChyb: " + fFailed);
           }
