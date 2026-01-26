@@ -18,6 +18,11 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Základní logování klíčových akcí (otevření/uložení souboru, IBKR sloučení a chyby, detekce nových roků/měn při načítání kurzů).
 - Logování stahování kurzů: jednotné kurzy z ČNB (start/výsledek/uloženo-odmítnuto) a „Chytré stažení“ denních kurzů (roky/měny + souhrn chyb).
 
+## [Sestavení: přechod na Gradle Wrapper] - 2026-01-26
+
+### Změněno
+- Sestavení projektu je nově dostupné přes `./gradlew` (Gradle Wrapper). `build.sh` zůstává kvůli kompatibilitě a interně volá Gradle.
+
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
 ### Opraveno
