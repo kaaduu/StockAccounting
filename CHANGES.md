@@ -49,6 +49,7 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - O aplikaci: upraveno rozložení a typografie (čitelnější hierarchie informací).
 - Nastavení → System: přeskupeno do sekcí pro rychlejší orientaci.
 - Import → IBKR Flex: tlačítka přeskupena do kroků (Zdroj/Náhled/Obsah).
+- Nastavení → Kurzy měn: akce sjednoceny do přehlednější skupiny.
 
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
