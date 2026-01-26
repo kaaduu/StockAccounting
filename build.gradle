@@ -24,7 +24,7 @@ tasks.withType(JavaExec).configureEach {
 }
 
 repositories {
-  // Offline-friendly: we use local libjar/*.jar, no remote repos needed.
+  mavenCentral()
 }
 
 sourceSets {
@@ -44,6 +44,13 @@ sourceSets {
 dependencies {
   implementation fileTree(dir: 'libjar', include: ['*.jar'], exclude: ['*debug*.jar'])
   runtimeOnly fileTree(dir: 'libjar', include: ['*.jar'], exclude: ['*debug*.jar'])
+
+  implementation 'com.formdev:flatlaf:3.7'
+}
+
+// Ensure distro contains Maven dependencies (e.g., FlatLaf)
+tasks.named('installDist') {
+  dependsOn tasks.named('jar')
 }
 
 application {

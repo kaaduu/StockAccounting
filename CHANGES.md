@@ -24,6 +24,11 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Sestavení projektu je nově dostupné přes `./gradlew` (Gradle Wrapper). `build.sh` zůstává kvůli kompatibilitě a interně volá Gradle.
 - Spuštění na Windows (`run.bat`) nově podporuje i gradlovský výstup do `dist\lib\`.
 
+## [UI: moderní vzhled (FlatLaf)] - 2026-01-26
+
+### Změněno
+- Aplikace používá moderní Swing Look&Feel (FlatLaf) pro čistší a konzistentnější vzhled napříč platformami.
+
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
 ### Opraveno
