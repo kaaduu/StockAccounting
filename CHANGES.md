@@ -4,6 +4,18 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Trading 212: sjednocený import (API + CSV) + dividendy/úroky/transformace] - 2026-01-27
+
+### Přidáno
+- Import → Trading 212: sjednocený formát pro API i lokální CSV (jeden výběr + možnost „Vybrat soubor...“).
+- Import → Trading 212: režim obsahu (Vše / Pouze obchody / Pouze transformace / Pouze dividendy / Pouze úroky).
+- Trading 212 CSV: import dividend (BRUTTO + srážková daň), úroků z hotovosti a úroků z půjčování CP (tickery `Kreditni.Urok`, `CP.Urok`).
+- Trading 212 CSV: import corporate actions (stock split open/close) jako transformace (TRANS_SUB/TRANS_ADD) včetně normalizace kolizí v rámci stejné minuty.
+- Trading 212 CSV: podpora „Dividend manufactured payment“ (importováno jako dividenda; označeno v poznámce).
+
+### Změněno
+- Import → Trading 212: formáty „T212 Invest - csv“ jsou dočasně vypnuté ve výběru (viditelné, ale nejdou zvolit) – nahrazuje je sjednocený import.
+
 ## [Kurzy měn: automatická detekce roků a měn] - 2026-01-26
 
 ### Přidáno
@@ -42,10 +54,43 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 ### Přidáno
 - Import → IBKR Flex → Detaily: pokud je v CSV v2 přítomná sekce ACCT, zobrazí se základní informace o účtu/vlastníkovi a souhrn konsolidace obchodů podle IBOrderID.
 
+## [IBKR Flex: nápověda pro nastavení Flex Query] - 2026-01-26
+
+### Přidáno
+- Import → IBKR Flex: tlačítko „Nápověda“ s doporučeným nastavením Flex Query (sekce, Cash Transactions typy a konfigurace exportu).
+
+## [IBKR Flex: režim „Pouze úroky“] - 2026-01-26
+
+### Přidáno
+- Import → IBKR Flex: nový režim „Pouze úroky“ ve výběru obsahu (zobrazí pouze úrokové položky z CTRN).
+
+## [IBKR Flex: import úroků z CTRN] - 2026-01-26
+
+### Přidáno
+- Import → IBKR Flex: import typů CTRN „Broker Interest Received/Paid“ a související „Withholding Tax“ jako typ „Úrok“.
+- „Broker Interest Paid“ a „Broker Fees“ se zatím importují jako „disabled“ (viditelné, ale ignorované ve výpočtech).
+
+### Změněno
+- Import → IBKR Flex (CSV v2): pokud v CTRN chybí brutto dividendy, aplikace je nově doplní ze sekce FXTR (Forex P/L Details) jako dividendy BRUTTO a v importu na to upozorní.
+
+## [Výpočet: shrnutí úroků] - 2026-01-26
+
+### Přidáno
+- Výpočet: nová záložka „Úroky“ se souhrnem úroků (hrubá/daň/zaplacený/poplatek) včetně exportu do CSV/HTML.
+
 ## [Nastavení: výběr vzhledu aplikace] - 2026-01-26
 
 ### Přidáno
 - Nastavení → System: volba vzhledu (System/FlatLaf Light/Dark/IntelliJ/Darcula). Změna se projeví po restartu.
+
+## [Nastavení: volba písem] - 2026-01-26
+
+### Přidáno
+- Nastavení → System → Vzhled: možnost nastavit písmo aplikace (rodina + velikost) a monospace písmo (pro logy, detaily chyb a importní texty). Změna se projeví po restartu.
+- Předvolba „Tahoma 11“ pro rychlé nastavení klasického vzhledu.
+
+### Změněno
+- Výchozí vzhled je „System (OS)“, aby odpovídal původnímu chování na větvi master.
 
 ## [UI: modernizace vzhledu a použitelnosti] - 2026-01-26
 

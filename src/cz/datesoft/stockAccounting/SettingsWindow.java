@@ -921,6 +921,164 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.insets = new java.awt.Insets(15, 10, 0, 10);
     cardTheme.add(cbUiTheme, gridBagConstraints);
 
+    // UI font selector
+    javax.swing.JLabel lblUiFont = new javax.swing.JLabel("Písmo aplikace:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 9;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardTheme.add(lblUiFont, gridBagConstraints);
+
+    // UI font family selector (editable)
+    String[] families = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+    java.util.List<String> familyList = new java.util.ArrayList<>();
+    familyList.add("");
+    if (families != null) {
+      for (String f : families) {
+        if (f != null && !f.trim().isEmpty())
+          familyList.add(f);
+      }
+    }
+    java.util.Collections.sort(familyList, String.CASE_INSENSITIVE_ORDER);
+    cbUiFontFamily = new javax.swing.JComboBox<>(familyList.toArray(new String[0]));
+    cbUiFontFamily.setEditable(true);
+    cbUiFontFamily.setToolTipText("Prázdné = výchozí písmo vzhledu. Příklad: Tahoma, Segoe UI, SansSerif");
+    cbUiFontFamily.setSelectedItem(Settings.getUiFontFamily());
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 9;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardTheme.add(cbUiFontFamily, gridBagConstraints);
+
+    javax.swing.JLabel lblUiFontSize = new javax.swing.JLabel("Velikost:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 10;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+    cardTheme.add(lblUiFontSize, gridBagConstraints);
+
+    spUiFontSize = new javax.swing.JSpinner(new javax.swing.SpinnerNumberModel(
+        Integer.valueOf(Math.max(0, Settings.getUiFontSize())),
+        Integer.valueOf(0),
+        Integer.valueOf(96),
+        Integer.valueOf(1)));
+    spUiFontSize.setToolTipText("0 = výchozí velikost vzhledu");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 10;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+    cardTheme.add(spUiFontSize, gridBagConstraints);
+
+    javax.swing.JLabel lblMonoFont = new javax.swing.JLabel("Monospace písmo:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 11;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardTheme.add(lblMonoFont, gridBagConstraints);
+
+    cbMonospaceFontFamily = new javax.swing.JComboBox<>(familyList.toArray(new String[0]));
+    cbMonospaceFontFamily.setEditable(true);
+    cbMonospaceFontFamily.setToolTipText("Používá se pro logy / detaily chyb / importní texty");
+    cbMonospaceFontFamily.setSelectedItem(Settings.getMonospaceFontFamily());
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 11;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardTheme.add(cbMonospaceFontFamily, gridBagConstraints);
+
+    javax.swing.JLabel lblMonoFontSize = new javax.swing.JLabel("Velikost:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 12;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+    cardTheme.add(lblMonoFontSize, gridBagConstraints);
+
+    spMonospaceFontSize = new javax.swing.JSpinner(new javax.swing.SpinnerNumberModel(
+        Integer.valueOf(Math.max(6, Settings.getMonospaceFontSize())),
+        Integer.valueOf(6),
+        Integer.valueOf(96),
+        Integer.valueOf(1)));
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 12;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+    cardTheme.add(spMonospaceFontSize, gridBagConstraints);
+
+    javax.swing.JPanel pFontsButtons = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+    javax.swing.JButton bSaveFonts = new javax.swing.JButton("Uložit písma");
+    bSaveFonts.setToolTipText("Změna písem vyžaduje restart aplikace.");
+    bSaveFonts.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        saveFontSettingsFromUi();
+        // Apply immediately for currently open windows.
+        UiFonts.applyFromSettings();
+        UiTheme.refreshAllWindows();
+        javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this,
+            "Písma byla použita.",
+            "Písma", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      }
+    });
+    pFontsButtons.add(bSaveFonts);
+
+    javax.swing.JButton bResetFonts = new javax.swing.JButton("Výchozí");
+    bResetFonts.setToolTipText("Vrátí písma na výchozí hodnoty (podle vzhledu + Monospaced 12).");
+    bResetFonts.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbUiFontFamily.setSelectedItem("");
+        spUiFontSize.setValue(Integer.valueOf(0));
+        cbMonospaceFontFamily.setSelectedItem("Monospaced");
+        spMonospaceFontSize.setValue(Integer.valueOf(12));
+
+        saveFontSettingsFromUi();
+
+        UiFonts.applyFromSettings();
+        UiTheme.refreshAllWindows();
+
+        javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this,
+            "Písma byla použita.",
+            "Písma", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      }
+    });
+    pFontsButtons.add(bResetFonts);
+
+    javax.swing.JButton bPresetTahoma = new javax.swing.JButton("Tahoma 11");
+    bPresetTahoma.setToolTipText("Nastaví písmo aplikace na Tahoma 11 (klasický vzhled).");
+    bPresetTahoma.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbUiFontFamily.setSelectedItem("Tahoma");
+        spUiFontSize.setValue(Integer.valueOf(11));
+
+        saveFontSettingsFromUi();
+
+        UiFonts.applyFromSettings();
+        UiTheme.refreshAllWindows();
+
+        javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this,
+            "Písmo bylo použito.",
+            "Písmo", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      }
+    });
+    pFontsButtons.add(bPresetTahoma);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 13;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardTheme.add(pFontsButtons, gridBagConstraints);
+
     // Spacer moved to pSystemCards
 
     gridBagConstraints = new java.awt.GridBagConstraints();
@@ -1568,10 +1726,13 @@ public class SettingsWindow extends javax.swing.JDialog {
 
   private void bOKActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bOKActionPerformed
   {// GEN-HEADEREND:event_bOKActionPerformed
-   // Store settings
+    // Store settings
     Settings.setHalfYear((cbHalfYear.getSelectedIndex() == 0) ? Settings.HY_6M : Settings.HY_183D);
     Settings.setRatios(model.constructDataSet());
     Settings.setMarkets(markets);
+
+    // Persist UI font settings (even if user did not press "Uložit písma").
+    saveFontSettingsFromUi();
 
     // And save them
     Settings.setUseDailyRates(cbUseDailyRates.isSelected());
@@ -1582,6 +1743,28 @@ public class SettingsWindow extends javax.swing.JDialog {
     // Close
     setVisible(false);
   }// GEN-LAST:event_bOKActionPerformed
+
+  private void saveFontSettingsFromUi() {
+    try {
+      if (cbUiFontFamily != null) {
+        Object uiSel = cbUiFontFamily.getSelectedItem();
+        Settings.setUiFontFamily(uiSel == null ? "" : String.valueOf(uiSel));
+      }
+      if (spUiFontSize != null) {
+        Settings.setUiFontSize(((Integer) spUiFontSize.getValue()).intValue());
+      }
+      if (cbMonospaceFontFamily != null) {
+        Object monoSel = cbMonospaceFontFamily.getSelectedItem();
+        Settings.setMonospaceFontFamily(monoSel == null ? "" : String.valueOf(monoSel));
+      }
+      if (spMonospaceFontSize != null) {
+        Settings.setMonospaceFontSize(((Integer) spMonospaceFontSize.getValue()).intValue());
+      }
+      Settings.save();
+    } catch (Exception e) {
+      // ignore
+    }
+  }
 
   private void bTestTwsConnectionActionPerformed(java.awt.event.ActionEvent evt) {
     // Validate inputs from fields (not yet saved)
@@ -2284,7 +2467,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     pTrading212.add(tfTrading212ApiKey, gbcTrading212);
 
     // Copy API Key button
-    javax.swing.JButton btnCopyApiKey = new javax.swing.JButton("📋");
+    javax.swing.JButton btnCopyApiKey = new javax.swing.JButton("Copy");
     btnCopyApiKey.setToolTipText("Zkopírovat API Key do schránky");
     btnCopyApiKey.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyApiKey.addActionListener(new java.awt.event.ActionListener() {
@@ -2316,7 +2499,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     pTrading212.add(tfTrading212ApiSecret, gbcTrading212);
 
     // Copy API Secret button
-    javax.swing.JButton btnCopyApiSecret = new javax.swing.JButton("📋");
+    javax.swing.JButton btnCopyApiSecret = new javax.swing.JButton("Copy");
     btnCopyApiSecret.setToolTipText("Zkopírovat API Secret do schránky");
     btnCopyApiSecret.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyApiSecret.addActionListener(new java.awt.event.ActionListener() {
@@ -2403,7 +2586,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     pIbkrFlex.add(tfIbkrQueryId, gbcIbkrFlex);
 
     // Copy Query ID button
-    javax.swing.JButton btnCopyQueryId = new javax.swing.JButton("📋");
+    javax.swing.JButton btnCopyQueryId = new javax.swing.JButton("Copy");
     btnCopyQueryId.setToolTipText("Zkopírovat Query ID do schránky");
     btnCopyQueryId.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyQueryId.addActionListener(new java.awt.event.ActionListener() {
@@ -2438,7 +2621,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     pIbkrFlex.add(tfIbkrFlexToken, gbcIbkrFlex);
 
     // Copy Flex Token button
-    javax.swing.JButton btnCopyFlexToken = new javax.swing.JButton("📋");
+    javax.swing.JButton btnCopyFlexToken = new javax.swing.JButton("Copy");
     btnCopyFlexToken.setToolTipText("Zkopírovat Flex Token do schránky");
     btnCopyFlexToken.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyFlexToken.addActionListener(new java.awt.event.ActionListener() {
@@ -2847,13 +3030,13 @@ public class SettingsWindow extends javax.swing.JDialog {
           IBKRFlexClient.FlexRequestResult result = client.requestReport(queryId);
           if (result.success) {
             success = true;
-            resultMessage = "✅ IBKR Flex připojení úspěšné!\n\n" +
+            resultMessage = "OK: IBKR Flex připojení úspěšné!\n\n" +
                 "Vaše IBKR Flex pověření fungují správně.\n" +
                 "Můžete nyní importovat vaše obchodní data.\n\n" +
-                "📋 Reference Code: " + result.referenceCode + "\n\n" +
-                "✅ Query ID validní\n" +
-                "✅ Flex Token validní\n" +
-                "✅ Síťové připojení funguje\n\n" +
+                "Reference Code: " + result.referenceCode + "\n\n" +
+                "OK: Query ID validní\n" +
+                "OK: Flex Token validní\n" +
+                "OK: Síťové připojení funguje\n\n" +
                 "Report byl požadován a bude zpracováván asynchronně.\n" +
                 "Můžete nyní použít funkci importu IBKR Flex dat.\n\n" +
                 "POZNÁMKA: Rozsah dat je určen konfigurací\n" +
@@ -2864,7 +3047,7 @@ public class SettingsWindow extends javax.swing.JDialog {
             if (result.errorCode != null) {
               errorDetail = "\n\nKód chyby: " + result.errorCode + "\n" + result.errorMessage;
             }
-            resultMessage = "❌ Neplatné pověření nebo chyba konfigurace\n\n" +
+            resultMessage = "CHYBA: Neplatné pověření nebo chyba konfigurace\n\n" +
                 "Zkontrolujte Query ID a Flex Token." + errorDetail;
           }
         } catch (Exception e) {
@@ -2872,17 +3055,17 @@ public class SettingsWindow extends javax.swing.JDialog {
           error = e;
           String errorMsg = e.getMessage() != null ? e.getMessage() : "Neznámá chyba";
           if (errorMsg.contains("401") || errorMsg.contains("authentication") || errorMsg.contains("Unauthorized")) {
-            resultMessage = "❌ Neplatné pověření\n\n" +
-                "Zkontrolujte Query ID a Flex Token v IBKR Client Portal.";
+             resultMessage = "CHYBA: Neplatné pověření\n\n" +
+                 "Zkontrolujte Query ID a Flex Token v IBKR Client Portal.";
           } else if (errorMsg.contains("403") || errorMsg.contains("forbidden") || errorMsg.contains("Forbidden")) {
-            resultMessage = "❌ Nedostatečná oprávnění\n\n" +
-                "Flex Token nemá dostatečná oprávnění pro tento Query.";
+             resultMessage = "CHYBA: Nedostatečná oprávnění\n\n" +
+                 "Flex Token nemá dostatečná oprávnění pro tento Query.";
           } else if (errorMsg.contains("404") || errorMsg.contains("Not Found")) {
-            resultMessage = "❌ Query ID nenalezen\n\n" +
-                "Zkontrolujte, že Query ID existuje v IBKR Client Portal.";
+             resultMessage = "CHYBA: Query ID nenalezen\n\n" +
+                 "Zkontrolujte, že Query ID existuje v IBKR Client Portal.";
           } else {
-            resultMessage = "❌ Chyba připojení: " + errorMsg + "\n\n" +
-                "Zkontrolujte síťové připojení nebo IBKR server status.";
+             resultMessage = "CHYBA: Chyba připojení: " + errorMsg + "\n\n" +
+                 "Zkontrolujte síťové připojení nebo IBKR server status.";
           }
         }
         return null;
@@ -3096,6 +3279,20 @@ public class SettingsWindow extends javax.swing.JDialog {
       refreshDailyRatesTable();
     }
 
+    // Refresh font selectors
+    if (cbUiFontFamily != null) {
+      cbUiFontFamily.setSelectedItem(Settings.getUiFontFamily());
+    }
+    if (spUiFontSize != null) {
+      spUiFontSize.setValue(Integer.valueOf(Math.max(0, Settings.getUiFontSize())));
+    }
+    if (cbMonospaceFontFamily != null) {
+      cbMonospaceFontFamily.setSelectedItem(Settings.getMonospaceFontFamily());
+    }
+    if (spMonospaceFontSize != null) {
+      spMonospaceFontSize.setValue(Integer.valueOf(Math.max(6, Settings.getMonospaceFontSize())));
+    }
+
     setVisible(true);
   }
 
@@ -3185,6 +3382,10 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JCheckBox cbAutoMaximized;
   private javax.swing.JCheckBox cbAutoLoadLastFile;
   private javax.swing.JComboBox cbUiTheme;
+  private javax.swing.JComboBox cbUiFontFamily;
+  private javax.swing.JSpinner spUiFontSize;
+  private javax.swing.JComboBox cbMonospaceFontFamily;
+  private javax.swing.JSpinner spMonospaceFontSize;
   // End of variables declaration//GEN-END:variables
 
   /**

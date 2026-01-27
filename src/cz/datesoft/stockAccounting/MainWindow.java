@@ -226,6 +226,7 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JTextField tfQuickFilter;
   private javax.swing.JToggleButton bToggleAdvancedFilters;
   private boolean advancedFiltersVisible;
+  private javax.swing.JPanel pAdvancedFilters;
 
   private void toggleAdvancedFilters() {
     toggleAdvancedFilters(!advancedFiltersVisible);
@@ -237,19 +238,8 @@ public class MainWindow extends javax.swing.JFrame {
       bToggleAdvancedFilters.setSelected(visible);
     }
 
-    // Advanced widgets live in the second row and beyond; quick filter stays visible.
-    java.awt.Component[] comps = jPanel2 != null ? jPanel2.getComponents() : null;
-    if (comps != null) {
-      for (java.awt.Component c : comps) {
-        if (c == null) continue;
-        if (c == tfQuickFilter || c == bToggleAdvancedFilters) continue;
-        // Always keep action buttons on the right visible.
-        if (c == bDelete || c == bUndoDelete || c == bUndoImport || c == bSort || c == bCopy || c == bClearColors || c == bToggleDisabled || c == bClearTxnId)
-          continue;
-
-        // Hide everything else when collapsed.
-        c.setVisible(visible);
-      }
+    if (pAdvancedFilters != null) {
+      pAdvancedFilters.setVisible(visible);
     }
 
     if (jPanel2 != null) {
@@ -538,12 +528,12 @@ public class MainWindow extends javax.swing.JFrame {
     cbMarkets.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
     cbType.setModel(
-        new javax.swing.DefaultComboBoxModel(new String[] { "CP", "Derivát", "Transformace", "Dividenda", "Cash" }));
+        new javax.swing.DefaultComboBoxModel(new String[] { "CP", "Derivát", "Transformace", "Dividenda", "Úrok", "Cash" }));
 
     cbTypeFilter = new javax.swing.JComboBox();
     cbTypeFilter.setModel(
         new javax.swing.DefaultComboBoxModel(
-            new String[] { "", "CP", "Derivát", "Transformace", "Dividenda", "Cash" }));
+            new String[] { "", "CP", "Derivát", "Transformace", "Dividenda", "Úrok", "Cash" }));
 
     cbEffectFilter = new javax.swing.JComboBox();
     cbEffectFilter.setModel(
@@ -639,9 +629,14 @@ public class MainWindow extends javax.swing.JFrame {
     });
     getContentPane().setLayout(new java.awt.BorderLayout());
 
-    jPanel2.setLayout(new java.awt.GridBagLayout());
+    // Header area above the trades table
+    jPanel2.setLayout(new java.awt.BorderLayout(0, 6));
 
-    // Quick filter (Ticker/Trh/Note)
+    javax.swing.JPanel pTopBar = new javax.swing.JPanel(new java.awt.BorderLayout(10, 0));
+
+    // Left side: quick filter
+    javax.swing.JPanel pTopLeft = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 4));
+
     bToggleAdvancedFilters.setText("Filtry…");
     bToggleAdvancedFilters.setToolTipText("Zobrazit/skrýt pokročilé filtry");
     bToggleAdvancedFilters.addActionListener(new java.awt.event.ActionListener() {
@@ -665,29 +660,12 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
 
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 0;
-    gridBagConstraints.gridy = 0;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(bToggleAdvancedFilters, gridBagConstraints);
-
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 1;
-    gridBagConstraints.gridy = 0;
-    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-    gridBagConstraints.weightx = 1.0;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(tfQuickFilter, gridBagConstraints);
-
     bApplyFilter.setText("Filtrovat");
     bApplyFilter.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bApplyFilterActionPerformed(evt);
       }
     });
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(bApplyFilter, gridBagConstraints);
 
     bClearFilter.setText("Zrušit");
     bClearFilter.setEnabled(false);
@@ -696,118 +674,197 @@ public class MainWindow extends javax.swing.JFrame {
         bClearFilterActionPerformed(evt);
       }
     });
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(bClearFilter, gridBagConstraints);
 
-    jLabel2.setText("Od:");
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(jLabel2, gridBagConstraints);
+    tfQuickFilter.setColumns(18);
 
-    // Let layout decide date chooser size.
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(dcFrom, gridBagConstraints);
+    pTopLeft.add(bToggleAdvancedFilters);
+    pTopLeft.add(tfQuickFilter);
+    pTopLeft.add(bApplyFilter);
+    pTopLeft.add(bClearFilter);
+    pTopBar.add(pTopLeft, java.awt.BorderLayout.CENTER);
 
-    jLabel3.setText("Do:");
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(jLabel3, gridBagConstraints);
+    // Right side: actions
+    javax.swing.JPanel pTopRight = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 4));
 
-    // Let layout decide date chooser size.
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(dcTo, gridBagConstraints);
-
-    jLabel4.setText("Ticker:");
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(jLabel4, gridBagConstraints);
-
-    // Let layout decide text field size.
-    tfTicker.addActionListener(new java.awt.event.ActionListener() {
+    bCopy.setText("Kopírovat");
+    bCopy.setToolTipText("Zkopíruje vybrané řádky do schránky jako CSV (včetně hlavičky, uvozovky, oddělovač ',')");
+    bCopy.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
-        tfTickerActionPerformed(evt);
+        bCopyActionPerformed(evt);
       }
     });
-    tfTicker.addKeyListener(new java.awt.event.KeyAdapter() {
-      public void keyPressed(java.awt.event.KeyEvent evt) {
-        tfTickerKeyPressed(evt);
-      }
-    });
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(tfTicker, gridBagConstraints);
 
-    jLabel5.setText("Trh:");
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(jLabel5, gridBagConstraints);
-
-    // Let layout decide text field size.
-    tfMarket.addActionListener(new java.awt.event.ActionListener() {
+    bToggleDisabled.setText("Ignorovat");
+    bToggleDisabled.setToolTipText(
+        "Přepne ignorování vybraných řádků (ignorované řádky jsou šedé a nevstupují do výpočtů)");
+    bToggleDisabled.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
-        tfMarketActionPerformed(evt);
+        bToggleDisabledActionPerformed(evt);
       }
     });
-    tfMarket.addKeyListener(new java.awt.event.KeyAdapter() {
-      public void keyPressed(java.awt.event.KeyEvent evt) {
-        tfMarketKeyPressed(evt);
-      }
-    });
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 9;
-    gridBagConstraints.gridy = 0;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(tfMarket, gridBagConstraints);
 
-    jLabel6.setText("Typ:");
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 10;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(jLabel6, gridBagConstraints);
-
-    // Let layout decide combobox size.
-    cbTypeFilter.addActionListener(new java.awt.event.ActionListener() {
+    bClearColors.setText("Vyčistit barvy");
+    bClearColors.setToolTipText("Zruší zvýraznění nových/aktualizovaných řádků");
+    bClearColors.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
-        applyFilter(); // Apply filter on selection change
+        bClearColorsActionPerformed(evt);
       }
     });
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 11;
-    gridBagConstraints.gridy = 0;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(cbTypeFilter, gridBagConstraints);
 
-    // Separator spanning both rows
-    jSeparator3.setOrientation(javax.swing.SwingConstants.VERTICAL);
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 12;
-    gridBagConstraints.gridy = 0;
-    gridBagConstraints.gridheight = 2; // Span both rows
-    gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
-    gridBagConstraints.anchor = java.awt.GridBagConstraints.EAST;
-    gridBagConstraints.weightx = 1.0;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(jSeparator3, gridBagConstraints);
+    bClearTxnId = new javax.swing.JButton();
+    bClearTxnId.setText("Smazat TxnID");
+    bClearTxnId.setToolTipText("Odstraní Broker/ID účtu/ID transakce z vybraných řádků (včetně Note)");
+    bClearTxnId.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bClearTxnIdActionPerformed(evt);
+      }
+    });
 
-    // Delete button spanning both rows
-    bDelete.setText("Smazat řádek");
+    bSort.setText("Seřadit");
+    bSort.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bSortActionPerformed(evt);
+      }
+    });
+
+    bDelete.setText("Smazat");
+    bDelete.setToolTipText("Smazat vybrané řádky");
     bDelete.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bDeleteActionPerformed(evt);
       }
     });
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 13;
-    gridBagConstraints.gridy = 0;
-    gridBagConstraints.gridheight = 2; // Span both rows
-    gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(bDelete, gridBagConstraints);
 
-    // Undo delete button spanning both rows
+    pTopRight.add(bCopy);
+    pTopRight.add(bToggleDisabled);
+    pTopRight.add(bClearColors);
+    pTopRight.add(bClearTxnId);
+    pTopRight.add(bSort);
+    pTopRight.add(bDelete);
+    pTopBar.add(pTopRight, java.awt.BorderLayout.EAST);
+
+    jPanel2.add(pTopBar, java.awt.BorderLayout.NORTH);
+
+    // Collapsible advanced filters
+    pAdvancedFilters = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    pAdvancedFilters.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 6, 0, 6));
+
+    java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
+    gbc.gridy = 0;
+    gbc.gridx = 0;
+    gbc.anchor = java.awt.GridBagConstraints.WEST;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 6);
+    jLabel2.setText("Od:");
+    pAdvancedFilters.add(jLabel2, gbc);
+
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 12);
+    pAdvancedFilters.add(dcFrom, gbc);
+
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 6);
+    jLabel3.setText("Do:");
+    pAdvancedFilters.add(jLabel3, gbc);
+
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 16);
+    pAdvancedFilters.add(dcTo, gbc);
+
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 6);
+    jLabel4.setText("Ticker:");
+    pAdvancedFilters.add(jLabel4, gbc);
+
+    gbc.gridx++;
+    gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbc.weightx = 0.5;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 16);
+    pAdvancedFilters.add(tfTicker, gbc);
+
+    gbc.gridx++;
+    gbc.weightx = 0;
+    gbc.fill = java.awt.GridBagConstraints.NONE;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 6);
+    jLabel5.setText("Trh:");
+    pAdvancedFilters.add(jLabel5, gbc);
+
+    gbc.gridx++;
+    gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbc.weightx = 0.5;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 16);
+    pAdvancedFilters.add(tfMarket, gbc);
+
+    gbc.gridx++;
+    gbc.weightx = 0;
+    gbc.fill = java.awt.GridBagConstraints.NONE;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 6);
+    jLabel6.setText("Typ:");
+    pAdvancedFilters.add(jLabel6, gbc);
+
+    cbTypeFilter.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        applyFilter();
+      }
+    });
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 0);
+    pAdvancedFilters.add(cbTypeFilter, gbc);
+
+    // Row 2
+    gbc.gridy = 1;
+    gbc.gridx = 0;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 6);
+    jLabel7.setText("Note:");
+    pAdvancedFilters.add(jLabel7, gbc);
+
+    gbc.gridx++;
+    gbc.gridwidth = 3;
+    gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbc.weightx = 1.0;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 16);
+    pAdvancedFilters.add(tfNote, gbc);
+
+    gbc.gridwidth = 1;
+    gbc.weightx = 0;
+    gbc.fill = java.awt.GridBagConstraints.NONE;
+    gbc.gridx += 3;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 6);
+    jLabel8.setText("Broker:");
+    pAdvancedFilters.add(jLabel8, gbc);
+
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 16);
+    pAdvancedFilters.add(cbBrokerFilter, gbc);
+
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 6);
+    jLabel9.setText("Account ID:");
+    pAdvancedFilters.add(jLabel9, gbc);
+
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 16);
+    pAdvancedFilters.add(cbAccountIdFilter, gbc);
+
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 6);
+    jLabel10.setText("Effect:");
+    pAdvancedFilters.add(jLabel10, gbc);
+
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 16);
+    pAdvancedFilters.add(cbEffectFilter, gbc);
+
+    // Right side toggles
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 6);
+    pAdvancedFilters.add(cbShowMetadata, gbc);
+
+    gbc.gridx++;
+    gbc.insets = new java.awt.Insets(2, 0, 2, 0);
+    pAdvancedFilters.add(cbShowSeconds, gbc);
+
+    // Undo strip
+    javax.swing.JPanel pUndoStrip = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
     bUndoDelete = new javax.swing.JButton();
     bUndoDelete.setText("Zpět");
     bUndoDelete.setEnabled(false);
@@ -817,14 +874,7 @@ public class MainWindow extends javax.swing.JFrame {
         bUndoDeleteActionPerformed(evt);
       }
     });
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 0;
-    gridBagConstraints.gridy = 2; // Moved to row 2 to avoid overlap with Note filter
-    gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(bUndoDelete, gridBagConstraints);
 
-    // Undo import button spanning both rows
     bUndoImport = new javax.swing.JButton();
     bUndoImport.setText("Zpět import");
     bUndoImport.setEnabled(false);
@@ -834,152 +884,21 @@ public class MainWindow extends javax.swing.JFrame {
         bUndoImportActionPerformed(evt);
       }
     });
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 1;
-    gridBagConstraints.gridy = 2; // Moved to row 2 to avoid overlap
-    gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(bUndoImport, gridBagConstraints);
 
-    // Clear TxnID/AccountID button spanning both rows
-    bClearTxnId = new javax.swing.JButton();
-    bClearTxnId.setText("Smazat TxnID");
-    bClearTxnId.setToolTipText("Odstraní Broker/ID účtu/ID transakce z vybraných řádků (včetně Note)");
-    bClearTxnId.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        bClearTxnIdActionPerformed(evt);
-      }
-    });
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 16;
-    gridBagConstraints.gridy = 0;
-    gridBagConstraints.gridheight = 2;
-    gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(bClearTxnId, gridBagConstraints);
+    pUndoStrip.add(bUndoDelete);
+    pUndoStrip.add(bUndoImport);
 
-    // Sort button spanning both rows
-    bSort.setText("Seřadit");
-    bSort.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        bSortActionPerformed(evt);
-      }
-    });
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 17;
-    gridBagConstraints.gridy = 0;
-    gridBagConstraints.gridheight = 2; // Span both rows
-    gridBagConstraints.anchor = java.awt.GridBagConstraints.CENTER;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
-    jPanel2.add(bSort, gridBagConstraints);
+    javax.swing.JPanel pAdvancedWrapper = new javax.swing.JPanel(new java.awt.BorderLayout(0, 4));
+    pAdvancedWrapper.add(pAdvancedFilters, java.awt.BorderLayout.CENTER);
+    pAdvancedWrapper.add(pUndoStrip, java.awt.BorderLayout.SOUTH);
+    pAdvancedFilters = pAdvancedWrapper;
 
-    // ===== ROW 1: Metadata Filters (advanced)
-    // =====
+    jPanel2.add(pAdvancedFilters, java.awt.BorderLayout.CENTER);
 
-    // Row 1: Note filter
-    jLabel7.setText("Note:");
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 0;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 20, 5, 0); // 20px left indent
-    jPanel2.add(jLabel7, gridBagConstraints);
-
-    // Let layout decide note field size.
-    tfNote.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        tfNoteActionPerformed(evt);
-      }
-    });
-    tfNote.addKeyListener(new java.awt.event.KeyAdapter() {
-      public void keyPressed(java.awt.event.KeyEvent evt) {
-        tfNoteKeyPressed(evt);
-      }
-    });
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 1;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.gridwidth = 2; // Span 2 columns for wider note field
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(tfNote, gridBagConstraints);
-
-    // Row 1: Broker filter
-    jLabel8.setText("Broker:");
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 3;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(jLabel8, gridBagConstraints);
-
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 4;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(cbBrokerFilter, gridBagConstraints);
-
-    // Row 1: Account ID filter
-    jLabel9.setText("Account ID:");
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 5;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(jLabel9, gridBagConstraints);
-
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 6;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(cbAccountIdFilter, gridBagConstraints);
-
-    // Row 1: Effect filter
-    jLabel10.setText("Effect:");
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 7;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(jLabel10, gridBagConstraints);
-
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 8;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
-    jPanel2.add(cbEffectFilter, gridBagConstraints);
-
-    // Add column visibility checkbox
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 9;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 15, 5, 0); // Extra left padding
-    jPanel2.add(cbShowMetadata, gridBagConstraints);
-
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 10;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 10, 5, 0);
-    jPanel2.add(cbShowSeconds, gridBagConstraints);
-
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 11;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 10, 5, 0);
-    jPanel2.add(bCopy, gridBagConstraints);
-
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 12;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 10, 5, 0);
-    jPanel2.add(bClearColors, gridBagConstraints);
-
-    gridBagConstraints = new java.awt.GridBagConstraints();
-    gridBagConstraints.gridx = 13;
-    gridBagConstraints.gridy = 1;
-    gridBagConstraints.insets = new java.awt.Insets(5, 10, 5, 0);
-    jPanel2.add(bToggleDisabled, gridBagConstraints);
-
-    // Start with advanced filters hidden by default (quick filter only).
+    // Start with advanced filters hidden by default.
     advancedFiltersVisible = true;
     toggleAdvancedFilters(false);
 
-    gridBagConstraints = new java.awt.GridBagConstraints();
     getContentPane().add(jPanel2, java.awt.BorderLayout.NORTH);
 
     table.setModel(new javax.swing.table.DefaultTableModel(
@@ -1011,12 +930,7 @@ public class MainWindow extends javax.swing.JFrame {
     jLabel1.setText("Záznamů: 0");
     jLabel1.setBorder(javax.swing.BorderFactory.createEmptyBorder(2, 5, 2, 5));
 
-    // Slightly increase row height for readability
-    try {
-      table.setRowHeight(Math.max(24, table.getRowHeight()));
-    } catch (Exception e) {
-      // ignore
-    }
+    // Match master: keep default table font/metrics (do not force row height here).
 
     jPanel1.setLayout(new java.awt.BorderLayout());
     jPanel1.setBorder(javax.swing.BorderFactory.createEtchedBorder());
@@ -2326,12 +2240,12 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     javax.swing.JList<String> list = new javax.swing.JList<>(listModel);
-    list.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+    list.setFont(UiFonts.monospaceFont());
     list.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
 
     javax.swing.JTextArea details = new javax.swing.JTextArea();
     details.setEditable(false);
-    details.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+    details.setFont(UiFonts.monospaceFont());
     details.setLineWrap(false);
 
     list.addListSelectionListener(e -> {
