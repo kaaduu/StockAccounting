@@ -216,13 +216,10 @@ public class Trading212CsvParser {
                 note += "|TxnID:" + transactionId;
             }
 
-            // Fee: only take native fee columns; ignore CZK-converted totals/results.
-            double fee = parseDouble(getField(fields, H_FEE_CONV));
-            String feeCur = getField(fields, H_FEE_CONV_CUR);
-            if (feeCur.isEmpty()) {
-                // Prefer leaving empty instead of guessing; but Transaction requires a string.
-                feeCur = priceCur;
-            }
+            // Fee: ignore T212 currency conversion fee (it depends on FX context and should not be used
+            // for tax-rate recalculation). Keep fee at 0.
+            double fee = 0.0;
+            String feeCur = priceCur;
 
             Transaction tx = new Transaction(
                     0,

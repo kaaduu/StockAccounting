@@ -15,6 +15,20 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 
 ### Změněno
 - Import → Trading 212: formáty „T212 Invest - csv“ jsou dočasně vypnuté ve výběru (viditelné, ale nejdou zvolit) – nahrazuje je sjednocený import.
+- Trading 212: poplatky „Currency conversion fee“ se ignorují (nejsou vhodné pro přepočet přes jednotný/denní kurz).
+- UI: v hlavním okně jsou přepínače „Metadata“ a „Sekundy“ vždy viditelné (nejsou schované v rozbalených filtrech).
+
+### Opraveno
+- Import → Trading 212: časové posuny `TimeShift:+Nm` se nyní aplikují pouze kvůli transformacím (TRANS_SUB/TRANS_ADD), ne kvůli běžným obchodům ve stejné minutě.
+- Hlavní okno: tlačítka „Zpět“ a „Zpět import“ už nejsou součástí rozbalovacích filtrů; zobrazují se jen pokud je skutečně možné akci vrátit.
+- Filtry: přidáno tlačítko „Reset času“ u rozsahu „Od/Do“ pro návrat na výchozí období (1900-01-01 → nyní).
+- Hlavní okno: doplněny tooltipy u chybějících tlačítek, aby bylo jasné, co akce provede.
+- Import → Trading 212: tlačítko „Sloučit do databáze“ je nyní dostupné i v případě, že náhled obsahuje pouze položky „K aktualizaci“ (bez nových řádků).
+- Import → Trading 212: výběr roku se po „Načíst z API“ ihned aktualizuje; pokud API vrátí 0 záznamů, rok se označí jako „Imported: 0 transakcí“.
+- Import → Trading 212: v okně importu je přidáno tlačítko „Sloučit do databáze“ pro aplikování náhledu do hlavní databáze.
+- Import: tlačítka „Sloučit do databáze“ se nyní aktivují jen pokud existují nové řádky nebo položky k aktualizaci; u IBKR Flex je sloučení oddělené od tlačítka pro načtení.
+- Import: při přepínání formátů se korektně skrývá/zobrazuje celý blok ovládání Trading 212, aby se nepřekrýval s IBKR Flex UI.
+- Stav účtu: načítání pozic z TWS už typicky neselhává na první pokus (čeká na handshake a při timeoutu automaticky jednou zopakuje).
 
 ## [Kurzy měn: automatická detekce roků a měn] - 2026-01-26
 
