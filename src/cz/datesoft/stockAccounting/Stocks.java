@@ -988,9 +988,11 @@ public class Stocks {
     if (tx != null && tx.isDisabled()) {
       return null;
     }
-    // Do not count dividends
+    // Do not count dividends / interests in trading PnL engine
     if ((tx.direction == Transaction.DIRECTION_DIVI_BRUTTO) || (tx.direction == Transaction.DIRECTION_DIVI_NETTO15)
-        || (tx.direction == Transaction.DIRECTION_DIVI_TAX) || (tx.direction == Transaction.DIRECTION_DIVI_UNKNOWN))
+        || (tx.direction == Transaction.DIRECTION_DIVI_TAX) || (tx.direction == Transaction.DIRECTION_DIVI_UNKNOWN)
+        || (tx.direction == Transaction.DIRECTION_INT_BRUTTO) || (tx.direction == Transaction.DIRECTION_INT_TAX)
+        || (tx.direction == Transaction.DIRECTION_INT_PAID) || (tx.direction == Transaction.DIRECTION_INT_FEE))
       return null;
 
     // Sanity check - does transaction have ticker & amount?

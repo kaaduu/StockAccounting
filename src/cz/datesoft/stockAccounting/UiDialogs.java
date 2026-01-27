@@ -51,7 +51,7 @@ public final class UiDialogs {
 
     JTextArea ta = new JTextArea(stackTrace(t));
     ta.setEditable(false);
-    ta.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+    ta.setFont(UiFonts.monospaceFont());
     ta.setCaretPosition(0);
 
     JScrollPane sp = new JScrollPane(ta);

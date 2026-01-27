@@ -1351,6 +1351,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         added.setCode(code.trim());
       }
 
+      // Preserve ignored/disabled flag from preview/import.
+      // (IBKR Flex: some cash rows are imported as "disabled" by design.)
+      added.setDisabled(tx.isDisabled());
+
       // Mark as inserted for highlighting (import/merge only)
       dstSet.markInserted(added);
 

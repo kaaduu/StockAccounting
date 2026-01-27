@@ -33,6 +33,12 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   public static final int DIRECTION_DIVI_NETTO15 = 11;
   public static final int DIRECTION_DIVI_TAX = 12;
   public static final int DIRECTION_DIVI_UNKNOWN = 13;
+
+  // Interest ("Úrok")
+  public static final int DIRECTION_INT_BRUTTO = 20;
+  public static final int DIRECTION_INT_TAX = 21;
+  public static final int DIRECTION_INT_PAID = 22;
+  public static final int DIRECTION_INT_FEE = 23;
   
   /** Serial number - used in sorting when dates equal */
   int serial;
@@ -145,6 +151,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       t.accountId = this.accountId;
       t.txnId = this.txnId;
       t.code = this.code;
+      t.disabled = this.disabled;
 
       return t;
     } catch (Exception e) {
@@ -165,6 +172,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       t.accountId = this.accountId;
       t.txnId = this.txnId;
       t.code = this.code;
+      t.disabled = this.disabled;
       return t;
     }
   }
@@ -186,6 +194,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.accountId = snapshot.accountId;
     this.txnId = snapshot.txnId;
     this.code = snapshot.code;
+    this.disabled = snapshot.disabled;
   }
 
   /**
@@ -364,6 +373,10 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       case DIRECTION_DIVI_NETTO15:
       case DIRECTION_DIVI_TAX:
       case DIRECTION_DIVI_UNKNOWN:
+      case DIRECTION_INT_BRUTTO:
+      case DIRECTION_INT_TAX:
+      case DIRECTION_INT_PAID:
+      case DIRECTION_INT_FEE:
         break;
       default:
         throw new Exception("Bad direction constant: "+direction);
@@ -452,6 +465,14 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
         return "Daň";
       case DIRECTION_DIVI_UNKNOWN:
         return "Neznámá";
+      case DIRECTION_INT_BRUTTO:
+        return "Hrubá";
+      case DIRECTION_INT_TAX:
+        return "Daň";
+      case DIRECTION_INT_PAID:
+        return "Zaplacený";
+      case DIRECTION_INT_FEE:
+        return "Poplatek";
       default:
         return null;
     }
@@ -477,6 +498,11 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       case DIRECTION_DIVI_TAX:
       case DIRECTION_DIVI_UNKNOWN:
         return "Dividenda";
+      case DIRECTION_INT_BRUTTO:
+      case DIRECTION_INT_TAX:
+      case DIRECTION_INT_PAID:
+      case DIRECTION_INT_FEE:
+        return "Úrok";
       default:
         return null;
     }
@@ -595,6 +621,17 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
           direction = DIRECTION_DIVI_UNKNOWN;
       }
     }
+    else if (newDirection.equalsIgnoreCase("Úrok") || newDirection.equalsIgnoreCase("Urok")) {
+      switch(direction) {
+        case DIRECTION_INT_BRUTTO:
+        case DIRECTION_INT_TAX:
+        case DIRECTION_INT_PAID:
+        case DIRECTION_INT_FEE:
+          break;
+        default:
+          direction = DIRECTION_INT_BRUTTO;
+      }
+    }
   }
 
   /**
@@ -621,6 +658,12 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       case DIRECTION_DIVI_UNKNOWN:
         String[] c = { "Hrubá", "Čistá 15%", "Daň", "Neznámá" };
         return c;
+      case DIRECTION_INT_BRUTTO:
+      case DIRECTION_INT_TAX:
+      case DIRECTION_INT_PAID:
+      case DIRECTION_INT_FEE:
+        String[] i = { "Hrubá", "Daň", "Zaplacený", "Poplatek" };
+        return i;
       default:
         String[] z = { };
         return z;
@@ -668,6 +711,15 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
         else if (direction.equalsIgnoreCase("Čistá 15%")) this.direction = DIRECTION_DIVI_NETTO15;
         else if (direction.equalsIgnoreCase("Daň")) this.direction = DIRECTION_DIVI_TAX;
         else if (direction.equalsIgnoreCase("Neznámá")) this.direction = DIRECTION_DIVI_UNKNOWN;
+        break;
+      case DIRECTION_INT_BRUTTO:
+      case DIRECTION_INT_TAX:
+      case DIRECTION_INT_PAID:
+      case DIRECTION_INT_FEE:
+        if (direction.equalsIgnoreCase("Hrubá")) this.direction = DIRECTION_INT_BRUTTO;
+        else if (direction.equalsIgnoreCase("Daň")) this.direction = DIRECTION_INT_TAX;
+        else if (direction.equalsIgnoreCase("Zaplacený")) this.direction = DIRECTION_INT_PAID;
+        else if (direction.equalsIgnoreCase("Poplatek")) this.direction = DIRECTION_INT_FEE;
         break;
     }
   }
