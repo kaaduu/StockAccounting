@@ -93,6 +93,14 @@ public class ImportWindow extends javax.swing.JFrame {
   // Trading 212 UI components for cache/refresh
   private javax.swing.JButton bRefreshFromApi;
   private javax.swing.JLabel lblCacheStatus;
+
+  // Trading 212: dedicated source buttons (like IBKR Flex)
+  private javax.swing.JButton bT212Fetch;
+  private javax.swing.JButton bT212File;
+  private javax.swing.JButton bT212Clear;
+  private javax.swing.JButton bT212RefreshPreview;
+  private javax.swing.JButton bT212Merge;
+  private javax.swing.JPanel pT212Buttons;
   
   // IBKR Flex specific components
   private javax.swing.JButton bIBKRFlexFetch;          // "Načíst z IBKR"
@@ -100,6 +108,7 @@ public class ImportWindow extends javax.swing.JFrame {
   private javax.swing.JButton bIBKRFlexClear;          // "Vymazat náhled"
   private javax.swing.JButton bIBKRFlexRefreshPreview;  // "Obnovit náhled"
   private javax.swing.JButton bIBKRFlexHelp;           // "Nápověda"
+  private javax.swing.JButton bIBKRFlexMerge;          // "Sloučit do databáze"
   private javax.swing.JCheckBox cbIBKRFlexIncludeCorporateActions; // include Transformace
   private javax.swing.JCheckBox cbIBKRFlexCaRS;
   private javax.swing.JCheckBox cbIBKRFlexCaTC;
@@ -1418,8 +1427,19 @@ public class ImportWindow extends javax.swing.JFrame {
     int mode = getTrading212ImportMode();
     java.util.Vector<Transaction> candidates = filterTrading212Transactions(parsedTransactions, mode);
 
-    boolean hasTrans = (mode == T212_MODE_ALL || mode == T212_MODE_TRANS_ONLY);
-    if (hasTrans) {
+    boolean hasTransMode = (mode == T212_MODE_ALL || mode == T212_MODE_TRANS_ONLY);
+    boolean hasAnyTrans = false;
+    if (hasTransMode) {
+      for (Transaction t : candidates) {
+        if (t == null) continue;
+        if (!"T212".equalsIgnoreCase(t.getBroker())) continue;
+        if (isTransformation(t)) {
+          hasAnyTrans = true;
+          break;
+        }
+      }
+    }
+    if (hasAnyTrans) {
       normalizeTrading212MinuteCollisions(mainWindow.getTransactionDatabase(), candidates);
     }
 
@@ -1462,7 +1482,9 @@ public class ImportWindow extends javax.swing.JFrame {
       updateCacheStatus();
     }
 
-    updateImportButtonText();
+    if (!isTrading212Format()) {
+      updateImportButtonText();
+    }
     updateImportButtonState();
     updateClearButtonState();
   }
@@ -1648,6 +1670,7 @@ public class ImportWindow extends javax.swing.JFrame {
     if (bIBKRFlexClear != null) bIBKRFlexClear.setVisible(visible);
     if (bIBKRFlexRefreshPreview != null) bIBKRFlexRefreshPreview.setVisible(visible);
     if (bIBKRFlexHelp != null) bIBKRFlexHelp.setVisible(visible);
+    if (bIBKRFlexMerge != null) bIBKRFlexMerge.setVisible(visible);
     if (cbIBKRFlexImportMode != null) cbIBKRFlexImportMode.setVisible(visible);
     if (cbIBKRFlexIncludeCorporateActions != null) cbIBKRFlexIncludeCorporateActions.setVisible(visible);
     if (cbIBKRFlexCaRS != null) cbIBKRFlexCaRS.setVisible(visible);
@@ -2014,9 +2037,10 @@ public class ImportWindow extends javax.swing.JFrame {
           LoadResult r = get();
           applyLoadResult(r);
 
-          // For Trading 212 local CSV, applyLoadResult() populates preview asynchronously.
-          // Ensure the bottom action button reflects the loaded preview ("Sloučit do databáze").
-          updateImportButtonText();
+          // Trading 212 uses dedicated source buttons; the generic bottom import button is hidden.
+          if (!isTrading212Format()) {
+            updateImportButtonText();
+          }
           updateImportButtonState();
           updateClearButtonState();
         } catch (Exception e) {
@@ -2182,9 +2206,20 @@ public class ImportWindow extends javax.swing.JFrame {
 
     // Trading 212 and IBKR Flex share the same minute-collision constraint for transformations.
     // Normalize before duplicate filtering.
-    boolean t212HasTransformations = (trading212Mode == T212_MODE_ALL || trading212Mode == T212_MODE_TRANS_ONLY);
-    if (formatIndex == 8 && t212HasTransformations) {
-      normalizeTrading212MinuteCollisions(mainDb, original);
+    boolean t212HasTransformationsMode = (trading212Mode == T212_MODE_ALL || trading212Mode == T212_MODE_TRANS_ONLY);
+    boolean t212HasAnyTrans = false;
+    if (formatIndex == 8 && t212HasTransformationsMode) {
+      for (Transaction t : original) {
+        if (t == null) continue;
+        if (!"T212".equalsIgnoreCase(t.getBroker())) continue;
+        if (isTransformation(t)) {
+          t212HasAnyTrans = true;
+          break;
+        }
+      }
+      if (t212HasAnyTrans) {
+        normalizeTrading212MinuteCollisions(mainDb, original);
+      }
     }
     java.util.Vector<Transaction> filtered = mainDb.filterDuplicates(original);
 
@@ -2236,15 +2271,29 @@ public class ImportWindow extends javax.swing.JFrame {
    */
   private void normalizeTrading212MinuteCollisions(TransactionSet db, Vector<Transaction> candidates) {
     if (candidates == null || candidates.isEmpty()) return;
+
+    boolean hasAnyTrans = false;
+    for (Transaction t : candidates) {
+      if (t == null) continue;
+      if (!"T212".equalsIgnoreCase(t.getBroker())) continue;
+      if (isTransformation(t)) {
+        hasAnyTrans = true;
+        break;
+      }
+    }
+    if (!hasAnyTrans) return;
+
     // Reuse the existing normalization logic (broker filter inside is IB-only, so we need a local variant).
 
-    java.util.Set<Long> occupied = new java.util.HashSet<>();
+    // Only transformations require minute-level exclusivity.
+    // For regular trades/dividends/etc, keep original timestamps (even if multiple rows share the same minute).
+    java.util.Set<Long> occupiedDbMinutes = new java.util.HashSet<>();
     if (db != null) {
       int max = Math.max(0, db.getRowCount() - 1);
       for (int i = 0; i < max; i++) {
         Transaction t = db.getRowAt(i);
         if (t == null) continue;
-        occupied.add(minuteKey(t.getDate()));
+        occupiedDbMinutes.add(minuteKey(t.getDate()));
       }
     }
 
@@ -2264,6 +2313,8 @@ public class ImportWindow extends javax.swing.JFrame {
         .thenComparing((Transaction t) -> t.getExecutionDate(), java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
         .thenComparing((Transaction t) -> Math.abs(t.getAmount() == null ? 0.0 : t.getAmount()));
 
+    // Minutes that contain transformations in the incoming dataset (original timestamps).
+    // We must not shift an earlier transformation onto a later transformation minute.
     java.util.Set<Long> reservedTransMinutes = new java.util.HashSet<>();
     for (java.util.Map.Entry<Long, java.util.List<Transaction>> e : byMinute.entrySet()) {
       java.util.List<Transaction> group = e.getValue();
@@ -2272,6 +2323,11 @@ public class ImportWindow extends javax.swing.JFrame {
       boolean hasTrans = group.stream().anyMatch(ImportWindow::isTransformation);
       if (hasTrans) reservedTransMinutes.add(e.getKey());
     }
+
+    // Track where transformations end up (after any shifting due to DB collisions).
+    java.util.Set<Long> placedTransMinutes = new java.util.HashSet<>();
+    // Occupied minutes for transformation placement only (DB minutes + already placed transformations).
+    java.util.Set<Long> occupiedForTrans = new java.util.HashSet<>(occupiedDbMinutes);
 
     for (java.util.Map.Entry<Long, java.util.List<Transaction>> e : byMinute.entrySet()) {
       long minute = e.getKey();
@@ -2284,10 +2340,9 @@ public class ImportWindow extends javax.swing.JFrame {
         long targetMinute = minute;
         int shiftMinutes = 0;
         while (true) {
-          boolean collides = occupied.contains(targetMinute);
-          if (shiftMinutes > 0 && reservedTransMinutes.contains(targetMinute)) {
-            collides = true;
-          }
+          boolean collides = occupiedForTrans.contains(targetMinute);
+          // Avoid landing on another transformation minute (except the original one).
+          if (shiftMinutes > 0 && reservedTransMinutes.contains(targetMinute)) collides = true;
           if (!collides) break;
           java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
           cal.setTimeInMillis(targetMinute);
@@ -2305,22 +2360,33 @@ public class ImportWindow extends javax.swing.JFrame {
             appendTimeShiftMinutesMarker(t, shiftMinutes);
           }
         }
-        occupied.add(targetMinute);
+        placedTransMinutes.add(targetMinute);
+        occupiedForTrans.add(targetMinute);
 
-        for (Transaction t : group) {
-          if (t == null) continue;
-          if (isTransformation(t)) continue;
-          shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, targetMinute);
+        // Only if the transformations stayed in the original minute, shift any colliding non-TRANS rows away.
+        // If the transformation was shifted forward, the original minute is no longer a TRANS minute.
+        if (targetMinute == minute) {
+          for (Transaction t : group) {
+            if (t == null) continue;
+            if (isTransformation(t)) continue;
+            // Shift away from the TRANS minute, but do not enforce uniqueness among non-TRANS rows.
+            java.util.Set<Long> forbidden = new java.util.HashSet<>(placedTransMinutes);
+            forbidden.addAll(reservedTransMinutes);
+            forbidden.add(targetMinute);
+            shiftForwardToFreeMinute(t, new java.util.HashSet<>(), forbidden, targetMinute);
+          }
         }
       } else {
-        for (Transaction t : group) {
-          if (t == null) continue;
-          long mk = minuteKey(t.getDate());
-          if (!occupied.contains(mk) && !reservedTransMinutes.contains(mk)) {
-            occupied.add(mk);
-            continue;
+        // Do not normalize regular rows, unless a previous TRANS was shifted into this minute.
+        if (placedTransMinutes.contains(minute)) {
+          for (Transaction t : group) {
+            if (t == null) continue;
+            // Shift away from the TRANS minute, but do not enforce uniqueness among non-TRANS rows.
+            java.util.Set<Long> forbidden = new java.util.HashSet<>(placedTransMinutes);
+            forbidden.addAll(reservedTransMinutes);
+            forbidden.add(minute);
+            shiftForwardToFreeMinute(t, new java.util.HashSet<>(), forbidden, minute);
           }
-          shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, mk);
         }
       }
     }
@@ -2968,37 +3034,41 @@ public class ImportWindow extends javax.swing.JFrame {
     if (bRefreshFromApi == null || !isTrading212Format()) {
       return;
     }
-    
-    // Enable only if we have credentials and cached data for selected year
-    boolean hasCredentials = hasValidApiCredentials();
-    boolean hasCachedData = false;
-    
-    if (hasCredentials && cbTrading212Year != null) {
-      String selectedItem = (String) cbTrading212Year.getSelectedItem();
-      if (selectedItem != null) {
-        try {
-          String yearStr = selectedItem.split(" ")[0];
-          int year = Integer.parseInt(yearStr);
-          
-          // Check cache (need account ID first)
-          // For now, just check if status shows "Cached"
-          hasCachedData = selectedItem.contains("Cached");
-        } catch (Exception e) {
-          // Ignore parsing errors
-        }
-      }
+
+    // Legacy button is hidden; keep no-op.
+    if (bRefreshFromApi != null) {
+      bRefreshFromApi.setEnabled(false);
     }
-    
-    bRefreshFromApi.setEnabled(hasCachedData);
+    return;
   }
 
   private void setupTrading212YearSelection() {
     if (cbTrading212Year == null) {
       cbTrading212Year = new javax.swing.JComboBox<>();
-      bClearPreview = new javax.swing.JButton("Vymazat náhled");
+      // Trading 212 controls (modeled after IBKR Flex)
+      bT212Fetch = new javax.swing.JButton("Načíst z API");
+      bT212Fetch.setToolTipText("Stáhnout roční CSV report z Trading 212 API a připravit náhled");
+
+      bT212File = new javax.swing.JButton("Načíst ze souboru");
+      bT212File.setToolTipText("Vybrat lokální Trading 212 CSV (Activity export) a připravit náhled");
+
+      bT212Clear = new javax.swing.JButton("Vymazat náhled");
+      bT212Clear.setToolTipText("Vymazat aktuální náhled");
+
+      bT212RefreshPreview = new javax.swing.JButton("Obnovit náhled");
+      bT212RefreshPreview.setToolTipText("Znovu vytvořit náhled z již načtených dat (bez stahování z API)");
+
+      bT212Merge = new javax.swing.JButton("Sloučit do databáze");
+      bT212Merge.setToolTipText("Sloučit načtené transakce do hlavní databáze");
+      bT212Merge.setEnabled(false);
+
+      // Keep the old refresh-from-api button hidden (replaced by Načíst z API)
       bRefreshFromApi = new javax.swing.JButton("🔄 Obnovit z API");
-      bRefreshFromApi.setEnabled(false); // Initially disabled until cache is available
-      lCacheStatus = new javax.swing.JLabel("Cache: None");
+      bRefreshFromApi.setVisible(false);
+      bRefreshFromApi.setEnabled(false);
+
+      bClearPreview = bT212Clear;
+      lCacheStatus = new javax.swing.JLabel("Trading 212: Vyberte zdroj dat (API / soubor)");
 
       cbTrading212ImportMode = new javax.swing.JComboBox<>(new String[] {
         "Vše (obchody + transformace + dividendy + úroky)",
@@ -3016,6 +3086,7 @@ public class ImportWindow extends javax.swing.JFrame {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
           updateCacheStatus();
           updateRefreshButtonState();
+          updateTrading212ButtonsState();
         }
       });
 
@@ -3025,112 +3096,129 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       });
 
-      // Add action listeners for buttons
-      bClearPreview.addActionListener(new java.awt.event.ActionListener() {
+      // Trading 212 actions
+      bT212Fetch.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          // Explicit API fetch.
+          if (!hasValidApiCredentials()) {
+            openSettings_Trading212Tab();
+            return;
+          }
+          // Switch to API mode.
+          currentFile = null;
+          updateSelectedFileLabel();
+          clearPreview();
+          performTrading212Import(false, false);
+        }
+      });
+
+      bT212File.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          // Reuse existing file chooser.
+          selectLocalImportFile();
+          updateTrading212ButtonsState();
+        }
+      });
+
+      bT212Clear.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
           clearPreview();
         }
       });
-      
-      bRefreshFromApi.addActionListener(new java.awt.event.ActionListener() {
+
+      bT212RefreshPreview.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
-          refreshFromApiClicked();
+          refreshTrading212PreviewFromCachedCsv();
         }
       });
 
-      // Add to UI - single horizontal row
+      bT212Merge.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          performTrading212Import(true, false);
+        }
+      });
+
+      // Grouped UI (like IBKR Flex)
+      pT212Buttons = new javax.swing.JPanel(new java.awt.BorderLayout(0, 4));
+
+      javax.swing.JPanel pSource = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+      pSource.setBorder(javax.swing.BorderFactory.createTitledBorder("1) Zdroj"));
+      pSource.add(bT212Fetch);
+      pSource.add(bT212File);
+      pSource.add(new javax.swing.JLabel("Rok:"));
+      pSource.add(cbTrading212Year);
+
+      javax.swing.JPanel pPreview = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+      pPreview.setBorder(javax.swing.BorderFactory.createTitledBorder("2) Náhled"));
+      pPreview.add(bT212RefreshPreview);
+      pPreview.add(bT212Merge);
+      pPreview.add(bT212Clear);
+
+      javax.swing.JPanel pContent = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+      pContent.setBorder(javax.swing.BorderFactory.createTitledBorder("3) Obsah"));
+      pContent.add(cbTrading212ImportMode);
+
+      javax.swing.JPanel pTopRow = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+      pTopRow.add(pSource);
+      pTopRow.add(pPreview);
+
+      javax.swing.JPanel pBottomRow = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+      pBottomRow.add(pContent);
+
+      pT212Buttons.add(pTopRow, java.awt.BorderLayout.NORTH);
+      pT212Buttons.add(pBottomRow, java.awt.BorderLayout.CENTER);
+
+      // Add to main layout above preview
       java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
-      gbc.gridy = 12; // After existing controls
-      gbc.gridwidth = 1;
+      gbc.gridx = 0;
+      gbc.gridy = 2;
+      gbc.gridwidth = 6;
       gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-      gbc.insets = new java.awt.Insets(5, 5, 5, 5);
-
-      // Year selection
-      gbc.gridx = 0;
-      gbc.weightx = 0.0;
-      jPanel2.add(new javax.swing.JLabel("Rok:"), gbc);
-
-      gbc.gridx = 1;
+      gbc.anchor = java.awt.GridBagConstraints.WEST;
+      gbc.insets = new java.awt.Insets(5, 5, 0, 5);
       gbc.weightx = 1.0;
-      jPanel2.add(cbTrading212Year, gbc);
+      getContentPane().add(pT212Buttons, gbc);
 
-      // Content mode
-      gbc.gridx = 2;
-      gbc.weightx = 0.0;
-      jPanel2.add(cbTrading212ImportMode, gbc);
+      pT212Buttons.setMinimumSize(new java.awt.Dimension(1, pT212Buttons.getPreferredSize().height));
 
-      // Clear preview button
-      gbc.gridx = 3;
-      gbc.weightx = 0.0;
-      jPanel2.add(bClearPreview, gbc);
-      
-      // Refresh from API button
-      gbc.gridx = 4;
-      gbc.weightx = 0.0;
-      jPanel2.add(bRefreshFromApi, gbc);
-
-      // Add status label on next row
+      // Status label on next row
+      gbc = new java.awt.GridBagConstraints();
       gbc.gridx = 0;
-      gbc.gridy = 13;
-      gbc.gridwidth = 5; // Span across all columns
+      gbc.gridy = 3;
+      gbc.gridwidth = 6;
+      gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+      gbc.anchor = java.awt.GridBagConstraints.WEST;
+      gbc.insets = new java.awt.Insets(0, 5, 5, 5);
       gbc.weightx = 1.0;
-      jPanel2.add(lCacheStatus, gbc);
+      getContentPane().add(lCacheStatus, gbc);
 
       // Repack to show new components
       pack();
     }
 
     // Ensure visibility
+    if (pT212Buttons != null) pT212Buttons.setVisible(true);
     cbTrading212Year.setVisible(true);
     if (cbTrading212ImportMode != null) cbTrading212ImportMode.setVisible(true);
-    bClearPreview.setVisible(true);
+    if (bT212Fetch != null) bT212Fetch.setVisible(true);
+    if (bT212File != null) bT212File.setVisible(true);
+    if (bT212Clear != null) bT212Clear.setVisible(true);
+    if (bT212RefreshPreview != null) bT212RefreshPreview.setVisible(true);
+    if (bT212Merge != null) bT212Merge.setVisible(true);
     lCacheStatus.setVisible(true);
 
     // Initial update
     updateCacheStatus();
     updateClearButtonState();
+    updateTrading212ButtonsState();
   }
 
   /**
    * Handle "Refresh from API" button click
    */
   private void refreshFromApiClicked() {
-    if (!isTrading212Format() || cbTrading212Year == null) {
-      return;
-    }
-    
-    String selectedItem = (String) cbTrading212Year.getSelectedItem();
-    if (selectedItem == null) {
-      return;
-    }
-    
-    try {
-      String yearStr = selectedItem.split(" ")[0];
-      int year = Integer.parseInt(yearStr);
-      
-      // Confirm with user
-      int confirm = javax.swing.JOptionPane.showConfirmDialog(this,
-          "Znovu stáhnout data pro rok " + year + " z Trading 212?\n" +
-          "Tato operace přepíše cache data.",
-          "Potvrdit obnovení", javax.swing.JOptionPane.YES_NO_OPTION);
-      
-      if (confirm != javax.swing.JOptionPane.YES_OPTION) {
-        return;
-      }
-      
-      // Clear preview first
-      clearPreview();
-      
-      // Perform import with force refresh flag
-      System.out.println("[REFRESH:001] Forcing refresh from API for year " + year);
-      performTrading212Import(false, true); // fetch mode, force refresh
-      
-    } catch (Exception e) {
-      System.err.println("Failed to parse year from selection: " + e.getMessage());
-      javax.swing.JOptionPane.showMessageDialog(this,
-          "Chyba při obnovení: " + e.getMessage(),
-          "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);
-    }
+    // Legacy button removed; use "Načíst z API".
+    return;
   }
 
   private int getTrading212ImportMode() {
@@ -3157,6 +3245,7 @@ public class ImportWindow extends javax.swing.JFrame {
       populateTrading212Preview(lastTrading212AllTransactions,
           lastTrading212SourceLabel != null ? lastTrading212SourceLabel : "Trading 212",
           lastTrading212YearForCache);
+      updateTrading212ButtonsState();
     } catch (Exception e) {
       UiDialogs.error(this, "Chyba při obnovení náhledu: " + e.getMessage(), "Trading 212", e);
     }
@@ -3199,29 +3288,37 @@ public class ImportWindow extends javax.swing.JFrame {
   
   private void updateCacheStatus() {
     if (lCacheStatus != null) {
+      // Prefer showing current source/mode status.
+      updateTrading212StatusLine();
+
+      // Keep legacy cache hints only for API mode.
+      if (currentFile != null) {
+        return;
+      }
+
       String selectedItem = (String) cbTrading212Year.getSelectedItem();
       if (selectedItem != null) {
         try {
           int year = Integer.parseInt(selectedItem.split(" ")[0]);
            if (importState.hasCachedTransactions(year)) {
              int count = importState.getCachedTransactions(year).size();
-             lCacheStatus.setText("Cache: " + count + " transakcí (session)");
+             lCacheStatus.setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: " + count + " transakcí (session)");
            } else {
              // Also check disk cache if we have accountId.
              String accountId = importState.getAccountId();
              if (accountId != null && !accountId.isEmpty()) {
                Trading212CsvCache csvCache = new Trading212CsvCache();
                if (csvCache.hasCachedCsv(accountId, year)) {
-                 lCacheStatus.setText("Cache: CSV k dispozici (disk) – klikněte na API stažení pro načtení");
+                 lCacheStatus.setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: CSV k dispozici (disk)");
                } else {
-                 lCacheStatus.setText("Cache: Žádná data (klikněte na 'API stažení')");
+                 lCacheStatus.setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: Žádná data");
                }
              } else {
-               lCacheStatus.setText("Cache: Žádná data (klikněte na 'API stažení')");
+               lCacheStatus.setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: Žádná data");
              }
            }
         } catch (NumberFormatException e) {
-          lCacheStatus.setText("Cache: Neplatný rok");
+          // ignore
         }
       }
     }
@@ -3232,6 +3329,9 @@ public class ImportWindow extends javax.swing.JFrame {
 
 
   private void hideTrading212YearSelection() {
+    if (pT212Buttons != null) {
+      pT212Buttons.setVisible(false);
+    }
     if (cbTrading212Year != null) {
       cbTrading212Year.setVisible(false);
     }
@@ -3241,12 +3341,75 @@ public class ImportWindow extends javax.swing.JFrame {
     if (bClearPreview != null) {
       bClearPreview.setVisible(false);
     }
+    if (bT212Fetch != null) bT212Fetch.setVisible(false);
+    if (bT212File != null) bT212File.setVisible(false);
+    if (bT212Clear != null) bT212Clear.setVisible(false);
+    if (bT212RefreshPreview != null) bT212RefreshPreview.setVisible(false);
+    if (bT212Merge != null) bT212Merge.setVisible(false);
     if (bRefreshFromApi != null) {
       bRefreshFromApi.setVisible(false);
     }
     if (lCacheStatus != null) {
       lCacheStatus.setVisible(false);
     }
+  }
+
+  private void updateTrading212ButtonsState() {
+    if (!isTrading212Format()) return;
+    if (bT212Fetch != null) {
+      bT212Fetch.setEnabled(hasValidApiCredentials());
+    }
+    boolean canRefresh = lastTrading212AllTransactions != null && !lastTrading212AllTransactions.isEmpty();
+    if (bT212RefreshPreview != null) {
+      bT212RefreshPreview.setEnabled(canRefresh);
+    }
+    if (bT212Clear != null) {
+      boolean hasWork = (transactions != null && transactions.rows != null && !transactions.rows.isEmpty())
+          || (duplicatesToUpdate != null && !duplicatesToUpdate.isEmpty());
+      bT212Clear.setEnabled(hasWork);
+    }
+
+    if (bT212Merge != null) {
+      boolean hasWork = (transactions != null && transactions.rows != null && !transactions.rows.isEmpty())
+          || (duplicatesToUpdate != null && !duplicatesToUpdate.isEmpty());
+      bT212Merge.setEnabled(hasWork);
+    }
+
+    if (cbTrading212Year != null) {
+      boolean apiMode = (currentFile == null);
+      cbTrading212Year.setEnabled(apiMode);
+      cbTrading212Year.setToolTipText(apiMode ? "Vyberte rok pro API report" : "Platí jen pro API (při načtení ze souboru se nepoužívá)");
+    }
+
+    updateTrading212StatusLine();
+  }
+
+  private void updateTrading212StatusLine() {
+    if (!isTrading212Format()) return;
+    if (lCacheStatus == null) return;
+
+    StringBuilder sb = new StringBuilder();
+    if (currentFile != null) {
+      sb.append("Trading 212: Zdroj = soubor ");
+      sb.append(currentFile.getName());
+    } else {
+      sb.append("Trading 212: Zdroj = API");
+      if (cbTrading212Year != null) {
+        Object sel = cbTrading212Year.getSelectedItem();
+        if (sel != null) {
+          String s = String.valueOf(sel);
+          String year = s.split(" ")[0];
+          if (year != null && !year.trim().isEmpty()) {
+            sb.append(" (rok ").append(year.trim()).append(")");
+          }
+        }
+      }
+    }
+
+    if (lastTrading212AllTransactions != null) {
+      sb.append(" | Načteno: ").append(lastTrading212AllTransactions.size());
+    }
+    lCacheStatus.setText(sb.toString());
   }
   
   /**
@@ -3261,6 +3424,10 @@ public class ImportWindow extends javax.swing.JFrame {
       bIBKRFlexRefreshPreview = new javax.swing.JButton("Obnovit náhled");
       bIBKRFlexHelp = new javax.swing.JButton("Nápověda");
       bIBKRFlexHelp.setToolTipText("Jak nastavit IBKR Flex Query (sekce, Cash Transactions a konfigurace)");
+
+      bIBKRFlexMerge = new javax.swing.JButton("Sloučit do databáze");
+      bIBKRFlexMerge.setToolTipText("Sloučit načtené transakce do hlavní databáze");
+      bIBKRFlexMerge.setEnabled(false);
       cbIBKRFlexIncludeCorporateActions = new javax.swing.JCheckBox("Transformace");
       cbIBKRFlexIncludeCorporateActions.setSelected(true);
       cbIBKRFlexIncludeCorporateActions.setToolTipText("Zahrnout korporátní akce (Transformace) do náhledu a importu");
@@ -3348,6 +3515,13 @@ public class ImportWindow extends javax.swing.JFrame {
           ibkrFlexFileClicked();
         }
       });
+
+      bIBKRFlexMerge.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          if (!isIBKRFlexFormat()) return;
+          performIBKRFlexImport(true);
+        }
+      });
       
       bIBKRFlexClear.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3407,6 +3581,7 @@ public class ImportWindow extends javax.swing.JFrame {
       javax.swing.JPanel pPreview = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
       pPreview.setBorder(javax.swing.BorderFactory.createTitledBorder("2) Náhled"));
       pPreview.add(bIBKRFlexRefreshPreview);
+      pPreview.add(bIBKRFlexMerge);
       pPreview.add(bIBKRFlexClear);
       pPreview.add(bIBKRFlexHelp);
 
@@ -3466,6 +3641,9 @@ public class ImportWindow extends javax.swing.JFrame {
     bIBKRFlexFetch.setVisible(true);
     bIBKRFlexFile.setVisible(true);
     bIBKRFlexClear.setVisible(true);
+    if (bIBKRFlexMerge != null) {
+      bIBKRFlexMerge.setVisible(true);
+    }
     if (bIBKRFlexRefreshPreview != null) {
       bIBKRFlexRefreshPreview.setVisible(true);
     }
@@ -3521,6 +3699,9 @@ public class ImportWindow extends javax.swing.JFrame {
     if (bIBKRFlexHelp != null) {
       bIBKRFlexHelp.setVisible(false);
     }
+    if (bIBKRFlexMerge != null) {
+      bIBKRFlexMerge.setVisible(false);
+    }
     if (cbIBKRFlexImportMode != null) {
       cbIBKRFlexImportMode.setVisible(false);
     }
@@ -3561,12 +3742,13 @@ public class ImportWindow extends javax.swing.JFrame {
     }
     
     boolean hasWork = !transactions.rows.isEmpty() || (duplicatesToUpdate != null && !duplicatesToUpdate.isEmpty());
-    if (hasWork) {
-      bIBKRFlexFetch.setText("Sloučit do databáze");
-      bIBKRFlexFetch.setToolTipText("Sloučit načtené transakce do hlavní databáze");
-    } else {
-      bIBKRFlexFetch.setText("Načíst z IBKR");
-      bIBKRFlexFetch.setToolTipText("Stáhnout data z IBKR Flex API pro aktuální rok");
+
+    // Fetch button is always fetch; merge is a separate button (like Trading 212).
+    bIBKRFlexFetch.setText("Načíst z IBKR");
+    bIBKRFlexFetch.setToolTipText("Stáhnout data z IBKR Flex API pro aktuální rok");
+
+    if (bIBKRFlexMerge != null) {
+      bIBKRFlexMerge.setEnabled(hasWork);
     }
     
     // Enable/disable clear button
@@ -3595,16 +3777,9 @@ public class ImportWindow extends javax.swing.JFrame {
     // Keep content filters visible.
     setIbkrFlexUiVisible(true);
     
-    boolean hasWork = !transactions.rows.isEmpty() || (duplicatesToUpdate != null && !duplicatesToUpdate.isEmpty());
-    if (hasWork) {
-      // MERGE MODE: Merge existing preview data to database
-      System.out.println("[IBKR:001] Merging existing preview data to database");
-      performIBKRFlexImport(true);
-    } else {
-      // FETCH MODE: Fetch fresh data from API
-      System.out.println("[IBKR:001] Fetching fresh data from IBKR Flex API");
-      performIBKRFlexImport(false);
-    }
+    // Always fetch; merge is done via a dedicated button.
+    System.out.println("[IBKR:001] Fetching fresh data from IBKR Flex API");
+    performIBKRFlexImport(false);
   }
   
   /**
@@ -4184,6 +4359,12 @@ public class ImportWindow extends javax.swing.JFrame {
              trading212PreviewFromApi = true;
              System.out.println("[RESULT:006] ✅ API fetch successful - processing " + result.transactions.size() + " transactions");
 
+              // Update year status immediately, even if the result is empty.
+              if (result.transactions == null || result.transactions.isEmpty()) {
+                importState.markYearEmptyImported(year, java.time.LocalDateTime.now());
+              }
+              refreshTrading212YearStatuses();
+
               // Cache for mode switching without re-fetch.
               lastTrading212AllTransactions = new java.util.Vector<>(result.transactions);
               lastTrading212SourceLabel = "API";
@@ -4230,6 +4411,7 @@ public class ImportWindow extends javax.swing.JFrame {
     updateImportButtonText();
     updateImportButtonState();
     updateClearButtonState();
+    updateTrading212ButtonsState();
   }
 
   /**
@@ -4249,6 +4431,7 @@ public class ImportWindow extends javax.swing.JFrame {
     updateImportButtonText();
     updateImportButtonState();
     updateClearButtonState();
+    updateTrading212ButtonsState();
     System.out.println("[CLEAR:002] Preview cleared successfully");
   }
 
@@ -4297,11 +4480,11 @@ public class ImportWindow extends javax.swing.JFrame {
      // Hide refresh button for Trading 212 and IBKR Flex (they manage preview via file/API flow)
      bRefresh.setVisible(!isApiFormat);
 
-      // For IBKR Flex we use dedicated buttons (API/file/merge).
-     // Hide the generic bottom "Importovat" button to avoid duplicate merge paths.
-     bImport.setVisible(!isIBKR);
-     // Cancel is redundant when bImport is hidden; user can close the window directly.
-     bCancel.setVisible(!isIBKR);
+      // For Trading 212 and IBKR Flex we use dedicated buttons (API/file/merge).
+      // Hide the generic bottom "Importovat" button to avoid duplicate paths.
+      bImport.setVisible(!(isTrading212 || isIBKR));
+      // Cancel is redundant when bImport is hidden; user can close the window directly.
+      bCancel.setVisible(!(isTrading212 || isIBKR));
 
      // Hide duplicates checkbox for IBKR (we already support duplicates via existing checkbox logic)
      cbUpdateDuplicates.setVisible(!isIBKR);
@@ -4317,23 +4500,26 @@ public class ImportWindow extends javax.swing.JFrame {
         showIBKRFlexUI();
         hideTrading212YearSelection();
       } else {
-       hideTrading212YearSelection();
-       hideIBKRFlexUI();
-     }
+        hideTrading212YearSelection();
+        hideIBKRFlexUI();
+      }
 
     if (lblIbkrFlexCsvInfo != null) {
       lblIbkrFlexCsvInfo.setVisible(isIBKR);
     }
 
-      // Trading 212 supports both API and local CSV; keep file selection controls visible.
-      boolean isLocalFile = isLocalFileFormat(formatIndex);
+      // Generic file picker is used for legacy file formats only.
+      // Trading 212 and IBKR Flex have their own dedicated source buttons.
+      boolean showGenericFilePicker = (formatIndex != 8 && formatIndex != 9) && isLocalFileFormat(formatIndex);
       if (bSelectFile != null) {
-        bSelectFile.setVisible(isLocalFile);
+        bSelectFile.setVisible(showGenericFilePicker);
       }
-    if (lSelectedFile != null) {
-      lSelectedFile.setVisible(isLocalFile);
-      updateSelectedFileLabel();
-    }
+      if (lSelectedFile != null) {
+        lSelectedFile.setVisible(showGenericFilePicker);
+        if (showGenericFilePicker) {
+          updateSelectedFileLabel();
+        }
+      }
 
     // Show/hide IBKR Flex UI block
     if (formatIndex == 9) {
@@ -4485,16 +4671,8 @@ public class ImportWindow extends javax.swing.JFrame {
    */
   private void updateImportButtonText() {
     if (isTrading212Format()) {
-      // Fix: Check actual transaction data, not getRowCount() which always returns >= 1
-      if (transactions.rows.isEmpty()) {
-        if (currentFile != null) {
-          bImport.setText("Načíst CSV");
-        } else {
-          bImport.setText("API stažení");
-        }
-      } else {
-        bImport.setText("Sloučit do databáze"); // Merge mode - data ready to import
-      }
+      // Trading 212 does not use the generic bottom import button.
+      return;
     } else {
       bImport.setText("Importovat"); // File import
     }
@@ -4507,6 +4685,9 @@ public class ImportWindow extends javax.swing.JFrame {
     if (bClearPreview != null) {
       bClearPreview.setEnabled(transactions.getRowCount() > 0);
     }
+
+    // Keep Trading 212 action buttons in sync.
+    updateTrading212ButtonsState();
   }
 
   /**
@@ -4622,6 +4803,7 @@ public class ImportWindow extends javax.swing.JFrame {
   private String getTrading212YearStatus(int year) {
     boolean imported = importState.isYearFullyImported(year);
     boolean partial = importState.getLastImportDate(year) != null;
+    boolean empty = importState.isYearEmptyImported(year);
     
     // Check if cached (requires account ID, which we get from importState)
     boolean cached = false;
@@ -4632,6 +4814,9 @@ public class ImportWindow extends javax.swing.JFrame {
     }
     
     // Build status string
+    if (empty) {
+      return "(Imported: 0 transakcí)";
+    }
     if (imported && cached) {
       return "(Imported • Cached)";
     } else if (imported) {
@@ -4657,34 +4842,8 @@ public class ImportWindow extends javax.swing.JFrame {
       }
 
       if (isTrading212Format()) {
-        
-        System.out.println("[BUTTON:002] Trading212 format detected");
-        System.out.println("[BUTTON:003] Current transactions count: " + transactions.rows.size());
-
-        // Check if we already have preview data
-        boolean hasPreviewData = !transactions.rows.isEmpty();
-        System.out.println("[BUTTON:004] Preview data present: " + hasPreviewData);
-
-        if (hasPreviewData) {
-          // MERGE MODE: Merge existing preview data to database
-          System.out.println("[BUTTON:005] Merging existing preview data to database");
-          performTrading212Import(true); // Merge mode
-        } else {
-          if (currentFile != null) {
-            // Local file selected: preview should be loaded via loadImport().
-            loadImport();
-          } else {
-            // API fetch requires credentials.
-            if (!hasValidApiCredentials()) {
-              System.out.println("[BUTTON:002] No API credentials - opening settings");
-              openSettings_Trading212Tab();
-              return;
-            }
-            System.out.println("[BUTTON:005] Fetching fresh data from API");
-            performTrading212Import(false); // Fetch mode
-          }
-        }
-        // Keep window open for sequential API imports
+        // Trading 212 uses dedicated source buttons; the generic bottom import button is hidden.
+        return;
       } else {
         // Handle regular file-based import
         TransactionSet mainDbForUndo = mainWindow.getTransactionDatabase();

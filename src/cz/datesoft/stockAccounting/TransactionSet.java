@@ -64,6 +64,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
   private java.util.List<DeletedRow> lastDeletedRows = new java.util.ArrayList<>();
 
+  public boolean hasUndoDelete() {
+    return lastDeletedRows != null && !lastDeletedRows.isEmpty();
+  }
+
   /** Set of serials for recently updated transactions (for highlighting) */
   protected java.util.Set<Integer> updatedTransactionSerials = new java.util.HashSet<>();
 

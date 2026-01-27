@@ -228,6 +228,12 @@ public class MainWindow extends javax.swing.JFrame {
   private boolean advancedFiltersVisible;
   private javax.swing.JPanel pAdvancedFilters;
 
+  // Advanced filter: quick reset of date range (incl. time)
+  private javax.swing.JButton bResetDateRange;
+
+  // Undo buttons container (shown only when applicable)
+  private javax.swing.JPanel pUndoStrip;
+
   private void toggleAdvancedFilters() {
     toggleAdvancedFilters(!advancedFiltersVisible);
   }
@@ -245,6 +251,52 @@ public class MainWindow extends javax.swing.JFrame {
     if (jPanel2 != null) {
       jPanel2.revalidate();
       jPanel2.repaint();
+    }
+  }
+
+  private static java.util.Date defaultFromDate() {
+    java.util.GregorianCalendar cal = new java.util.GregorianCalendar(1900, 0, 1);
+    cal.set(java.util.GregorianCalendar.HOUR_OF_DAY, 0);
+    cal.set(java.util.GregorianCalendar.MINUTE, 0);
+    cal.set(java.util.GregorianCalendar.SECOND, 0);
+    cal.set(java.util.GregorianCalendar.MILLISECOND, 0);
+    return cal.getTime();
+  }
+
+  private static java.util.Date defaultToDate() {
+    java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+    cal.set(java.util.GregorianCalendar.MILLISECOND, 0);
+    return cal.getTime();
+  }
+
+  private void resetDateRangeToDefault() {
+    try {
+      if (dcFrom != null) dcFrom.setDate(defaultFromDate());
+      if (dcTo != null) dcTo.setDate(defaultToDate());
+      applyFilter();
+    } catch (Exception e) {
+      // ignore
+    }
+  }
+
+  private void updateUndoButtonsState() {
+    try {
+      boolean canUndoDelete = (transactions != null && transactions.hasUndoDelete());
+      boolean canUndoImport = (transactions != null && transactions.hasUndoImport());
+
+      if (bUndoDelete != null) {
+        bUndoDelete.setEnabled(canUndoDelete);
+        bUndoDelete.setVisible(canUndoDelete);
+      }
+      if (bUndoImport != null) {
+        bUndoImport.setEnabled(canUndoImport);
+        bUndoImport.setVisible(canUndoImport);
+      }
+      if (pUndoStrip != null) {
+        pUndoStrip.setVisible(canUndoDelete || canUndoImport);
+      }
+    } catch (Exception e) {
+      // ignore
     }
   }
 
@@ -276,6 +328,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Undo import is disabled by default
     enableUndoImportIfAvailable();
+    updateUndoButtonsState();
 
     // Create dialogs
     importWindow = new ImportWindow(this, true);
@@ -560,7 +613,8 @@ public class MainWindow extends javax.swing.JFrame {
     });
 
     // Column visibility checkbox
-    cbShowMetadata.setText("Show Metadata");
+    cbShowMetadata.setText("Metadata");
+    cbShowMetadata.setToolTipText("Zobrazit/skrýt technické sloupce (Broker, Account ID, TxnID, ...)");
     cbShowMetadata.setSelected(Settings.getShowMetadataColumns());
     cbShowMetadata.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -604,10 +658,20 @@ public class MainWindow extends javax.swing.JFrame {
     });
 
     bToggleDisabled.setText("Ignorovat");
-    bToggleDisabled.setToolTipText("Přepne ignorování vybraných řádků (ignorované řádky jsou šedé a nevstupují do výpočtů)");
+    bToggleDisabled.setToolTipText(
+        "Přepne ignorování vybraných řádků (ignorované řádky jsou šedé a nevstupují do výpočtů)");
     bToggleDisabled.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bToggleDisabledActionPerformed(evt);
+      }
+    });
+
+    bClearTxnId = new javax.swing.JButton();
+    bClearTxnId.setText("Smazat TxnID");
+    bClearTxnId.setToolTipText("Odstraní Broker/ID účtu/ID transakce z vybraných řádků (včetně Note)");
+    bClearTxnId.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bClearTxnIdActionPerformed(evt);
       }
     });
 
@@ -661,6 +725,7 @@ public class MainWindow extends javax.swing.JFrame {
     });
 
     bApplyFilter.setText("Filtrovat");
+    bApplyFilter.setToolTipText("Použije filtry níže a omezí zobrazené řádky");
     bApplyFilter.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bApplyFilterActionPerformed(evt);
@@ -669,6 +734,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     bClearFilter.setText("Zrušit");
     bClearFilter.setEnabled(false);
+    bClearFilter.setToolTipText("Vymaže všechny filtry a zobrazí vše (resetuje i pole filtrů)");
     bClearFilter.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bClearFilterActionPerformed(evt);
@@ -677,50 +743,42 @@ public class MainWindow extends javax.swing.JFrame {
 
     tfQuickFilter.setColumns(18);
 
+    // Make advanced search boxes compact and keep fixed width
+    tfTicker.setColumns(5);
+    tfMarket.setColumns(5);
+    tfNote.setColumns(10);
+    java.awt.Dimension dimTicker = tfTicker.getPreferredSize();
+    tfTicker.setMinimumSize(dimTicker);
+    tfTicker.setMaximumSize(dimTicker);
+    java.awt.Dimension dimMarket = tfMarket.getPreferredSize();
+    tfMarket.setMinimumSize(dimMarket);
+    tfMarket.setMaximumSize(dimMarket);
+    java.awt.Dimension dimNote = tfNote.getPreferredSize();
+    tfNote.setMinimumSize(dimNote);
+    tfNote.setMaximumSize(dimNote);
+
     pTopLeft.add(bToggleAdvancedFilters);
     pTopLeft.add(tfQuickFilter);
     pTopLeft.add(bApplyFilter);
     pTopLeft.add(bClearFilter);
+    // Always-visible view toggles (do not hide inside Filtry…)
+    pTopLeft.add(cbShowMetadata);
+    pTopLeft.add(cbShowSeconds);
     pTopBar.add(pTopLeft, java.awt.BorderLayout.CENTER);
 
     // Right side: actions
     javax.swing.JPanel pTopRight = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 4));
 
-    bCopy.setText("Kopírovat");
-    bCopy.setToolTipText("Zkopíruje vybrané řádky do schránky jako CSV (včetně hlavičky, uvozovky, oddělovač ',')");
-    bCopy.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        bCopyActionPerformed(evt);
-      }
-    });
+    // bCopy action is wired in the initial (non-layout) setup above
 
-    bToggleDisabled.setText("Ignorovat");
-    bToggleDisabled.setToolTipText(
-        "Přepne ignorování vybraných řádků (ignorované řádky jsou šedé a nevstupují do výpočtů)");
-    bToggleDisabled.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        bToggleDisabledActionPerformed(evt);
-      }
-    });
+    // bToggleDisabled action is wired in the initial (non-layout) setup above
 
-    bClearColors.setText("Vyčistit barvy");
-    bClearColors.setToolTipText("Zruší zvýraznění nových/aktualizovaných řádků");
-    bClearColors.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        bClearColorsActionPerformed(evt);
-      }
-    });
+    // bClearColors action is wired in the initial (non-layout) setup above
 
-    bClearTxnId = new javax.swing.JButton();
-    bClearTxnId.setText("Smazat TxnID");
-    bClearTxnId.setToolTipText("Odstraní Broker/ID účtu/ID transakce z vybraných řádků (včetně Note)");
-    bClearTxnId.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        bClearTxnIdActionPerformed(evt);
-      }
-    });
+    // bClearTxnId is initialized above; action is wired there
 
     bSort.setText("Seřadit");
+    bSort.setToolTipText("Seřadí tabulku podle aktuálního řazení aplikace");
     bSort.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bSortActionPerformed(evt);
@@ -741,6 +799,8 @@ public class MainWindow extends javax.swing.JFrame {
     pTopRight.add(bClearTxnId);
     pTopRight.add(bSort);
     pTopRight.add(bDelete);
+    // pUndoStrip is attached after it is created (later in this method).
+    // pUndoStrip is created later; it is attached after creation.
     pTopBar.add(pTopRight, java.awt.BorderLayout.EAST);
 
     jPanel2.add(pTopBar, java.awt.BorderLayout.NORTH);
@@ -748,6 +808,31 @@ public class MainWindow extends javax.swing.JFrame {
     // Collapsible advanced filters
     pAdvancedFilters = new javax.swing.JPanel(new java.awt.GridBagLayout());
     pAdvancedFilters.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 6, 0, 6));
+
+    bResetDateRange = new javax.swing.JButton("Reset");
+    bResetDateRange.setToolTipText("Nastaví období na výchozí rozsah (1900-01-01 → nyní) a přepočítá filtr");
+    bResetDateRange.setText("Reset času");
+    bResetDateRange.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        resetDateRangeToDefault();
+      }
+    });
+
+    // Keep clear filter button state in sync when date changes
+    dcFrom.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
+      public void propertyChange(java.beans.PropertyChangeEvent evt) {
+        if ("date".equals(evt.getPropertyName())) {
+          applyFilter();
+        }
+      }
+    });
+    dcTo.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
+      public void propertyChange(java.beans.PropertyChangeEvent evt) {
+        if ("date".equals(evt.getPropertyName())) {
+          applyFilter();
+        }
+      }
+    });
 
     java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
     gbc.gridy = 0;
@@ -768,7 +853,11 @@ public class MainWindow extends javax.swing.JFrame {
 
     gbc.gridx++;
     gbc.insets = new java.awt.Insets(2, 0, 2, 16);
-    pAdvancedFilters.add(dcTo, gbc);
+    javax.swing.JPanel pToWithReset = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+    pToWithReset.setOpaque(false);
+    pToWithReset.add(dcTo);
+    pToWithReset.add(bResetDateRange);
+    pAdvancedFilters.add(pToWithReset, gbc);
 
     gbc.gridx++;
     gbc.insets = new java.awt.Insets(2, 0, 2, 6);
@@ -776,8 +865,8 @@ public class MainWindow extends javax.swing.JFrame {
     pAdvancedFilters.add(jLabel4, gbc);
 
     gbc.gridx++;
-    gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-    gbc.weightx = 0.5;
+    gbc.fill = java.awt.GridBagConstraints.NONE;
+    gbc.weightx = 0;
     gbc.insets = new java.awt.Insets(2, 0, 2, 16);
     pAdvancedFilters.add(tfTicker, gbc);
 
@@ -789,8 +878,8 @@ public class MainWindow extends javax.swing.JFrame {
     pAdvancedFilters.add(jLabel5, gbc);
 
     gbc.gridx++;
-    gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-    gbc.weightx = 0.5;
+    gbc.fill = java.awt.GridBagConstraints.NONE;
+    gbc.weightx = 0;
     gbc.insets = new java.awt.Insets(2, 0, 2, 16);
     pAdvancedFilters.add(tfMarket, gbc);
 
@@ -810,6 +899,16 @@ public class MainWindow extends javax.swing.JFrame {
     gbc.insets = new java.awt.Insets(2, 0, 2, 0);
     pAdvancedFilters.add(cbTypeFilter, gbc);
 
+    // Without any weightx, GridBagLayout centers the whole grid.
+    // Add a trailing filler with weightx to keep everything left-aligned.
+    gbc.gridx++;
+    gbc.gridwidth = java.awt.GridBagConstraints.REMAINDER;
+    gbc.weightx = 1.0;
+    gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    javax.swing.JPanel pAdvancedFillerRow0 = new javax.swing.JPanel();
+    pAdvancedFillerRow0.setOpaque(false);
+    pAdvancedFilters.add(pAdvancedFillerRow0, gbc);
+
     // Row 2
     gbc.gridy = 1;
     gbc.gridx = 0;
@@ -819,8 +918,8 @@ public class MainWindow extends javax.swing.JFrame {
 
     gbc.gridx++;
     gbc.gridwidth = 3;
-    gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-    gbc.weightx = 1.0;
+    gbc.fill = java.awt.GridBagConstraints.NONE;
+    gbc.weightx = 0;
     gbc.insets = new java.awt.Insets(2, 0, 2, 16);
     pAdvancedFilters.add(tfNote, gbc);
 
@@ -854,17 +953,21 @@ public class MainWindow extends javax.swing.JFrame {
     gbc.insets = new java.awt.Insets(2, 0, 2, 16);
     pAdvancedFilters.add(cbEffectFilter, gbc);
 
-    // Right side toggles
+    // Trailing filler for row 1 to keep left alignment
     gbc.gridx++;
-    gbc.insets = new java.awt.Insets(2, 0, 2, 6);
-    pAdvancedFilters.add(cbShowMetadata, gbc);
+    gbc.gridwidth = java.awt.GridBagConstraints.REMAINDER;
+    gbc.weightx = 1.0;
+    gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    javax.swing.JPanel pAdvancedFillerRow1 = new javax.swing.JPanel();
+    pAdvancedFillerRow1.setOpaque(false);
+    pAdvancedFilters.add(pAdvancedFillerRow1, gbc);
 
-    gbc.gridx++;
-    gbc.insets = new java.awt.Insets(2, 0, 2, 0);
-    pAdvancedFilters.add(cbShowSeconds, gbc);
+    // View toggles are in the top bar (always visible)
 
     // Undo strip
-    javax.swing.JPanel pUndoStrip = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+    // Buttons already live in the top action bar; keep this panel only as an internal container.
+    pUndoStrip = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 4));
+    pUndoStrip.setOpaque(false);
     bUndoDelete = new javax.swing.JButton();
     bUndoDelete.setText("Zpět");
     bUndoDelete.setEnabled(false);
@@ -888,16 +991,15 @@ public class MainWindow extends javax.swing.JFrame {
     pUndoStrip.add(bUndoDelete);
     pUndoStrip.add(bUndoImport);
 
-    javax.swing.JPanel pAdvancedWrapper = new javax.swing.JPanel(new java.awt.BorderLayout(0, 4));
-    pAdvancedWrapper.add(pAdvancedFilters, java.awt.BorderLayout.CENTER);
-    pAdvancedWrapper.add(pUndoStrip, java.awt.BorderLayout.SOUTH);
-    pAdvancedFilters = pAdvancedWrapper;
+    pTopRight.add(pUndoStrip);
 
     jPanel2.add(pAdvancedFilters, java.awt.BorderLayout.CENTER);
 
     // Start with advanced filters hidden by default.
     advancedFiltersVisible = true;
     toggleAdvancedFilters(false);
+
+    updateUndoButtonsState();
 
     getContentPane().add(jPanel2, java.awt.BorderLayout.NORTH);
 
@@ -1432,6 +1534,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Undo import state cleared
     enableUndoImportIfAvailable();
+    updateUndoButtonsState();
     // Clear filter
     clearFilter();
 
@@ -1529,6 +1632,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     if (deleted > 0) {
       bUndoDelete.setEnabled(true);
+      updateUndoButtonsState();
       lastStatusMessage = " | Smazáno: " + deleted;
       updateStatusBar();
     }
@@ -1538,12 +1642,14 @@ public class MainWindow extends javax.swing.JFrame {
     int restored = transactions.undoLastDelete();
     if (restored <= 0) {
       bUndoDelete.setEnabled(false);
+      updateUndoButtonsState();
       JOptionPane.showMessageDialog(this, "Není co vrátit.", "Zpět", JOptionPane.INFORMATION_MESSAGE);
       return;
     }
 
     clearAllFiltersAndInputs();
     bUndoDelete.setEnabled(false);
+    updateUndoButtonsState();
     lastStatusMessage = " | Obnoveno: " + restored;
     updateStatusBar();
   }
@@ -1551,6 +1657,7 @@ public class MainWindow extends javax.swing.JFrame {
   private void bUndoImportActionPerformed(java.awt.event.ActionEvent evt) {
     if (transactions == null || !transactions.hasUndoImport()) {
       bUndoImport.setEnabled(false);
+      updateUndoButtonsState();
       JOptionPane.showMessageDialog(this, "Není co vrátit.", "Zpět import", JOptionPane.INFORMATION_MESSAGE);
       return;
     }
@@ -1564,12 +1671,14 @@ public class MainWindow extends javax.swing.JFrame {
     int changed = transactions.undoLastImport();
     if (changed <= 0) {
       bUndoImport.setEnabled(false);
+      updateUndoButtonsState();
       JOptionPane.showMessageDialog(this, "Není co vrátit.", "Zpět import", JOptionPane.INFORMATION_MESSAGE);
       return;
     }
 
     clearAllFiltersAndInputs();
     bUndoImport.setEnabled(false);
+    updateUndoButtonsState();
     lastStatusMessage = " | Import vrácen: " + changed;
     updateStatusBar();
   }
@@ -1952,10 +2061,9 @@ public class MainWindow extends javax.swing.JFrame {
           .println("Loaded Trading 212 import state from .t212state file for: " + selectedFile.getAbsolutePath());
     }
 
-    // Initialize date range to show all loaded data (1900-01-01 to today)
-    java.util.GregorianCalendar startCal = new java.util.GregorianCalendar(1900, 0, 1); // 1900-01-01
-    dcFrom.setDate(startCal.getTime());
-    dcTo.setDate(new java.util.Date()); // Today
+    // Initialize date range to show all loaded data (1900-01-01 to now)
+    if (dcFrom != null) dcFrom.setDate(defaultFromDate());
+    if (dcTo != null) dcTo.setDate(defaultToDate());
 
     // Invalidate transformation cache for loaded data
     System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
@@ -1970,6 +2078,8 @@ public class MainWindow extends javax.swing.JFrame {
     // Clear inserted/updated highlights from previous session
     transactions.clearHighlights();
     table.repaint();
+
+    updateUndoButtonsState();
 
     if (transactions.wereSerialsRepaired()) {
       setTransientStatusMessage(
@@ -2456,6 +2566,7 @@ public class MainWindow extends javax.swing.JFrame {
       if (bUndoImport != null && transactions != null) {
         bUndoImport.setEnabled(transactions.hasUndoImport());
       }
+      updateUndoButtonsState();
     } catch (Exception e) {
       // ignore
     }
