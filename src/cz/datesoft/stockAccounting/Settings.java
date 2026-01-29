@@ -200,6 +200,62 @@ public class Settings {
    */
   private static boolean autoMaximized = false;
 
+  // UI theme (Look&Feel)
+  public static final int THEME_SYSTEM = 0;
+  public static final int THEME_FLAT_LIGHT = 1;
+  public static final int THEME_FLAT_DARK = 2;
+  public static final int THEME_FLAT_INTELLIJ = 3;
+  public static final int THEME_FLAT_DARCULA = 4;
+  private static int uiTheme = THEME_SYSTEM;
+
+  // UI fonts
+  // Empty/zero means "use Look&Feel default".
+  private static String uiFontFamily = "";
+  private static int uiFontSize = 0;
+  private static String monospaceFontFamily = "Monospaced";
+  private static int monospaceFontSize = 12;
+
+  public static int getUiTheme() {
+    return uiTheme;
+  }
+
+  public static void setUiTheme(int value) {
+    uiTheme = value;
+  }
+
+  public static String getUiFontFamily() {
+    return uiFontFamily;
+  }
+
+  public static void setUiFontFamily(String family) {
+    uiFontFamily = (family == null) ? "" : family.trim();
+  }
+
+  public static int getUiFontSize() {
+    return uiFontSize;
+  }
+
+  public static void setUiFontSize(int size) {
+    uiFontSize = size;
+  }
+
+  public static String getMonospaceFontFamily() {
+    return monospaceFontFamily;
+  }
+
+  public static void setMonospaceFontFamily(String family) {
+    String f = (family == null) ? "" : family.trim();
+    monospaceFontFamily = f.isEmpty() ? "Monospaced" : f;
+  }
+
+  public static int getMonospaceFontSize() {
+    return monospaceFontSize;
+  }
+
+  public static void setMonospaceFontSize(int size) {
+    monospaceFontSize = size;
+  }
+
   /**
    * Daily exchange rates map (currency|YYYY-MM-DD => ratio map)
    */
@@ -999,6 +1055,29 @@ public class Settings {
 
     /* Auto maximized */
     autoMaximized = p.getBoolean("autoMaximized", false);
+
+    /* UI theme */
+    uiTheme = p.getInt("uiTheme", THEME_SYSTEM);
+    if (uiTheme < THEME_SYSTEM || uiTheme > THEME_FLAT_DARCULA) {
+      uiTheme = THEME_SYSTEM;
+    }
+
+    /* UI fonts */
+    uiFontFamily = p.get("uiFontFamily", "");
+    uiFontSize = p.getInt("uiFontSize", 0);
+    if (uiFontSize < 0 || uiFontSize > 96) {
+      uiFontSize = 0;
+    }
+
+    monospaceFontFamily = p.get("monospaceFontFamily", "Monospaced");
+    if (monospaceFontFamily == null || monospaceFontFamily.trim().isEmpty()) {
+      monospaceFontFamily = "Monospaced";
+    }
+
+    monospaceFontSize = p.getInt("monospaceFontSize", 12);
+    if (monospaceFontSize < 6 || monospaceFontSize > 96) {
+      monospaceFontSize = 12;
+    }
   }
 
   /**
@@ -1081,6 +1160,15 @@ public class Settings {
 
     // Auto maximized
     p.putBoolean("autoMaximized", autoMaximized);
+
+    // UI theme
+    p.putInt("uiTheme", uiTheme);
+
+    // UI fonts
+    p.put("uiFontFamily", (uiFontFamily == null) ? "" : uiFontFamily);
+    p.putInt("uiFontSize", uiFontSize);
+    p.put("monospaceFontFamily", (monospaceFontFamily == null) ? "Monospaced" : monospaceFontFamily);
+    p.putInt("monospaceFontSize", monospaceFontSize);
   }
 
   /**

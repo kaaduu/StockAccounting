@@ -4,6 +4,126 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Trading 212: sjednocený import (API + CSV) + dividendy/úroky/transformace] - 2026-01-27
+
+### Přidáno
+- Import → Trading 212: sjednocený formát pro API i lokální CSV (jeden výběr + možnost „Vybrat soubor...“).
+- Import → Trading 212: režim obsahu (Vše / Pouze obchody / Pouze transformace / Pouze dividendy / Pouze úroky).
+- Trading 212 CSV: import dividend (BRUTTO + srážková daň), úroků z hotovosti a úroků z půjčování CP (tickery `Kreditni.Urok`, `CP.Urok`).
+- Trading 212 CSV: import corporate actions (stock split open/close) jako transformace (TRANS_SUB/TRANS_ADD) včetně normalizace kolizí v rámci stejné minuty.
+- Trading 212 CSV: podpora „Dividend manufactured payment“ (importováno jako dividenda; označeno v poznámce).
+
+### Změněno
+- Import → Trading 212: formáty „T212 Invest - csv“ jsou dočasně vypnuté ve výběru (viditelné, ale nejdou zvolit) – nahrazuje je sjednocený import.
+- Trading 212: poplatky „Currency conversion fee“ se ignorují (nejsou vhodné pro přepočet přes jednotný/denní kurz).
+- UI: v hlavním okně jsou přepínače „Metadata“ a „Sekundy“ vždy viditelné (nejsou schované v rozbalených filtrech).
+
+### Opraveno
+- Import → Trading 212: časové posuny `TimeShift:+Nm` se nyní aplikují pouze kvůli transformacím (TRANS_SUB/TRANS_ADD), ne kvůli běžným obchodům ve stejné minutě.
+- Hlavní okno: tlačítka „Zpět“ a „Zpět import“ už nejsou součástí rozbalovacích filtrů; zobrazují se jen pokud je skutečně možné akci vrátit.
+- Filtry: přidáno tlačítko „Reset času“ u rozsahu „Od/Do“ pro návrat na výchozí období (1900-01-01 → nyní).
+- Hlavní okno: doplněny tooltipy u chybějících tlačítek, aby bylo jasné, co akce provede.
+- Import → Trading 212: tlačítko „Sloučit do databáze“ je nyní dostupné i v případě, že náhled obsahuje pouze položky „K aktualizaci“ (bez nových řádků).
+- Import → Trading 212: výběr roku se po „Načíst z API“ ihned aktualizuje; pokud API vrátí 0 záznamů, rok se označí jako „Imported: 0 transakcí“.
+- Import → Trading 212: v okně importu je přidáno tlačítko „Sloučit do databáze“ pro aplikování náhledu do hlavní databáze.
+- Import: tlačítka „Sloučit do databáze“ se nyní aktivují jen pokud existují nové řádky nebo položky k aktualizaci; u IBKR Flex je sloučení oddělené od tlačítka pro načtení.
+- Import: při přepínání formátů se korektně skrývá/zobrazuje celý blok ovládání Trading 212, aby se nepřekrýval s IBKR Flex UI.
+- Stav účtu: načítání pozic z TWS už typicky neselhává na první pokus (čeká na handshake a při timeoutu automaticky jednou zopakuje).
+- Import → Trading 212: přidáno tlačítko „Detaily...“ pro zobrazení seznamu akcí (Action) v CSV, včetně počtů a seznamu podporovaných akcí.
+- Import → Trading 212: dividendy se nyní importují pro všechny akce `Dividend (...)`, ne jen pro konkrétní variantu názvu.
+- Import → Trading 212: „Detaily...“ nyní správně rozpoznají všechny varianty `Dividend (...)` jako podporované a oddělují záměrně ignorované akce (Deposit/Withdrawal/konverze) od nepodporovaných.
+- Import → IBKR Flex: „Detaily...“ nyní fungují i pro legacy CSV (zobrazí alespoň sekce a počty řádků) a pro v2 navíc ukazují přehled typů v TRADES/CTRN/CORP (importováno/disabled/ignorováno) včetně FXTR dividend fallback.
+
+## [Kurzy měn: automatická detekce roků a měn] - 2026-01-26
+
+### Přidáno
+- Nastavení → Kurzy měn: při „Načíst kurzy“ aplikace nově zjistí roky a měny použité v hlavním okně (z „Datum“ i „Datum vypořádání“) a nabídne jejich doplnění do tabulky jednotných kurzů, aby byly zahrnuty do načítání z ČNB.
+
+## [Nápověda: Logy událostí s detaily] - 2026-01-26
+
+### Změněno
+- Nápověda → Logy: seznam událostí je nyní přehlednější (úroveň INFO/WARN/ERROR) a pro vybrané chyby umí zobrazit detail (stacktrace).
+
+### Přidáno
+- Základní logování klíčových akcí (otevření/uložení souboru, IBKR sloučení a chyby, detekce nových roků/měn při načítání kurzů).
+- Logování stahování kurzů: jednotné kurzy z ČNB (start/výsledek/uloženo-odmítnuto) a „Chytré stažení“ denních kurzů (roky/měny + souhrn chyb).
+
+## [Sestavení: přechod na Gradle Wrapper] - 2026-01-26
+
+### Změněno
+- Sestavení projektu je nově dostupné přes `./gradlew` (Gradle Wrapper). `build.sh` zůstává kvůli kompatibilitě a interně volá Gradle.
+- Spuštění na Windows (`run.bat`) nově podporuje i gradlovský výstup do `dist\lib\`.
+
+## [UI: moderní vzhled (FlatLaf)] - 2026-01-26
+
+### Změněno
+- Aplikace používá moderní Swing Look&Feel (FlatLaf) pro čistší a konzistentnější vzhled napříč platformami.
+
+## [IBKR Flex: sjednocení parsování API a souboru] - 2026-01-26
+
+### Opraveno
+- Import → IBKR Flex: „Načíst z IBKR“ nyní používá stejnou logiku náhledu jako „Načíst ze souboru“ (včetně detekce CSV v2 sekcí, normalizace kolizí a konzistentního vyhodnocení duplikátů).
+
+## [IBKR Flex: režim obsahu a detaily ACCT] - 2026-01-26
+
+### Opraveno
+- Import → IBKR Flex: režimy „Pouze obchody“ a „Pouze transformace“ už neobsahují dividendy (CTRN).
+
+### Přidáno
+- Import → IBKR Flex → Detaily: pokud je v CSV v2 přítomná sekce ACCT, zobrazí se základní informace o účtu/vlastníkovi a souhrn konsolidace obchodů podle IBOrderID.
+
+## [IBKR Flex: nápověda pro nastavení Flex Query] - 2026-01-26
+
+### Přidáno
+- Import → IBKR Flex: tlačítko „Nápověda“ s doporučeným nastavením Flex Query (sekce, Cash Transactions typy a konfigurace exportu).
+
+## [IBKR Flex: režim „Pouze úroky“] - 2026-01-26
+
+### Přidáno
+- Import → IBKR Flex: nový režim „Pouze úroky“ ve výběru obsahu (zobrazí pouze úrokové položky z CTRN).
+
+## [IBKR Flex: import úroků z CTRN] - 2026-01-26
+
+### Přidáno
+- Import → IBKR Flex: import typů CTRN „Broker Interest Received/Paid“ a související „Withholding Tax“ jako typ „Úrok“.
+- „Broker Interest Paid“ a „Broker Fees“ se zatím importují jako „disabled“ (viditelné, ale ignorované ve výpočtech).
+
+### Změněno
+- Import → IBKR Flex (CSV v2): pokud v CTRN chybí brutto dividendy, aplikace je nově doplní ze sekce FXTR (Forex P/L Details) jako dividendy BRUTTO a v importu na to upozorní.
+
+## [Výpočet: shrnutí úroků] - 2026-01-26
+
+### Přidáno
+- Výpočet: nová záložka „Úroky“ se souhrnem úroků (hrubá/daň/zaplacený/poplatek) včetně exportu do CSV/HTML.
+
+## [Nastavení: výběr vzhledu aplikace] - 2026-01-26
+
+### Přidáno
+- Nastavení → System: volba vzhledu (System/FlatLaf Light/Dark/IntelliJ/Darcula). Změna se projeví po restartu.
+
+## [Nastavení: volba písem] - 2026-01-26
+
+### Přidáno
+- Nastavení → System → Vzhled: možnost nastavit písmo aplikace (rodina + velikost) a monospace písmo (pro logy, detaily chyb a importní texty). Změna se projeví po restartu.
+- Předvolba „Tahoma 11“ pro rychlé nastavení klasického vzhledu.
+
+### Změněno
+- Výchozí vzhled je „System (OS)“, aby odpovídal původnímu chování na větvi master.
+
+## [UI: modernizace vzhledu a použitelnosti] - 2026-01-26
+
+### Změněno
+- Import/Compute/About/Main: odstraněny některé pevné velikosti a typografie, okna se lépe přizpůsobují různým obrazovkám.
+- Dialogy pro chyby nyní umí zobrazit detaily (stacktrace) a zapisují se do logů.
+- Hlavní okno: přidán rychlý filtr (Ticker/Trh/Note) a možnost skrýt/zobrazit pokročilé filtry.
+- Výpočet: upozornění na datum vypořádání na konci roku nabízí rychlý filtr v hlavním okně.
+- O aplikaci: upraveno rozložení a typografie (čitelnější hierarchie informací).
+- Nastavení → System: přeskupeno do sekcí pro rychlejší orientaci.
+- Import → IBKR Flex: tlačítka přeskupena do kroků (Zdroj/Náhled/Obsah).
+- Nastavení → Kurzy měn: akce sjednoceny do přehlednější skupiny.
+- Hlavní tabulka: přidán tooltip popisující stav řádku (Ignorováno/Nově importováno/Aktualizováno).
+- Import: při generování náhledu lze nově bezpečně použít Storno (zrušení náhledu).
+
 ## [Oprava zobrazení náhledu barvy v nastavení] - 2026-01-24
 
 ### Opraveno
@@ -970,3 +1090,7 @@ Poznámka: Pro Interactive Brokers se používá společná složka `~/.stockacc
     - Přidán přepínač "Používat denní kurzy" přímo do `ComputeWindow` pro rychlé přepínání mezi metodami výpočtu.
     - Refaktorována výpočetní smyčka pro vyřešení kritické chyby, kde se výsledky nezobrazovaly kvůli strukturálním nekonzistencím.
     - Opraveno zarovnání sloupců pro souhrnné řádky (Příjem, Výdej, Zisk) tak, aby odráželo novou strukturu tabulky.
+## 2026-01-29
+
+- Oprava importu IBKR Flex (CTRN): sloupec `TransactionID` se spravne mapuje do `TxnID` i pri opakovanych sekcich s ruznym poctem sloupcu.
+- Import IBKR Flex: pri reimportu se uz neposouvaji (TimeShift) zaznamy, ktere uz existuji v databazi, aby nevznikaly duplicitni kopie.

@@ -102,7 +102,21 @@ public class ComputeWindow extends javax.swing.JDialog {
     msg.append(
         "Doporučení: ověřte skutečné datum vypořádání u brokera (zejména u obchodů 31.12) a případně jej ručně upravte ve sloupci 'Datum vypořádání'.");
 
-    JOptionPane.showMessageDialog(this, msg.toString(), "Upozornění: datum vypořádání", JOptionPane.WARNING_MESSAGE);
+    Object[] options = new Object[] { "OK", "Filtrovat v hlavním okně" };
+    int res = JOptionPane.showOptionDialog(this, msg.toString(), "Upozornění: datum vypořádání",
+        JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+
+    if (res == 1 && mainWindow != null) {
+      try {
+        java.util.GregorianCalendar from = new java.util.GregorianCalendar(year, java.util.Calendar.DECEMBER, 29, 0, 0, 0);
+        from.set(java.util.Calendar.MILLISECOND, 0);
+        java.util.GregorianCalendar to = new java.util.GregorianCalendar(year, java.util.Calendar.DECEMBER, 31, 23, 59, 59);
+        to.set(java.util.Calendar.MILLISECOND, 0);
+        mainWindow.focusAndFilterYearEndSettlement(from.getTime(), to.getTime());
+      } catch (Exception e) {
+        // ignore
+      }
+    }
   }
 
   /**
@@ -136,18 +150,53 @@ public class ComputeWindow extends javax.swing.JDialog {
 
   private final java.util.List<CpTaxExportTrade> lastComputedCpTaxTrades = new java.util.ArrayList<>();
 
+  private void saveWindowBounds() {
+    try {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      java.awt.Point pt = getLocationOnScreen();
+      java.awt.Dimension d = getSize();
+      p.putInt("computeWindow.x", pt.x);
+      p.putInt("computeWindow.y", pt.y);
+      p.putInt("computeWindow.w", d.width);
+      p.putInt("computeWindow.h", d.height);
+    } catch (Exception e) {
+      // ignore
+    }
+  }
+
   /** Creates new form ComputeDialog */
   public ComputeWindow(java.awt.Frame parent, boolean modal) {
     super(parent, modal);
     mainWindow = (MainWindow) parent;
     initComponents();
 
-    // works better on multiple monitors environment
-    GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-    int width = gd.getDisplayMode().getWidth();
-    int height = gd.getDisplayMode().getHeight();
-    // Maximize window
-    setBounds(0, 0, width, height);
+    // Respect user window management (no forced fullscreen).
+    setLocationByPlatform(true);
+    try {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      int w = p.getInt("computeWindow.w", 1100);
+      int h = p.getInt("computeWindow.h", 760);
+      int x = p.getInt("computeWindow.x", Integer.MIN_VALUE);
+      int y = p.getInt("computeWindow.y", Integer.MIN_VALUE);
+      setSize(new java.awt.Dimension(Math.max(900, w), Math.max(650, h)));
+      if (x != Integer.MIN_VALUE && y != Integer.MIN_VALUE) {
+        setLocation(x, y);
+      }
+    } catch (Exception e) {
+      setSize(new java.awt.Dimension(1100, 760));
+    }
+
+    addComponentListener(new java.awt.event.ComponentAdapter() {
+      @Override
+      public void componentMoved(java.awt.event.ComponentEvent e) {
+        saveWindowBounds();
+      }
+
+      @Override
+      public void componentResized(java.awt.event.ComponentEvent e) {
+        saveWindowBounds();
+      }
+    });
     // setLocation(0, 0);
     // setSize(java.awt.Toolkit.getDefaultToolkit().getScreenSize()); #worked well
     // on single monitor only
@@ -161,7 +210,6 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     // Initialize conversion method toggle
     cbUseDailyRatesCompute = new javax.swing.JCheckBox();
-    cbUseDailyRatesCompute.setFont(new java.awt.Font("Tahoma", 1, 11));
     cbUseDailyRatesCompute.setText("Používat denní kurzy");
     cbUseDailyRatesCompute.setSelected(Settings.getUseDailyRates());
     cbUseDailyRatesCompute.addActionListener(new java.awt.event.ActionListener() {
@@ -196,6 +244,17 @@ public class ComputeWindow extends javax.swing.JDialog {
     tcmDiv.getColumn(3).setCellRenderer(rarenderer);
     tcmDiv.getColumn(4).setCellRenderer(rarenderer);
     tcmDiv.getColumn(5).setCellRenderer(rarenderer);
+
+    TableColumnModel tcmInt = interestTable.getColumnModel();
+    tcmInt.getColumn(0).setCellRenderer(rarenderer);
+    tcmInt.getColumn(2).setCellRenderer(rarenderer);
+    tcmInt.getColumn(3).setCellRenderer(rarenderer);
+    tcmInt.getColumn(4).setCellRenderer(rarenderer);
+    tcmInt.getColumn(5).setCellRenderer(rarenderer);
+    tcmInt.getColumn(6).setCellRenderer(rarenderer);
+    tcmInt.getColumn(7).setCellRenderer(rarenderer);
+    tcmInt.getColumn(8).setCellRenderer(rarenderer);
+    tcmInt.getColumn(9).setCellRenderer(rarenderer);
   }
 
   /**
@@ -327,6 +386,34 @@ public class ComputeWindow extends javax.swing.JDialog {
     ofl.close();
   }
 
+  private void saveInterestHTML(String title, File file) throws java.io.IOException {
+    java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file));
+
+    saveHTMLHeader(ofl, title, interestTable);
+
+    DefaultTableModel model = (DefaultTableModel) interestTable.getModel();
+    int emptyRow = model.getRowCount() - 2;
+    int finalRow = model.getRowCount() - 1;
+    for (int i = 0; i < model.getRowCount(); i++) {
+      if (i != emptyRow) {
+        ofl.write("<tr" + ((i == finalRow) ? " class=\"finalRow\"" : "") + ">");
+        for (int n = 0; n < model.getColumnCount(); n++) {
+          if (n == 1)
+            ofl.write("<td class=\"left\">");
+          else
+            ofl.write("<td>");
+          String s = (String) model.getValueAt(i, n);
+          s = spaces2nbsp(s);
+          ofl.write(s + "</td>");
+        }
+        ofl.println("</tr>");
+      }
+    }
+
+    ofl.println("</body></html>");
+    ofl.close();
+  }
+
   /**
    * Save computed as CSV
    *
@@ -431,7 +518,7 @@ public class ComputeWindow extends javax.swing.JDialog {
         return;
     }
 
-    String[] SPLIT_COLUMNS = { "J. cena", "Poplatky", "Dividenda" };
+    String[] SPLIT_COLUMNS = { "J. cena", "Poplatky", "Dividenda", "Úrok" };
 
     try {
       if (table == diviTable) {
@@ -439,6 +526,11 @@ public class ComputeWindow extends javax.swing.JDialog {
           saveDiviHTML("Shrnutí dividend za rok " + yearComputed, file);
         else
           saveCSV("Shrnutí dividend za rok " + yearComputed, file, diviTable, SPLIT_COLUMNS, " měna");
+      } else if (table == interestTable) {
+        if (format == SaveFormat.HTML)
+          saveInterestHTML("Shrnutí úroků za rok " + yearComputed, file);
+        else
+          saveCSV("Shrnutí úroků za rok " + yearComputed, file, interestTable, SPLIT_COLUMNS, " měna");
       } else {
         String instrumentName;
         if (table == tableCP)
@@ -1540,6 +1632,10 @@ public class ComputeWindow extends javax.swing.JDialog {
     ((DefaultTableModel) tableDer.getModel()).setNumRows(0);
     ((DefaultTableModel) tableCash.getModel()).setNumRows(0);
 
+    if (interestTable != null) {
+      ((DefaultTableModel) interestTable.getModel()).setNumRows(0);
+    }
+
     lastComputedCpTaxTrades.clear();
 
   }
@@ -1598,10 +1694,9 @@ public class ComputeWindow extends javax.swing.JDialog {
       // Clear model
       model.setNumRows(0);
 
-      // Show error message
-      JOptionPane.showMessageDialog(this,
-          "V průběhu výpočtu došlo k chybě:\n\n" + ex.getMessage() + "\n\nVýpočet byl přerušen.", "Chyba",
-          JOptionPane.ERROR_MESSAGE);
+       UiDialogs.error(this,
+           "V průběhu výpočtu došlo k chybě:\n\n" + ex.getMessage() + "\n\nVýpočet byl přerušen.",
+           "Chyba", ex);
 
       return;
     }
@@ -1652,6 +1747,121 @@ public class ComputeWindow extends javax.swing.JDialog {
     model.addRow(row);
     String row2[] = { "", "", "", f2.format(sumDivi), "", f2.format(sumTaxes) };
     model.addRow(row2);
+  }
+
+  /**
+   * Compute interests
+   */
+  private void computeInterests(int year) {
+    TransactionSet transactions = mainWindow.getTransactionDatabase();
+    GregorianCalendar cal = new GregorianCalendar();
+
+    DecimalFormat f2 = new DecimalFormat("0.00");
+    f2.setGroupingUsed(true);
+    f2.setGroupingSize(3);
+
+    // Sort transactions before we proceed
+    transactions.sort();
+
+    // Clear model
+    DefaultTableModel model = (DefaultTableModel) interestTable.getModel();
+    model.setNumRows(0);
+
+    Interests ints = new Interests();
+
+    try {
+      for (Iterator<Transaction> it = transactions.iterator(); it.hasNext();) {
+        Transaction tx = it.next();
+
+        if (tx == null)
+          continue;
+        if (tx.isDisabled())
+          continue;
+
+        java.util.Date exDate = tx.getExecutionDate() != null ? tx.getExecutionDate() : tx.getDate();
+        if (exDate == null)
+          continue;
+
+        cal.setTime(exDate);
+        int ty = cal.get(GregorianCalendar.YEAR);
+        if (ty != year)
+          continue;
+
+        ints.applyTransaction(tx);
+      }
+    } catch (Exception ex) {
+      model.setNumRows(0);
+
+      UiDialogs.error(this,
+          "V průběhu výpočtu došlo k chybě:\n\n" + ex.getMessage() + "\n\nVýpočet byl přerušen.",
+          "Chyba", ex);
+      return;
+    }
+
+    double sumInterest = 0;
+    double sumTax = 0;
+    double sumPaid = 0;
+    double sumFee = 0;
+
+    Interests.Interest[] rs = ints.getInterests();
+    for (int i = 0; i < rs.length; i++) {
+      Vector<String> row = new Vector<String>();
+      Interests.Interest r = rs[i];
+
+      row.add(formatDate(r.date));
+      row.add(r.ticker);
+
+      // Interest
+      if (r.interestCurrency != null) {
+        row.add(f2.format(r.interest) + " " + r.interestCurrency);
+        double czk = Stocks.roundToHellers(r.interest * Settings.getExchangeRate(r.interestCurrency, r.date));
+        row.add(f2.format(czk));
+        sumInterest += czk;
+      } else {
+        row.add("");
+        row.add("");
+      }
+
+      // Tax
+      if (r.taxCurrency != null) {
+        row.add(f2.format(r.tax) + " " + r.taxCurrency);
+        double czk = Stocks.roundToHellers(r.tax * Settings.getExchangeRate(r.taxCurrency, r.date));
+        row.add(f2.format(czk));
+        sumTax += czk;
+      } else {
+        row.add("");
+        row.add("");
+      }
+
+      // Paid
+      if (r.paidCurrency != null) {
+        row.add(f2.format(r.paid) + " " + r.paidCurrency);
+        double czk = Stocks.roundToHellers(r.paid * Settings.getExchangeRate(r.paidCurrency, r.date));
+        row.add(f2.format(czk));
+        sumPaid += czk;
+      } else {
+        row.add("");
+        row.add("");
+      }
+
+      // Fee
+      if (r.feeCurrency != null) {
+        row.add(f2.format(r.fee) + " " + r.feeCurrency);
+        double czk = Stocks.roundToHellers(r.fee * Settings.getExchangeRate(r.feeCurrency, r.date));
+        row.add(f2.format(czk));
+        sumFee += czk;
+      } else {
+        row.add("");
+        row.add("");
+      }
+
+      model.addRow(row);
+    }
+
+    String[] empty = { "", "", "", "-----------", "", "-----------", "", "-----------", "", "-----------" };
+    model.addRow(empty);
+    String[] sums = { "", "", "", f2.format(sumInterest), "", f2.format(sumTax), "", f2.format(sumPaid), "", f2.format(sumFee) };
+    model.addRow(sums);
   }
 
   private void saveSettings() {
@@ -1706,6 +1916,14 @@ public class ComputeWindow extends javax.swing.JDialog {
     bSaveHTMLCashNew = new javax.swing.JButton();
     jScrollPane4 = new javax.swing.JScrollPane();
     tableCash = new javax.swing.JTable();
+    pInterest = new javax.swing.JPanel();
+    jPanelInterestHeader = new javax.swing.JPanel();
+    jLabelInterest = new javax.swing.JLabel();
+    cbComputeInterest = new javax.swing.JCheckBox();
+    bSaveCSVInterest = new javax.swing.JButton();
+    bSaveHTMLInterest = new javax.swing.JButton();
+    jScrollPaneInterest = new javax.swing.JScrollPane();
+    interestTable = new javax.swing.JTable();
     jPanel2 = new javax.swing.JPanel();
     jLabel2 = new javax.swing.JLabel();
     cbComputeDivi = new javax.swing.JCheckBox();
@@ -2032,6 +2250,80 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     jTabbedPane1.addTab("Cash", pCash);
 
+    pInterest.setLayout(new java.awt.GridBagLayout());
+
+    jLabelInterest.setFont(jLabelInterest.getFont().deriveFont(java.awt.Font.BOLD));
+    jLabelInterest.setText("Úroky:     ");
+    jPanelInterestHeader.add(jLabelInterest);
+
+    cbComputeInterest.setSelected(true);
+    cbComputeInterest.setText("Počítat");
+    cbComputeInterest.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+    cbComputeInterest.setMargin(new java.awt.Insets(0, 0, 0, 0));
+    jPanelInterestHeader.add(cbComputeInterest);
+
+    bSaveCSVInterest.setText("Uložit CSV");
+    bSaveCSVInterest.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bSaveCSVInterestActionPerformed(evt);
+      }
+    });
+    jPanelInterestHeader.add(bSaveCSVInterest);
+
+    bSaveHTMLInterest.setText("Uložit HTML");
+    bSaveHTMLInterest.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bSaveHTMLInterestActionPerformed(evt);
+      }
+    });
+    jPanelInterestHeader.add(bSaveHTMLInterest);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.gridwidth = 3;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+    gridBagConstraints.insets = new java.awt.Insets(4, 4, 4, 4);
+    pInterest.add(jPanelInterestHeader, gridBagConstraints);
+
+    interestTable.setModel(new javax.swing.table.DefaultTableModel(
+        new Object[][] {
+
+        },
+        new String[] {
+            "Datum", "Ticker", "Úrok", "Úrok CZK", "Zaplacená daň", "Zaplacená daň CZK", "Zaplacený úrok",
+            "Zaplacený úrok CZK", "Poplatek", "Poplatek CZK"
+        }) {
+      Class[] types = new Class[] {
+          java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
+          java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
+          java.lang.String.class, java.lang.String.class
+      };
+      boolean[] canEdit = new boolean[] {
+          false, false, false, false, false, false, false, false, false, false
+      };
+
+      public Class getColumnClass(int columnIndex) {
+        return types[columnIndex];
+      }
+
+      public boolean isCellEditable(int rowIndex, int columnIndex) {
+        return canEdit[columnIndex];
+      }
+    });
+    jScrollPaneInterest.setViewportView(interestTable);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 1;
+    gridBagConstraints.gridwidth = 3;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.weighty = 2.0;
+    pInterest.add(jScrollPaneInterest, gridBagConstraints);
+
+    jTabbedPane1.addTab("Úroky", pInterest);
+
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridy = 2;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
@@ -2039,7 +2331,7 @@ public class ComputeWindow extends javax.swing.JDialog {
     gridBagConstraints.weighty = 2.0;
     getContentPane().add(jTabbedPane1, gridBagConstraints);
 
-    jLabel2.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+    jLabel2.setFont(jLabel2.getFont().deriveFont(java.awt.Font.BOLD));
     jLabel2.setText("Dividendy:     ");
     jPanel2.add(jLabel2);
 
@@ -2114,6 +2406,14 @@ public class ComputeWindow extends javax.swing.JDialog {
   {// GEN-HEADEREND:event_bSaveCSVDiviActionPerformed
     save(SaveFormat.CSV, diviTable);
   }// GEN-LAST:event_bSaveCSVDiviActionPerformed
+
+  private void bSaveHTMLInterestActionPerformed(java.awt.event.ActionEvent evt) {
+    save(SaveFormat.HTML, interestTable);
+  }
+
+  private void bSaveCSVInterestActionPerformed(java.awt.event.ActionEvent evt) {
+    save(SaveFormat.CSV, interestTable);
+  }
 
   private void bCloseActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bCloseActionPerformed
   {// GEN-HEADEREND:event_bCloseActionPerformed
@@ -2277,6 +2577,11 @@ public class ComputeWindow extends javax.swing.JDialog {
       else
         ((DefaultTableModel) (diviTable.getModel())).setNumRows(0); // Clear dividend table
 
+      if (cbComputeInterest.isSelected())
+        computeInterests(year); // Compute interests
+      else
+        ((DefaultTableModel) (interestTable.getModel())).setNumRows(0); // Clear interest table
+
       saveSettings();
     } catch (Stocks.TradingException ex) {
       // Clear model
@@ -2355,6 +2660,7 @@ public class ComputeWindow extends javax.swing.JDialog {
   private javax.swing.JButton bSaveCSVCash;
   private javax.swing.JButton bSaveCSVDer;
   private javax.swing.JButton bSaveCSVDivi;
+  private javax.swing.JButton bSaveCSVInterest;
   private javax.swing.JButton bSaveHTMLCP;
   private javax.swing.JButton bSaveHTMLCPNew;
   private javax.swing.JButton bSaveHTMLCash;
@@ -2362,28 +2668,35 @@ public class ComputeWindow extends javax.swing.JDialog {
   private javax.swing.JButton bSaveHTMLDer;
   private javax.swing.JButton bSaveHTMLDerNew;
   private javax.swing.JButton bSaveHTMLDivi;
+  private javax.swing.JButton bSaveHTMLInterest;
   private javax.swing.JCheckBox cbAllowShortOverYearBoundary;
   private javax.swing.JCheckBox cbComputeDivi;
+  private javax.swing.JCheckBox cbComputeInterest;
   private javax.swing.JComboBox cbNoIncome;
   private javax.swing.JComboBox cbOverTaxFreeDuration;
   private javax.swing.JCheckBox cbSeparateCurrencyCSV;
   private javax.swing.JTable diviTable;
+  private javax.swing.JTable interestTable;
   private javax.swing.JTextField eYear;
   private javax.swing.JLabel jLabel1;
   private javax.swing.JLabel jLabel2;
+  private javax.swing.JLabel jLabelInterest;
   private javax.swing.JLabel jLabel3;
   private javax.swing.JLabel jLabel4;
   private javax.swing.JPanel jPanel1;
+  private javax.swing.JPanel jPanelInterestHeader;
   private javax.swing.JPanel jPanel2;
   private javax.swing.JScrollPane jScrollPane1;
   private javax.swing.JScrollPane jScrollPane2;
   private javax.swing.JScrollPane jScrollPane3;
   private javax.swing.JScrollPane jScrollPane4;
+  private javax.swing.JScrollPane jScrollPaneInterest;
   private javax.swing.JSeparator jSeparator1;
   private javax.swing.JTabbedPane jTabbedPane1;
   private javax.swing.JPanel pCP;
   private javax.swing.JPanel pCash;
   private javax.swing.JPanel pDerivates;
+  private javax.swing.JPanel pInterest;
   private javax.swing.JTable tableCP;
   private javax.swing.JTable tableCash;
   private javax.swing.JTable tableDer;

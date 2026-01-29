@@ -41,6 +41,9 @@ public class IBKRFlexImporter {
     // Trades inclusion
     private boolean includeTrades = true;
 
+    // Cash transactions (dividends/withholding/fees) inclusion
+    private boolean includeCashTransactions = true;
+
     public IBKRFlexImporter(String flexToken, String queryId) {
         this.flexToken = flexToken;
         this.queryId = queryId;
@@ -62,6 +65,11 @@ public class IBKRFlexImporter {
     public void setIncludeTrades(boolean includeTrades) {
         this.includeTrades = includeTrades;
         this.parser.setIncludeTrades(includeTrades);
+    }
+
+    public void setIncludeCashTransactions(boolean includeCashTransactions) {
+        this.includeCashTransactions = includeCashTransactions;
+        this.parser.setIncludeCashTransactions(includeCashTransactions);
     }
 
     public boolean validateCredentials() {

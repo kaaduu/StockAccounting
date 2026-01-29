@@ -8,8 +8,13 @@ echo "Starting StockAccounting..."
 echo "Working directory: $(pwd)"
 
 # Determine JAR location and lib directory
-if [ -f "dist/StockAccounting.jar" ]; then
-    # Running from project root, use dist directory
+if [ -f "dist/lib/StockAccounting.jar" ]; then
+    # Running from project root, use Gradle-style dist directory
+    echo "Using JAR from dist/lib/"
+    JAR_FILE="dist/lib/StockAccounting.jar"
+    LIB_DIR="dist/lib"
+elif [ -f "dist/StockAccounting.jar" ]; then
+    # Legacy dist layout
     echo "Using JAR from dist/ directory"
     cd dist
     JAR_FILE="StockAccounting.jar"

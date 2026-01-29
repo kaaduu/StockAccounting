@@ -22,5 +22,13 @@ if %MAJOR_VERSION% lss 17 (
 )
 
 echo Java version check passed. Starting StockAccounting...
-java -cp "StockAccounting.jar;lib\*" cz.datesoft.stockAccounting.Main
+
+REM Prefer Gradle-style dist layout (dist\lib\StockAccounting.jar)
+if exist "dist\lib\StockAccounting.jar" (
+    echo Using JAR from dist\lib\
+    java -cp "dist\lib\StockAccounting.jar;dist\lib\*" cz.datesoft.stockAccounting.Main
+) else (
+    REM Legacy layout
+    java -cp "StockAccounting.jar;lib\*" cz.datesoft.stockAccounting.Main
+)
 pause
