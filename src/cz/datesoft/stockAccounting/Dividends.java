@@ -91,6 +91,10 @@ public class Dividends
       case Transaction.DIRECTION_DSELL:
       case Transaction.DIRECTION_CBUY:
       case Transaction.DIRECTION_CSELL:
+      case Transaction.DIRECTION_INT_BRUTTO:
+      case Transaction.DIRECTION_INT_TAX:
+      case Transaction.DIRECTION_INT_PAID:
+      case Transaction.DIRECTION_INT_FEE:
         // Ignore these
         return;
     }

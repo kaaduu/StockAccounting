@@ -27,6 +27,13 @@ import java.util.logging.Logger;
 public final class IbkrTwsPositionsClient implements EWrapper {
   private static final Logger logger = Logger.getLogger(IbkrTwsPositionsClient.class.getName());
 
+  private static long computeReadyWaitMillis(Duration timeout) {
+    long total = timeout == null ? 0L : Math.max(0L, timeout.toMillis());
+    if (total <= 0L) return 3000L;
+    // Wait for handshake readiness, but keep most of the time for the positions stream.
+    return Math.min(10_000L, Math.max(1000L, total / 3));
+  }
+
   public static String normalizeTicker(String s) {
     if (s == null) return null;
     String t = s.trim().toUpperCase();
@@ -79,11 +86,33 @@ public final class IbkrTwsPositionsClient implements EWrapper {
   private final Map<String, Map<String, Double>> positionsByAccount = new HashMap<>();
   private final Set<String> errors = new HashSet<>();
 
+  private CountDownLatch ready;
   private CountDownLatch positionsDone;
 
   public PositionsResult fetchPositions(String host, int port, int clientId, Duration timeout) throws Exception {
+    Exception last = null;
+    for (int attempt = 1; attempt <= 2; attempt++) {
+      try {
+        return fetchPositionsOnce(host, port, clientId, timeout);
+      } catch (Exception e) {
+        last = e;
+        if (attempt >= 2) break;
+        try {
+          Thread.sleep(250L);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+    }
+    if (last != null) throw last;
+    throw new Exception("TWS: nepodařilo se načíst pozice");
+  }
+
+  private PositionsResult fetchPositionsOnce(String host, int port, int clientId, Duration timeout) throws Exception {
     positionsByAccount.clear();
     errors.clear();
+    ready = new CountDownLatch(1);
     positionsDone = new CountDownLatch(1);
 
     logger.info("Connecting to TWS: " + host + ":" + port + " clientId=" + clientId);
@@ -96,16 +125,28 @@ public final class IbkrTwsPositionsClient implements EWrapper {
     reader.start();
     Thread readerThread = new Thread(() -> {
       try {
+        // Drain early messages before the first wait.
+        try {
+          reader.processMsgs();
+        } catch (Exception e) {
+          // ignore
+        }
         while (client.isConnected()) {
           signal.waitForSignal();
           reader.processMsgs();
         }
       } catch (Exception e) {
         errors.add("Reader: " + e.getMessage());
+        if (ready != null) ready.countDown();
+        if (positionsDone != null) positionsDone.countDown();
       }
     }, "tws-api-reader");
     readerThread.setDaemon(true);
     readerThread.start();
+
+    // Wait for handshake readiness (nextValidId).
+    long readyWaitMs = computeReadyWaitMillis(timeout);
+    ready.await(readyWaitMs, TimeUnit.MILLISECONDS);
 
     client.reqPositions();
 
@@ -122,7 +163,8 @@ public final class IbkrTwsPositionsClient implements EWrapper {
     }
 
     if (!ok) {
-      throw new Exception("TWS: timeout při načítání pozic");
+      String extra = errors.isEmpty() ? "" : ("; " + String.join(" | ", errors));
+      throw new Exception("TWS: timeout při načítání pozic" + extra);
     }
     return new PositionsResult(copyPositions(), new HashSet<>(errors));
   }
@@ -189,7 +231,11 @@ public final class IbkrTwsPositionsClient implements EWrapper {
       double unrealizedPNL, double realizedPNL, String accountName) {}
   @Override public void updateAccountTime(String timeStamp) {}
   @Override public void accountDownloadEnd(String accountName) {}
-  @Override public void nextValidId(int orderId) {}
+  @Override public void nextValidId(int orderId) {
+    if (ready != null) {
+      ready.countDown();
+    }
+  }
   @Override public void contractDetails(int reqId, com.ib.client.ContractDetails contractDetails) {}
   @Override public void bondContractDetails(int reqId, com.ib.client.ContractDetails contractDetails) {}
   @Override public void contractDetailsEnd(int reqId) {}
@@ -222,8 +268,19 @@ public final class IbkrTwsPositionsClient implements EWrapper {
   @Override public void verifyAndAuthCompleted(boolean isSuccessful, String errorText) {}
   @Override public void displayGroupList(int reqId, String groups) {}
   @Override public void displayGroupUpdated(int reqId, String contractInfo) {}
-  @Override public void connectionClosed() {}
-  @Override public void connectAck() {}
+  @Override public void connectionClosed() {
+    if (ready != null) ready.countDown();
+    if (positionsDone != null) positionsDone.countDown();
+  }
+
+  @Override public void connectAck() {
+    // Some TWS setups require startAPI() after connectAck.
+    try {
+      client.startAPI();
+    } catch (Exception e) {
+      errors.add("startAPI: " + e.getMessage());
+    }
+  }
   @Override public void positionMulti(int reqId, String account, String modelCode, Contract contract, Decimal pos, double avgCost) {}
   @Override public void positionMultiEnd(int reqId) {}
   @Override public void accountUpdateMulti(int reqId, String account, String modelCode, String key, String value, String currency) {}

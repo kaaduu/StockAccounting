@@ -24,11 +24,13 @@ public class Main {
    */
   public static void main(String[] args)
   {
-    try {
-      javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
-    } catch (Exception e) { }
-      
+    // Load persisted settings first (theme selection is stored there).
     Settings.load();
+
+    // Apply Look&Feel before any Swing components are created.
+    try {
+      UiTheme.applyFromSettings();
+    } catch (Exception e) { }
     
     mainWindow = new MainWindow();
     

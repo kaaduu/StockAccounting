@@ -33,12 +33,14 @@ Stáhněte z: https://adoptium.net/temurin/releases/
 
 ### Z příkazové řádky
 ```bash
-# Sestavení
-./build.sh
+# Sestavení (doporučeno)
+./gradlew clean installDist
 
 # Spuštění
 ./run.sh
 ```
+
+Poznámka: `./build.sh` je zachováno kvůli kompatibilitě a interně volá `./gradlew`.
 
 ### S NetBeans
 Project Properties → Libraries → Compile classpath:

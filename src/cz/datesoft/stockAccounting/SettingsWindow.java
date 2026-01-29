@@ -281,6 +281,39 @@ public class SettingsWindow extends javax.swing.JDialog {
         // Do nothing
       }
     }
+
+    /**
+     * Add a year row if it is missing.
+     * Keeps the table roughly sorted by year descending.
+     */
+    public void addYear(int year) {
+      Integer y = Integer.valueOf(year);
+      if (year2Vector.get(y) != null)
+        return;
+
+      Vector<Object> v = new Vector<Object>();
+      v.add(y);
+      year2Vector.put(y, v);
+
+      // Insert in descending order by year
+      int insertAt = data.size();
+      for (int i = 0; i < data.size(); i++) {
+        Vector<Object> row = data.get(i);
+        if (row == null || row.isEmpty())
+          continue;
+        Object yo = row.get(0);
+        if (!(yo instanceof Integer))
+          continue;
+        int existingYear = ((Integer) yo).intValue();
+        if (existingYear < year) {
+          insertAt = i;
+          break;
+        }
+      }
+
+      data.add(insertAt, v);
+      fireTableDataChanged();
+    }
   }
 
   /**
@@ -623,13 +656,71 @@ public class SettingsWindow extends javax.swing.JDialog {
     // Build System tab (last)
     pSystem.setLayout(new java.awt.GridBagLayout());
 
+    javax.swing.JPanel pSystemCards = new javax.swing.JPanel();
+    pSystemCards.setLayout(new java.awt.GridBagLayout());
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.weighty = 1.0;
+    pSystem.add(pSystemCards, gridBagConstraints);
+
+    java.awt.GridBagConstraints cSys;
+
+    javax.swing.JPanel cardStartup = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    cardStartup.setBorder(javax.swing.BorderFactory.createTitledBorder("Spuštění"));
+    cSys = new java.awt.GridBagConstraints();
+    cSys.gridx = 0;
+    cSys.gridy = 0;
+    cSys.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    cSys.weightx = 1.0;
+    cSys.insets = new java.awt.Insets(10, 10, 10, 10);
+    pSystemCards.add(cardStartup, cSys);
+
+    javax.swing.JPanel cardFileDialogs = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    cardFileDialogs.setBorder(javax.swing.BorderFactory.createTitledBorder("Dialogy"));
+    cSys = new java.awt.GridBagConstraints();
+    cSys.gridx = 0;
+    cSys.gridy = 1;
+    cSys.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    cSys.weightx = 1.0;
+    cSys.insets = new java.awt.Insets(0, 10, 10, 10);
+    pSystemCards.add(cardFileDialogs, cSys);
+
+    javax.swing.JPanel cardHighlight = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    cardHighlight.setBorder(javax.swing.BorderFactory.createTitledBorder("Zvýraznění po importu"));
+    cSys = new java.awt.GridBagConstraints();
+    cSys.gridx = 0;
+    cSys.gridy = 2;
+    cSys.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    cSys.weightx = 1.0;
+    cSys.insets = new java.awt.Insets(0, 10, 10, 10);
+    pSystemCards.add(cardHighlight, cSys);
+
+    javax.swing.JPanel cardTheme = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    cardTheme.setBorder(javax.swing.BorderFactory.createTitledBorder("Vzhled"));
+    cSys = new java.awt.GridBagConstraints();
+    cSys.gridx = 0;
+    cSys.gridy = 3;
+    cSys.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    cSys.weightx = 1.0;
+    cSys.insets = new java.awt.Insets(0, 10, 10, 10);
+    pSystemCards.add(cardTheme, cSys);
+
+    cSys = new java.awt.GridBagConstraints();
+    cSys.gridx = 0;
+    cSys.gridy = 4;
+    cSys.weighty = 1.0;
+    pSystemCards.add(new javax.swing.JPanel(), cSys);
+
     javax.swing.JLabel lblFileChooser = new javax.swing.JLabel("Výběr souborů:");
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
     gridBagConstraints.gridy = 0;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(lblFileChooser, gridBagConstraints);
+    cardFileDialogs.add(lblFileChooser, gridBagConstraints);
 
     cbFileChooserMode = new javax.swing.JComboBox(new String[] { "Nativní (OS)", "Java (Swing)" });
     cbFileChooserMode.setSelectedIndex(Settings.getFileChooserMode() == Settings.FILE_CHOOSER_SWING ? 1 : 0);
@@ -646,7 +737,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
     gridBagConstraints.weightx = 1.0;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(cbFileChooserMode, gridBagConstraints);
+    cardFileDialogs.add(cbFileChooserMode, gridBagConstraints);
 
     cbShowAboutOnStartup = new javax.swing.JCheckBox("Zobrazit \"O aplikaci\" při startu");
     cbShowAboutOnStartup.setSelected(Settings.getShowAboutOnStartup());
@@ -662,7 +753,8 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridwidth = 2;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(cbShowAboutOnStartup, gridBagConstraints);
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardStartup.add(cbShowAboutOnStartup, gridBagConstraints);
 
     cbAutoMaximized = new javax.swing.JCheckBox("Maximalizovat hlavní okno při startu");
     cbAutoMaximized.setSelected(Settings.getAutoMaximized());
@@ -678,7 +770,8 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridwidth = 2;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(cbAutoMaximized, gridBagConstraints);
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardStartup.add(cbAutoMaximized, gridBagConstraints);
 
     cbAutoLoadLastFile = new javax.swing.JCheckBox("Automaticky načíst poslední otevřený soubor bez dotazu");
     cbAutoLoadLastFile.setSelected(Settings.getAutoLoadLastFile());
@@ -694,7 +787,8 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridwidth = 2;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(cbAutoLoadLastFile, gridBagConstraints);
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardStartup.add(cbAutoLoadLastFile, gridBagConstraints);
 
     // Import highlighting settings
     javax.swing.JLabel lblImportHl = new javax.swing.JLabel("Zvýraznění po importu:");
@@ -703,7 +797,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 4;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
-    pSystem.add(lblImportHl, gridBagConstraints);
+    cardHighlight.add(lblImportHl, gridBagConstraints);
 
     cbHighlightInserted = new javax.swing.JCheckBox("Zvýraznit nové (přidané)");
     cbHighlightInserted.setSelected(Settings.getHighlightInsertedEnabled());
@@ -718,7 +812,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 5;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
-    pSystem.add(cbHighlightInserted, gridBagConstraints);
+    cardHighlight.add(cbHighlightInserted, gridBagConstraints);
 
     bPickInsertedColor = new javax.swing.JButton("Barva nových...");
     bPickInsertedColor.addActionListener(new java.awt.event.ActionListener() {
@@ -736,7 +830,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 5;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
-    pSystem.add(bPickInsertedColor, gridBagConstraints);
+    cardHighlight.add(bPickInsertedColor, gridBagConstraints);
 
     cbHighlightUpdated = new javax.swing.JCheckBox("Zvýraznit aktualizované (duplikáty)");
     cbHighlightUpdated.setSelected(Settings.getHighlightUpdatedEnabled());
@@ -751,7 +845,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 6;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
-    pSystem.add(cbHighlightUpdated, gridBagConstraints);
+    cardHighlight.add(cbHighlightUpdated, gridBagConstraints);
 
     bPickUpdatedColor = new javax.swing.JButton("Barva aktualizovaných...");
     bPickUpdatedColor.addActionListener(new java.awt.event.ActionListener() {
@@ -769,7 +863,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 6;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
-    pSystem.add(bPickUpdatedColor, gridBagConstraints);
+    cardHighlight.add(bPickUpdatedColor, gridBagConstraints);
 
     lHighlightPreviewNew = new javax.swing.JLabel("Náhled: nový");
     lHighlightPreviewNew.setOpaque(true);
@@ -783,20 +877,209 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.gridy = 7;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 25, 0, 10);
-    pSystem.add(lHighlightPreviewNew, gridBagConstraints);
+    cardHighlight.add(lHighlightPreviewNew, gridBagConstraints);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 1;
     gridBagConstraints.gridy = 7;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
     gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
-    pSystem.add(lHighlightPreviewUpdated, gridBagConstraints);
+    cardHighlight.add(lHighlightPreviewUpdated, gridBagConstraints);
 
+    // UI theme selector
+    javax.swing.JLabel lblUiTheme = new javax.swing.JLabel("Vzhled aplikace:");
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
     gridBagConstraints.gridy = 8;
-    gridBagConstraints.weighty = 1.0;
-    pSystem.add(new javax.swing.JPanel(), gridBagConstraints);
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(15, 10, 0, 10);
+    cardTheme.add(lblUiTheme, gridBagConstraints);
+
+    cbUiTheme = new javax.swing.JComboBox(new String[] {
+        "System (OS)",
+        "FlatLaf Light",
+        "FlatLaf Dark",
+        "FlatLaf IntelliJ",
+        "FlatLaf Darcula" });
+    cbUiTheme.setSelectedIndex(Settings.getUiTheme());
+    cbUiTheme.setToolTipText("Změna vzhledu vyžaduje restart aplikace.");
+    cbUiTheme.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        int idx = cbUiTheme.getSelectedIndex();
+        Settings.setUiTheme(idx);
+        Settings.save();
+        javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this,
+            "Vzhled bude použit po restartu aplikace.",
+            "Vzhled aplikace", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 8;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(15, 10, 0, 10);
+    cardTheme.add(cbUiTheme, gridBagConstraints);
+
+    // UI font selector
+    javax.swing.JLabel lblUiFont = new javax.swing.JLabel("Písmo aplikace:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 9;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardTheme.add(lblUiFont, gridBagConstraints);
+
+    // UI font family selector (editable)
+    String[] families = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+    java.util.List<String> familyList = new java.util.ArrayList<>();
+    familyList.add("");
+    if (families != null) {
+      for (String f : families) {
+        if (f != null && !f.trim().isEmpty())
+          familyList.add(f);
+      }
+    }
+    java.util.Collections.sort(familyList, String.CASE_INSENSITIVE_ORDER);
+    cbUiFontFamily = new javax.swing.JComboBox<>(familyList.toArray(new String[0]));
+    cbUiFontFamily.setEditable(true);
+    cbUiFontFamily.setToolTipText("Prázdné = výchozí písmo vzhledu. Příklad: Tahoma, Segoe UI, SansSerif");
+    cbUiFontFamily.setSelectedItem(Settings.getUiFontFamily());
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 9;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardTheme.add(cbUiFontFamily, gridBagConstraints);
+
+    javax.swing.JLabel lblUiFontSize = new javax.swing.JLabel("Velikost:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 10;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+    cardTheme.add(lblUiFontSize, gridBagConstraints);
+
+    spUiFontSize = new javax.swing.JSpinner(new javax.swing.SpinnerNumberModel(
+        Integer.valueOf(Math.max(0, Settings.getUiFontSize())),
+        Integer.valueOf(0),
+        Integer.valueOf(96),
+        Integer.valueOf(1)));
+    spUiFontSize.setToolTipText("0 = výchozí velikost vzhledu");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 10;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+    cardTheme.add(spUiFontSize, gridBagConstraints);
+
+    javax.swing.JLabel lblMonoFont = new javax.swing.JLabel("Monospace písmo:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 11;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardTheme.add(lblMonoFont, gridBagConstraints);
+
+    cbMonospaceFontFamily = new javax.swing.JComboBox<>(familyList.toArray(new String[0]));
+    cbMonospaceFontFamily.setEditable(true);
+    cbMonospaceFontFamily.setToolTipText("Používá se pro logy / detaily chyb / importní texty");
+    cbMonospaceFontFamily.setSelectedItem(Settings.getMonospaceFontFamily());
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 11;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardTheme.add(cbMonospaceFontFamily, gridBagConstraints);
+
+    javax.swing.JLabel lblMonoFontSize = new javax.swing.JLabel("Velikost:");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 12;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+    cardTheme.add(lblMonoFontSize, gridBagConstraints);
+
+    spMonospaceFontSize = new javax.swing.JSpinner(new javax.swing.SpinnerNumberModel(
+        Integer.valueOf(Math.max(6, Settings.getMonospaceFontSize())),
+        Integer.valueOf(6),
+        Integer.valueOf(96),
+        Integer.valueOf(1)));
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 12;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(5, 10, 0, 10);
+    cardTheme.add(spMonospaceFontSize, gridBagConstraints);
+
+    javax.swing.JPanel pFontsButtons = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+    javax.swing.JButton bSaveFonts = new javax.swing.JButton("Uložit písma");
+    bSaveFonts.setToolTipText("Změna písem vyžaduje restart aplikace.");
+    bSaveFonts.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        saveFontSettingsFromUi();
+        // Apply immediately for currently open windows.
+        UiFonts.applyFromSettings();
+        UiTheme.refreshAllWindows();
+        javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this,
+            "Písma byla použita.",
+            "Písma", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      }
+    });
+    pFontsButtons.add(bSaveFonts);
+
+    javax.swing.JButton bResetFonts = new javax.swing.JButton("Výchozí");
+    bResetFonts.setToolTipText("Vrátí písma na výchozí hodnoty (podle vzhledu + Monospaced 12).");
+    bResetFonts.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbUiFontFamily.setSelectedItem("");
+        spUiFontSize.setValue(Integer.valueOf(0));
+        cbMonospaceFontFamily.setSelectedItem("Monospaced");
+        spMonospaceFontSize.setValue(Integer.valueOf(12));
+
+        saveFontSettingsFromUi();
+
+        UiFonts.applyFromSettings();
+        UiTheme.refreshAllWindows();
+
+        javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this,
+            "Písma byla použita.",
+            "Písma", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      }
+    });
+    pFontsButtons.add(bResetFonts);
+
+    javax.swing.JButton bPresetTahoma = new javax.swing.JButton("Tahoma 11");
+    bPresetTahoma.setToolTipText("Nastaví písmo aplikace na Tahoma 11 (klasický vzhled).");
+    bPresetTahoma.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbUiFontFamily.setSelectedItem("Tahoma");
+        spUiFontSize.setValue(Integer.valueOf(11));
+
+        saveFontSettingsFromUi();
+
+        UiFonts.applyFromSettings();
+        UiTheme.refreshAllWindows();
+
+        javax.swing.JOptionPane.showMessageDialog(SettingsWindow.this,
+            "Písmo bylo použito.",
+            "Písmo", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      }
+    });
+    pFontsButtons.add(bPresetTahoma);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 13;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardTheme.add(pFontsButtons, gridBagConstraints);
+
+    // Spacer moved to pSystemCards
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridy = 3;
@@ -1172,6 +1455,10 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     bFetchRates = new javax.swing.JButton();
     bExportUnifiedRatesJson = new javax.swing.JButton();
+
+    javax.swing.JPanel ratesActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 0));
+    ratesActions.setBorder(javax.swing.BorderFactory.createTitledBorder("Akce"));
+
     bFetchRates.setText("Načíst kurzy");
     bFetchRates.setToolTipText("Načíst jednotné kurzy z ČNB");
     bFetchRates.addActionListener(new java.awt.event.ActionListener() {
@@ -1179,7 +1466,7 @@ public class SettingsWindow extends javax.swing.JDialog {
         bFetchRatesActionPerformed(evt);
       }
     });
-    jPanel5.add(bFetchRates, new java.awt.GridBagConstraints());
+    ratesActions.add(bFetchRates);
 
     bExportUnifiedRatesJson.setText("Export JSON");
     bExportUnifiedRatesJson.setToolTipText("Exportovat jednotné kurzy do JSON souboru");
@@ -1188,7 +1475,9 @@ public class SettingsWindow extends javax.swing.JDialog {
         bExportUnifiedRatesJsonActionPerformed(evt);
       }
     });
-    jPanel5.add(bExportUnifiedRatesJson, new java.awt.GridBagConstraints());
+    ratesActions.add(bExportUnifiedRatesJson);
+
+    jPanel5.add(ratesActions, new java.awt.GridBagConstraints());
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridy = 1;
@@ -1240,7 +1529,6 @@ public class SettingsWindow extends javax.swing.JDialog {
     bCancel.setText("Storno");
     bCancel.setMaximumSize(new java.awt.Dimension(100, 23));
     bCancel.setMinimumSize(new java.awt.Dimension(100, 23));
-    bCancel.setPreferredSize(new java.awt.Dimension(70, 23));
     bCancel.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bCancelActionPerformed(evt);
@@ -1250,7 +1538,6 @@ public class SettingsWindow extends javax.swing.JDialog {
     bOK.setText("OK");
     bOK.setMaximumSize(new java.awt.Dimension(100, 23));
     bOK.setMinimumSize(new java.awt.Dimension(100, 23));
-    bOK.setPreferredSize(new java.awt.Dimension(70, 23));
     bOK.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         bOKActionPerformed(evt);
@@ -1439,10 +1726,13 @@ public class SettingsWindow extends javax.swing.JDialog {
 
   private void bOKActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bOKActionPerformed
   {// GEN-HEADEREND:event_bOKActionPerformed
-   // Store settings
+    // Store settings
     Settings.setHalfYear((cbHalfYear.getSelectedIndex() == 0) ? Settings.HY_6M : Settings.HY_183D);
     Settings.setRatios(model.constructDataSet());
     Settings.setMarkets(markets);
+
+    // Persist UI font settings (even if user did not press "Uložit písma").
+    saveFontSettingsFromUi();
 
     // And save them
     Settings.setUseDailyRates(cbUseDailyRates.isSelected());
@@ -1453,6 +1743,28 @@ public class SettingsWindow extends javax.swing.JDialog {
     // Close
     setVisible(false);
   }// GEN-LAST:event_bOKActionPerformed
+
+  private void saveFontSettingsFromUi() {
+    try {
+      if (cbUiFontFamily != null) {
+        Object uiSel = cbUiFontFamily.getSelectedItem();
+        Settings.setUiFontFamily(uiSel == null ? "" : String.valueOf(uiSel));
+      }
+      if (spUiFontSize != null) {
+        Settings.setUiFontSize(((Integer) spUiFontSize.getValue()).intValue());
+      }
+      if (cbMonospaceFontFamily != null) {
+        Object monoSel = cbMonospaceFontFamily.getSelectedItem();
+        Settings.setMonospaceFontFamily(monoSel == null ? "" : String.valueOf(monoSel));
+      }
+      if (spMonospaceFontSize != null) {
+        Settings.setMonospaceFontSize(((Integer) spMonospaceFontSize.getValue()).intValue());
+      }
+      Settings.save();
+    } catch (Exception e) {
+      // ignore
+    }
+  }
 
   private void bTestTwsConnectionActionPerformed(java.awt.event.ActionEvent evt) {
     // Validate inputs from fields (not yet saved)
@@ -1559,10 +1871,182 @@ public class SettingsWindow extends javax.swing.JDialog {
     setVisible(false);
   }// GEN-LAST:event_bCancelActionPerformed
 
+  private static java.lang.Integer extractYear(java.util.Date d) {
+    if (d == null)
+      return null;
+    try {
+      java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
+      cal.setTime(d);
+      return java.lang.Integer.valueOf(cal.get(java.util.GregorianCalendar.YEAR));
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private java.util.Set<java.lang.Integer> getUnifiedYearsInModel() {
+    java.util.Set<java.lang.Integer> years = new java.util.HashSet<java.lang.Integer>();
+    if (model == null)
+      return years;
+
+    for (int row = 0; row < model.getRowCount() - 1; row++) {
+      Object yearObj = model.getValueAt(row, 0);
+      if (yearObj instanceof java.lang.Integer) {
+        years.add((java.lang.Integer) yearObj);
+      }
+    }
+    return years;
+  }
+
+  private java.util.Set<java.lang.String> getUnifiedCurrenciesInModel() {
+    java.util.Set<java.lang.String> currencies = new java.util.HashSet<java.lang.String>();
+    if (model == null)
+      return currencies;
+
+    for (int col = 1; col < model.getColumnCount(); col++) {
+      String c = model.getColumnName(col);
+      if (c == null)
+        continue;
+      String s = c.trim();
+      if (s.isEmpty())
+        continue;
+      currencies.add(s.toUpperCase());
+    }
+
+    return currencies;
+  }
+
+  private void ensureUnifiedRatesCoverUsedYearsAndCurrencies() {
+    if (mainWindow == null || model == null || table == null)
+      return;
+
+    TransactionSet ts = null;
+    try {
+      ts = mainWindow.getTransactionDatabase();
+    } catch (Exception e) {
+      ts = null;
+    }
+    if (ts == null)
+      return;
+
+    // Collect years from both "Datum" and "Datum vypořádání".
+    java.util.Set<java.lang.Integer> usedYears = new java.util.TreeSet<java.lang.Integer>();
+    try {
+      for (java.util.Iterator<Transaction> it = ts.iterator(); it.hasNext();) {
+        Transaction tx = it.next();
+        if (tx == null)
+          continue;
+
+        java.lang.Integer y1 = extractYear(tx.getDate());
+        if (y1 != null)
+          usedYears.add(y1);
+
+        java.lang.Integer y2 = extractYear(tx.getExecutionDate());
+        if (y2 != null)
+          usedYears.add(y2);
+      }
+    } catch (Exception e) {
+      // Ignore
+    }
+
+    // Determine missing years.
+    java.util.Set<java.lang.Integer> existingYears = getUnifiedYearsInModel();
+    java.util.List<java.lang.Integer> missingYears = new java.util.ArrayList<java.lang.Integer>();
+    for (java.lang.Integer y : usedYears) {
+      if (y == null)
+        continue;
+      if (!existingYears.contains(y))
+        missingYears.add(y);
+    }
+
+    if (!missingYears.isEmpty()) {
+      java.util.Collections.sort(missingYears);
+      String yearsStr = missingYears.toString().replace("[", "").replace("]", "");
+      int res = JOptionPane.showConfirmDialog(this,
+          "New year detected: " + yearsStr + "\nWant to add?",
+          "New year detected",
+          JOptionPane.YES_NO_OPTION,
+          JOptionPane.QUESTION_MESSAGE);
+
+      if (res == JOptionPane.YES_OPTION) {
+        AppLog.info("Kurzy měn: zjištěny nové roky: " + yearsStr + " (přidáno)");
+        for (java.lang.Integer y : missingYears) {
+          try {
+            model.addYear(y.intValue());
+          } catch (Exception e) {
+            // Ignore individual failures
+          }
+        }
+      } else {
+        AppLog.info("Kurzy měn: zjištěny nové roky: " + yearsStr + " (odmítnuto)");
+      }
+    }
+
+    // Determine missing currencies.
+    java.util.Set<java.lang.String> usedCurrencies = new java.util.HashSet<java.lang.String>();
+    try {
+      usedCurrencies.addAll(Settings.getUsedCurrencies(ts));
+    } catch (Exception e) {
+      // Ignore
+    }
+
+    java.util.Set<java.lang.String> existingCurrencies = getUnifiedCurrenciesInModel();
+    java.util.List<java.lang.String> missingCurrencies = new java.util.ArrayList<java.lang.String>();
+    for (String c : usedCurrencies) {
+      if (c == null)
+        continue;
+      String s = c.trim().toUpperCase();
+      if (s.isEmpty() || s.equals("CZK"))
+        continue;
+      if (s.length() != 3)
+        continue;
+      if (!s.matches("[A-Z]{3}"))
+        continue;
+      if (!existingCurrencies.contains(s))
+        missingCurrencies.add(s);
+    }
+
+    if (!missingCurrencies.isEmpty()) {
+      java.util.Collections.sort(missingCurrencies);
+      String curStr = missingCurrencies.toString().replace("[", "").replace("]", "");
+      int res = JOptionPane.showConfirmDialog(this,
+          "New currency detected: " + curStr + "\nWant to add?",
+          "New currency detected",
+          JOptionPane.YES_NO_OPTION,
+          JOptionPane.QUESTION_MESSAGE);
+
+      if (res == JOptionPane.YES_OPTION) {
+        AppLog.info("Kurzy měn: zjištěny nové měny: " + curStr + " (přidáno)");
+        for (String c : missingCurrencies) {
+          try {
+            int modelIndex = model.addCurrency(c);
+            TableColumn column = new TableColumn(modelIndex);
+            column.setCellRenderer(doubleRenderer);
+            column.setIdentifier(c);
+            table.addColumn(column);
+          } catch (Exception e) {
+            // Ignore individual failures
+          }
+        }
+        // Refresh currencies combo
+        try {
+          refreshCurrenciesCombo();
+        } catch (Exception e) {
+          // Ignore
+        }
+      } else {
+        AppLog.info("Kurzy měn: zjištěny nové měny: " + curStr + " (odmítnuto)");
+      }
+    }
+  }
+
   // Enhanced bFetchRatesActionPerformed method
   // Replace lines 1210-1334 in SettingsWindow.java with this code
 
   private void bFetchRatesActionPerformed(java.awt.event.ActionEvent evt) {
+    // Before fetching, auto-detect years/currencies used in the main window
+    // and offer to add them to the unified rates table.
+    ensureUnifiedRatesCoverUsedYearsAndCurrencies();
+
     // Determine target year
     int selectedYear = -1;
     int selectedRow = table.getSelectedRow();
@@ -1590,6 +2074,14 @@ public class SettingsWindow extends javax.swing.JDialog {
     }
 
     final int targetYear = selectedYear;
+
+    // Precompute basic scope counts for logging.
+    int currencyCount = 0;
+    for (int col = 1; col < model.getColumnCount(); col++) {
+      String currency = model.getColumnName(col);
+      if (currency != null && !currency.trim().isEmpty())
+        currencyCount++;
+    }
 
     // Create progress dialog with progress bar
     final javax.swing.JDialog progressDialog = new javax.swing.JDialog(this, "Načítání kurzů", true);
@@ -1629,6 +2121,13 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     final int totalCount = totalItems;
     final int[] currentCount = { 0 };
+
+    try {
+      String scope = targetYear == -1 ? "všechny roky" : ("rok " + targetYear);
+      AppLog.info("Jednotné kurzy: načítám z ČNB (" + scope + ", měn: " + currencyCount + ", kombinací: " + totalCount + ")");
+    } catch (Exception e) {
+      // ignore
+    }
 
     // Fetch rates in background thread
     final java.util.Map<String, CurrencyRateFetcher.FetchedRate>[] resultHolder = new java.util.Map[1];
@@ -1714,6 +2213,7 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     // Check for errors
     if (errorHolder[0] != null) {
+      AppLog.error("Jednotné kurzy: načítání z ČNB selhalo: " + errorHolder[0].getMessage(), errorHolder[0]);
       JOptionPane.showMessageDialog(this,
           "Chyba při načítání kurzů: " + errorHolder[0].getMessage(),
           "Chyba", JOptionPane.ERROR_MESSAGE);
@@ -1723,6 +2223,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     java.util.Map<String, CurrencyRateFetcher.FetchedRate> fetchedRates = resultHolder[0];
 
     if (fetchedRates == null || fetchedRates.isEmpty()) {
+      AppLog.warn("Jednotné kurzy: z ČNB nebyly načteny žádné kurzy");
       JOptionPane.showMessageDialog(this,
           "Nepodařilo se načíst žádné kurzy. Zkontrolujte připojení k internetu.",
           "Informace", JOptionPane.INFORMATION_MESSAGE);
@@ -1810,6 +2311,8 @@ public class SettingsWindow extends javax.swing.JDialog {
         "Potvrzení", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 
     if (result != JOptionPane.YES_OPTION) {
+      AppLog.info("Jednotné kurzy: uživatel odmítl uložit načtené kurzy (načteno " + fetchedRates.size() + ", změněno "
+          + modifiedCount + ")");
       // User cancelled - restore old values
       for (java.util.Map.Entry<String, Double> entry : oldValues.entrySet()) {
         String[] pos = entry.getKey().split(",");
@@ -1831,6 +2334,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     }
 
     // User accepted - keep the changes
+    AppLog.info("Jednotné kurzy: uloženo (načteno " + fetchedRates.size() + ", změněno " + modifiedCount + ")");
     JOptionPane.showMessageDialog(this,
         "Kurzy byly úspěšně načteny a uloženy.\nZměněné hodnoty jsou zvýrazněny žlutě.",
         "Hotovo", JOptionPane.INFORMATION_MESSAGE);
@@ -1963,7 +2467,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     pTrading212.add(tfTrading212ApiKey, gbcTrading212);
 
     // Copy API Key button
-    javax.swing.JButton btnCopyApiKey = new javax.swing.JButton("📋");
+    javax.swing.JButton btnCopyApiKey = new javax.swing.JButton("Copy");
     btnCopyApiKey.setToolTipText("Zkopírovat API Key do schránky");
     btnCopyApiKey.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyApiKey.addActionListener(new java.awt.event.ActionListener() {
@@ -1995,7 +2499,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     pTrading212.add(tfTrading212ApiSecret, gbcTrading212);
 
     // Copy API Secret button
-    javax.swing.JButton btnCopyApiSecret = new javax.swing.JButton("📋");
+    javax.swing.JButton btnCopyApiSecret = new javax.swing.JButton("Copy");
     btnCopyApiSecret.setToolTipText("Zkopírovat API Secret do schránky");
     btnCopyApiSecret.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyApiSecret.addActionListener(new java.awt.event.ActionListener() {
@@ -2082,7 +2586,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     pIbkrFlex.add(tfIbkrQueryId, gbcIbkrFlex);
 
     // Copy Query ID button
-    javax.swing.JButton btnCopyQueryId = new javax.swing.JButton("📋");
+    javax.swing.JButton btnCopyQueryId = new javax.swing.JButton("Copy");
     btnCopyQueryId.setToolTipText("Zkopírovat Query ID do schránky");
     btnCopyQueryId.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyQueryId.addActionListener(new java.awt.event.ActionListener() {
@@ -2117,7 +2621,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     pIbkrFlex.add(tfIbkrFlexToken, gbcIbkrFlex);
 
     // Copy Flex Token button
-    javax.swing.JButton btnCopyFlexToken = new javax.swing.JButton("📋");
+    javax.swing.JButton btnCopyFlexToken = new javax.swing.JButton("Copy");
     btnCopyFlexToken.setToolTipText("Zkopírovat Flex Token do schránky");
     btnCopyFlexToken.setPreferredSize(new java.awt.Dimension(35, 25));
     btnCopyFlexToken.addActionListener(new java.awt.event.ActionListener() {
@@ -2526,13 +3030,13 @@ public class SettingsWindow extends javax.swing.JDialog {
           IBKRFlexClient.FlexRequestResult result = client.requestReport(queryId);
           if (result.success) {
             success = true;
-            resultMessage = "✅ IBKR Flex připojení úspěšné!\n\n" +
+            resultMessage = "OK: IBKR Flex připojení úspěšné!\n\n" +
                 "Vaše IBKR Flex pověření fungují správně.\n" +
                 "Můžete nyní importovat vaše obchodní data.\n\n" +
-                "📋 Reference Code: " + result.referenceCode + "\n\n" +
-                "✅ Query ID validní\n" +
-                "✅ Flex Token validní\n" +
-                "✅ Síťové připojení funguje\n\n" +
+                "Reference Code: " + result.referenceCode + "\n\n" +
+                "OK: Query ID validní\n" +
+                "OK: Flex Token validní\n" +
+                "OK: Síťové připojení funguje\n\n" +
                 "Report byl požadován a bude zpracováván asynchronně.\n" +
                 "Můžete nyní použít funkci importu IBKR Flex dat.\n\n" +
                 "POZNÁMKA: Rozsah dat je určen konfigurací\n" +
@@ -2543,7 +3047,7 @@ public class SettingsWindow extends javax.swing.JDialog {
             if (result.errorCode != null) {
               errorDetail = "\n\nKód chyby: " + result.errorCode + "\n" + result.errorMessage;
             }
-            resultMessage = "❌ Neplatné pověření nebo chyba konfigurace\n\n" +
+            resultMessage = "CHYBA: Neplatné pověření nebo chyba konfigurace\n\n" +
                 "Zkontrolujte Query ID a Flex Token." + errorDetail;
           }
         } catch (Exception e) {
@@ -2551,17 +3055,17 @@ public class SettingsWindow extends javax.swing.JDialog {
           error = e;
           String errorMsg = e.getMessage() != null ? e.getMessage() : "Neznámá chyba";
           if (errorMsg.contains("401") || errorMsg.contains("authentication") || errorMsg.contains("Unauthorized")) {
-            resultMessage = "❌ Neplatné pověření\n\n" +
-                "Zkontrolujte Query ID a Flex Token v IBKR Client Portal.";
+             resultMessage = "CHYBA: Neplatné pověření\n\n" +
+                 "Zkontrolujte Query ID a Flex Token v IBKR Client Portal.";
           } else if (errorMsg.contains("403") || errorMsg.contains("forbidden") || errorMsg.contains("Forbidden")) {
-            resultMessage = "❌ Nedostatečná oprávnění\n\n" +
-                "Flex Token nemá dostatečná oprávnění pro tento Query.";
+             resultMessage = "CHYBA: Nedostatečná oprávnění\n\n" +
+                 "Flex Token nemá dostatečná oprávnění pro tento Query.";
           } else if (errorMsg.contains("404") || errorMsg.contains("Not Found")) {
-            resultMessage = "❌ Query ID nenalezen\n\n" +
-                "Zkontrolujte, že Query ID existuje v IBKR Client Portal.";
+             resultMessage = "CHYBA: Query ID nenalezen\n\n" +
+                 "Zkontrolujte, že Query ID existuje v IBKR Client Portal.";
           } else {
-            resultMessage = "❌ Chyba připojení: " + errorMsg + "\n\n" +
-                "Zkontrolujte síťové připojení nebo IBKR server status.";
+             resultMessage = "CHYBA: Chyba připojení: " + errorMsg + "\n\n" +
+                 "Zkontrolujte síťové připojení nebo IBKR server status.";
           }
         }
         return null;
@@ -2635,6 +3139,14 @@ public class SettingsWindow extends javax.swing.JDialog {
       return;
     }
 
+    try {
+      java.util.List<Integer> yearsSorted = new java.util.ArrayList<Integer>(years);
+      java.util.Collections.sort(yearsSorted);
+      AppLog.info("Denní kurzy: chytré stažení (roky: " + yearsSorted + ", měny: " + currenciesToFetch + ")");
+    } catch (Exception e) {
+      // ignore
+    }
+
     // 3. Fetch in background with progress bar
     final JDialog progressDialog = new JDialog(this, "Načítání denních kurzů", true);
     final JProgressBar progressBar = new JProgressBar(0, years.size());
@@ -2647,6 +3159,7 @@ public class SettingsWindow extends javax.swing.JDialog {
       public void run() {
         int loadedCount = 0;
         int failedCount = 0;
+        final java.util.List<Integer> failedYears = new java.util.ArrayList<Integer>();
         final java.util.HashMap<String, Double> allNewRates = new java.util.HashMap<String, Double>();
         java.util.HashMap<String, Double> existingRates = Settings.getDailyRates();
         if (existingRates != null)
@@ -2668,6 +3181,7 @@ public class SettingsWindow extends javax.swing.JDialog {
             loadedCount++;
           } catch (Exception e) {
             System.err.println("Chyba při načítání roku " + year + ": " + e.getMessage());
+            failedYears.add(Integer.valueOf(year));
             failedCount++;
           }
         }
@@ -2680,6 +3194,16 @@ public class SettingsWindow extends javax.swing.JDialog {
             progressDialog.dispose();
             Settings.setDailyRates(allNewRates);
             refreshDailyRatesTable();
+            try {
+              if (!failedYears.isEmpty()) {
+                java.util.Collections.sort(failedYears);
+                AppLog.warn("Denní kurzy: dokončeno (OK " + fLoaded + ", chyby " + fFailed + ") roky: " + failedYears);
+              } else {
+                AppLog.info("Denní kurzy: dokončeno (OK " + fLoaded + ", chyby " + fFailed + ")");
+              }
+            } catch (Exception e) {
+              // ignore
+            }
             JOptionPane.showMessageDialog(SettingsWindow.this,
                 "Načítání dokončeno.\nÚspěšně načteno roků: " + fLoaded + "\nChyb: " + fFailed);
           }
@@ -2753,6 +3277,20 @@ public class SettingsWindow extends javax.swing.JDialog {
     if (cbUseDailyRates != null) {
       cbUseDailyRates.setSelected(Settings.getUseDailyRates());
       refreshDailyRatesTable();
+    }
+
+    // Refresh font selectors
+    if (cbUiFontFamily != null) {
+      cbUiFontFamily.setSelectedItem(Settings.getUiFontFamily());
+    }
+    if (spUiFontSize != null) {
+      spUiFontSize.setValue(Integer.valueOf(Math.max(0, Settings.getUiFontSize())));
+    }
+    if (cbMonospaceFontFamily != null) {
+      cbMonospaceFontFamily.setSelectedItem(Settings.getMonospaceFontFamily());
+    }
+    if (spMonospaceFontSize != null) {
+      spMonospaceFontSize.setValue(Integer.valueOf(Math.max(6, Settings.getMonospaceFontSize())));
     }
 
     setVisible(true);
@@ -2843,6 +3381,11 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JLabel lHighlightPreviewUpdated;
   private javax.swing.JCheckBox cbAutoMaximized;
   private javax.swing.JCheckBox cbAutoLoadLastFile;
+  private javax.swing.JComboBox cbUiTheme;
+  private javax.swing.JComboBox cbUiFontFamily;
+  private javax.swing.JSpinner spUiFontSize;
+  private javax.swing.JComboBox cbMonospaceFontFamily;
+  private javax.swing.JSpinner spMonospaceFontSize;
   // End of variables declaration//GEN-END:variables
 
   /**

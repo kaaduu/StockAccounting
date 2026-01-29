@@ -61,6 +61,14 @@ public class Trading212ImportState {
     }
 
     /**
+     * Check if a year was fetched/imported but contained zero transactions.
+     */
+    public boolean isYearEmptyImported(int year) {
+        YearImportStatus status = yearStatuses.get(year);
+        return status != null && status.emptyImported;
+    }
+
+    /**
      * Get the last import date for a year
      */
     public LocalDateTime getLastImportDate(int year) {
@@ -82,10 +90,12 @@ public class Trading212ImportState {
                     org.json.JSONObject yearObj = years.getJSONObject(i);
                     int year = yearObj.getInt("year");
                     boolean fullyImported = yearObj.getBoolean("fullyImported");
+                    boolean emptyImported = yearObj.optBoolean("emptyImported", false);
                     int recordsImported = yearObj.optInt("recordsImported", 0);
 
                     YearImportStatus status = new YearImportStatus();
                     status.fullyImported = fullyImported;
+                    status.emptyImported = emptyImported;
                     status.recordsImported = recordsImported;
 
                     if (yearObj.has("lastImportDate")) {
@@ -114,6 +124,7 @@ public class Trading212ImportState {
                 org.json.JSONObject yearObj = new org.json.JSONObject();
                 yearObj.put("year", entry.getKey());
                 yearObj.put("fullyImported", entry.getValue().fullyImported);
+                yearObj.put("emptyImported", entry.getValue().emptyImported);
                 yearObj.put("recordsImported", entry.getValue().recordsImported);
 
                 if (entry.getValue().lastImportDate != null) {
@@ -137,8 +148,21 @@ public class Trading212ImportState {
     public void markYearFullyImported(int year, LocalDateTime importDate) {
         YearImportStatus status = getYearStatus(year);
         status.fullyImported = true;
+        status.emptyImported = false;
         status.lastImportDate = importDate;
         status.recordsImported = 0; // Reset count for fully imported years
+        saveToSettings();
+    }
+
+    /**
+     * Mark a year as fetched/imported with zero transactions.
+     */
+    public void markYearEmptyImported(int year, LocalDateTime importDate) {
+        YearImportStatus status = getYearStatus(year);
+        status.fullyImported = false;
+        status.emptyImported = true;
+        status.lastImportDate = importDate;
+        status.recordsImported = 0;
         saveToSettings();
     }
 
@@ -149,6 +173,9 @@ public class Trading212ImportState {
         YearImportStatus status = getYearStatus(year);
         status.lastImportDate = importDate;
         status.recordsImported += recordsImported;
+        if (recordsImported > 0) {
+            status.emptyImported = false;
+        }
         saveToSettings();
     }
 
@@ -341,6 +368,7 @@ public class Trading212ImportState {
      */
     public static class YearImportStatus {
         public boolean fullyImported = false;
+        public boolean emptyImported = false;
         public LocalDateTime lastImportDate = null;
         public int recordsImported = 0;
 
