@@ -47,6 +47,13 @@ public class Trading212CsvParser {
 
     private java.util.Map<String, Integer> headerIndex;
 
+    // Lightweight CSV parsing helper for UI/diagnostics.
+    // Keeps the same splitting rules as parseCsvFields().
+    public static String[] parseCsvFieldsStatic(String line) {
+        Trading212CsvParser p = new Trading212CsvParser();
+        return p.parseCsvFields(line);
+    }
+
     // Interest tickers (no symbol in T212 export for cash items)
     public static final String TICKER_INTEREST_CASH = "Kreditni.Urok";
     public static final String TICKER_INTEREST_LENDING = "CP.Urok";
@@ -128,23 +135,26 @@ public class Trading212CsvParser {
         }
 
         // Dividends
-        if (lower.equals("dividend (dividend)")) {
-            java.util.List<Transaction> div = createDividendTransactions(fields);
-            if (div != null) out.addAll(div);
-            return out;
-        }
-
-        if (lower.equals("dividend (dividend manufactured payment)")) {
+        // Trading 212 uses multiple variants like:
+        // - Dividend (Dividend)
+        // - Dividend (Ordinary)
+        // - Dividend (Dividends paid by us corporations)
+        // - Dividend (Dividends paid by foreign corporations)
+        // - Dividend (Dividend manufactured payment)
+        if (lower.startsWith("dividend (")) {
             java.util.List<Transaction> div = createDividendTransactions(fields);
             if (div != null) {
-                for (Transaction t : div) {
-                    if (t == null) continue;
-                    String note = t.getNote();
-                    String tag = "|Type:ManufacturedDividend";
-                    if (note == null || note.isEmpty()) {
-                        t.setNote(tag.substring(1));
-                    } else if (!note.contains(tag)) {
-                        t.setNote(note + tag);
+                // Mark manufactured dividends (if present in the action label)
+                if (lower.contains("manufactured")) {
+                    for (Transaction t : div) {
+                        if (t == null) continue;
+                        String note = t.getNote();
+                        String tag = "|Type:ManufacturedDividend";
+                        if (note == null || note.isEmpty()) {
+                            t.setNote(tag.substring(1));
+                        } else if (!note.contains(tag)) {
+                            t.setNote(note + tag);
+                        }
                     }
                 }
                 out.addAll(div);
