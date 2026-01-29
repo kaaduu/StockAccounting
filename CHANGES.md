@@ -29,6 +29,10 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Import: tlačítka „Sloučit do databáze“ se nyní aktivují jen pokud existují nové řádky nebo položky k aktualizaci; u IBKR Flex je sloučení oddělené od tlačítka pro načtení.
 - Import: při přepínání formátů se korektně skrývá/zobrazuje celý blok ovládání Trading 212, aby se nepřekrýval s IBKR Flex UI.
 - Stav účtu: načítání pozic z TWS už typicky neselhává na první pokus (čeká na handshake a při timeoutu automaticky jednou zopakuje).
+- Import → Trading 212: přidáno tlačítko „Detaily...“ pro zobrazení seznamu akcí (Action) v CSV, včetně počtů a seznamu podporovaných akcí.
+- Import → Trading 212: dividendy se nyní importují pro všechny akce `Dividend (...)`, ne jen pro konkrétní variantu názvu.
+- Import → Trading 212: „Detaily...“ nyní správně rozpoznají všechny varianty `Dividend (...)` jako podporované a oddělují záměrně ignorované akce (Deposit/Withdrawal/konverze) od nepodporovaných.
+- Import → IBKR Flex: „Detaily...“ nyní fungují i pro legacy CSV (zobrazí alespoň sekce a počty řádků) a pro v2 navíc ukazují přehled typů v TRADES/CTRN/CORP (importováno/disabled/ignorováno) včetně FXTR dividend fallback.
 
 ## [Kurzy měn: automatická detekce roků a měn] - 2026-01-26
 
@@ -1086,3 +1090,7 @@ Poznámka: Pro Interactive Brokers se používá společná složka `~/.stockacc
     - Přidán přepínač "Používat denní kurzy" přímo do `ComputeWindow` pro rychlé přepínání mezi metodami výpočtu.
     - Refaktorována výpočetní smyčka pro vyřešení kritické chyby, kde se výsledky nezobrazovaly kvůli strukturálním nekonzistencím.
     - Opraveno zarovnání sloupců pro souhrnné řádky (Příjem, Výdej, Zisk) tak, aby odráželo novou strukturu tabulky.
+## 2026-01-29
+
+- Oprava importu IBKR Flex (CTRN): sloupec `TransactionID` se spravne mapuje do `TxnID` i pri opakovanych sekcich s ruznym poctem sloupcu.
+- Import IBKR Flex: pri reimportu se uz neposouvaji (TimeShift) zaznamy, ktere uz existuji v databazi, aby nevznikaly duplicitni kopie.

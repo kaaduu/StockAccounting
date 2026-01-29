@@ -129,6 +129,7 @@ public class ImportWindow extends javax.swing.JFrame {
   private IBKRFlexParser lastIBKRParser = null;        // Store parser reference for statistics
   private javax.swing.JLabel lblIbkrFlexCsvInfo = null;
   private javax.swing.JButton bIbkrFlexCsvDetails = null;
+  private javax.swing.JButton bT212CsvDetails = null;
   private javax.swing.JLabel lblIbkrFlexCsvSpacer = null;
 
   // Deduplicate IBKR Flex structural warnings per loaded CSV content
@@ -921,13 +922,27 @@ public class ImportWindow extends javax.swing.JFrame {
       if (bIbkrFlexCsvDetails != null) {
         bIbkrFlexCsvDetails.setEnabled(false);
       }
+      if (bIbkrFlexCsvDetails != null) {
+        bIbkrFlexCsvDetails.setVisible(false);
+      }
+      // Trading 212 details button shares the same grid cell.
+      if (bT212CsvDetails != null) {
+        bT212CsvDetails.setVisible(isTrading212Format());
+      }
       return;
+    }
+
+    if (bT212CsvDetails != null) {
+      bT212CsvDetails.setVisible(false);
     }
     if (lastIBKRParser == null) {
       lblIbkrFlexCsvInfo.setText("");
       lblIbkrFlexCsvInfo.setToolTipText(null);
       if (bIbkrFlexCsvDetails != null) {
         bIbkrFlexCsvDetails.setEnabled(false);
+      }
+      if (bIbkrFlexCsvDetails != null) {
+        bIbkrFlexCsvDetails.setVisible(true);
       }
       return;
     }
@@ -939,21 +954,40 @@ public class ImportWindow extends javax.swing.JFrame {
       lblIbkrFlexCsvInfo.setToolTipText(null);
       if (bIbkrFlexCsvDetails != null) {
         bIbkrFlexCsvDetails.setEnabled(true);
+        bIbkrFlexCsvDetails.setVisible(true);
       }
     } else if (v == IBKRFlexParser.FlexCsvVersion.V1_LEGACY) {
-      sb.append("");
+      sb.append("Flex csv file - legacy");
       lblIbkrFlexCsvInfo.setToolTipText(null);
       if (bIbkrFlexCsvDetails != null) {
-        bIbkrFlexCsvDetails.setEnabled(false);
+        bIbkrFlexCsvDetails.setEnabled(lastIbkrCsvContent != null && !lastIbkrCsvContent.trim().isEmpty());
+        bIbkrFlexCsvDetails.setVisible(true);
       }
     } else {
       sb.append("");
       lblIbkrFlexCsvInfo.setToolTipText(null);
       if (bIbkrFlexCsvDetails != null) {
         bIbkrFlexCsvDetails.setEnabled(false);
+        bIbkrFlexCsvDetails.setVisible(true);
       }
     }
     lblIbkrFlexCsvInfo.setText(sb.toString());
+  }
+
+  private void updateTrading212CsvDetailsButtonState() {
+    if (bT212CsvDetails == null) return;
+    if (!isTrading212Format()) {
+      bT212CsvDetails.setEnabled(false);
+      bT212CsvDetails.setVisible(false);
+      return;
+    }
+    bT212CsvDetails.setVisible(true);
+    bT212CsvDetails.setEnabled(lastTrading212CsvContent != null && !lastTrading212CsvContent.trim().isEmpty());
+
+    // Ensure IBKR details button doesn't overlap in the same grid cell.
+    if (bIbkrFlexCsvDetails != null) {
+      bIbkrFlexCsvDetails.setVisible(false);
+    }
   }
 
   private void refreshIbkrPreviewFromCachedCsv() {
@@ -1313,6 +1347,20 @@ public class ImportWindow extends javax.swing.JFrame {
   private void normalizeIbkrMinuteCollisions(TransactionSet db, Vector<Transaction> candidates) {
     if (candidates == null || candidates.isEmpty()) return;
 
+    // If a candidate already matches an existing DB row, do not time-shift it.
+    // Otherwise, a re-import can create a new shifted copy (TxnID may be missing for some cash rows).
+    java.util.Set<Transaction> alreadyExisting = new java.util.HashSet<>();
+    if (db != null) {
+      for (Transaction t : candidates) {
+        if (t == null) continue;
+        if (!"IB".equalsIgnoreCase(t.getBroker())) continue;
+        Transaction existing = db.findDuplicateTransaction(t);
+        if (existing != null) {
+          alreadyExisting.add(t);
+        }
+      }
+    }
+
     // Occupied minutes from DB.
     java.util.Set<Long> occupied = new java.util.HashSet<>();
     if (db != null) {
@@ -1330,8 +1378,8 @@ public class ImportWindow extends javax.swing.JFrame {
     for (Transaction t : candidates) {
       if (t == null) continue;
       if (!"IB".equalsIgnoreCase(t.getBroker())) continue;
-      byMinute.computeIfAbsent(minuteKey(t.getDate()), k -> new java.util.ArrayList<>()).add(t);
-    }
+       byMinute.computeIfAbsent(minuteKey(t.getDate()), k -> new java.util.ArrayList<>()).add(t);
+     }
 
     // Stable ordering so shifts are deterministic.
     java.util.Comparator<Transaction> stableOrder = java.util.Comparator
@@ -1349,8 +1397,8 @@ public class ImportWindow extends javax.swing.JFrame {
       if (group == null || group.isEmpty()) continue;
 
       group.sort(stableOrder);
-      boolean hasTrans = group.stream().anyMatch(ImportWindow::isTransformation);
-      if (hasTrans) {
+       boolean hasTrans = group.stream().anyMatch(ImportWindow::isTransformation);
+       if (hasTrans) {
         reservedTransMinutes.add(e.getKey());
       }
     }
@@ -1393,26 +1441,34 @@ public class ImportWindow extends javax.swing.JFrame {
         }
         occupied.add(targetMinute);
 
-        // Shift everything else away from this minute.
-        for (Transaction t : group) {
-          if (t == null) continue;
-          if (isTransformation(t)) continue;
-          // Trades/other rows must be after the transformation minute.
-          shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, targetMinute);
-        }
-      } else {
-        // No transformations: ensure no collisions with already occupied minutes.
-        for (Transaction t : group) {
-          if (t == null) continue;
-          long mk = minuteKey(t.getDate());
-          if (!occupied.contains(mk) && !reservedTransMinutes.contains(mk)) {
-            occupied.add(mk);
-            continue;
-          }
-          shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, mk);
-        }
-      }
-    }
+         // Shift everything else away from this minute.
+         for (Transaction t : group) {
+           if (t == null) continue;
+           if (isTransformation(t)) continue;
+           if (alreadyExisting.contains(t)) {
+             // Keep exact timestamp so TransactionSet can match/update.
+             continue;
+           }
+           // Trades/other rows must be after the transformation minute.
+           shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, targetMinute);
+         }
+       } else {
+         // No transformations: ensure no collisions with already occupied minutes.
+         for (Transaction t : group) {
+           if (t == null) continue;
+           if (alreadyExisting.contains(t)) {
+             // Keep exact timestamp so TransactionSet can match/update.
+             continue;
+           }
+           long mk = minuteKey(t.getDate());
+           if (!occupied.contains(mk) && !reservedTransMinutes.contains(mk)) {
+             occupied.add(mk);
+             continue;
+           }
+           shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, mk);
+         }
+       }
+     }
   }
 
   private void populateTrading212Preview(java.util.Vector<Transaction> parsedTransactions, String sourceLabel, Integer yearForCache)
@@ -1487,6 +1543,7 @@ public class ImportWindow extends javax.swing.JFrame {
     }
     updateImportButtonState();
     updateClearButtonState();
+    updateTrading212CsvDetailsButtonState();
   }
 
   private static boolean isTransformation(Transaction t) {
@@ -2475,6 +2532,9 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       }
     }
+
+    // Trading 212: keep "Detaily..." enabled after local file load.
+    updateTrading212CsvDetailsButtonState();
   }
 
   private void updateUpdatePreviewSection() {
@@ -2766,6 +2826,27 @@ public class ImportWindow extends javax.swing.JFrame {
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 5);
     getContentPane().add(bIbkrFlexCsvDetails, gridBagConstraints);
+
+    bT212CsvDetails = new javax.swing.JButton();
+    bT212CsvDetails.setText("Detaily...");
+    bT212CsvDetails.setToolTipText("Zobrazit detaily akcí (Action) v načteném Trading 212 CSV");
+    bT212CsvDetails.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        showTrading212CsvDetailsDialog();
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 5;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
+    gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 5);
+    getContentPane().add(bT212CsvDetails, gridBagConstraints);
+
+    // Same grid cell as IBKR details; visibility is controlled by format.
+    if (bT212CsvDetails != null) {
+      bT212CsvDetails.setVisible(false);
+      bT212CsvDetails.setEnabled(false);
+    }
 
     bSelectFile.setText("Vybrat soubor...");
     bSelectFile.setToolTipText("Vybrat lokální soubor pro import (dle zvoleného formátu)");
@@ -4412,6 +4493,7 @@ public class ImportWindow extends javax.swing.JFrame {
     updateImportButtonState();
     updateClearButtonState();
     updateTrading212ButtonsState();
+    updateTrading212CsvDetailsButtonState();
   }
 
   /**
@@ -4432,6 +4514,7 @@ public class ImportWindow extends javax.swing.JFrame {
     updateImportButtonState();
     updateClearButtonState();
     updateTrading212ButtonsState();
+    updateTrading212CsvDetailsButtonState();
     System.out.println("[CLEAR:002] Preview cleared successfully");
   }
 
@@ -4443,6 +4526,7 @@ public class ImportWindow extends javax.swing.JFrame {
       lblIBKRFlexStatus.setText("Vyberte zdroj dat: API nebo lokální soubor");
     }
     updateIbkrFlexCsvInfoLabel();
+    updateTrading212CsvDetailsButtonState();
 
     // Keep IBKR Flex controls visible while working with a file.
     if (isIBKRFlexFormat()) {
@@ -4548,17 +4632,19 @@ public class ImportWindow extends javax.swing.JFrame {
       setIbkrFlexUiVisible(true);
     }
 
-    // Update the IBKR Flex CSV info label (shown next to Format dropdown).
-    updateIbkrFlexCsvInfoLabel();
+      // Update the IBKR Flex CSV info label (shown next to Format dropdown).
+      updateIbkrFlexCsvInfoLabel();
+      updateTrading212CsvDetailsButtonState();
+    updateTrading212CsvDetailsButtonState();
   }
 
   private void showIbkrFlexCsvDetailsDialog() {
     if (!isIBKRFlexFormat()) {
       return;
     }
-    if (lastIBKRParser == null || lastIBKRParser.getFlexCsvVersion() != IBKRFlexParser.FlexCsvVersion.V2_HEADERS_AND_TRAILERS) {
+    if (lastIBKRParser == null) {
       javax.swing.JOptionPane.showMessageDialog(this,
-          "Detaily jsou dostupné pouze pro IBKR Flex CSV (verze s hlavičkami a trailery).",
+          "Nejprve načtěte data (API nebo soubor).",
           "IBKR Flex - detaily CSV", javax.swing.JOptionPane.INFORMATION_MESSAGE);
       return;
     }
@@ -4568,11 +4654,40 @@ public class ImportWindow extends javax.swing.JFrame {
     textArea.setFont(UiFonts.monospaceFont());
 
     StringBuilder sb = new StringBuilder();
-    sb.append("IBKR Flex CSV - detaily sekcí (v2)\n");
+    boolean isV2 = lastIBKRParser.getFlexCsvVersion() == IBKRFlexParser.FlexCsvVersion.V2_HEADERS_AND_TRAILERS;
+    sb.append("IBKR Flex CSV - detaily ").append(isV2 ? "(v2)" : "(legacy)").append("\n");
     if (lastIbkrSourceLabel != null && !lastIbkrSourceLabel.trim().isEmpty()) {
       sb.append("Soubor: ").append(lastIbkrSourceLabel.trim()).append("\n");
     }
     sb.append("\n");
+
+    if (!isV2) {
+      // Legacy v1: show sections only.
+      java.util.Map<String, Integer> secCounts = summarizeIbkrFlexLegacySections(lastIbkrCsvContent);
+      sb.append("Sekce v souboru (legacy)\n");
+      if (secCounts.isEmpty()) {
+        sb.append("- (žádné)\n");
+      } else {
+        java.util.List<String> keys = new java.util.ArrayList<>(secCounts.keySet());
+        keys.sort(String::compareToIgnoreCase);
+        for (String k : keys) {
+          Integer c = secCounts.get(k);
+          sb.append("- ").append(k);
+          if (c != null) sb.append(" [rows=").append(c).append("]");
+          sb.append("\n");
+        }
+      }
+
+      textArea.setText(sb.toString());
+      textArea.setCaretPosition(0);
+
+      javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(textArea);
+      javax.swing.JOptionPane pane = new javax.swing.JOptionPane(scrollPane, javax.swing.JOptionPane.PLAIN_MESSAGE);
+      javax.swing.JDialog dialog = pane.createDialog(this, "IBKR Flex - detaily CSV");
+      dialog.setResizable(true);
+      dialog.setVisible(true);
+      return;
+    }
 
     // ACCT (account/owner details), if present
     java.util.Map<String, java.util.Map<String, String>> acct = lastIBKRParser.getAccountInfoByAccountId();
@@ -4602,6 +4717,70 @@ public class ImportWindow extends javax.swing.JFrame {
       sb.append("Obchody (IBOrderID)\n");
       sb.append("- skupin: ").append(grp).append("\n");
       sb.append("- konsolidováno: ").append(cg).append(" skupin (fillů: ").append(fills).append(")\n");
+      sb.append("\n");
+    }
+
+    // Content stats (v2)
+    java.util.Map<String, Integer> tradeTypes = lastIBKRParser.getTradeTransactionTypeCounts();
+    if (tradeTypes != null && !tradeTypes.isEmpty()) {
+      sb.append("TRADES - TransactionType v souboru\n");
+      java.util.List<String> keys = new java.util.ArrayList<>(tradeTypes.keySet());
+      keys.sort(String::compareToIgnoreCase);
+      for (String k : keys) {
+        Integer c = tradeTypes.get(k);
+        sb.append("- ").append(k);
+        if (c != null) sb.append(" [rows=").append(c).append("]");
+        sb.append("\n");
+      }
+      sb.append("\n");
+    }
+
+    if (lastIBKRParser.getIgnoredOptionsSummaryRows() > 0) {
+      sb.append("OPTIONS_SUMMARY\n");
+      sb.append("- ignorované řádky: ").append(lastIBKRParser.getIgnoredOptionsSummaryRows()).append("\n");
+      sb.append("\n");
+    }
+
+    java.util.Map<String, Integer> cashSeen = lastIBKRParser.getCashTypeSeenCounts();
+    if (cashSeen != null && !cashSeen.isEmpty()) {
+      sb.append("CTRN - Type v souboru\n");
+      java.util.List<String> keys = new java.util.ArrayList<>(cashSeen.keySet());
+      keys.sort(String::compareToIgnoreCase);
+      for (String k : keys) {
+        int seen = cashSeen.getOrDefault(k, 0);
+        int imp = lastIBKRParser.getCashTypeImportedCounts().getOrDefault(k, 0);
+        int dis = lastIBKRParser.getCashTypeDisabledCounts().getOrDefault(k, 0);
+        int ign = lastIBKRParser.getCashTypeIgnoredCounts().getOrDefault(k, 0);
+        sb.append("- ").append(k)
+            .append(" [rows=").append(seen)
+            .append(", imported=").append(imp)
+            .append(", disabled=").append(dis)
+            .append(", ignored=").append(ign)
+            .append("]\n");
+      }
+      sb.append("\n");
+    }
+
+    java.util.Map<String, Integer> caTypes = lastIBKRParser.getCorporateActionTypeCounts();
+    if (caTypes != null && !caTypes.isEmpty()) {
+      sb.append("CORP - Type v souboru\n");
+      java.util.List<String> keys = new java.util.ArrayList<>(caTypes.keySet());
+      keys.sort(String::compareToIgnoreCase);
+      for (String k : keys) {
+        Integer c = caTypes.get(k);
+        sb.append("- ").append(k);
+        if (c != null) sb.append(" [rows=").append(c).append("]");
+        sb.append("\n");
+      }
+      sb.append("\n");
+    }
+
+    int fxtrCand = lastIBKRParser.getFxtrDividendCandidateCount();
+    int fxtrAdded = lastIBKRParser.getFxtrDividendFallbackCount();
+    if (fxtrCand > 0 || fxtrAdded > 0) {
+      sb.append("FXTR\n");
+      if (fxtrCand > 0) sb.append("- kandidáti na dividendu: ").append(fxtrCand).append("\n");
+      if (fxtrAdded > 0) sb.append("- importováno jako dividendy (fallback): ").append(fxtrAdded).append("\n");
       sb.append("\n");
     }
 
@@ -4662,6 +4841,278 @@ public class ImportWindow extends javax.swing.JFrame {
     javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(textArea);
     javax.swing.JOptionPane pane = new javax.swing.JOptionPane(scrollPane, javax.swing.JOptionPane.PLAIN_MESSAGE);
     javax.swing.JDialog dialog = pane.createDialog(this, "IBKR Flex - detaily CSV");
+    dialog.setResizable(true);
+    dialog.setVisible(true);
+  }
+
+  private static java.util.Map<String, Integer> summarizeIbkrFlexLegacySections(String csvContent) {
+    java.util.Map<String, Integer> out = new java.util.LinkedHashMap<>();
+    if (csvContent == null || csvContent.trim().isEmpty()) {
+      return out;
+    }
+
+    String current = "";
+    boolean headerForCurrent = false;
+    try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.StringReader(csvContent))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        if (line == null) continue;
+        String t = line.trim();
+        if (t.isEmpty()) continue;
+
+        // v2 control lines - ignore in legacy summary
+        String[] fields = IBKRFlexParser.splitCsvLineStatic(t);
+        if (fields != null && fields.length > 0) {
+          String ctl = IBKRFlexParser.controlTypeStatic(fields);
+          if (ctl != null && (ctl.equals("BOF") || ctl.equals("BOA") || ctl.equals("BOS") || ctl.equals("EOS") || ctl.equals("EOA") || ctl.equals("EOF"))) {
+            continue;
+          }
+        }
+
+        // Header (legacy sections repeat headers)
+        if (t.startsWith("\"ClientAccountID\"") || t.startsWith("ClientAccountID,")) {
+          // Heuristic: use parser's section detector.
+          // Note: detectSectionType is private; we infer based on header tokens.
+          String lower = t.toLowerCase();
+          if (lower.contains("transactiontype") && lower.contains("tradeprice") && lower.contains("iborderid") && lower.contains("exchange")) {
+            current = "TRADES";
+          } else if (lower.contains("actiondescription") && lower.contains("actionid")) {
+            current = "CORPORATE_ACTIONS";
+          } else if ((lower.contains("date/time") || lower.contains("date / time")) && (lower.contains("settledate") || lower.contains("settle date"))
+              && lower.contains("availablefortradingdate") && (lower.contains(",amount,") || lower.contains("\"amount\"") || lower.contains("amount,"))) {
+            current = "CASH_TRANSACTIONS";
+          } else if ((lower.contains("fxcurrency") || lower.contains("fx currency"))
+              && (lower.contains("activitydescription") || lower.contains("activity description"))
+              && (lower.contains("reportdate") || lower.contains("report date"))
+              && (lower.contains("functionalcurrency") || lower.contains("functional currency"))
+              && (lower.contains("realizedp/l") || lower.contains("realized p/l") || lower.contains("realizedpl"))) {
+            current = "FXTR";
+          } else if (lower.contains("transaction type") && lower.contains("trade price") && !lower.contains("iborderid")) {
+            current = "OPTIONS_SUMMARY";
+          } else {
+            current = "UNKNOWN";
+          }
+          headerForCurrent = true;
+          out.putIfAbsent(current, 0);
+          continue;
+        }
+
+        // Count rows under the last detected section header.
+        if (!current.isEmpty() && headerForCurrent) {
+          out.put(current, out.getOrDefault(current, 0) + 1);
+        }
+      }
+    } catch (Exception ignored) {
+      // Best effort.
+    }
+
+    return out;
+  }
+
+  private static final class T212ActionSummary {
+    final java.util.Map<String, Integer> counts;
+    final java.util.List<String> uniqueSorted;
+
+    T212ActionSummary(java.util.Map<String, Integer> counts, java.util.List<String> uniqueSorted) {
+      this.counts = counts;
+      this.uniqueSorted = uniqueSorted;
+    }
+  }
+
+  private static T212ActionSummary summarizeTrading212Actions(String csvContent) {
+    java.util.Map<String, Integer> out = new java.util.LinkedHashMap<>();
+    if (csvContent == null || csvContent.trim().isEmpty()) {
+      return new T212ActionSummary(java.util.Collections.unmodifiableMap(out), java.util.Collections.emptyList());
+    }
+
+    int actionIdx = -1;
+    boolean headerSeen = false;
+    try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.StringReader(csvContent))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        if (line == null) continue;
+        if (line.trim().isEmpty()) continue;
+
+        // Header
+        if (!headerSeen) {
+          headerSeen = true;
+          String[] header = Trading212CsvParser.parseCsvFieldsStatic(line);
+          for (int i = 0; i < header.length; i++) {
+            String h = header[i] != null ? header[i].trim() : "";
+            if (h.equalsIgnoreCase("Action")) {
+              actionIdx = i;
+              break;
+            }
+          }
+          continue;
+        }
+
+        if (actionIdx < 0) continue;
+        String[] fields = Trading212CsvParser.parseCsvFieldsStatic(line);
+        if (fields == null || actionIdx >= fields.length) continue;
+        String a = fields[actionIdx] != null ? fields[actionIdx].trim() : "";
+        if (a.isEmpty()) continue;
+        out.put(a, out.getOrDefault(a, 0) + 1);
+      }
+    } catch (Exception e) {
+      // Best effort; return what we have.
+    }
+
+    java.util.List<String> keys = new java.util.ArrayList<>(out.keySet());
+    keys.sort(String::compareToIgnoreCase);
+    return new T212ActionSummary(java.util.Collections.unmodifiableMap(out), java.util.Collections.unmodifiableList(keys));
+  }
+
+  private static java.util.LinkedHashSet<String> t212SupportedActions() {
+    // Keep in sync with Trading212CsvParser.parseCsvLine()
+    java.util.LinkedHashSet<String> s = new java.util.LinkedHashSet<>();
+    s.add("Market buy");
+    s.add("Limit buy");
+    s.add("Market sell");
+    s.add("Limit sell");
+    s.add("Dividend (...)");
+    s.add("Stock split close");
+    s.add("Stock split open");
+    s.add("Interest on cash");
+    s.add("Lending interest");
+    return s;
+  }
+
+  private static boolean isTrading212ActionSupported(String action) {
+    if (action == null) return false;
+    String lower = action.trim().toLowerCase();
+    if (lower.isEmpty()) return false;
+
+    // Trades
+    if (lower.equals("market buy") || lower.equals("limit buy")) return true;
+    if (lower.equals("market sell") || lower.equals("limit sell")) return true;
+
+    // Dividends (many variants)
+    if (lower.startsWith("dividend (")) return true;
+
+    // Corporate actions
+    if (lower.equals("stock split close") || lower.equals("stock split open")) return true;
+
+    // Interests
+    if (lower.equals("interest on cash") || lower.equals("lending interest")) return true;
+
+    return false;
+  }
+
+  private static boolean isTrading212ActionIgnored(String action) {
+    if (action == null) return false;
+    String lower = action.trim().toLowerCase();
+    if (lower.isEmpty()) return false;
+
+    // Keep in sync with Trading212CsvParser.parseCsvLine() ignore list.
+    return lower.equals("deposit")
+        || lower.equals("withdrawal")
+        || lower.equals("currency conversion")
+        || lower.equals("card debit")
+        || lower.equals("spending cashback");
+  }
+
+  private void showTrading212CsvDetailsDialog() {
+    if (!isTrading212Format()) return;
+    if (lastTrading212CsvContent == null || lastTrading212CsvContent.trim().isEmpty()) {
+      javax.swing.JOptionPane.showMessageDialog(this,
+          "Nejprve načtěte data (Načíst z API / Načíst ze souboru).",
+          "Trading 212 - detaily CSV", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      return;
+    }
+
+    T212ActionSummary summary = summarizeTrading212Actions(lastTrading212CsvContent);
+    java.util.LinkedHashSet<String> supported = t212SupportedActions();
+
+    java.util.List<String> supportedPresent = new java.util.ArrayList<>();
+    java.util.List<String> ignoredPresent = new java.util.ArrayList<>();
+    java.util.List<String> unsupportedPresent = new java.util.ArrayList<>();
+    for (String a : summary.uniqueSorted) {
+      if (a == null) continue;
+      if (isTrading212ActionSupported(a)) {
+        supportedPresent.add(a);
+      } else if (isTrading212ActionIgnored(a)) {
+        ignoredPresent.add(a);
+      } else {
+        unsupportedPresent.add(a);
+      }
+    }
+
+    javax.swing.JTextArea textArea = new javax.swing.JTextArea(20, 120);
+    textArea.setEditable(false);
+    textArea.setFont(UiFonts.monospaceFont());
+
+    StringBuilder sb = new StringBuilder();
+    sb.append("Trading 212 CSV - detaily akcí (Action)\n");
+    if (lastTrading212SourceLabel != null && !lastTrading212SourceLabel.trim().isEmpty()) {
+      sb.append("Zdroj: ").append(lastTrading212SourceLabel.trim()).append("\n");
+    }
+    sb.append("\n");
+
+    sb.append("Actions v souboru\n");
+    if (summary.uniqueSorted.isEmpty()) {
+      sb.append("- (žádné)\n");
+    } else {
+      for (String a : summary.uniqueSorted) {
+        Integer c = summary.counts.get(a);
+        sb.append("- ").append(a);
+        if (c != null) sb.append(" [rows=").append(c).append("]");
+        sb.append("\n");
+      }
+    }
+    sb.append("\n");
+
+    sb.append("Supported Actions\n");
+    for (String a : supported) {
+      sb.append("- ").append(a).append("\n");
+    }
+    sb.append("\n");
+
+    sb.append("Supported Actions v souboru\n");
+    if (supportedPresent.isEmpty()) {
+      sb.append("- (žádné)\n");
+    } else {
+      for (String a : supportedPresent) {
+        Integer c = summary.counts.get(a);
+        sb.append("- ").append(a);
+        if (c != null) sb.append(" [rows=").append(c).append("]");
+        sb.append("\n");
+      }
+    }
+    sb.append("\n");
+
+    sb.append("Ignored Actions v souboru\n");
+    sb.append("(Deposit/Withdrawal/FX konverze apod. jsou záměrně ignorované)\n");
+    if (ignoredPresent.isEmpty()) {
+      sb.append("- (žádné)\n");
+    } else {
+      for (String a : ignoredPresent) {
+        Integer c = summary.counts.get(a);
+        sb.append("- ").append(a);
+        if (c != null) sb.append(" [rows=").append(c).append("]");
+        sb.append("\n");
+      }
+    }
+    sb.append("\n");
+
+    sb.append("Unsupported Actions v souboru\n");
+    if (unsupportedPresent.isEmpty()) {
+      sb.append("- (žádné)\n");
+    } else {
+      for (String a : unsupportedPresent) {
+        Integer c = summary.counts.get(a);
+        sb.append("- ").append(a);
+        if (c != null) sb.append(" [rows=").append(c).append("]");
+        sb.append("\n");
+      }
+    }
+
+    textArea.setText(sb.toString());
+    textArea.setCaretPosition(0);
+
+    javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(textArea);
+    javax.swing.JOptionPane pane = new javax.swing.JOptionPane(scrollPane, javax.swing.JOptionPane.PLAIN_MESSAGE);
+    javax.swing.JDialog dialog = pane.createDialog(this, "Trading 212 - detaily CSV");
     dialog.setResizable(true);
     dialog.setVisible(true);
   }
