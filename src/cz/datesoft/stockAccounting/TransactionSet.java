@@ -42,14 +42,14 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   public final int IMPORT_FORMAT_T212CZK = 6;
   public final int IMPORT_FORMAT_REVOLUT_CSV = 7;
 
-   /** Our set */
-   protected Vector<Transaction> rows;
+  /** Our set */
+  protected Vector<Transaction> rows;
 
-   /**
-    * Filtered set. When not null, we are showing this filtered set
-    * instead of the complete one. But we still hold / save / enumerate / ...
-    * the complete, filtering affects only table model.
-    */
+  /**
+   * Filtered set. When not null, we are showing this filtered set
+   * instead of the complete one. But we still hold / save / enumerate / ...
+   * the complete, filtering affects only table model.
+   */
   protected Vector<Transaction> filteredRows;
 
   private static final class DeletedRow {
@@ -71,10 +71,16 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   /** Set of serials for recently updated transactions (for highlighting) */
   protected java.util.Set<Integer> updatedTransactionSerials = new java.util.HashSet<>();
 
-  /** Per-transaction set of model columns that changed during updateDuplicateTransaction() */
+  /**
+   * Per-transaction set of model columns that changed during
+   * updateDuplicateTransaction()
+   */
   protected java.util.Map<Integer, java.util.Set<Integer>> updatedColumnsBySerial = new java.util.HashMap<>();
 
-  /** Set of serials for recently inserted (imported) transactions (for highlighting) */
+  /**
+   * Set of serials for recently inserted (imported) transactions (for
+   * highlighting)
+   */
   protected java.util.Set<Integer> insertedTransactionSerials = new java.util.HashSet<>();
 
   /** Logger */
@@ -86,20 +92,20 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   /** Stocks instance for transformation analysis (lazy initialized) */
   private Stocks stocksInstance;
 
-   /** Serial counter */
-   protected int serialCounter;
+  /** Serial counter */
+  protected int serialCounter;
 
   // Serial repair info (set during load/loadAdd)
   private transient boolean serialsRepaired = false;
   private transient int serialDuplicatesFound = 0;
 
-   /**
-    * Last date we set
-    */
-   protected Date lastDateSet;
+  /**
+   * Last date we set
+   */
+  protected Date lastDateSet;
 
-   /** Trading 212 API import constant */
-   public final int IMPORT_FORMAT_TRADING212_API = 8;
+  /** Trading 212 API import constant */
+  public final int IMPORT_FORMAT_TRADING212_API = 8;
 
   /** Column names */
   private String[] columnNames = { "Datum", "Typ", "Směr", "Ticker", "Množství", "Kurs", "Měna kursu", "Poplatky",
@@ -115,10 +121,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    */
   boolean modified;
 
-   /**
-    * Combo box model we manage
-    */
-   SortedSetComboBoxModel cbmodel;
+  /**
+   * Combo box model we manage
+   */
+  SortedSetComboBoxModel cbmodel;
 
   /** Batch update mode for de-duplicating repeated updates. */
   private boolean batchUpdateInProgress = false;
@@ -162,12 +168,14 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     int max = 0;
 
     for (Transaction t : rows) {
-      if (t == null) continue;
+      if (t == null)
+        continue;
       int s = t.getSerial();
       if (s <= 0) {
         hasZero = true;
       }
-      if (s > max) max = s;
+      if (s > max)
+        max = s;
       if (!seen.add(s)) {
         dups++;
       }
@@ -180,12 +188,14 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       return;
     }
 
-    System.out.println("INFO: Serial repair triggered: duplicates=" + dups + ", hasZero=" + hasZero + ", counterMismatch=" + counterMismatch + ", rows=" + (rows != null ? rows.size() : 0));
+    System.out.println("INFO: Serial repair triggered: duplicates=" + dups + ", hasZero=" + hasZero
+        + ", counterMismatch=" + counterMismatch + ", rows=" + (rows != null ? rows.size() : 0));
 
     // Renumber all rows deterministically in current order.
     int next = 1;
     for (Transaction t : rows) {
-      if (t == null) continue;
+      if (t == null)
+        continue;
       t.setSerial(next++);
     }
     serialCounter = next;
@@ -194,8 +204,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     clearHighlights();
     batchUpdateInProgress = false;
     batchUpdatedTransactionSerials = null;
-    if (lastImportInserted != null) lastImportInserted.clear();
-    if (lastImportUpdated != null) lastImportUpdated.clear();
+    if (lastImportInserted != null)
+      lastImportInserted.clear();
+    if (lastImportUpdated != null)
+      lastImportUpdated.clear();
     importUndoCaptureActive = false;
 
     this.serialsRepaired = true;
@@ -306,7 +318,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   public void markInserted(Transaction tx) {
-    if (tx == null) return;
+    if (tx == null)
+      return;
     insertedTransactionSerials.add(tx.getSerial());
   }
 
@@ -315,12 +328,14 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       return false;
     }
     Transaction tx = getRowAt(row);
-    if (tx == null) return false;
+    if (tx == null)
+      return false;
     return insertedTransactionSerials.contains(tx.getSerial());
   }
 
   /**
-   * Returns the index of the first updated row, scanning in the current view order.
+   * Returns the index of the first updated row, scanning in the current view
+   * order.
    * If filter is active, scans only visible rows.
    */
   public int findFirstUpdatedVisibleRowIndex() {
@@ -344,7 +359,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   /**
-   * Returns the index of the first inserted row, scanning in the current view order.
+   * Returns the index of the first inserted row, scanning in the current view
+   * order.
    * If filter is active, scans only visible rows.
    */
   public int findFirstInsertedVisibleRowIndex() {
@@ -547,7 +563,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
           disable = (Boolean) value;
         } else {
           String s2 = value == null ? "" : value.toString().trim();
-          disable = s2.equalsIgnoreCase("ano") || s2.equals("1") || s2.equalsIgnoreCase("true") || s2.equalsIgnoreCase("y");
+          disable = s2.equalsIgnoreCase("ano") || s2.equals("1") || s2.equalsIgnoreCase("true")
+              || s2.equalsIgnoreCase("y");
         }
         tx.setDisabled(disable);
         fireTableCellUpdated(row, col);
@@ -639,7 +656,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
   public void toggleDisabledAt(int row) {
     Transaction tx = getRowAt(row);
-    if (tx == null) return;
+    if (tx == null)
+      return;
     tx.setDisabled(!tx.isDisabled());
     modified = true;
     fireTableRowsUpdated(row, row);
@@ -906,10 +924,12 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     for (int viewRow : viewRowIndices) {
       try {
         if (filteredRows != null) {
-          if (viewRow < 0 || viewRow >= filteredRows.size()) continue;
+          if (viewRow < 0 || viewRow >= filteredRows.size())
+            continue;
           selected.add(filteredRows.get(viewRow));
         } else {
-          if (viewRow < 0 || viewRow >= rows.size()) continue;
+          if (viewRow < 0 || viewRow >= rows.size())
+            continue;
           selected.add(rows.get(viewRow));
         }
       } catch (Exception e) {
@@ -964,10 +984,13 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     lastDeletedRows.sort((a, b) -> Integer.compare(a.originalIndex, b.originalIndex));
     int restored = 0;
     for (DeletedRow d : lastDeletedRows) {
-      if (d == null || d.tx == null) continue;
+      if (d == null || d.tx == null)
+        continue;
       int idx = d.originalIndex;
-      if (idx < 0) idx = 0;
-      if (idx > rows.size()) idx = rows.size();
+      if (idx < 0)
+        idx = 0;
+      if (idx > rows.size())
+        idx = rows.size();
       rows.add(idx, d.tx);
       restored++;
     }
@@ -991,7 +1014,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   public SortedSetComboBoxModel getBrokersModel() {
     SortedSetComboBoxModel model = new SortedSetComboBoxModel();
     model.addElement(""); // Empty option for "no filter"
-    
+
     for (Transaction tx : rows) {
       String broker = tx.getBroker();
       if (broker != null && !broker.isEmpty()) {
@@ -1007,7 +1030,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   public SortedSetComboBoxModel getAccountIdsModel() {
     SortedSetComboBoxModel model = new SortedSetComboBoxModel();
     model.addElement(""); // Empty option for "no filter"
-    
+
     for (Transaction tx : rows) {
       String accountId = tx.getAccountId();
       if (accountId != null && !accountId.isEmpty()) {
@@ -1035,7 +1058,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
   /**
    * Gets all tickers related to the given ticker through transformations.
-   * This is a convenience method for external access to transformation relationships.
+   * This is a convenience method for external access to transformation
+   * relationships.
    */
   public Set<String> getRelatedTickers(String ticker) {
     Stocks stocks = getStocksInstance();
@@ -1082,7 +1106,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     // Group transactions by date and time to find TRANS operation patterns
     Map<String, List<Transaction>> transactionsByTime = new HashMap<>();
 
-    // Group transactions by minute bucket (ignore seconds) to find related operations
+    // Group transactions by minute bucket (ignore seconds) to find related
+    // operations
     int transOperationCount = 0;
     for (Transaction tx : rows) {
       if (tx.getDirection() == Transaction.DIRECTION_TRANS_ADD ||
@@ -1100,31 +1125,31 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         if (logger.isLoggable(java.util.logging.Level.FINER) &&
             (tx.getTicker().equalsIgnoreCase("SSL") || tx.getTicker().equalsIgnoreCase("RGLD"))) {
           System.out.println("📊 Found SSL/RGLD TRANS operation: " +
-                             (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB ? "SUB" : "ADD") +
-                             " " + tx.getTicker() + " " + tx.getAmount() + " at " + tx.getDate());
+              (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB ? "SUB" : "ADD") +
+              " " + tx.getTicker() + " " + tx.getAmount() + " at " + tx.getDate());
         }
       }
     }
 
-     if (logger.isLoggable(java.util.logging.Level.FINER)) {
-       System.out.println("📊 TRANS analysis: Found " + transOperationCount + " operations in " +
-                          transactionsByTime.size() + " time groups");
-     }
+    if (logger.isLoggable(java.util.logging.Level.FINER)) {
+      System.out.println("📊 TRANS analysis: Found " + transOperationCount + " operations in " +
+          transactionsByTime.size() + " time groups");
+    }
 
-     // Analyze groups for transformation patterns
+    // Analyze groups for transformation patterns
     for (Map.Entry<String, List<Transaction>> entry : transactionsByTime.entrySet()) {
       List<Transaction> group = entry.getValue();
 
-       // Debug output for groups with SSL/RGLD
-       boolean hasSslRgld = group.stream().anyMatch(tx ->
-         tx.getTicker().equalsIgnoreCase("SSL") || tx.getTicker().equalsIgnoreCase("RGLD"));
+      // Debug output for groups with SSL/RGLD
+      boolean hasSslRgld = group.stream()
+          .anyMatch(tx -> tx.getTicker().equalsIgnoreCase("SSL") || tx.getTicker().equalsIgnoreCase("RGLD"));
 
-       if (logger.isLoggable(java.util.logging.Level.FINER) && hasSslRgld) {
+      if (logger.isLoggable(java.util.logging.Level.FINER) && hasSslRgld) {
         System.out.println("🎯 Time group with SSL/RGLD: " + group.size() + " operations");
         for (Transaction tx : group) {
           System.out.println("   " +
-                             (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB ? "SUB" : "ADD") +
-                             " " + tx.getTicker() + " " + tx.getAmount());
+              (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB ? "SUB" : "ADD") +
+              " " + tx.getTicker() + " " + tx.getAmount());
         }
       }
 
@@ -1153,7 +1178,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         // Enhanced debug output for SSL->RGLD and general TRANS detections
         if (logger.isLoggable(java.util.logging.Level.FINER)) {
           System.out.println("🎯 DETECTED TRANS TRANSFORMATION: " + fromTicker + " → " + toTicker +
-                             " (SUB: " + transSub.getAmount() + ", ADD: " + transAdd.getAmount() + ")");
+              " (SUB: " + transSub.getAmount() + ", ADD: " + transAdd.getAmount() + ")");
 
           // Special highlighting for SSL->RGLD case
           if ((fromTicker.equals("SSL") && toTicker.equals("RGLD")) ||
@@ -1212,8 +1237,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       // Handle Trading 212 API import
       handleTrading212ApiImport(startDate, endDate, notImported);
       return;
-    }
-    else
+    } else
       throw new ImportException("Unrecognized import format number!");
 
     Vector<Transaction> txs = importer.doImport(srcFile, startDate, endDate, notImported);
@@ -1235,13 +1259,14 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   /**
    * Import from Trading 212 API for a specific year
    *
-   * @param year Year to import
-   * @param apiKey Trading 212 API key
+   * @param year      Year to import
+   * @param apiKey    Trading 212 API key
    * @param apiSecret Trading 212 API secret
-   * @param useDemo Whether to use demo environment
+   * @param useDemo   Whether to use demo environment
    * @return Import result
    */
-  public Trading212Importer.ImportResult importFromTrading212Api(int year, String apiKey, String apiSecret, boolean useDemo) throws Exception {
+  public Trading212Importer.ImportResult importFromTrading212Api(int year, String apiKey, String apiSecret,
+      boolean useDemo) throws Exception {
     Trading212Importer importer = new Trading212Importer(apiKey, apiSecret, useDemo);
     Trading212Importer.ImportResult result = importer.importYear(year);
 
@@ -1332,12 +1357,14 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     for (int i = 0; i < rows.size(); i++) {
       Transaction tx = rows.get(i);
 
-      Transaction added = dstSet.addTransaction(tx.getDate(), tx.getDirection().intValue(), tx.getTicker(), tx.getAmount().doubleValue(),
+      Transaction added = dstSet.addTransaction(tx.getDate(), tx.getDirection().intValue(), tx.getTicker(),
+          tx.getAmount().doubleValue(),
           tx.getPrice().doubleValue(), tx.getPriceCurrency(), tx.getFee().doubleValue(), tx.getFeeCurrency(),
           tx.getMarket(), tx.getExecutionDate(), tx.getNote());
 
       // Preserve persisted metadata (Broker/AccountID/TxnID/Code) from the source.
-      // This is important for imports where metadata is not encoded in Note (e.g. IBKR Flex corporate actions).
+      // This is important for imports where metadata is not encoded in Note (e.g.
+      // IBKR Flex corporate actions).
       String broker = tx.getBroker();
       if (broker != null && !broker.trim().isEmpty()) {
         added.setBroker(broker.trim());
@@ -1385,22 +1412,28 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   private transient java.util.List<ImportUpdatedSnapshot> lastImportUpdated = new java.util.ArrayList<>();
 
   public void beginImportUndoCapture() {
-    if (lastImportInserted == null) lastImportInserted = new java.util.ArrayList<>();
-    if (lastImportUpdated == null) lastImportUpdated = new java.util.ArrayList<>();
+    if (lastImportInserted == null)
+      lastImportInserted = new java.util.ArrayList<>();
+    if (lastImportUpdated == null)
+      lastImportUpdated = new java.util.ArrayList<>();
     lastImportInserted.clear();
     lastImportUpdated.clear();
     importUndoCaptureActive = true;
   }
 
   public void recordImportInserted(Transaction inserted) {
-    if (inserted == null) return;
-    if (lastImportInserted == null) lastImportInserted = new java.util.ArrayList<>();
+    if (inserted == null)
+      return;
+    if (lastImportInserted == null)
+      lastImportInserted = new java.util.ArrayList<>();
     lastImportInserted.add(inserted);
   }
 
   public void recordImportUpdated(Transaction targetExisting, Transaction beforeSnapshot) {
-    if (targetExisting == null || beforeSnapshot == null) return;
-    if (lastImportUpdated == null) lastImportUpdated = new java.util.ArrayList<>();
+    if (targetExisting == null || beforeSnapshot == null)
+      return;
+    if (lastImportUpdated == null)
+      lastImportUpdated = new java.util.ArrayList<>();
 
     for (ImportUpdatedSnapshot s : lastImportUpdated) {
       if (s != null && s.target == targetExisting) {
@@ -1420,7 +1453,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
     if (lastImportInserted != null && !lastImportInserted.isEmpty()) {
       for (Transaction t : lastImportInserted) {
-        if (t == null) continue;
+        if (t == null)
+          continue;
         if (rows.remove(t)) {
           changed++;
         }
@@ -1430,7 +1464,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
     if (lastImportUpdated != null && !lastImportUpdated.isEmpty()) {
       for (ImportUpdatedSnapshot s : lastImportUpdated) {
-        if (s == null || s.target == null || s.before == null) continue;
+        if (s == null || s.target == null || s.before == null)
+          continue;
         s.target.restoreFrom(s.before);
         changed++;
       }
@@ -1451,7 +1486,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   private boolean updateExistingInternal(Transaction existing, Transaction candidate, boolean forceUpdateDate) {
-    if (existing == null || candidate == null) return false;
+    if (existing == null || candidate == null)
+      return false;
 
     if (batchUpdateInProgress && batchUpdatedTransactionSerials != null) {
       int serial = existing.getSerial();
@@ -1516,18 +1552,22 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   /**
    * Batch update of duplicates during import.
    *
-   * Includes special IB TradeLog legacy pairing when multiple identical trades exist
-   * without TxnID (pairs candidates by TxnID order to existing rows by serial order
+   * Includes special IB TradeLog legacy pairing when multiple identical trades
+   * exist
+   * without TxnID (pairs candidates by TxnID order to existing rows by serial
+   * order
    * when group counts match).
    */
   public int updateDuplicateTransactions(java.util.Vector<Transaction> candidates) {
-    if (candidates == null || candidates.isEmpty()) return 0;
+    if (candidates == null || candidates.isEmpty())
+      return 0;
 
     int updated = 0;
     java.util.ArrayList<Transaction> remaining = new java.util.ArrayList<>();
 
     for (Transaction candidate : candidates) {
-      if (candidate == null) continue;
+      if (candidate == null)
+        continue;
       if (updateDuplicateTransaction(candidate)) {
         updated++;
       } else {
@@ -1540,35 +1580,44 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   /**
-   * For IB TradeLog legacy rows (existing TxnID missing), determines which candidates can be
+   * For IB TradeLog legacy rows (existing TxnID missing), determines which
+   * candidates can be
    * safely treated as updatable duplicates based on group-count equality.
    *
-   * This is used by import preview to avoid showing "new" rows that will actually be
+   * This is used by import preview to avoid showing "new" rows that will actually
+   * be
    * deterministically paired and updated during merge.
    */
   public java.util.Set<Transaction> getIbTradeLogLegacyBackfillableCandidates(java.util.List<Transaction> candidates) {
     java.util.Set<Transaction> res = new java.util.HashSet<>();
-    if (candidates == null || candidates.isEmpty()) return res;
+    if (candidates == null || candidates.isEmpty())
+      return res;
 
     java.util.Map<String, java.util.List<Transaction>> groups = new java.util.HashMap<>();
     for (Transaction c : candidates) {
-      if (c == null) continue;
-      if (!isIbBroker(c)) continue;
+      if (c == null)
+        continue;
+      if (!isIbBroker(c))
+        continue;
       String txn = nullToEmpty(c.getTxnId());
-      if (txn.isEmpty()) continue;
+      if (txn.isEmpty())
+        continue;
       String key = ibLegacyGroupKey(c);
       groups.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(c);
     }
 
     for (java.util.Map.Entry<String, java.util.List<Transaction>> e : groups.entrySet()) {
       java.util.List<Transaction> groupCandidates = e.getValue();
-      if (groupCandidates == null || groupCandidates.isEmpty()) continue;
+      if (groupCandidates == null || groupCandidates.isEmpty())
+        continue;
 
       Transaction sample = groupCandidates.get(0);
       java.util.List<Transaction> existing = new java.util.ArrayList<>();
       for (Transaction ex : rows) {
-        if (ex == null) continue;
-        if (!isIbTradeLogLegacyMinuteMatch(sample, ex)) continue;
+        if (ex == null)
+          continue;
+        if (!isIbTradeLogLegacyMinuteMatch(sample, ex))
+          continue;
         existing.add(ex);
       }
 
@@ -1581,15 +1630,19 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   private int updateIbTradeLogLegacyGroups(java.util.List<Transaction> candidates) {
-    if (candidates == null || candidates.isEmpty()) return 0;
+    if (candidates == null || candidates.isEmpty())
+      return 0;
 
     // Group IB candidates by business key at minute precision (ignoring TxnID)
     java.util.Map<String, java.util.List<Transaction>> groups = new java.util.HashMap<>();
     for (Transaction c : candidates) {
-      if (c == null) continue;
-      if (!isIbBroker(c)) continue;
+      if (c == null)
+        continue;
+      if (!isIbBroker(c))
+        continue;
       String txn = nullToEmpty(c.getTxnId());
-      if (txn.isEmpty()) continue;
+      if (txn.isEmpty())
+        continue;
       String key = ibLegacyGroupKey(c);
       groups.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(c);
     }
@@ -1597,14 +1650,17 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     int updated = 0;
     for (java.util.Map.Entry<String, java.util.List<Transaction>> e : groups.entrySet()) {
       java.util.List<Transaction> groupCandidates = e.getValue();
-      if (groupCandidates == null || groupCandidates.isEmpty()) continue;
+      if (groupCandidates == null || groupCandidates.isEmpty())
+        continue;
 
       // Find existing legacy rows (no TxnID) for this group.
       java.util.List<Transaction> existing = new java.util.ArrayList<>();
       Transaction sample = groupCandidates.get(0);
       for (Transaction ex : rows) {
-        if (ex == null) continue;
-        if (!isIbTradeLogLegacyMinuteMatch(sample, ex)) continue;
+        if (ex == null)
+          continue;
+        if (!isIbTradeLogLegacyMinuteMatch(sample, ex))
+          continue;
         existing.add(ex);
       }
 
@@ -1648,28 +1704,34 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     long minute = cal.getTimeInMillis();
 
     return minute + "|" + tx.getDirection() + "|" + nullToEmpty(tx.getTicker()).toUpperCase() + "|"
-        + safeD(tx.getAmount()) + "|" + safeD(tx.getPrice()) + "|" + nullToEmpty(tx.getPriceCurrency()).toUpperCase() + "|"
+        + safeD(tx.getAmount()) + "|" + safeD(tx.getPrice()) + "|" + nullToEmpty(tx.getPriceCurrency()).toUpperCase()
+        + "|"
         + nullToEmpty(tx.getMarket()).toUpperCase() + "|" + nullToEmpty(tx.getAccountId()).toUpperCase();
   }
 
   private static String safeD(Double d) {
-    if (d == null) return "";
-    // normalize to avoid locale/grouping; tolerance matching is already in isIbTradeLogLegacyMinuteMatch
+    if (d == null)
+      return "";
+    // normalize to avoid locale/grouping; tolerance matching is already in
+    // isIbTradeLogLegacyMinuteMatch
     return String.valueOf(d.doubleValue());
   }
 
   /**
    * Check if a transaction is a duplicate of any existing transaction
-   * Uses business key comparison (excludes note, fee, and other non-essential fields)
+   * Uses business key comparison (excludes note, fee, and other non-essential
+   * fields)
    */
   public boolean isDuplicate(Transaction candidate) {
-    if (candidate == null) return false;
+    if (candidate == null)
+      return false;
 
     // 1) Prefer TxnID match when available.
     String txnC = nullToEmpty(candidate.getTxnId());
     if (!txnC.isEmpty()) {
       for (Transaction existing : rows) {
-        if (existing == null) continue;
+        if (existing == null)
+          continue;
         String txnE = nullToEmpty(existing.getTxnId());
         if (!txnE.isEmpty() && txnC.equalsIgnoreCase(txnE)) {
           // If broker/account are present, require them to match too.
@@ -1690,13 +1752,15 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
     // 2) Exact match (second precision).
     for (Transaction existing : rows) {
-      if (existing == null) continue;
+      if (existing == null)
+        continue;
       if (isDuplicateTransaction(candidate, existing)) {
         return true;
       }
     }
 
-    // 3) IB TradeLog legacy: allow matching old rows missing TxnID by minute (ignore seconds), but only if unique.
+    // 3) IB TradeLog legacy: allow matching old rows missing TxnID by minute
+    // (ignore seconds), but only if unique.
     Transaction legacy = findIbTradeLogLegacyUniqueMatch(candidate);
     return legacy != null;
   }
@@ -1715,7 +1779,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       } else {
         duplicatesSkipped++;
         logger.info("Skipping duplicate transaction: " + candidate.getTicker() + " " +
-                   candidate.getDate() + " " + candidate.getAmount());
+            candidate.getDate() + " " + candidate.getAmount());
       }
     }
 
@@ -1728,13 +1792,15 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    * Returns the matching transaction or null if no duplicate exists
    */
   public Transaction findDuplicateTransaction(Transaction candidate) {
-    if (candidate == null) return null;
+    if (candidate == null)
+      return null;
 
     // 1) Prefer TxnID match when available.
     String txnC = nullToEmpty(candidate.getTxnId());
     if (!txnC.isEmpty()) {
       for (Transaction existing : rows) {
-        if (existing == null) continue;
+        if (existing == null)
+          continue;
         String txnE = nullToEmpty(existing.getTxnId());
         if (!txnE.isEmpty() && txnC.equalsIgnoreCase(txnE)) {
           // If broker/account are present, require them to match too.
@@ -1755,7 +1821,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
     // 2) Exact match (second precision).
     for (Transaction existing : rows) {
-      if (existing == null) continue;
+      if (existing == null)
+        continue;
       if (isDuplicateTransaction(candidate, existing)) {
         return existing;
       }
@@ -1772,34 +1839,44 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    */
   public boolean updateDuplicateTransaction(Transaction candidate) {
     Transaction existing = findDuplicateTransaction(candidate);
-    if (existing == null) return false;
+    if (existing == null)
+      return false;
     return updateExistingInternal(existing, candidate, false);
   }
 
   public boolean isRecentlyUpdatedColumn(int row, int modelCol) {
-    if (!isRecentlyUpdated(row)) return false;
+    if (!isRecentlyUpdated(row))
+      return false;
     Transaction tx = getRowAt(row);
-    if (tx == null) return false;
+    if (tx == null)
+      return false;
     java.util.Set<Integer> cols = updatedColumnsBySerial.get(tx.getSerial());
-    if (cols == null) return false;
+    if (cols == null)
+      return false;
     return cols.contains(modelCol);
   }
 
   private static boolean objectsEqualDate(java.util.Date d1, java.util.Date d2) {
-    if (d1 == null && d2 == null) return true;
-    if (d1 == null || d2 == null) return false;
+    if (d1 == null && d2 == null)
+      return true;
+    if (d1 == null || d2 == null)
+      return false;
     return d1.equals(d2);
   }
 
   private static boolean stringEqualExact(String s1, String s2) {
-    if (s1 == null && s2 == null) return true;
-    if (s1 == null || s2 == null) return false;
+    if (s1 == null && s2 == null)
+      return true;
+    if (s1 == null || s2 == null)
+      return false;
     return s1.equals(s2);
   }
 
   private static boolean doubleEqual(Double a, Double b) {
-    if (a == null && b == null) return true;
-    if (a == null || b == null) return false;
+    if (a == null && b == null)
+      return true;
+    if (a == null || b == null)
+      return false;
     return Math.abs(a.doubleValue() - b.doubleValue()) < 0.0000001;
   }
 
@@ -1811,9 +1888,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     if (row < 0 || row >= rows.size()) {
       return false; // Out of bounds or empty row
     }
-    
+
     Transaction tx = getRowAt(row);
-    if (tx == null) return false;
+    if (tx == null)
+      return false;
     return updatedTransactionSerials.contains(tx.getSerial());
   }
 
@@ -1838,7 +1916,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    */
   private boolean isDuplicateTransaction(Transaction tx1, Transaction tx2) {
     // Prefer TxnID match when available (stable across time precision changes).
-    // This prevents re-import from creating new rows when legacy data has :00 seconds
+    // This prevents re-import from creating new rows when legacy data has :00
+    // seconds
     // but new imports contain real seconds.
     String txn1 = nullToEmpty(tx1.getTxnId());
     String txn2 = nullToEmpty(tx2.getTxnId());
@@ -1901,16 +1980,21 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   private Transaction findIbTradeLogLegacyUniqueMatch(Transaction candidate) {
-    if (candidate == null) return null;
-    if (!isIbBroker(candidate)) return null;
+    if (candidate == null)
+      return null;
+    if (!isIbBroker(candidate))
+      return null;
     String txnC = nullToEmpty(candidate.getTxnId());
-    if (txnC.isEmpty()) return null;
+    if (txnC.isEmpty())
+      return null;
 
     Transaction match = null;
     int count = 0;
     for (Transaction existing : rows) {
-      if (existing == null) continue;
-      if (!isIbTradeLogLegacyMinuteMatch(candidate, existing)) continue;
+      if (existing == null)
+        continue;
+      if (!isIbTradeLogLegacyMinuteMatch(candidate, existing))
+        continue;
       count++;
       if (count == 1) {
         match = existing;
@@ -1923,38 +2007,52 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   private boolean isIbTradeLogLegacyMinuteMatch(Transaction candidate, Transaction existing) {
-    if (candidate == null || existing == null) return false;
-    if (!isIbBroker(candidate)) return false;
+    if (candidate == null || existing == null)
+      return false;
+    if (!isIbBroker(candidate))
+      return false;
 
     // Candidate must have TxnID (new import). Existing must not (legacy data).
     String txnC = nullToEmpty(candidate.getTxnId());
-    if (txnC.isEmpty()) return false;
+    if (txnC.isEmpty())
+      return false;
     String txnE = nullToEmpty(existing.getTxnId());
-    if (!txnE.isEmpty()) return false;
+    if (!txnE.isEmpty())
+      return false;
 
     // If existing broker/account are present, require IB / same account.
     String bE = nullToEmpty(existing.getBroker());
-    if (!bE.isEmpty() && !bE.equalsIgnoreCase("IB")) return false;
+    if (!bE.isEmpty() && !bE.equalsIgnoreCase("IB"))
+      return false;
     String accC = nullToEmpty(candidate.getAccountId());
     String accE = nullToEmpty(existing.getAccountId());
-    if (!accC.isEmpty() && !accE.isEmpty() && !accC.equalsIgnoreCase(accE)) return false;
+    if (!accC.isEmpty() && !accE.isEmpty() && !accC.equalsIgnoreCase(accE))
+      return false;
 
     // Minute-level date match (ignore seconds)
-    if (!datesEqualMinute(candidate.getDate(), existing.getDate())) return false;
+    if (!datesEqualMinute(candidate.getDate(), existing.getDate()))
+      return false;
 
     // Business key fields must match
-    if (candidate.getDirection() != existing.getDirection()) return false;
-    if (!stringEqual(candidate.getTicker(), existing.getTicker())) return false;
-    if (!amountsEqual(candidate.getAmount(), existing.getAmount())) return false;
-    if (!amountsEqual(candidate.getPrice(), existing.getPrice())) return false;
-    if (!stringEqual(candidate.getPriceCurrency(), existing.getPriceCurrency())) return false;
-    if (!stringEqual(candidate.getMarket(), existing.getMarket())) return false;
+    if (candidate.getDirection() != existing.getDirection())
+      return false;
+    if (!stringEqual(candidate.getTicker(), existing.getTicker()))
+      return false;
+    if (!amountsEqual(candidate.getAmount(), existing.getAmount()))
+      return false;
+    if (!amountsEqual(candidate.getPrice(), existing.getPrice()))
+      return false;
+    if (!stringEqual(candidate.getPriceCurrency(), existing.getPriceCurrency()))
+      return false;
+    if (!stringEqual(candidate.getMarket(), existing.getMarket()))
+      return false;
 
     return true;
   }
 
   private static boolean isIbBroker(Transaction tx) {
-    if (tx == null) return false;
+    if (tx == null)
+      return false;
     String b = nullToEmpty(tx.getBroker());
     if (!b.isEmpty()) {
       return b.equalsIgnoreCase("IB");
@@ -1966,8 +2064,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   }
 
   private boolean datesEqualMinute(Date d1, Date d2) {
-    if (d1 == null && d2 == null) return true;
-    if (d1 == null || d2 == null) return false;
+    if (d1 == null && d2 == null)
+      return true;
+    if (d1 == null || d2 == null)
+      return false;
 
     GregorianCalendar cal1 = new GregorianCalendar();
     GregorianCalendar cal2 = new GregorianCalendar();
@@ -1984,8 +2084,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    * Compare dates for equality at second precision (milliseconds ignored).
    */
   private boolean datesEqual(Date d1, Date d2) {
-    if (d1 == null && d2 == null) return true;
-    if (d1 == null || d2 == null) return false;
+    if (d1 == null && d2 == null)
+      return true;
+    if (d1 == null || d2 == null)
+      return false;
 
     GregorianCalendar cal1 = new GregorianCalendar();
     GregorianCalendar cal2 = new GregorianCalendar();
@@ -2004,8 +2106,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    * Compare strings for equality, handling null values
    */
   private boolean stringEqual(String s1, String s2) {
-    if (s1 == null && s2 == null) return true;
-    if (s1 == null || s2 == null) return false;
+    if (s1 == null && s2 == null)
+      return true;
+    if (s1 == null || s2 == null)
+      return false;
     return s1.equalsIgnoreCase(s2);
   }
 
@@ -2013,8 +2117,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    * Compare amounts with tolerance for floating point precision
    */
   private boolean amountsEqual(Double a1, Double a2) {
-    if (a1 == null && a2 == null) return true;
-    if (a1 == null || a2 == null) return false;
+    if (a1 == null && a2 == null)
+      return true;
+    if (a1 == null || a2 == null)
+      return false;
 
     final double TOLERANCE = 0.01; // Allow ±1 cent/penny difference
     return Math.abs(a1 - a2) <= TOLERANCE;
@@ -2034,7 +2140,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file));
 
     // Write header
-    ofl.println("Datum;Typ;Směr;Ticker;Množství;Kurs;Měna kursu;Poplatky;Měna poplatků;Trh;Vyporadani;Broker;ID účtu;ID transakce;Efekt;Poznamka");
+    ofl.println(
+        "Datum;Typ;Směr;Ticker;Množství;Kurs;Měna kursu;Poplatky;Měna poplatků;Trh;Vyporadani;Broker;ID účtu;ID transakce;Efekt;Poznamka");
 
     // Start writing rows
     for (Transaction t : rows) {
@@ -2087,14 +2194,15 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   /**
    * Apply filter
    *
-   * @param from  From date (inclusive)
-   * @param to    To date (inclusive)
+   * @param from   From date (inclusive)
+   * @param to     To date (inclusive)
    * @param ticker Ticker to filter (or null to filter all tickers)
    * @param market Market to filter (or null to filter all markets)
    * @param type   Type to filter (or null to filter all types)
    * @param note   note to filter (or null to filter all notes)
    */
-  public void applyFilter(Date from, Date to, String ticker, String market, String type, String note, String broker, String accountId, String effect) {
+  public void applyFilter(Date from, Date to, String ticker, String market, String type, String note, String broker,
+      String accountId, String effect) {
     // DEFENSIVE: Handle null dates to prevent NullPointerException
     if (from == null) {
       GregorianCalendar cal = new GregorianCalendar();
@@ -2163,8 +2271,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     String noteRegex = ".*" + note + ".*";
     // String noteRegex = "^this$";
 
-    // Quick filter support: if ticker==market==note (same value), treat it as OR across fields.
-    final String quick = (ticker != null && market != null && note != null && ticker.equals(market) && ticker.equals(note)) ? ticker : null;
+    // Quick filter support: if ticker==market==note (same value), treat it as OR
+    // across fields.
+    final String quick = (ticker != null && market != null && note != null && ticker.equals(market)
+        && ticker.equals(note)) ? ticker : null;
     final boolean quickActive = quick != null && !quick.trim().isEmpty();
 
     Vector<Transaction> v = new Vector<Transaction>();
@@ -2304,5 +2414,59 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     // Set filtered rows and notify
     filteredRows = v;
     fireTableDataChanged();
+  }
+
+  /**
+   * Delete all transactions that belong to the specified year (based on checks of
+   * transaction Date).
+   *
+   * @param year Year to delete transactions for (e.g. 2025)
+   * @return Number of deleted transactions
+   */
+  public int deleteTransactionsForYear(int year) {
+    if (rows == null || rows.isEmpty()) {
+      return 0;
+    }
+
+    int deletedCount = 0;
+    GregorianCalendar cal = new GregorianCalendar();
+
+    // Iterate backwards to avoid index shifting issues (though we use iterator)
+    java.util.Iterator<Transaction> it = rows.iterator();
+    while (it.hasNext()) {
+      Transaction tx = it.next();
+      if (tx.getDate() != null) {
+        cal.setTime(tx.getDate());
+        if (cal.get(GregorianCalendar.YEAR) == year) {
+          it.remove();
+          deletedCount++;
+        }
+      }
+    }
+
+    // Also remove from filteredRows if active
+    if (filteredRows != null) {
+      java.util.Iterator<Transaction> fit = filteredRows.iterator();
+      while (fit.hasNext()) {
+        Transaction tx = fit.next();
+        if (tx.getDate() != null) {
+          cal.setTime(tx.getDate());
+          if (cal.get(GregorianCalendar.YEAR) == year) {
+            fit.remove();
+          }
+        }
+      }
+    }
+
+    if (deletedCount > 0) {
+      modified = true;
+      fireTableDataChanged();
+
+      // Invalidate caches
+      if (transformationCache != null)
+        transformationCache.invalidate();
+    }
+
+    return deletedCount;
   }
 }

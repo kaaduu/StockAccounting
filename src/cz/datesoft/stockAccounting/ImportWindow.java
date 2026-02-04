@@ -52,25 +52,27 @@ public class ImportWindow extends javax.swing.JFrame {
   // (declared in variables section)
   private java.util.List<UpdatePair> previewUpdatePairs = new java.util.ArrayList<>();
 
-   // Main window
-   MainWindow mainWindow;
+  // Main window
+  MainWindow mainWindow;
 
-    // Flag to prevent multiple import triggers during file selection
-    private boolean importInProgress = false;
+  // Flag to prevent multiple import triggers during file selection
+  private boolean importInProgress = false;
 
-    // Current import format (0 = none selected, overrides UI state when set programmatically)
-    private int currentImportFormat = 0;
+  // Current import format (0 = none selected, overrides UI state when set
+  // programmatically)
+  private int currentImportFormat = 0;
 
-    // Store duplicates that will be updated if checkbox is checked
-    private Vector<Transaction> duplicatesToUpdate = new Vector<>();
+  // Store duplicates that will be updated if checkbox is checked
+  private Vector<Transaction> duplicatesToUpdate = new Vector<>();
 
-     // Trading 212 specific components
-    javax.swing.JComboBox<String> cbTrading212Year;
+  // Trading 212 specific components
+  javax.swing.JComboBox<String> cbTrading212Year;
 
   // Trading 212 import state
   private Trading212ImportState importState;
 
-  // Trading 212: remember whether the current preview came from API fetch (year-based)
+  // Trading 212: remember whether the current preview came from API fetch
+  // (year-based)
   private boolean trading212PreviewFromApi = false;
 
   // Trading 212: import content mode (like IBKR Flex)
@@ -89,7 +91,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
   // Remember last valid selection to prevent selecting disabled formats
   private int lastValidFormatIndex = 0;
-  
+
   // Trading 212 UI components for cache/refresh
   private javax.swing.JButton bRefreshFromApi;
   private javax.swing.JLabel lblCacheStatus;
@@ -101,32 +103,32 @@ public class ImportWindow extends javax.swing.JFrame {
   private javax.swing.JButton bT212RefreshPreview;
   private javax.swing.JButton bT212Merge;
   private javax.swing.JPanel pT212Buttons;
-  
+
   // IBKR Flex specific components
-  private javax.swing.JButton bIBKRFlexFetch;          // "Načíst z IBKR"
-  private javax.swing.JButton bIBKRFlexFile;           // "Načíst ze souboru"
-  private javax.swing.JButton bIBKRFlexClear;          // "Vymazat náhled"
-  private javax.swing.JButton bIBKRFlexRefreshPreview;  // "Obnovit náhled"
-  private javax.swing.JButton bIBKRFlexHelp;           // "Nápověda"
-  private javax.swing.JButton bIBKRFlexMerge;          // "Sloučit do databáze"
+  private javax.swing.JButton bIBKRFlexFetch; // "Načíst z IBKR"
+  private javax.swing.JButton bIBKRFlexFile; // "Načíst ze souboru"
+  private javax.swing.JButton bIBKRFlexClear; // "Vymazat náhled"
+  private javax.swing.JButton bIBKRFlexRefreshPreview; // "Obnovit náhled"
+  private javax.swing.JButton bIBKRFlexHelp; // "Nápověda"
+  private javax.swing.JButton bIBKRFlexMerge; // "Sloučit do databáze"
   private javax.swing.JCheckBox cbIBKRFlexIncludeCorporateActions; // include Transformace
   private javax.swing.JCheckBox cbIBKRFlexCaRS;
   private javax.swing.JCheckBox cbIBKRFlexCaTC;
   private javax.swing.JCheckBox cbIBKRFlexCaIC;
   private javax.swing.JCheckBox cbIBKRFlexCaTO;
   private javax.swing.JComboBox<String> cbIBKRFlexImportMode; // import mode (trades/transformations)
-  private javax.swing.JLabel lblIBKRFlexStatus;        // Status label
-  private javax.swing.JPanel pIBKRFlexButtons;         // Left-aligned container for IBKR buttons
-  private javax.swing.JPanel pIBKRFlexOptionsPanel;    // "3) Obsah" group
-  private javax.swing.JButton bIBKRFlexAssetFilter;          // AssetClass filter button
-  private javax.swing.JPopupMenu pmIBKRFlexAssetFilter;      // Popup menu for multi-select
+  private javax.swing.JLabel lblIBKRFlexStatus; // Status label
+  private javax.swing.JPanel pIBKRFlexButtons; // Left-aligned container for IBKR buttons
+  private javax.swing.JPanel pIBKRFlexOptionsPanel; // "3) Obsah" group
+  private javax.swing.JButton bIBKRFlexAssetFilter; // AssetClass filter button
+  private javax.swing.JPopupMenu pmIBKRFlexAssetFilter; // Popup menu for multi-select
   private javax.swing.JCheckBoxMenuItem miIBKRAssetAll;
   private javax.swing.JCheckBoxMenuItem miIBKRAssetSTK;
   private javax.swing.JCheckBoxMenuItem miIBKRAssetOPT;
   private javax.swing.JCheckBoxMenuItem miIBKRAssetFUT;
   private javax.swing.JCheckBoxMenuItem miIBKRAssetCASH;
-  private javax.swing.JCheckBox cbIBKRFlexUpdateDups;  // Update duplicates checkbox (reuse existing)
-  private IBKRFlexParser lastIBKRParser = null;        // Store parser reference for statistics
+  private javax.swing.JCheckBox cbIBKRFlexUpdateDups; // Update duplicates checkbox (reuse existing)
+  private IBKRFlexParser lastIBKRParser = null; // Store parser reference for statistics
   private javax.swing.JLabel lblIbkrFlexCsvInfo = null;
   private javax.swing.JButton bIbkrFlexCsvDetails = null;
   private javax.swing.JButton bT212CsvDetails = null;
@@ -153,8 +155,8 @@ public class ImportWindow extends javax.swing.JFrame {
   // Obsolete format warning
   private static final String OBSOLETE_FORMAT_WARNING = "\u26a0\ufe0f Obsolete - code unmaintained";
   private static final String FORMAT_LABEL_DEFAULT = "Formát:";
-  private static final String OBSOLETE_FORMAT_WARNING_HTML =
-      "<html>Formát: <span style='color:#c00000;font-weight:bold'>" +
+  private static final String OBSOLETE_FORMAT_WARNING_HTML = "<html>Formát: <span style='color:#c00000;font-weight:bold'>"
+      +
       OBSOLETE_FORMAT_WARNING +
       "</span></html>";
 
@@ -197,7 +199,8 @@ public class ImportWindow extends javax.swing.JFrame {
     // niTable.setTableHeader(null);
     // niScrollPane.setColumnHeaderView(null);
 
-    // Removed automatic import trigger on date change - import should only happen on explicit user action
+    // Removed automatic import trigger on date change - import should only happen
+    // on explicit user action
 
     endDate = new JDateChooser();
     // Let layout decide width
@@ -240,12 +243,12 @@ public class ImportWindow extends javax.swing.JFrame {
     table.getColumnModel().getColumn(10).setCellRenderer(new CZDateRenderer());
 
     // niTable.setTableHeader(new JTableHeader());
-    
+
     // Restore last checkbox state from settings
     cbUpdateDuplicates.setSelected(cz.datesoft.stockAccounting.Settings.getUpdateDuplicatesOnImport());
 
     // File chooser preference is configured in Settings
-    
+
     updateWindowTitle(); // Set initial window title
 
     // Initial warning state based on default selection
@@ -270,16 +273,26 @@ public class ImportWindow extends javax.swing.JFrame {
       java.awt.Container root = getContentPane();
 
       // Detach header widgets from legacy GridBag.
-      if (bSelectFile != null) root.remove(bSelectFile);
-      if (lSelectedFile != null) root.remove(lSelectedFile);
-      if (jLabel4 != null) root.remove(jLabel4);
-      if (cbFormat != null) root.remove(cbFormat);
-      if (lblIbkrFlexCsvInfo != null) root.remove(lblIbkrFlexCsvInfo);
-      if (bIbkrFlexCsvDetails != null) root.remove(bIbkrFlexCsvDetails);
-      if (lblIbkrFlexCsvSpacer != null) root.remove(lblIbkrFlexCsvSpacer);
-      if (bRefresh != null) root.remove(bRefresh);
-      if (bImport != null) root.remove(bImport);
-      if (bCancel != null) root.remove(bCancel);
+      if (bSelectFile != null)
+        root.remove(bSelectFile);
+      if (lSelectedFile != null)
+        root.remove(lSelectedFile);
+      if (jLabel4 != null)
+        root.remove(jLabel4);
+      if (cbFormat != null)
+        root.remove(cbFormat);
+      if (lblIbkrFlexCsvInfo != null)
+        root.remove(lblIbkrFlexCsvInfo);
+      if (bIbkrFlexCsvDetails != null)
+        root.remove(bIbkrFlexCsvDetails);
+      if (lblIbkrFlexCsvSpacer != null)
+        root.remove(lblIbkrFlexCsvSpacer);
+      if (bRefresh != null)
+        root.remove(bRefresh);
+      if (bImport != null)
+        root.remove(bImport);
+      if (bCancel != null)
+        root.remove(bCancel);
 
       javax.swing.JPanel pHeader = new javax.swing.JPanel(new java.awt.BorderLayout(10, 0));
       pHeader.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 0, 5));
@@ -294,16 +307,23 @@ public class ImportWindow extends javax.swing.JFrame {
       pHeader.add(pFile, java.awt.BorderLayout.WEST);
 
       javax.swing.JPanel pFormat = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-      if (jLabel4 != null) pFormat.add(jLabel4);
-      if (cbFormat != null) pFormat.add(cbFormat);
-      if (lblIbkrFlexCsvInfo != null) pFormat.add(lblIbkrFlexCsvInfo);
-      if (bIbkrFlexCsvDetails != null) pFormat.add(bIbkrFlexCsvDetails);
+      if (jLabel4 != null)
+        pFormat.add(jLabel4);
+      if (cbFormat != null)
+        pFormat.add(cbFormat);
+      if (lblIbkrFlexCsvInfo != null)
+        pFormat.add(lblIbkrFlexCsvInfo);
+      if (bIbkrFlexCsvDetails != null)
+        pFormat.add(bIbkrFlexCsvDetails);
       pHeader.add(pFormat, java.awt.BorderLayout.CENTER);
 
       javax.swing.JPanel pActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
-      if (bRefresh != null) pActions.add(bRefresh);
-      if (bImport != null) pActions.add(bImport);
-      if (bCancel != null) pActions.add(bCancel);
+      if (bRefresh != null)
+        pActions.add(bRefresh);
+      if (bImport != null)
+        pActions.add(bImport);
+      if (bCancel != null)
+        pActions.add(bCancel);
       pHeader.add(pActions, java.awt.BorderLayout.EAST);
 
       java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
@@ -388,7 +408,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void showBusy(String message) {
-    if (busyGlass == null) return;
+    if (busyGlass == null)
+      return;
     if (busyLabel != null && message != null) {
       busyLabel.setText(message);
     }
@@ -403,12 +424,18 @@ public class ImportWindow extends javax.swing.JFrame {
     }
 
     // Disable key controls during preview loading
-    if (cbFormat != null) cbFormat.setEnabled(false);
-    if (bSelectFile != null) bSelectFile.setEnabled(false);
-    if (bRefresh != null) bRefresh.setEnabled(false);
-    if (startDate != null) startDate.setEnabled(false);
-    if (endDate != null) endDate.setEnabled(false);
-    if (cbUpdateDuplicates != null) cbUpdateDuplicates.setEnabled(false);
+    if (cbFormat != null)
+      cbFormat.setEnabled(false);
+    if (bSelectFile != null)
+      bSelectFile.setEnabled(false);
+    if (bRefresh != null)
+      bRefresh.setEnabled(false);
+    if (startDate != null)
+      startDate.setEnabled(false);
+    if (endDate != null)
+      endDate.setEnabled(false);
+    if (cbUpdateDuplicates != null)
+      cbUpdateDuplicates.setEnabled(false);
 
     if (busyCancel != null) {
       // Enabled only when we have a cancelable worker.
@@ -423,12 +450,18 @@ public class ImportWindow extends javax.swing.JFrame {
     setCursor(java.awt.Cursor.getDefaultCursor());
     previewLoadInProgress = false;
 
-    if (cbFormat != null) cbFormat.setEnabled(true);
-    if (bSelectFile != null) bSelectFile.setEnabled(true);
-    if (bRefresh != null) bRefresh.setEnabled(true);
-    if (startDate != null) startDate.setEnabled(true);
-    if (endDate != null) endDate.setEnabled(true);
-    if (cbUpdateDuplicates != null) cbUpdateDuplicates.setEnabled(true);
+    if (cbFormat != null)
+      cbFormat.setEnabled(true);
+    if (bSelectFile != null)
+      bSelectFile.setEnabled(true);
+    if (bRefresh != null)
+      bRefresh.setEnabled(true);
+    if (startDate != null)
+      startDate.setEnabled(true);
+    if (endDate != null)
+      endDate.setEnabled(true);
+    if (cbUpdateDuplicates != null)
+      cbUpdateDuplicates.setEnabled(true);
 
     if (busyCancel != null) {
       busyCancel.setEnabled(false);
@@ -442,10 +475,13 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private static boolean matchesAnyExtension(String nameLower, String... extensions) {
-    if (nameLower == null) return false;
+    if (nameLower == null)
+      return false;
     for (String ext : extensions) {
-      if (ext == null || ext.isEmpty()) continue;
-      if (nameLower.endsWith(ext)) return true;
+      if (ext == null || ext.isEmpty())
+        continue;
+      if (nameLower.endsWith(ext))
+        return true;
     }
     return false;
   }
@@ -482,17 +518,22 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private boolean isLocalFileFormat(int formatIndex) {
-    // Everything except "<vyberte>", IBKR Flex (which has its own API/file buttons).
-    if (formatIndex <= 0) return false;
-    if (formatIndex == 9) return false; // IBKR Flex
+    // Everything except "<vyberte>", IBKR Flex (which has its own API/file
+    // buttons).
+    if (formatIndex <= 0)
+      return false;
+    if (formatIndex == 9)
+      return false; // IBKR Flex
     return true;
   }
 
   private String validateTrading212CsvHeader(java.io.File file) {
-    if (file == null) return "chybí soubor";
+    if (file == null)
+      return "chybí soubor";
     try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(file))) {
       String l1 = readFirstNonEmptyLine(r);
-      if (l1 == null) return "prázdný soubor";
+      if (l1 == null)
+        return "prázdný soubor";
       String h = l1.trim();
       // Activity export / API CSV report header should include these.
       if (!h.contains("Action") || !h.contains("Time")) {
@@ -505,14 +546,16 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void updateSelectedFileLabel() {
-    if (lSelectedFile == null) return;
+    if (lSelectedFile == null)
+      return;
 
     if (tradeLogMultiSelection && currentFiles != null && !currentFiles.isEmpty()) {
       int n = currentFiles.size();
       lSelectedFile.setText("Vybráno souborů: " + n);
       StringBuilder tip = new StringBuilder();
       for (int i = 0; i < currentFiles.size(); i++) {
-        if (i > 0) tip.append("\n");
+        if (i > 0)
+          tip.append("\n");
         tip.append(currentFiles.get(i).getName());
       }
       lSelectedFile.setToolTipText(tip.toString());
@@ -533,10 +576,12 @@ public class ImportWindow extends javax.swing.JFrame {
       return;
     }
 
-    // IB TradeLog: allow selecting any files and validate by header (not by extension).
+    // IB TradeLog: allow selecting any files and validate by header (not by
+    // extension).
     if (formatIndex == 3) {
       java.util.List<java.io.File> selected = chooseFilesForOpen("Importovat soubor", null, true);
-      if (selected == null || selected.isEmpty()) return;
+      if (selected == null || selected.isEmpty())
+        return;
 
       java.util.List<java.io.File> valid = new java.util.ArrayList<>();
       java.util.List<String> invalid = new java.util.ArrayList<>();
@@ -589,7 +634,8 @@ public class ImportWindow extends javax.swing.JFrame {
 
     String[] exts = getFileExtensionsForFormat(formatIndex);
     java.io.File selected = chooseFileForOpen("Importovat soubor", exts);
-    if (selected == null) return;
+    if (selected == null)
+      return;
 
     if (formatIndex == 8) {
       String err = validateTrading212CsvHeader(selected);
@@ -647,15 +693,18 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private String validateIbTradeLogHeader(java.io.File file) {
-    if (file == null) return "chybí soubor";
+    if (file == null)
+      return "chybí soubor";
     try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(file))) {
       String l1 = readFirstNonEmptyLine(r);
-      if (l1 == null) return "prázdný soubor";
+      if (l1 == null)
+        return "prázdný soubor";
       if (!"ACCOUNT_INFORMATION".equals(l1.trim())) {
         return "chybí hlavička ACCOUNT_INFORMATION";
       }
       String l2 = readFirstNonEmptyLine(r);
-      if (l2 == null) return "chybí řádek ACT_INF";
+      if (l2 == null)
+        return "chybí řádek ACT_INF";
       if (!l2.trim().startsWith("ACT_INF|")) {
         return "chybí řádek ACT_INF|...";
       }
@@ -668,14 +717,16 @@ public class ImportWindow extends javax.swing.JFrame {
   private static String readFirstNonEmptyLine(java.io.BufferedReader r) throws java.io.IOException {
     String s;
     while ((s = r.readLine()) != null) {
-      if (s.trim().isEmpty()) continue;
+      if (s.trim().isEmpty())
+        continue;
       return s;
     }
     return null;
   }
 
   private void importIbTradeLogFilesIntoPreview(java.util.List<java.io.File> files, java.util.Date startD,
-      java.util.Date endD, java.util.Vector<String[]> notImported) throws cz.datesoft.stockAccounting.imp.ImportException, java.io.IOException {
+      java.util.Date endD, java.util.Vector<String[]> notImported)
+      throws cz.datesoft.stockAccounting.imp.ImportException, java.io.IOException {
     System.out.println("[IMPORT:IBTLG] Importing multiple TradeLog files: " + (files != null ? files.size() : 0));
 
     // Combine transactions and keep origin info for notImported
@@ -685,7 +736,8 @@ public class ImportWindow extends javax.swing.JFrame {
 
     if (files != null) {
       for (java.io.File f : files) {
-        if (f == null) continue;
+        if (f == null)
+          continue;
         String err = validateIbTradeLogHeader(f);
         if (err != null) {
           // Should not happen (validated earlier), but be defensive.
@@ -708,11 +760,13 @@ public class ImportWindow extends javax.swing.JFrame {
       }
     }
 
-    // De-duplicate within the selected files (avoid overlap when user selects e.g. monthly exports twice).
+    // De-duplicate within the selected files (avoid overlap when user selects e.g.
+    // monthly exports twice).
     TransactionSet tmp = new TransactionSet();
     java.util.Vector<Transaction> unique = new java.util.Vector<>();
     for (Transaction candidate : all) {
-      if (candidate == null) continue;
+      if (candidate == null)
+        continue;
       if (!tmp.isDuplicate(candidate)) {
         tmp.rows.add(candidate);
         unique.add(candidate);
@@ -737,7 +791,8 @@ public class ImportWindow extends javax.swing.JFrame {
 
   private java.io.File chooseFileForOpen(String title, String[] dotExtensions) {
     // Prefer native OS chooser by default, configurable in Settings.
-    if (cz.datesoft.stockAccounting.Settings.getFileChooserMode() == cz.datesoft.stockAccounting.Settings.FILE_CHOOSER_SWING) {
+    if (cz.datesoft.stockAccounting.Settings
+        .getFileChooserMode() == cz.datesoft.stockAccounting.Settings.FILE_CHOOSER_SWING) {
       javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
       chooser.setDialogTitle(title);
       chooser.setAcceptAllFileFilterUsed(true);
@@ -748,17 +803,22 @@ public class ImportWindow extends javax.swing.JFrame {
       if (dotExtensions != null && dotExtensions.length > 0) {
         java.util.ArrayList<String> exts = new java.util.ArrayList<>();
         for (String e : dotExtensions) {
-          if (e == null) continue;
+          if (e == null)
+            continue;
           String s = e.trim();
-          if (s.startsWith(".")) s = s.substring(1);
-          if (!s.isEmpty()) exts.add(s);
+          if (s.startsWith("."))
+            s = s.substring(1);
+          if (!s.isEmpty())
+            exts.add(s);
         }
         if (!exts.isEmpty()) {
-          chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Soubory importu", exts.toArray(new String[0])));
+          chooser.setFileFilter(
+              new javax.swing.filechooser.FileNameExtensionFilter("Soubory importu", exts.toArray(new String[0])));
         }
       }
       int r = chooser.showOpenDialog(this);
-      if (r != javax.swing.JFileChooser.APPROVE_OPTION) return null;
+      if (r != javax.swing.JFileChooser.APPROVE_OPTION)
+        return null;
       java.io.File f = chooser.getSelectedFile();
       if (f != null) {
         java.io.File dir = f.getParentFile();
@@ -777,7 +837,8 @@ public class ImportWindow extends javax.swing.JFrame {
       dialog.setDirectory(loc);
     }
 
-    // For native dialogs we deliberately avoid suffix filtering: users can switch file visibility in the OS UI.
+    // For native dialogs we deliberately avoid suffix filtering: users can switch
+    // file visibility in the OS UI.
     dialog.setVisible(true);
 
     String fileName = dialog.getFile();
@@ -794,13 +855,15 @@ public class ImportWindow extends javax.swing.JFrame {
   private java.util.List<java.io.File> chooseFilesForOpen(String title, String[] dotExtensions, boolean allowMultiple) {
     if (!allowMultiple) {
       java.io.File f = chooseFileForOpen(title, dotExtensions);
-      if (f == null) return null;
+      if (f == null)
+        return null;
       java.util.List<java.io.File> res = new java.util.ArrayList<>();
       res.add(f);
       return res;
     }
 
-    if (cz.datesoft.stockAccounting.Settings.getFileChooserMode() == cz.datesoft.stockAccounting.Settings.FILE_CHOOSER_SWING) {
+    if (cz.datesoft.stockAccounting.Settings
+        .getFileChooserMode() == cz.datesoft.stockAccounting.Settings.FILE_CHOOSER_SWING) {
       javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
       chooser.setDialogTitle(title);
       chooser.setAcceptAllFileFilterUsed(true);
@@ -812,19 +875,25 @@ public class ImportWindow extends javax.swing.JFrame {
       if (dotExtensions != null && dotExtensions.length > 0) {
         java.util.ArrayList<String> exts = new java.util.ArrayList<>();
         for (String e : dotExtensions) {
-          if (e == null) continue;
+          if (e == null)
+            continue;
           String s = e.trim();
-          if (s.startsWith(".")) s = s.substring(1);
-          if (!s.isEmpty()) exts.add(s);
+          if (s.startsWith("."))
+            s = s.substring(1);
+          if (!s.isEmpty())
+            exts.add(s);
         }
         if (!exts.isEmpty()) {
-          chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Soubory importu", exts.toArray(new String[0])));
+          chooser.setFileFilter(
+              new javax.swing.filechooser.FileNameExtensionFilter("Soubory importu", exts.toArray(new String[0])));
         }
       }
       int r = chooser.showOpenDialog(this);
-      if (r != javax.swing.JFileChooser.APPROVE_OPTION) return null;
+      if (r != javax.swing.JFileChooser.APPROVE_OPTION)
+        return null;
       java.io.File[] files = chooser.getSelectedFiles();
-      if (files == null || files.length == 0) return null;
+      if (files == null || files.length == 0)
+        return null;
       java.io.File dir = files[0].getParentFile();
       if (dir != null) {
         Settings.setImportDirectory(dir.getAbsolutePath());
@@ -832,7 +901,8 @@ public class ImportWindow extends javax.swing.JFrame {
       }
       java.util.List<java.io.File> res = new java.util.ArrayList<>();
       for (java.io.File f : files) {
-        if (f != null) res.add(f);
+        if (f != null)
+          res.add(f);
       }
       return res;
     }
@@ -845,12 +915,14 @@ public class ImportWindow extends javax.swing.JFrame {
     }
     dialog.setVisible(true);
     java.io.File[] files = dialog.getFiles();
-    if (files == null || files.length == 0) return null;
+    if (files == null || files.length == 0)
+      return null;
     Settings.setImportDirectory(dialog.getDirectory());
     Settings.save();
     java.util.List<java.io.File> res = new java.util.ArrayList<>();
     for (java.io.File f : files) {
-      if (f != null) res.add(f);
+      if (f != null)
+        res.add(f);
     }
     return res;
   }
@@ -863,7 +935,8 @@ public class ImportWindow extends javax.swing.JFrame {
       if (parent == null) {
         parent = getOwner();
       }
-      if (parent == null) return;
+      if (parent == null)
+        return;
 
       java.awt.Dimension d = parent.getSize();
       if (d == null || d.width <= 0 || d.height <= 0) {
@@ -880,8 +953,10 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void markIbkrPreviewDirty(String statusMessage) {
-    if (!isIBKRFlexFormat()) return;
-    if (lastIbkrCsvContent == null) return;
+    if (!isIBKRFlexFormat())
+      return;
+    if (lastIbkrCsvContent == null)
+      return;
 
     ibkrPreviewDirty = true;
     if (bIBKRFlexRefreshPreview != null) {
@@ -916,7 +991,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void updateIbkrFlexCsvInfoLabel() {
-    if (lblIbkrFlexCsvInfo == null) return;
+    if (lblIbkrFlexCsvInfo == null)
+      return;
     if (!isIBKRFlexFormat()) {
       lblIbkrFlexCsvInfo.setText("");
       if (bIbkrFlexCsvDetails != null) {
@@ -975,7 +1051,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void updateTrading212CsvDetailsButtonState() {
-    if (bT212CsvDetails == null) return;
+    if (bT212CsvDetails == null)
+      return;
     if (!isTrading212Format()) {
       bT212CsvDetails.setEnabled(false);
       bT212CsvDetails.setVisible(false);
@@ -991,7 +1068,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void refreshIbkrPreviewFromCachedCsv() {
-    if (!isIBKRFlexFormat()) return;
+    if (!isIBKRFlexFormat())
+      return;
     if (lastIbkrCsvContent == null) {
       if (lblIBKRFlexStatus != null) {
         lblIBKRFlexStatus.setText("Nejprve načtěte data (API nebo soubor)");
@@ -1006,10 +1084,12 @@ public class ImportWindow extends javax.swing.JFrame {
     try {
       IBKRFlexParser parser = new IBKRFlexParser();
       parser.setAllowedAssetClasses(getSelectedIbkrAssetClasses());
-      parser.setIncludeCorporateActions(cbIBKRFlexIncludeCorporateActions == null || cbIBKRFlexIncludeCorporateActions.isSelected());
+      parser.setIncludeCorporateActions(
+          cbIBKRFlexIncludeCorporateActions == null || cbIBKRFlexIncludeCorporateActions.isSelected());
       parser.setAllowedCorporateActionTypes(getSelectedIbkrCorporateActionTypes());
       int mode = getIbkrImportMode();
-      parser.setIncludeTrades(mode != IBKR_MODE_TRANS_ONLY && mode != IBKR_MODE_DIVI_ONLY && mode != IBKR_MODE_INTEREST_ONLY);
+      parser.setIncludeTrades(
+          mode != IBKR_MODE_TRANS_ONLY && mode != IBKR_MODE_DIVI_ONLY && mode != IBKR_MODE_INTEREST_ONLY);
       // Default: include everything according to checkboxes.
       parser.setIncludeCashTransactions(true);
 
@@ -1029,11 +1109,13 @@ public class ImportWindow extends javax.swing.JFrame {
 
       Vector<Transaction> parsedTransactions = parser.parseCsvReport(lastIbkrCsvContent);
 
-      // Dividends-only mode: keep only dividend-like CTRN/FXTR fallback rows (exclude interests).
+      // Dividends-only mode: keep only dividend-like CTRN/FXTR fallback rows (exclude
+      // interests).
       if (mode == IBKR_MODE_DIVI_ONLY) {
         java.util.Vector<Transaction> only = new java.util.Vector<>();
         for (Transaction t : parsedTransactions) {
-          if (t == null) continue;
+          if (t == null)
+            continue;
           int dir = t.getDirection();
           if (dir == Transaction.DIRECTION_DIVI_BRUTTO || dir == Transaction.DIRECTION_DIVI_NETTO15
               || dir == Transaction.DIRECTION_DIVI_TAX || dir == Transaction.DIRECTION_DIVI_UNKNOWN) {
@@ -1047,7 +1129,8 @@ public class ImportWindow extends javax.swing.JFrame {
       if (mode == IBKR_MODE_INTEREST_ONLY) {
         java.util.Vector<Transaction> only = new java.util.Vector<>();
         for (Transaction t : parsedTransactions) {
-          if (t == null) continue;
+          if (t == null)
+            continue;
           int dir = t.getDirection();
           if (dir == Transaction.DIRECTION_INT_BRUTTO || dir == Transaction.DIRECTION_INT_TAX
               || dir == Transaction.DIRECTION_INT_PAID || dir == Transaction.DIRECTION_INT_FEE) {
@@ -1059,7 +1142,8 @@ public class ImportWindow extends javax.swing.JFrame {
       lastIBKRParser = parser;
       updateIbkrFlexCsvInfoLabel();
 
-      // Warn if mandatory v2 sections are missing per account (Trades + Corporate Actions)
+      // Warn if mandatory v2 sections are missing per account (Trades + Corporate
+      // Actions)
       if (parser.getFlexCsvVersion() == IBKRFlexParser.FlexCsvVersion.V2_HEADERS_AND_TRAILERS) {
         java.util.Map<String, java.util.List<String>> missingByAcc = parser.getMissingMandatoryV2SectionsByAccount();
         if (missingByAcc != null && !missingByAcc.isEmpty()) {
@@ -1070,7 +1154,8 @@ public class ImportWindow extends javax.swing.JFrame {
             msg.append("IBKR Flex CSV (v2): chybí povinné sekce v některých účtech:\n");
             for (java.util.Map.Entry<String, java.util.List<String>> e : missingByAcc.entrySet()) {
               String acc = e.getKey() != null ? e.getKey().trim() : "";
-              if (acc.isEmpty()) acc = "(unknown)";
+              if (acc.isEmpty())
+                acc = "(unknown)";
               msg.append("- ").append(acc).append(": ").append(String.join(", ", e.getValue())).append("\n");
             }
             msg.append("\nZkontrolujte nastavení Flex Query šablony v IBKR.");
@@ -1084,15 +1169,18 @@ public class ImportWindow extends javax.swing.JFrame {
       clearPreview();
 
       // Enforce minute-level uniqueness rules for transformations.
-      // If a transformation pair exists at a minute, it must be the only content of that minute.
+      // If a transformation pair exists at a minute, it must be the only content of
+      // that minute.
       // Any colliding trades/other rows are shifted forward by +N minutes.
       normalizeIbkrMinuteCollisions(mainWindow.getTransactionDatabase(), parsedTransactions);
 
       // Disambiguate rare collisions caused by minute-level timestamp precision.
-      // This keeps IBKR Flex re-import stable: update one existing row, insert the other(s).
+      // This keeps IBKR Flex re-import stable: update one existing row, insert the
+      // other(s).
       disambiguateIbkrDuplicateCollisions(mainWindow.getTransactionDatabase(), parsedTransactions);
 
-      Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase().filterDuplicates(parsedTransactions);
+      Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase()
+          .filterDuplicates(parsedTransactions);
       int duplicatesFiltered = parsedTransactions.size() - filteredTransactions.size();
 
       duplicatesToUpdate.clear();
@@ -1109,7 +1197,8 @@ public class ImportWindow extends javax.swing.JFrame {
       previewUpdatePairs = new java.util.ArrayList<>();
       if (!duplicatesToUpdate.isEmpty()) {
         for (Transaction incoming : duplicatesToUpdate) {
-          if (incoming == null) continue;
+          if (incoming == null)
+            continue;
           Transaction existing = mainWindow.getTransactionDatabase().findDuplicateTransaction(incoming);
           String match = computeMatchKind(existing, incoming);
           previewUpdatePairs.add(new UpdatePair(existing, incoming, match));
@@ -1153,15 +1242,18 @@ public class ImportWindow extends javax.swing.JFrame {
       if (parser.getFxtrDividendFallbackCount() > 0) {
         statusMsg += ", dividendy z FXTR: " + parser.getFxtrDividendFallbackCount();
         // Show one-time warning per source+count to avoid spamming on refresh.
-        String key = "FXTR_DIVI|" + (lastIbkrSourceLabel != null ? lastIbkrSourceLabel : "") + "|" + parser.getFxtrDividendFallbackCount();
+        String key = "FXTR_DIVI|" + (lastIbkrSourceLabel != null ? lastIbkrSourceLabel : "") + "|"
+            + parser.getFxtrDividendFallbackCount();
         if (lastIbkrFlexFxtrWarnKey == null || !lastIbkrFlexFxtrWarnKey.equals(key)) {
           lastIbkrFlexFxtrWarnKey = key;
           StringBuilder msg = new StringBuilder();
           msg.append("IBKR Flex CSV (v2): v sekci Cash Transactions (CTRN) chybí brutto dividendy.\n");
           msg.append("Aplikace je proto doplnila ze sekce FXTR (Forex P/L Details) - pouze BRUTTO.\n\n");
           msg.append("Doporučení: v IBKR Flex Query povolte v Cash Transactions (Detail) typy\n");
-          msg.append("\"Dividends\" a \"Payment in Lieu of Dividends\", aby byly dividendy kompletní i bez fallbacku.\n");
-          javax.swing.JOptionPane.showMessageDialog(this, msg.toString(), "IBKR Flex", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+          msg.append(
+              "\"Dividends\" a \"Payment in Lieu of Dividends\", aby byly dividendy kompletní i bez fallbacku.\n");
+          javax.swing.JOptionPane.showMessageDialog(this, msg.toString(), "IBKR Flex",
+              javax.swing.JOptionPane.INFORMATION_MESSAGE);
         }
       }
       lblIBKRFlexStatus.setText(statusMsg);
@@ -1184,7 +1276,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void refreshIbkrPreviewFromCachedCsvAsync() {
-    if (!isIBKRFlexFormat()) return;
+    if (!isIBKRFlexFormat())
+      return;
     if (lastIbkrCsvContent == null) {
       if (lblIBKRFlexStatus != null) {
         lblIBKRFlexStatus.setText("Nejprve načtěte data (API nebo soubor)");
@@ -1198,9 +1291,12 @@ public class ImportWindow extends javax.swing.JFrame {
     showBusy("Obnovuji náhled IBKR Flex…");
     // Keep the IBKR Flex controls visible while preview is being computed.
     setIbkrFlexUiVisible(true);
-    if (bIBKRFlexFile != null) bIBKRFlexFile.setEnabled(false);
-    if (bIBKRFlexRefreshPreview != null) bIBKRFlexRefreshPreview.setEnabled(false);
-    if (bIBKRFlexClear != null) bIBKRFlexClear.setEnabled(false);
+    if (bIBKRFlexFile != null)
+      bIBKRFlexFile.setEnabled(false);
+    if (bIBKRFlexRefreshPreview != null)
+      bIBKRFlexRefreshPreview.setEnabled(false);
+    if (bIBKRFlexClear != null)
+      bIBKRFlexClear.setEnabled(false);
 
     javax.swing.SwingWorker<Void, Void> w = new javax.swing.SwingWorker<>() {
       @Override
@@ -1223,8 +1319,10 @@ public class ImportWindow extends javax.swing.JFrame {
           // refreshIbkrPreviewFromCachedCsv already set status; keep this minimal
         } finally {
           hideBusy();
-          if (bIBKRFlexFile != null) bIBKRFlexFile.setEnabled(true);
-          if (bIBKRFlexClear != null) bIBKRFlexClear.setEnabled(lastIbkrCsvContent != null);
+          if (bIBKRFlexFile != null)
+            bIBKRFlexFile.setEnabled(true);
+          if (bIBKRFlexClear != null)
+            bIBKRFlexClear.setEnabled(lastIbkrCsvContent != null);
           setIbkrFlexUiVisible(true);
           updateIBKRFlexButtonState();
         }
@@ -1239,14 +1337,20 @@ public class ImportWindow extends javax.swing.JFrame {
 
   private java.util.Set<String> getSelectedIbkrAssetClasses() {
     // null => no filter (import everything including unknown AssetClass)
-    if (miIBKRAssetAll == null) return null;
-    if (miIBKRAssetAll.isSelected()) return null;
+    if (miIBKRAssetAll == null)
+      return null;
+    if (miIBKRAssetAll.isSelected())
+      return null;
 
     java.util.Set<String> res = new java.util.HashSet<>();
-    if (miIBKRAssetSTK != null && miIBKRAssetSTK.isSelected()) res.add("STK");
-    if (miIBKRAssetOPT != null && miIBKRAssetOPT.isSelected()) res.add("OPT");
-    if (miIBKRAssetFUT != null && miIBKRAssetFUT.isSelected()) res.add("FUT");
-    if (miIBKRAssetCASH != null && miIBKRAssetCASH.isSelected()) res.add("CASH");
+    if (miIBKRAssetSTK != null && miIBKRAssetSTK.isSelected())
+      res.add("STK");
+    if (miIBKRAssetOPT != null && miIBKRAssetOPT.isSelected())
+      res.add("OPT");
+    if (miIBKRAssetFUT != null && miIBKRAssetFUT.isSelected())
+      res.add("FUT");
+    if (miIBKRAssetCASH != null && miIBKRAssetCASH.isSelected())
+      res.add("CASH");
 
     // Never allow "none"; fallback to all/no-filter
     if (res.isEmpty()) {
@@ -1263,27 +1367,36 @@ public class ImportWindow extends javax.swing.JFrame {
 
   /**
    * IBKR Flex can contain multiple consolidated trades within the same minute.
-   * StockAccounting stores timestamps only to minute precision (seconds are cleared),
-   * so two different trades can become indistinguishable and be treated as duplicates.
+   * StockAccounting stores timestamps only to minute precision (seconds are
+   * cleared),
+   * so two different trades can become indistinguishable and be treated as
+   * duplicates.
    *
-   * When multiple IBKR candidates match the same existing transaction, keep one as
-   * a true duplicate (to update the existing row) and shift the others by +N minutes
+   * When multiple IBKR candidates match the same existing transaction, keep one
+   * as
+   * a true duplicate (to update the existing row) and shift the others by +N
+   * minutes
    * so they can be imported as separate rows.
    *
-   * This is deterministic (stable on re-import) because ordering is based on TxnID.
+   * This is deterministic (stable on re-import) because ordering is based on
+   * TxnID.
    */
   private void disambiguateIbkrDuplicateCollisions(TransactionSet db, Vector<Transaction> candidates) {
-    if (db == null || candidates == null || candidates.isEmpty()) return;
+    if (db == null || candidates == null || candidates.isEmpty())
+      return;
 
     java.util.Map<Integer, Transaction> existingBySerial = new java.util.HashMap<>();
     java.util.Map<Integer, java.util.List<Transaction>> matchesBySerial = new java.util.HashMap<>();
 
     for (Transaction c : candidates) {
-      if (c == null) continue;
-      if (!"IB".equalsIgnoreCase(c.getBroker())) continue;
+      if (c == null)
+        continue;
+      if (!"IB".equalsIgnoreCase(c.getBroker()))
+        continue;
 
       Transaction existing = db.findDuplicateTransaction(c);
-      if (existing == null) continue;
+      if (existing == null)
+        continue;
 
       existingBySerial.putIfAbsent(existing.getSerial(), existing);
       matchesBySerial.computeIfAbsent(existing.getSerial(), k -> new java.util.ArrayList<>()).add(c);
@@ -1291,7 +1404,8 @@ public class ImportWindow extends javax.swing.JFrame {
 
     for (java.util.Map.Entry<Integer, java.util.List<Transaction>> e : matchesBySerial.entrySet()) {
       java.util.List<Transaction> group = e.getValue();
-      if (group == null || group.size() <= 1) continue;
+      if (group == null || group.size() <= 1)
+        continue;
 
       Transaction existing = existingBySerial.get(e.getKey());
       String existingTxnId = existing != null ? nullToEmpty(existing.getTxnId()) : "";
@@ -1309,8 +1423,10 @@ public class ImportWindow extends javax.swing.JFrame {
       // Deterministic ordering for shifting.
       java.util.Comparator<Transaction> stableOrder = java.util.Comparator
           .comparing((Transaction t) -> nullToEmpty(t.getTxnId()))
-          .thenComparing((Transaction t) -> t.getExecutionDate(), java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
-          .thenComparing((Transaction t) -> t.getPrice(), java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+          .thenComparing((Transaction t) -> t.getExecutionDate(),
+              java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+          .thenComparing((Transaction t) -> t.getPrice(),
+              java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
           .thenComparing((Transaction t) -> Math.abs(t.getAmount() == null ? 0.0 : t.getAmount()));
 
       if (base == null) {
@@ -1335,25 +1451,33 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   /**
-   * StockAccounting stores timestamps only to minute precision (seconds are effectively ignored).
+   * StockAccounting stores timestamps only to minute precision (seconds are
+   * effectively ignored).
    *
    * For correctness of transformation pairing, we enforce:
    * - At most one transformation pair can exist within a given minute.
-   * - If a transformation (TRANS_SUB/TRANS_ADD) exists at a minute, no other transaction may share that minute.
-   * - If there is a collision, shift the other transaction(s) forward by +N minutes.
+   * - If a transformation (TRANS_SUB/TRANS_ADD) exists at a minute, no other
+   * transaction may share that minute.
+   * - If there is a collision, shift the other transaction(s) forward by +N
+   * minutes.
    *
-   * This is applied to IBKR Flex import candidates before duplicate filtering/merge.
+   * This is applied to IBKR Flex import candidates before duplicate
+   * filtering/merge.
    */
   private void normalizeIbkrMinuteCollisions(TransactionSet db, Vector<Transaction> candidates) {
-    if (candidates == null || candidates.isEmpty()) return;
+    if (candidates == null || candidates.isEmpty())
+      return;
 
     // If a candidate already matches an existing DB row, do not time-shift it.
-    // Otherwise, a re-import can create a new shifted copy (TxnID may be missing for some cash rows).
+    // Otherwise, a re-import can create a new shifted copy (TxnID may be missing
+    // for some cash rows).
     java.util.Set<Transaction> alreadyExisting = new java.util.HashSet<>();
     if (db != null) {
       for (Transaction t : candidates) {
-        if (t == null) continue;
-        if (!"IB".equalsIgnoreCase(t.getBroker())) continue;
+        if (t == null)
+          continue;
+        if (!"IB".equalsIgnoreCase(t.getBroker()))
+          continue;
         Transaction existing = db.findDuplicateTransaction(t);
         if (existing != null) {
           alreadyExisting.add(t);
@@ -1368,7 +1492,8 @@ public class ImportWindow extends javax.swing.JFrame {
       int max = Math.max(0, db.getRowCount() - 1);
       for (int i = 0; i < max; i++) {
         Transaction t = db.getRowAt(i);
-        if (t == null) continue;
+        if (t == null)
+          continue;
         occupied.add(minuteKey(t.getDate()));
       }
     }
@@ -1376,10 +1501,12 @@ public class ImportWindow extends javax.swing.JFrame {
     // Group candidates by minute.
     java.util.Map<Long, java.util.List<Transaction>> byMinute = new java.util.TreeMap<>();
     for (Transaction t : candidates) {
-      if (t == null) continue;
-      if (!"IB".equalsIgnoreCase(t.getBroker())) continue;
-       byMinute.computeIfAbsent(minuteKey(t.getDate()), k -> new java.util.ArrayList<>()).add(t);
-     }
+      if (t == null)
+        continue;
+      if (!"IB".equalsIgnoreCase(t.getBroker()))
+        continue;
+      byMinute.computeIfAbsent(minuteKey(t.getDate()), k -> new java.util.ArrayList<>()).add(t);
+    }
 
     // Stable ordering so shifts are deterministic.
     java.util.Comparator<Transaction> stableOrder = java.util.Comparator
@@ -1388,32 +1515,38 @@ public class ImportWindow extends javax.swing.JFrame {
             : (t.getDirection() == Transaction.DIRECTION_TRANS_ADD ? 1 : 2))
         .thenComparing((Transaction t) -> nullToEmpty(t.getTicker()), String.CASE_INSENSITIVE_ORDER)
         .thenComparing((Transaction t) -> nullToEmpty(t.getTxnId()))
-        .thenComparing((Transaction t) -> t.getExecutionDate(), java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+        .thenComparing((Transaction t) -> t.getExecutionDate(),
+            java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
         .thenComparing((Transaction t) -> Math.abs(t.getAmount() == null ? 0.0 : t.getAmount()));
 
     java.util.Set<Long> reservedTransMinutes = new java.util.HashSet<>();
     for (java.util.Map.Entry<Long, java.util.List<Transaction>> e : byMinute.entrySet()) {
       java.util.List<Transaction> group = e.getValue();
-      if (group == null || group.isEmpty()) continue;
-
-      group.sort(stableOrder);
-       boolean hasTrans = group.stream().anyMatch(ImportWindow::isTransformation);
-       if (hasTrans) {
-        reservedTransMinutes.add(e.getKey());
-      }
-    }
-
-      // Process minutes in order, place transactions while maintaining occupied minutes.
-      for (java.util.Map.Entry<Long, java.util.List<Transaction>> e : byMinute.entrySet()) {
-      long minute = e.getKey();
-      java.util.List<Transaction> group = e.getValue();
-      if (group == null || group.isEmpty()) continue;
+      if (group == null || group.isEmpty())
+        continue;
 
       group.sort(stableOrder);
       boolean hasTrans = group.stream().anyMatch(ImportWindow::isTransformation);
       if (hasTrans) {
-        // Transformations must occupy an exclusive minute. If the original minute is already
-        // occupied (e.g., by existing DB rows), shift the whole pair forward by +N minutes.
+        reservedTransMinutes.add(e.getKey());
+      }
+    }
+
+    // Process minutes in order, place transactions while maintaining occupied
+    // minutes.
+    for (java.util.Map.Entry<Long, java.util.List<Transaction>> e : byMinute.entrySet()) {
+      long minute = e.getKey();
+      java.util.List<Transaction> group = e.getValue();
+      if (group == null || group.isEmpty())
+        continue;
+
+      group.sort(stableOrder);
+      boolean hasTrans = group.stream().anyMatch(ImportWindow::isTransformation);
+      if (hasTrans) {
+        // Transformations must occupy an exclusive minute. If the original minute is
+        // already
+        // occupied (e.g., by existing DB rows), shift the whole pair forward by +N
+        // minutes.
         long targetMinute = minute;
         int shiftMinutes = 0;
         while (true) {
@@ -1422,18 +1555,22 @@ public class ImportWindow extends javax.swing.JFrame {
           if (shiftMinutes > 0 && reservedTransMinutes.contains(targetMinute)) {
             collides = true;
           }
-          if (!collides) break;
+          if (!collides)
+            break;
           java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
           cal.setTimeInMillis(targetMinute);
           cal.add(java.util.GregorianCalendar.MINUTE, 1);
           targetMinute = cal.getTimeInMillis();
           shiftMinutes++;
-          if (shiftMinutes > 24 * 60) break;
+          if (shiftMinutes > 24 * 60)
+            break;
         }
 
         for (Transaction t : group) {
-          if (t == null) continue;
-          if (!isTransformation(t)) continue;
+          if (t == null)
+            continue;
+          if (!isTransformation(t))
+            continue;
           alignToMinute(t, targetMinute);
           if (shiftMinutes > 0) {
             appendTimeShiftMinutesMarker(t, shiftMinutes);
@@ -1441,39 +1578,44 @@ public class ImportWindow extends javax.swing.JFrame {
         }
         occupied.add(targetMinute);
 
-         // Shift everything else away from this minute.
-         for (Transaction t : group) {
-           if (t == null) continue;
-           if (isTransformation(t)) continue;
-           if (alreadyExisting.contains(t)) {
-             // Keep exact timestamp so TransactionSet can match/update.
-             continue;
-           }
-           // Trades/other rows must be after the transformation minute.
-           shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, targetMinute);
-         }
-       } else {
-         // No transformations: ensure no collisions with already occupied minutes.
-         for (Transaction t : group) {
-           if (t == null) continue;
-           if (alreadyExisting.contains(t)) {
-             // Keep exact timestamp so TransactionSet can match/update.
-             continue;
-           }
-           long mk = minuteKey(t.getDate());
-           if (!occupied.contains(mk) && !reservedTransMinutes.contains(mk)) {
-             occupied.add(mk);
-             continue;
-           }
-           shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, mk);
-         }
-       }
-     }
+        // Shift everything else away from this minute.
+        for (Transaction t : group) {
+          if (t == null)
+            continue;
+          if (isTransformation(t))
+            continue;
+          if (alreadyExisting.contains(t)) {
+            // Keep exact timestamp so TransactionSet can match/update.
+            continue;
+          }
+          // Trades/other rows must be after the transformation minute.
+          shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, targetMinute);
+        }
+      } else {
+        // No transformations: ensure no collisions with already occupied minutes.
+        for (Transaction t : group) {
+          if (t == null)
+            continue;
+          if (alreadyExisting.contains(t)) {
+            // Keep exact timestamp so TransactionSet can match/update.
+            continue;
+          }
+          long mk = minuteKey(t.getDate());
+          if (!occupied.contains(mk) && !reservedTransMinutes.contains(mk)) {
+            occupied.add(mk);
+            continue;
+          }
+          shiftForwardToFreeMinute(t, occupied, reservedTransMinutes, mk);
+        }
+      }
+    }
   }
 
-  private void populateTrading212Preview(java.util.Vector<Transaction> parsedTransactions, String sourceLabel, Integer yearForCache)
+  private void populateTrading212Preview(java.util.Vector<Transaction> parsedTransactions, String sourceLabel,
+      Integer yearForCache)
       throws Exception {
-    if (parsedTransactions == null) parsedTransactions = new java.util.Vector<>();
+    if (parsedTransactions == null)
+      parsedTransactions = new java.util.Vector<>();
 
     // Cache full parsed set for mode switching without re-fetch.
     lastTrading212AllTransactions = new java.util.Vector<>(parsedTransactions);
@@ -1487,8 +1629,10 @@ public class ImportWindow extends javax.swing.JFrame {
     boolean hasAnyTrans = false;
     if (hasTransMode) {
       for (Transaction t : candidates) {
-        if (t == null) continue;
-        if (!"T212".equalsIgnoreCase(t.getBroker())) continue;
+        if (t == null)
+          continue;
+        if (!"T212".equalsIgnoreCase(t.getBroker()))
+          continue;
         if (isTransformation(t)) {
           hasAnyTrans = true;
           break;
@@ -1502,12 +1646,14 @@ public class ImportWindow extends javax.swing.JFrame {
     transactions.clear();
     duplicatesToUpdate.clear();
 
-    java.util.Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase().filterDuplicates(candidates);
+    java.util.Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase()
+        .filterDuplicates(candidates);
     int duplicatesFiltered = candidates.size() - filteredTransactions.size();
 
     if (cbUpdateDuplicates.isSelected() && duplicatesFiltered > 0) {
       for (Transaction candidate : candidates) {
-        if (candidate == null) continue;
+        if (candidate == null)
+          continue;
         if (!filteredTransactions.contains(candidate)) {
           duplicatesToUpdate.add(candidate);
         }
@@ -1547,13 +1693,15 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private static boolean isTransformation(Transaction t) {
-    if (t == null) return false;
+    if (t == null)
+      return false;
     int d = t.getDirection();
     return d == Transaction.DIRECTION_TRANS_ADD || d == Transaction.DIRECTION_TRANS_SUB;
   }
 
   private static long minuteKey(java.util.Date d) {
-    if (d == null) return Long.MIN_VALUE;
+    if (d == null)
+      return Long.MIN_VALUE;
     java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
     cal.setTime(d);
     cal.set(java.util.GregorianCalendar.SECOND, 0);
@@ -1562,13 +1710,16 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private static boolean datesEqualMinute(java.util.Date d1, java.util.Date d2) {
-    if (d1 == null && d2 == null) return true;
-    if (d1 == null || d2 == null) return false;
+    if (d1 == null && d2 == null)
+      return true;
+    if (d1 == null || d2 == null)
+      return false;
     return minuteKey(d1) == minuteKey(d2);
   }
 
   private static void alignToMinute(Transaction t, long minuteKeyMillis) {
-    if (t == null) return;
+    if (t == null)
+      return;
     java.util.Date oldDate = t.getDate();
     java.util.Date oldEx = t.getExecutionDate();
 
@@ -1576,9 +1727,11 @@ public class ImportWindow extends javax.swing.JFrame {
     t.setDate(newDate);
 
     // Do not overwrite settlement date for trades.
-    // Only shift executionDate when it was effectively the same as trade timestamp (transformations / legacy rows).
+    // Only shift executionDate when it was effectively the same as trade timestamp
+    // (transformations / legacy rows).
     if (oldEx == null) {
-      // Preserve unknown settlement date. For transformations, keep execution date aligned with trade timestamp.
+      // Preserve unknown settlement date. For transformations, keep execution date
+      // aligned with trade timestamp.
       if (isTransformation(t)) {
         t.setExecutionDate(newDate);
       }
@@ -1587,18 +1740,22 @@ public class ImportWindow extends javax.swing.JFrame {
     }
   }
 
-  private void shiftForwardToFreeMinute(Transaction tx, java.util.Set<Long> occupied, java.util.Set<Long> reservedTransMinutes,
+  private void shiftForwardToFreeMinute(Transaction tx, java.util.Set<Long> occupied,
+      java.util.Set<Long> reservedTransMinutes,
       long baseMinuteKeyMillis) {
-    if (tx == null) return;
+    if (tx == null)
+      return;
 
     java.util.Date d = tx.getDate();
-    if (d == null) return;
+    if (d == null)
+      return;
     java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
     cal.setTime(d);
     cal.set(java.util.GregorianCalendar.SECOND, 0);
     cal.set(java.util.GregorianCalendar.MILLISECOND, 0);
 
-    // Ensure we only move forward, and also respect base minute (e.g. transformation minute).
+    // Ensure we only move forward, and also respect base minute (e.g.
+    // transformation minute).
     if (baseMinuteKeyMillis != Long.MIN_VALUE && cal.getTimeInMillis() < baseMinuteKeyMillis) {
       cal.setTimeInMillis(baseMinuteKeyMillis);
     }
@@ -1635,8 +1792,10 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void appendTimeShiftMinutesMarker(Transaction tx, int minutes) {
-    if (tx == null) return;
-    if (minutes <= 0) return;
+    if (tx == null)
+      return;
+    if (minutes <= 0)
+      return;
     String note = tx.getNote();
     String marker = "|TimeShift:+" + minutes + "m";
     if (note == null || note.isEmpty()) {
@@ -1647,8 +1806,10 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void shiftTransactionByMinutes(Transaction tx, int minutes) {
-    if (tx == null) return;
-    if (minutes <= 0) return;
+    if (tx == null)
+      return;
+    if (minutes <= 0)
+      return;
 
     java.util.Date d = tx.getDate();
     java.util.Date oldEx = tx.getExecutionDate();
@@ -1663,7 +1824,8 @@ public class ImportWindow extends javax.swing.JFrame {
       tx.setDate(cal.getTime());
     }
 
-    // Preserve settlement date for trades; only shift when executionDate equals trade timestamp.
+    // Preserve settlement date for trades; only shift when executionDate equals
+    // trade timestamp.
     if (oldEx != null && oldDate != null && datesEqualMinute(oldEx, oldDate)) {
       tx.setExecutionDate(tx.getDate());
     }
@@ -1678,14 +1840,17 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private int getIbkrImportMode() {
-    if (cbIBKRFlexImportMode == null) return IBKR_MODE_TRADES_AND_TRANS;
+    if (cbIBKRFlexImportMode == null)
+      return IBKR_MODE_TRADES_AND_TRANS;
     int idx = cbIBKRFlexImportMode.getSelectedIndex();
-    if (idx < 0) return IBKR_MODE_TRADES_AND_TRANS;
+    if (idx < 0)
+      return IBKR_MODE_TRADES_AND_TRANS;
     return idx;
   }
 
   private void applyIbkrImportModeToUi() {
-    if (!isIBKRFlexFormat()) return;
+    if (!isIBKRFlexFormat())
+      return;
 
     int mode = getIbkrImportMode();
     boolean transOnly = (mode == IBKR_MODE_TRANS_ONLY);
@@ -1701,14 +1866,19 @@ public class ImportWindow extends javax.swing.JFrame {
       cbUpdateDuplicates.setEnabled(!transOnly && !diviOnly && !interestOnly);
     }
 
-    boolean enableCaTypes = (cbIBKRFlexIncludeCorporateActions != null && cbIBKRFlexIncludeCorporateActions.isSelected());
+    boolean enableCaTypes = (cbIBKRFlexIncludeCorporateActions != null
+        && cbIBKRFlexIncludeCorporateActions.isSelected());
     if (mode == IBKR_MODE_TRADES_ONLY || diviOnly || interestOnly) {
       enableCaTypes = false;
     }
-    if (cbIBKRFlexCaRS != null) cbIBKRFlexCaRS.setEnabled(enableCaTypes);
-    if (cbIBKRFlexCaTC != null) cbIBKRFlexCaTC.setEnabled(enableCaTypes);
-    if (cbIBKRFlexCaIC != null) cbIBKRFlexCaIC.setEnabled(enableCaTypes);
-    if (cbIBKRFlexCaTO != null) cbIBKRFlexCaTO.setEnabled(enableCaTypes);
+    if (cbIBKRFlexCaRS != null)
+      cbIBKRFlexCaRS.setEnabled(enableCaTypes);
+    if (cbIBKRFlexCaTC != null)
+      cbIBKRFlexCaTC.setEnabled(enableCaTypes);
+    if (cbIBKRFlexCaIC != null)
+      cbIBKRFlexCaIC.setEnabled(enableCaTypes);
+    if (cbIBKRFlexCaTO != null)
+      cbIBKRFlexCaTO.setEnabled(enableCaTypes);
 
     // Hide/disable transformations include checkbox when it does not apply
     if (cbIBKRFlexIncludeCorporateActions != null) {
@@ -1721,34 +1891,58 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void setIbkrFlexUiVisible(boolean visible) {
-    // Toggle the whole IBKR Flex block. Keep this in sync with hideIBKRFlexUI/setupIBKRFlexUI.
-    if (bIBKRFlexFetch != null) bIBKRFlexFetch.setVisible(visible);
-    if (bIBKRFlexFile != null) bIBKRFlexFile.setVisible(visible);
-    if (bIBKRFlexClear != null) bIBKRFlexClear.setVisible(visible);
-    if (bIBKRFlexRefreshPreview != null) bIBKRFlexRefreshPreview.setVisible(visible);
-    if (bIBKRFlexHelp != null) bIBKRFlexHelp.setVisible(visible);
-    if (bIBKRFlexMerge != null) bIBKRFlexMerge.setVisible(visible);
-    if (cbIBKRFlexImportMode != null) cbIBKRFlexImportMode.setVisible(visible);
-    if (cbIBKRFlexIncludeCorporateActions != null) cbIBKRFlexIncludeCorporateActions.setVisible(visible);
-    if (cbIBKRFlexCaRS != null) cbIBKRFlexCaRS.setVisible(visible);
-    if (cbIBKRFlexCaTC != null) cbIBKRFlexCaTC.setVisible(visible);
-    if (cbIBKRFlexCaIC != null) cbIBKRFlexCaIC.setVisible(visible);
-    if (cbIBKRFlexCaTO != null) cbIBKRFlexCaTO.setVisible(visible);
-    if (bIBKRFlexAssetFilter != null) bIBKRFlexAssetFilter.setVisible(visible);
-    if (pIBKRFlexButtons != null) pIBKRFlexButtons.setVisible(visible);
-    if (pIBKRFlexOptionsPanel != null) pIBKRFlexOptionsPanel.setVisible(visible);
-    if (lblIBKRFlexStatus != null) lblIBKRFlexStatus.setVisible(visible);
-    if (lblIbkrFlexCsvInfo != null) lblIbkrFlexCsvInfo.setVisible(visible);
-    if (lblIbkrFlexCsvSpacer != null) lblIbkrFlexCsvSpacer.setVisible(visible);
-    if (bIbkrFlexCsvDetails != null) bIbkrFlexCsvDetails.setVisible(visible);
+    // Toggle the whole IBKR Flex block. Keep this in sync with
+    // hideIBKRFlexUI/setupIBKRFlexUI.
+    if (bIBKRFlexFetch != null)
+      bIBKRFlexFetch.setVisible(visible);
+    if (bIBKRFlexFile != null)
+      bIBKRFlexFile.setVisible(visible);
+    if (bIBKRFlexClear != null)
+      bIBKRFlexClear.setVisible(visible);
+    if (bIBKRFlexRefreshPreview != null)
+      bIBKRFlexRefreshPreview.setVisible(visible);
+    if (bIBKRFlexHelp != null)
+      bIBKRFlexHelp.setVisible(visible);
+    if (bIBKRFlexMerge != null)
+      bIBKRFlexMerge.setVisible(visible);
+    if (cbIBKRFlexImportMode != null)
+      cbIBKRFlexImportMode.setVisible(visible);
+    if (cbIBKRFlexIncludeCorporateActions != null)
+      cbIBKRFlexIncludeCorporateActions.setVisible(visible);
+    if (cbIBKRFlexCaRS != null)
+      cbIBKRFlexCaRS.setVisible(visible);
+    if (cbIBKRFlexCaTC != null)
+      cbIBKRFlexCaTC.setVisible(visible);
+    if (cbIBKRFlexCaIC != null)
+      cbIBKRFlexCaIC.setVisible(visible);
+    if (cbIBKRFlexCaTO != null)
+      cbIBKRFlexCaTO.setVisible(visible);
+    if (bIBKRFlexAssetFilter != null)
+      bIBKRFlexAssetFilter.setVisible(visible);
+    if (pIBKRFlexButtons != null)
+      pIBKRFlexButtons.setVisible(visible);
+    if (pIBKRFlexOptionsPanel != null)
+      pIBKRFlexOptionsPanel.setVisible(visible);
+    if (lblIBKRFlexStatus != null)
+      lblIBKRFlexStatus.setVisible(visible);
+    if (lblIbkrFlexCsvInfo != null)
+      lblIbkrFlexCsvInfo.setVisible(visible);
+    if (lblIbkrFlexCsvSpacer != null)
+      lblIbkrFlexCsvSpacer.setVisible(visible);
+    if (bIbkrFlexCsvDetails != null)
+      bIbkrFlexCsvDetails.setVisible(visible);
   }
 
   private java.util.Set<String> getSelectedIbkrCorporateActionTypes() {
     java.util.Set<String> out = new java.util.HashSet<>();
-    if (cbIBKRFlexCaRS != null && cbIBKRFlexCaRS.isSelected()) out.add("RS");
-    if (cbIBKRFlexCaTC != null && cbIBKRFlexCaTC.isSelected()) out.add("TC");
-    if (cbIBKRFlexCaIC != null && cbIBKRFlexCaIC.isSelected()) out.add("IC");
-    if (cbIBKRFlexCaTO != null && cbIBKRFlexCaTO.isSelected()) out.add("TO");
+    if (cbIBKRFlexCaRS != null && cbIBKRFlexCaRS.isSelected())
+      out.add("RS");
+    if (cbIBKRFlexCaTC != null && cbIBKRFlexCaTC.isSelected())
+      out.add("TC");
+    if (cbIBKRFlexCaIC != null && cbIBKRFlexCaIC.isSelected())
+      out.add("IC");
+    if (cbIBKRFlexCaTO != null && cbIBKRFlexCaTO.isSelected())
+      out.add("TO");
     return out;
   }
 
@@ -1757,17 +1951,21 @@ public class ImportWindow extends javax.swing.JFrame {
     // - If "Vše" selected => deselect specific.
     // - If any specific selected => deselect "Vše".
     // - If none selected => select "Vše".
-    if (miIBKRAssetAll == null) return;
+    if (miIBKRAssetAll == null)
+      return;
 
     if (source == miIBKRAssetAll && miIBKRAssetAll.isSelected()) {
-      if (miIBKRAssetSTK != null) miIBKRAssetSTK.setSelected(false);
-      if (miIBKRAssetOPT != null) miIBKRAssetOPT.setSelected(false);
-      if (miIBKRAssetFUT != null) miIBKRAssetFUT.setSelected(false);
-      if (miIBKRAssetCASH != null) miIBKRAssetCASH.setSelected(false);
+      if (miIBKRAssetSTK != null)
+        miIBKRAssetSTK.setSelected(false);
+      if (miIBKRAssetOPT != null)
+        miIBKRAssetOPT.setSelected(false);
+      if (miIBKRAssetFUT != null)
+        miIBKRAssetFUT.setSelected(false);
+      if (miIBKRAssetCASH != null)
+        miIBKRAssetCASH.setSelected(false);
     } else if (source != null && source != miIBKRAssetAll) {
       // A specific one changed
-      boolean anySpecific =
-          (miIBKRAssetSTK != null && miIBKRAssetSTK.isSelected()) ||
+      boolean anySpecific = (miIBKRAssetSTK != null && miIBKRAssetSTK.isSelected()) ||
           (miIBKRAssetOPT != null && miIBKRAssetOPT.isSelected()) ||
           (miIBKRAssetFUT != null && miIBKRAssetFUT.isSelected()) ||
           (miIBKRAssetCASH != null && miIBKRAssetCASH.isSelected());
@@ -1793,17 +1991,22 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void updateIbkrAssetFilterButtonText() {
-    if (bIBKRFlexAssetFilter == null) return;
+    if (bIBKRFlexAssetFilter == null)
+      return;
     if (miIBKRAssetAll != null && miIBKRAssetAll.isSelected()) {
       bIBKRFlexAssetFilter.setText("Typ: Vše");
       return;
     }
 
     java.util.List<String> parts = new java.util.ArrayList<>();
-    if (miIBKRAssetSTK != null && miIBKRAssetSTK.isSelected()) parts.add("STK");
-    if (miIBKRAssetOPT != null && miIBKRAssetOPT.isSelected()) parts.add("OPT");
-    if (miIBKRAssetFUT != null && miIBKRAssetFUT.isSelected()) parts.add("FUT");
-    if (miIBKRAssetCASH != null && miIBKRAssetCASH.isSelected()) parts.add("CASH");
+    if (miIBKRAssetSTK != null && miIBKRAssetSTK.isSelected())
+      parts.add("STK");
+    if (miIBKRAssetOPT != null && miIBKRAssetOPT.isSelected())
+      parts.add("OPT");
+    if (miIBKRAssetFUT != null && miIBKRAssetFUT.isSelected())
+      parts.add("FUT");
+    if (miIBKRAssetCASH != null && miIBKRAssetCASH.isSelected())
+      parts.add("CASH");
     if (parts.isEmpty()) {
       bIBKRFlexAssetFilter.setText("Typ: Vše");
     } else {
@@ -1851,7 +2054,8 @@ public class ImportWindow extends javax.swing.JFrame {
       return;
     }
 
-    // Only run async for file-based formats (API formats manage their own async flows).
+    // Only run async for file-based formats (API formats manage their own async
+    // flows).
     int formatIdx = cbFormat != null ? cbFormat.getSelectedIndex() : 0;
     if (formatIdx != 9) {
       // Do not show busy overlay unless there is an actual file selection.
@@ -1860,7 +2064,8 @@ public class ImportWindow extends javax.swing.JFrame {
         return;
       }
 
-      boolean hasMultiFiles = (formatIdx == 3 && tradeLogMultiSelection && currentFiles != null && !currentFiles.isEmpty());
+      boolean hasMultiFiles = (formatIdx == 3 && tradeLogMultiSelection && currentFiles != null
+          && !currentFiles.isEmpty());
       if (!hasMultiFiles && currentFile == null) {
         updateSelectedFileLabel();
         return;
@@ -1872,16 +2077,19 @@ public class ImportWindow extends javax.swing.JFrame {
 
     // Legacy synchronous path below is kept for API formats only.
 
-    System.out.println("[IMPORT:002] loadImport() called - UI format: " + cbFormat.getSelectedIndex() + ", file: " + (currentFile != null ? currentFile.getName() : "null"));
+    System.out.println("[IMPORT:002] loadImport() called - UI format: " + cbFormat.getSelectedIndex() + ", file: "
+        + (currentFile != null ? currentFile.getName() : "null"));
 
     // Log preview table state before clearing
-    System.out.println("[IMPORT:PREVIEW] Preview table before clear: " + (transactions != null ? transactions.getRowCount() : "null") + " rows");
+    System.out.println("[IMPORT:PREVIEW] Preview table before clear: "
+        + (transactions != null ? transactions.getRowCount() : "null") + " rows");
 
     // Clear not imported rows
     DefaultTableModel niTableModel = (DefaultTableModel) niTable.getModel();
     niTableModel.setNumRows(0);
 
-    System.out.println("[IMPORT:PREVIEW] Preview table after clear: " + (transactions != null ? transactions.getRowCount() : "null") + " rows");
+    System.out.println("[IMPORT:PREVIEW] Preview table after clear: "
+        + (transactions != null ? transactions.getRowCount() : "null") + " rows");
 
     // Clear not imported rows
     DefaultTableModel model = (DefaultTableModel) niTable.getModel();
@@ -1898,7 +2106,7 @@ public class ImportWindow extends javax.swing.JFrame {
         // User must explicitly click Import button after selecting year
         return;
       }
-      
+
       if (isIBKRFlexFormat()) {
         // For IBKR Flex API imports, don't auto-fetch on date changes
         // User must explicitly click Fetch button
@@ -1936,70 +2144,72 @@ public class ImportWindow extends javax.swing.JFrame {
         endD = cal.getTime();
       }
 
-        // Get format - prefer programmatic override, fallback to UI state
-        int formatIndex = (currentImportFormat > 0) ? currentImportFormat : cbFormat.getSelectedIndex();
+      // Get format - prefer programmatic override, fallback to UI state
+      int formatIndex = (currentImportFormat > 0) ? currentImportFormat : cbFormat.getSelectedIndex();
 
-        if (formatIndex == 3 && tradeLogMultiSelection && currentFiles != null && !currentFiles.isEmpty()) {
-          importIbTradeLogFilesIntoPreview(currentFiles, startD, endD, notImported);
-        } else {
-          System.out.println("[FORMAT:004] About to call importFile with formatIndex=" + formatIndex + " (programmatic: " + currentImportFormat + ", UI: " + cbFormat.getSelectedIndex() + ") for file: " + currentFile.getName());
-          transactions.importFile(currentFile, startD, endD, formatIndex, notImported);
-        }
+      if (formatIndex == 3 && tradeLogMultiSelection && currentFiles != null && !currentFiles.isEmpty()) {
+        importIbTradeLogFilesIntoPreview(currentFiles, startD, endD, notImported);
+      } else {
+        System.out.println("[FORMAT:004] About to call importFile with formatIndex=" + formatIndex + " (programmatic: "
+            + currentImportFormat + ", UI: " + cbFormat.getSelectedIndex() + ") for file: " + currentFile.getName());
+        transactions.importFile(currentFile, startD, endD, formatIndex, notImported);
+      }
 
-       // Filter duplicate transactions that already exist in main database
-       System.out.println("[DUPLICATE:001] Checking for duplicates in file import against main database");
-       Vector<Transaction> originalTransactions = new Vector<>(transactions.rows); // Copy before filtering
-       Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase().filterDuplicates(originalTransactions);
-       int duplicatesFiltered = originalTransactions.size() - filteredTransactions.size();
+      // Filter duplicate transactions that already exist in main database
+      System.out.println("[DUPLICATE:001] Checking for duplicates in file import against main database");
+      Vector<Transaction> originalTransactions = new Vector<>(transactions.rows); // Copy before filtering
+      Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase()
+          .filterDuplicates(originalTransactions);
+      int duplicatesFiltered = originalTransactions.size() - filteredTransactions.size();
 
-       // Clear previous duplicates list
-       duplicatesToUpdate.clear();
+      // Clear previous duplicates list
+      duplicatesToUpdate.clear();
 
-       // If update checkbox is checked, store duplicates for later update
-       if (cbUpdateDuplicates.isSelected() && duplicatesFiltered > 0) {
-         for (Transaction candidate : originalTransactions) {
-           if (!filteredTransactions.contains(candidate)) {
-             duplicatesToUpdate.add(candidate);
-           }
-         }
-         System.out.println("[DUPLICATE:002] " + duplicatesToUpdate.size() + " duplicates marked for update");
-       }
-
-       // Replace preview table with filtered transactions (only new ones)
-       if (duplicatesFiltered > 0) {
-         transactions.rows.clear();
-         transactions.rows.addAll(filteredTransactions);
-         transactions.fireTableDataChanged();
-         System.out.println("[DUPLICATE:003] Filtered " + duplicatesFiltered + " duplicates from preview");
-       }
-
-        // Set labels
-        int n = transactions.getRowCount();
-        String previewText = "Náhled (" + n + " " + getRecordsWord(n) + ")";
-        if (duplicatesFiltered > 0) {
-          if (cbUpdateDuplicates.isSelected()) {
-            previewText += " - " + duplicatesFiltered + " duplikátů k aktualizaci";
-          } else {
-            previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
+      // If update checkbox is checked, store duplicates for later update
+      if (cbUpdateDuplicates.isSelected() && duplicatesFiltered > 0) {
+        for (Transaction candidate : originalTransactions) {
+          if (!filteredTransactions.contains(candidate)) {
+            duplicatesToUpdate.add(candidate);
           }
         }
-        previewText += ":";
-        lPreview.setText(previewText);
-        int rowCount = notImported.size();
-        lUnimported.setText("Neimportované řádky (" + rowCount + " " + getRecordsWord(rowCount) + "):");
+        System.out.println("[DUPLICATE:002] " + duplicatesToUpdate.size() + " duplicates marked for update");
+      }
 
-         // Reset import flag immediately on successful completion
-         importInProgress = false;
-         currentImportFormat = 0; // Clear programmatic override
-         System.out.println("[IMPORT:SUCCESS] Import completed successfully - flags reset to false");
+      // Replace preview table with filtered transactions (only new ones)
+      if (duplicatesFiltered > 0) {
+        transactions.rows.clear();
+        transactions.rows.addAll(filteredTransactions);
+        transactions.fireTableDataChanged();
+        System.out.println("[DUPLICATE:003] Filtered " + duplicatesFiltered + " duplicates from preview");
+      }
 
-        // Log successful import completion
-        System.out.println("[IMPORT:SUCCESS] Import completed successfully:");
-        System.out.println("[IMPORT:SUCCESS]   - Preview transactions: " + n);
-        System.out.println("[IMPORT:SUCCESS]   - Duplicates filtered: " + duplicatesFiltered);
-        System.out.println("[IMPORT:SUCCESS]   - Not imported rows: " + rowCount);
-        System.out.println("[IMPORT:SUCCESS]   - Final UI state:");
-        logUIComponentStates();
+      // Set labels
+      int n = transactions.getRowCount();
+      String previewText = "Náhled (" + n + " " + getRecordsWord(n) + ")";
+      if (duplicatesFiltered > 0) {
+        if (cbUpdateDuplicates.isSelected()) {
+          previewText += " - " + duplicatesFiltered + " duplikátů k aktualizaci";
+        } else {
+          previewText += " - " + duplicatesFiltered + " duplikátů vyfiltrováno";
+        }
+      }
+      previewText += ":";
+      lPreview.setText(previewText);
+      int rowCount = notImported.size();
+      lUnimported.setText("Neimportované řádky (" + rowCount + " " + getRecordsWord(rowCount) + "):");
+
+      // Reset import flag immediately on successful completion
+      importInProgress = false;
+      currentImportFormat = 0; // Clear programmatic override
+      System.out.println("[IMPORT:SUCCESS] Import completed successfully - flags reset to false");
+
+      // Log successful import completion
+      System.out.println("[IMPORT:SUCCESS] Import completed successfully:");
+      System.out.println("[IMPORT:SUCCESS]   - Preview transactions: " + n);
+      System.out.println("[IMPORT:SUCCESS]   - Duplicates filtered: " + duplicatesFiltered);
+      System.out.println("[IMPORT:SUCCESS]   - Not imported rows: " + rowCount);
+      System.out.println("[IMPORT:SUCCESS]   - Final UI state:");
+      logUIComponentStates();
 
       /* Fill in data model for not imported rows */
 
@@ -2011,9 +2221,9 @@ public class ImportWindow extends javax.swing.JFrame {
           colCount = n;
       }
 
-       if (rowCount > 0) {
-         niTableModel.setRowCount(rowCount);
-         niTableModel.setColumnCount(colCount);
+      if (rowCount > 0) {
+        niTableModel.setRowCount(rowCount);
+        niTableModel.setColumnCount(colCount);
 
         // Make columns
         for (n = 0; n < colCount; n++) {
@@ -2038,26 +2248,27 @@ public class ImportWindow extends javax.swing.JFrame {
       } else {
         niTableModel.setRowCount(0);
       }
-     } catch (java.io.FileNotFoundException e) {
-       System.out.println("[IMPORT:ERROR] FileNotFoundException during import: " + e.getMessage());
-       JOptionPane.showMessageDialog(this, "Soubor nenalezen!");
-       currentImportFormat = 0; // Clear programmatic override on error
-     } catch (java.io.IOException e) {
-       System.out.println("[IMPORT:ERROR] IOException during import: " + e.getMessage());
-       UiDialogs.error(this, "Chyba čtení: " + e.getLocalizedMessage(), "Chyba", e);
-       currentImportFormat = 0; // Clear programmatic override on error
-     } catch (cz.datesoft.stockAccounting.imp.ImportException e) {
-       System.out.println("[IMPORT:ERROR] ImportException during import: " + e.getMessage());
-       System.out.println("[IMPORT:ERROR] UI state at time of error:");
-       logUIComponentStates();
-       UiDialogs.error(this, "Chyba při importu: " + e.getMessage(), "Chyba", e);
-       currentImportFormat = 0; // Clear programmatic override on error
-     }
+    } catch (java.io.FileNotFoundException e) {
+      System.out.println("[IMPORT:ERROR] FileNotFoundException during import: " + e.getMessage());
+      JOptionPane.showMessageDialog(this, "Soubor nenalezen!");
+      currentImportFormat = 0; // Clear programmatic override on error
+    } catch (java.io.IOException e) {
+      System.out.println("[IMPORT:ERROR] IOException during import: " + e.getMessage());
+      UiDialogs.error(this, "Chyba čtení: " + e.getLocalizedMessage(), "Chyba", e);
+      currentImportFormat = 0; // Clear programmatic override on error
+    } catch (cz.datesoft.stockAccounting.imp.ImportException e) {
+      System.out.println("[IMPORT:ERROR] ImportException during import: " + e.getMessage());
+      System.out.println("[IMPORT:ERROR] UI state at time of error:");
+      logUIComponentStates();
+      UiDialogs.error(this, "Chyba při importu: " + e.getMessage(), "Chyba", e);
+      currentImportFormat = 0; // Clear programmatic override on error
+    }
   }
 
   private void loadImportAsync() {
     // Snapshot state so we can ignore outdated results
-    final int formatIndex = (currentImportFormat > 0) ? currentImportFormat : (cbFormat != null ? cbFormat.getSelectedIndex() : 0);
+    final int formatIndex = (currentImportFormat > 0) ? currentImportFormat
+        : (cbFormat != null ? cbFormat.getSelectedIndex() : 0);
     final java.io.File file = currentFile;
     final java.util.List<java.io.File> files = (tradeLogMultiSelection && currentFiles != null)
         ? new java.util.ArrayList<>(currentFiles)
@@ -2094,7 +2305,8 @@ public class ImportWindow extends javax.swing.JFrame {
           LoadResult r = get();
           applyLoadResult(r);
 
-          // Trading 212 uses dedicated source buttons; the generic bottom import button is hidden.
+          // Trading 212 uses dedicated source buttons; the generic bottom import button
+          // is hidden.
           if (!isTrading212Format()) {
             updateImportButtonText();
           }
@@ -2119,7 +2331,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private static java.util.Date normalizeStartDate(java.util.Date startD) {
-    if (startD == null) return null;
+    if (startD == null)
+      return null;
     GregorianCalendar cal = new GregorianCalendar();
     cal.setTime(startD);
     cal.set(GregorianCalendar.HOUR_OF_DAY, 0);
@@ -2130,7 +2343,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private static java.util.Date normalizeEndDate(java.util.Date endD) {
-    if (endD == null) return null;
+    if (endD == null)
+      return null;
     GregorianCalendar cal = new GregorianCalendar();
     cal.setTime(endD);
     cal.set(GregorianCalendar.HOUR_OF_DAY, 23);
@@ -2173,8 +2387,10 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private LoadResult loadImportCompute(int formatIndex, java.io.File file, java.util.List<java.io.File> files,
-      boolean multi, boolean updateDups, java.util.Date startD, java.util.Date endD, int trading212Mode) throws Exception {
-    // Mimic the synchronous loadImport logic, but without touching Swing components.
+      boolean multi, boolean updateDups, java.util.Date startD, java.util.Date endD, int trading212Mode)
+      throws Exception {
+    // Mimic the synchronous loadImport logic, but without touching Swing
+    // components.
     if (formatIndex == 0) {
       return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(),
           new java.util.ArrayList<>(), 0, formatIndex);
@@ -2199,7 +2415,8 @@ public class ImportWindow extends javax.swing.JFrame {
       java.util.Vector<String[]> allNotImported = new java.util.Vector<>();
       cz.datesoft.stockAccounting.imp.ImportIBTradeLog importer = new cz.datesoft.stockAccounting.imp.ImportIBTradeLog();
       for (java.io.File f : files) {
-        if (f == null) continue;
+        if (f == null)
+          continue;
         java.util.Vector<String[]> per = new java.util.Vector<>();
         java.util.Vector<Transaction> txs = importer.doImport(f, startD, endD, per);
         all.addAll(txs);
@@ -2214,13 +2431,16 @@ public class ImportWindow extends javax.swing.JFrame {
       }
       notImported.addAll(allNotImported);
 
-      // internal dedupe (TxnID-based): avoid collapsing distinct executions that share the same timestamp
+      // internal dedupe (TxnID-based): avoid collapsing distinct executions that
+      // share the same timestamp
       java.util.Set<String> seenTxnIds = new java.util.HashSet<>();
       java.util.Vector<Transaction> unique = new java.util.Vector<>();
       for (Transaction candidate : all) {
-        if (candidate == null) continue;
+        if (candidate == null)
+          continue;
         String txn = candidate.getTxnId();
-        if (txn != null) txn = txn.trim();
+        if (txn != null)
+          txn = txn.trim();
         if (txn == null || txn.isEmpty()) {
           // Fallback to business-key-based dedupe for rows without TxnID
           if (!tmpPreview.isDuplicate(candidate)) {
@@ -2261,14 +2481,17 @@ public class ImportWindow extends javax.swing.JFrame {
     java.util.Vector<Transaction> original = new java.util.Vector<>(tmpPreview.rows);
     TransactionSet mainDb = mainWindow.getTransactionDatabase();
 
-    // Trading 212 and IBKR Flex share the same minute-collision constraint for transformations.
+    // Trading 212 and IBKR Flex share the same minute-collision constraint for
+    // transformations.
     // Normalize before duplicate filtering.
     boolean t212HasTransformationsMode = (trading212Mode == T212_MODE_ALL || trading212Mode == T212_MODE_TRANS_ONLY);
     boolean t212HasAnyTrans = false;
     if (formatIndex == 8 && t212HasTransformationsMode) {
       for (Transaction t : original) {
-        if (t == null) continue;
-        if (!"T212".equalsIgnoreCase(t.getBroker())) continue;
+        if (t == null)
+          continue;
+        if (!"T212".equalsIgnoreCase(t.getBroker()))
+          continue;
         if (isTransformation(t)) {
           t212HasAnyTrans = true;
           break;
@@ -2288,7 +2511,8 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       }
 
-      // IB TradeLog: If we can deterministically pair legacy rows (missing TxnID) by group-count equality,
+      // IB TradeLog: If we can deterministically pair legacy rows (missing TxnID) by
+      // group-count equality,
       // treat them as "duplicates to update" rather than "new" inserts in preview.
       if (formatIndex == 3 && !filtered.isEmpty()) {
         java.util.Set<Transaction> backfillable = mainDb.getIbTradeLogLegacyBackfillableCandidates(filtered);
@@ -2310,7 +2534,8 @@ public class ImportWindow extends javax.swing.JFrame {
     java.util.List<UpdatePair> pairs = new java.util.ArrayList<>();
     if (updateDups && !dupsToUpdate.isEmpty()) {
       for (Transaction incoming : dupsToUpdate) {
-        if (incoming == null) continue;
+        if (incoming == null)
+          continue;
         Transaction existing = mainDb.findDuplicateTransaction(incoming);
         String match = computeMatchKind(existing, incoming);
         pairs.add(new UpdatePair(existing, incoming, match));
@@ -2327,37 +2552,46 @@ public class ImportWindow extends javax.swing.JFrame {
    * Trading 212 stores splits as two rows (close/open) at the same timestamp.
    */
   private void normalizeTrading212MinuteCollisions(TransactionSet db, Vector<Transaction> candidates) {
-    if (candidates == null || candidates.isEmpty()) return;
+    if (candidates == null || candidates.isEmpty())
+      return;
 
     boolean hasAnyTrans = false;
     for (Transaction t : candidates) {
-      if (t == null) continue;
-      if (!"T212".equalsIgnoreCase(t.getBroker())) continue;
+      if (t == null)
+        continue;
+      if (!"T212".equalsIgnoreCase(t.getBroker()))
+        continue;
       if (isTransformation(t)) {
         hasAnyTrans = true;
         break;
       }
     }
-    if (!hasAnyTrans) return;
+    if (!hasAnyTrans)
+      return;
 
-    // Reuse the existing normalization logic (broker filter inside is IB-only, so we need a local variant).
+    // Reuse the existing normalization logic (broker filter inside is IB-only, so
+    // we need a local variant).
 
     // Only transformations require minute-level exclusivity.
-    // For regular trades/dividends/etc, keep original timestamps (even if multiple rows share the same minute).
+    // For regular trades/dividends/etc, keep original timestamps (even if multiple
+    // rows share the same minute).
     java.util.Set<Long> occupiedDbMinutes = new java.util.HashSet<>();
     if (db != null) {
       int max = Math.max(0, db.getRowCount() - 1);
       for (int i = 0; i < max; i++) {
         Transaction t = db.getRowAt(i);
-        if (t == null) continue;
+        if (t == null)
+          continue;
         occupiedDbMinutes.add(minuteKey(t.getDate()));
       }
     }
 
     java.util.Map<Long, java.util.List<Transaction>> byMinute = new java.util.TreeMap<>();
     for (Transaction t : candidates) {
-      if (t == null) continue;
-      if (!"T212".equalsIgnoreCase(t.getBroker())) continue;
+      if (t == null)
+        continue;
+      if (!"T212".equalsIgnoreCase(t.getBroker()))
+        continue;
       byMinute.computeIfAbsent(minuteKey(t.getDate()), k -> new java.util.ArrayList<>()).add(t);
     }
 
@@ -2367,29 +2601,36 @@ public class ImportWindow extends javax.swing.JFrame {
             : (t.getDirection() == Transaction.DIRECTION_TRANS_ADD ? 1 : 2))
         .thenComparing((Transaction t) -> nullToEmpty(t.getTicker()), String.CASE_INSENSITIVE_ORDER)
         .thenComparing((Transaction t) -> nullToEmpty(t.getTxnId()))
-        .thenComparing((Transaction t) -> t.getExecutionDate(), java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+        .thenComparing((Transaction t) -> t.getExecutionDate(),
+            java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
         .thenComparing((Transaction t) -> Math.abs(t.getAmount() == null ? 0.0 : t.getAmount()));
 
-    // Minutes that contain transformations in the incoming dataset (original timestamps).
-    // We must not shift an earlier transformation onto a later transformation minute.
+    // Minutes that contain transformations in the incoming dataset (original
+    // timestamps).
+    // We must not shift an earlier transformation onto a later transformation
+    // minute.
     java.util.Set<Long> reservedTransMinutes = new java.util.HashSet<>();
     for (java.util.Map.Entry<Long, java.util.List<Transaction>> e : byMinute.entrySet()) {
       java.util.List<Transaction> group = e.getValue();
-      if (group == null || group.isEmpty()) continue;
+      if (group == null || group.isEmpty())
+        continue;
       group.sort(stableOrder);
       boolean hasTrans = group.stream().anyMatch(ImportWindow::isTransformation);
-      if (hasTrans) reservedTransMinutes.add(e.getKey());
+      if (hasTrans)
+        reservedTransMinutes.add(e.getKey());
     }
 
     // Track where transformations end up (after any shifting due to DB collisions).
     java.util.Set<Long> placedTransMinutes = new java.util.HashSet<>();
-    // Occupied minutes for transformation placement only (DB minutes + already placed transformations).
+    // Occupied minutes for transformation placement only (DB minutes + already
+    // placed transformations).
     java.util.Set<Long> occupiedForTrans = new java.util.HashSet<>(occupiedDbMinutes);
 
     for (java.util.Map.Entry<Long, java.util.List<Transaction>> e : byMinute.entrySet()) {
       long minute = e.getKey();
       java.util.List<Transaction> group = e.getValue();
-      if (group == null || group.isEmpty()) continue;
+      if (group == null || group.isEmpty())
+        continue;
 
       group.sort(stableOrder);
       boolean hasTrans = group.stream().anyMatch(ImportWindow::isTransformation);
@@ -2399,19 +2640,24 @@ public class ImportWindow extends javax.swing.JFrame {
         while (true) {
           boolean collides = occupiedForTrans.contains(targetMinute);
           // Avoid landing on another transformation minute (except the original one).
-          if (shiftMinutes > 0 && reservedTransMinutes.contains(targetMinute)) collides = true;
-          if (!collides) break;
+          if (shiftMinutes > 0 && reservedTransMinutes.contains(targetMinute))
+            collides = true;
+          if (!collides)
+            break;
           java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
           cal.setTimeInMillis(targetMinute);
           cal.add(java.util.GregorianCalendar.MINUTE, 1);
           targetMinute = cal.getTimeInMillis();
           shiftMinutes++;
-          if (shiftMinutes > 24 * 60) break;
+          if (shiftMinutes > 24 * 60)
+            break;
         }
 
         for (Transaction t : group) {
-          if (t == null) continue;
-          if (!isTransformation(t)) continue;
+          if (t == null)
+            continue;
+          if (!isTransformation(t))
+            continue;
           alignToMinute(t, targetMinute);
           if (shiftMinutes > 0) {
             appendTimeShiftMinutesMarker(t, shiftMinutes);
@@ -2420,13 +2666,18 @@ public class ImportWindow extends javax.swing.JFrame {
         placedTransMinutes.add(targetMinute);
         occupiedForTrans.add(targetMinute);
 
-        // Only if the transformations stayed in the original minute, shift any colliding non-TRANS rows away.
-        // If the transformation was shifted forward, the original minute is no longer a TRANS minute.
+        // Only if the transformations stayed in the original minute, shift any
+        // colliding non-TRANS rows away.
+        // If the transformation was shifted forward, the original minute is no longer a
+        // TRANS minute.
         if (targetMinute == minute) {
           for (Transaction t : group) {
-            if (t == null) continue;
-            if (isTransformation(t)) continue;
-            // Shift away from the TRANS minute, but do not enforce uniqueness among non-TRANS rows.
+            if (t == null)
+              continue;
+            if (isTransformation(t))
+              continue;
+            // Shift away from the TRANS minute, but do not enforce uniqueness among
+            // non-TRANS rows.
             java.util.Set<Long> forbidden = new java.util.HashSet<>(placedTransMinutes);
             forbidden.addAll(reservedTransMinutes);
             forbidden.add(targetMinute);
@@ -2434,11 +2685,14 @@ public class ImportWindow extends javax.swing.JFrame {
           }
         }
       } else {
-        // Do not normalize regular rows, unless a previous TRANS was shifted into this minute.
+        // Do not normalize regular rows, unless a previous TRANS was shifted into this
+        // minute.
         if (placedTransMinutes.contains(minute)) {
           for (Transaction t : group) {
-            if (t == null) continue;
-            // Shift away from the TRANS minute, but do not enforce uniqueness among non-TRANS rows.
+            if (t == null)
+              continue;
+            // Shift away from the TRANS minute, but do not enforce uniqueness among
+            // non-TRANS rows.
             java.util.Set<Long> forbidden = new java.util.HashSet<>(placedTransMinutes);
             forbidden.addAll(reservedTransMinutes);
             forbidden.add(minute);
@@ -2450,7 +2704,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private static String computeMatchKind(Transaction existing, Transaction incoming) {
-    if (existing == null || incoming == null) return "?";
+    if (existing == null || incoming == null)
+      return "?";
     String txE = existing.getTxnId();
     String txI = incoming.getTxnId();
     if (txE != null && txI != null && !txE.trim().isEmpty() && txE.trim().equalsIgnoreCase(txI.trim())) {
@@ -2461,12 +2716,14 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void applyLoadResult(LoadResult r) {
-    if (r == null) return;
+    if (r == null)
+      return;
 
     // Apply preview transactions
     transactions.rows.clear();
     for (Transaction tx : r.preview) {
-      if (tx == null) continue;
+      if (tx == null)
+        continue;
       tx.setSerial(transactions.serialCounter++);
       transactions.rows.add(tx);
     }
@@ -2511,7 +2768,8 @@ public class ImportWindow extends javax.swing.JFrame {
       int colCount = 0;
       for (int i = 0; i < rowCount; i++) {
         int len = r.notImported.get(i) != null ? r.notImported.get(i).length : 0;
-        if (len > colCount) colCount = len;
+        if (len > colCount)
+          colCount = len;
       }
       niTableModel.setRowCount(rowCount);
       niTableModel.setColumnCount(colCount);
@@ -2526,7 +2784,8 @@ public class ImportWindow extends javax.swing.JFrame {
 
       for (int i = 0; i < rowCount; i++) {
         String[] a = r.notImported.get(i);
-        if (a == null) continue;
+        if (a == null)
+          continue;
         for (int c = 0; c < a.length; c++) {
           niTableModel.setValueAt(a[c], i, c);
         }
@@ -2538,7 +2797,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void updateUpdatePreviewSection() {
-    if (lToUpdate == null || updateScrollPane == null || updateTable == null) return;
+    if (lToUpdate == null || updateScrollPane == null || updateTable == null)
+      return;
 
     int cnt = previewUpdatePairs != null ? previewUpdatePairs.size() : 0;
     boolean show = cnt > 0;
@@ -2595,7 +2855,8 @@ public class ImportWindow extends javax.swing.JFrame {
       if (columnIndex == 1 || columnIndex == 2 || columnIndex == 3 || columnIndex == 4) {
         return java.util.Date.class;
       }
-      if (columnIndex == 11 || columnIndex == 12 || columnIndex == 13 || columnIndex == 14 || columnIndex == 17 || columnIndex == 18) {
+      if (columnIndex == 11 || columnIndex == 12 || columnIndex == 13 || columnIndex == 14 || columnIndex == 17
+          || columnIndex == 18) {
         return java.lang.Double.class;
       }
       return java.lang.String.class;
@@ -2606,38 +2867,70 @@ public class ImportWindow extends javax.swing.JFrame {
       Transaction ex = p.existing;
       Transaction in = p.incoming;
       switch (columnIndex) {
-        case 0: return p.match;
-        case 1: return ex != null ? ex.getDate() : null;
-        case 2: return in != null ? in.getDate() : null;
-        case 3: return ex != null ? ex.getExecutionDate() : null;
-        case 4: return in != null ? in.getExecutionDate() : null;
-        case 5: return ex != null ? ex.getStringType() : null;
-        case 6: return in != null ? in.getStringType() : null;
-        case 7: return ex != null ? ex.getStringDirection() : null;
-        case 8: return in != null ? in.getStringDirection() : null;
-        case 9: return ex != null ? ex.getTicker() : null;
-        case 10: return in != null ? in.getTicker() : null;
-        case 11: return ex != null ? ex.getAmount() : null;
-        case 12: return in != null ? in.getAmount() : null;
-        case 13: return ex != null ? ex.getPrice() : null;
-        case 14: return in != null ? in.getPrice() : null;
-        case 15: return ex != null ? ex.getPriceCurrency() : null;
-        case 16: return in != null ? in.getPriceCurrency() : null;
-        case 17: return ex != null ? ex.getFee() : null;
-        case 18: return in != null ? in.getFee() : null;
-        case 19: return ex != null ? ex.getFeeCurrency() : null;
-        case 20: return in != null ? in.getFeeCurrency() : null;
-        case 21: return ex != null ? ex.getMarket() : null;
-        case 22: return in != null ? in.getMarket() : null;
-        case 23: return ex != null ? ex.getBroker() : null;
-        case 24: return in != null ? in.getBroker() : null;
-        case 25: return ex != null ? ex.getAccountId() : null;
-        case 26: return in != null ? in.getAccountId() : null;
-        case 27: return ex != null ? ex.getTxnId() : null;
-        case 28: return in != null ? in.getTxnId() : null;
-        case 29: return ex != null ? ex.getNote() : null;
-        case 30: return in != null ? in.getNote() : null;
-        default: return null;
+        case 0:
+          return p.match;
+        case 1:
+          return ex != null ? ex.getDate() : null;
+        case 2:
+          return in != null ? in.getDate() : null;
+        case 3:
+          return ex != null ? ex.getExecutionDate() : null;
+        case 4:
+          return in != null ? in.getExecutionDate() : null;
+        case 5:
+          return ex != null ? ex.getStringType() : null;
+        case 6:
+          return in != null ? in.getStringType() : null;
+        case 7:
+          return ex != null ? ex.getStringDirection() : null;
+        case 8:
+          return in != null ? in.getStringDirection() : null;
+        case 9:
+          return ex != null ? ex.getTicker() : null;
+        case 10:
+          return in != null ? in.getTicker() : null;
+        case 11:
+          return ex != null ? ex.getAmount() : null;
+        case 12:
+          return in != null ? in.getAmount() : null;
+        case 13:
+          return ex != null ? ex.getPrice() : null;
+        case 14:
+          return in != null ? in.getPrice() : null;
+        case 15:
+          return ex != null ? ex.getPriceCurrency() : null;
+        case 16:
+          return in != null ? in.getPriceCurrency() : null;
+        case 17:
+          return ex != null ? ex.getFee() : null;
+        case 18:
+          return in != null ? in.getFee() : null;
+        case 19:
+          return ex != null ? ex.getFeeCurrency() : null;
+        case 20:
+          return in != null ? in.getFeeCurrency() : null;
+        case 21:
+          return ex != null ? ex.getMarket() : null;
+        case 22:
+          return in != null ? in.getMarket() : null;
+        case 23:
+          return ex != null ? ex.getBroker() : null;
+        case 24:
+          return in != null ? in.getBroker() : null;
+        case 25:
+          return ex != null ? ex.getAccountId() : null;
+        case 26:
+          return in != null ? in.getAccountId() : null;
+        case 27:
+          return ex != null ? ex.getTxnId() : null;
+        case 28:
+          return in != null ? in.getTxnId() : null;
+        case 29:
+          return ex != null ? ex.getNote() : null;
+        case 30:
+          return in != null ? in.getNote() : null;
+        default:
+          return null;
       }
     }
   }
@@ -2666,12 +2959,14 @@ public class ImportWindow extends javax.swing.JFrame {
       currentFile = file;
 
       System.out.println("[IMPORT:SESSION] ===== STARTING NEW IMPORT SESSION =====");
-      System.out.println("[FORMAT:001] startImport called with preselectedFormat=" + preselectedFormat + ", file=" + (file != null ? file.getName() : "null"));
+      System.out.println("[FORMAT:001] startImport called with preselectedFormat=" + preselectedFormat + ", file="
+          + (file != null ? file.getName() : "null"));
 
       // Log initial state before any changes
       logUIComponentStates();
 
-      // Restore last selected format from settings (unless preselected format is specified)
+      // Restore last selected format from settings (unless preselected format is
+      // specified)
       if (preselectedFormat == 0) {
         int savedFormat = cz.datesoft.stockAccounting.Settings.getLastImportFormat();
         if (savedFormat > 0 && savedFormat < cbFormat.getModel().getSize()) {
@@ -2680,23 +2975,27 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       }
 
-       // FORCE reset format selection FIRST - before setting dates to avoid premature loadImport() calls
-       if (preselectedFormat > 0) {
-         System.out.println("[FORMAT:002] Force setting cbFormat to index " + preselectedFormat);
+      // FORCE reset format selection FIRST - before setting dates to avoid premature
+      // loadImport() calls
+      if (preselectedFormat > 0) {
+        System.out.println("[FORMAT:002] Force setting cbFormat to index " + preselectedFormat);
 
-         // Set programmatic format override
-         currentImportFormat = preselectedFormat;
+        // Set programmatic format override
+        currentImportFormat = preselectedFormat;
 
-         // Direct UI updates on EDT (we're already on EDT from menu click)
-         cbFormat.setSelectedIndex(preselectedFormat);
-         updateUiForFormat(preselectedFormat);
-         updateWindowTitle();
+        // Direct UI updates on EDT (we're already on EDT from menu click)
+        cbFormat.setSelectedIndex(preselectedFormat);
+        updateUiForFormat(preselectedFormat);
+        updateWindowTitle();
 
-         System.out.println("[FORMAT:003] UI state reset complete, cbFormat.getSelectedIndex()=" + cbFormat.getSelectedIndex() + ", programmatic=" + currentImportFormat);
-       }
+        System.out.println("[FORMAT:003] UI state reset complete, cbFormat.getSelectedIndex()="
+            + cbFormat.getSelectedIndex() + ", programmatic=" + currentImportFormat);
+      }
 
-      // Set dates for file-based imports (AFTER format is set to avoid triggering premature loadImport)
-      System.out.println("[TIMING:001] About to set dates - programmatic format: " + currentImportFormat + ", UI format: " + cbFormat.getSelectedIndex());
+      // Set dates for file-based imports (AFTER format is set to avoid triggering
+      // premature loadImport)
+      System.out.println("[TIMING:001] About to set dates - programmatic format: " + currentImportFormat
+          + ", UI format: " + cbFormat.getSelectedIndex());
       if (startDateValue != null) {
         startDate.setDate(startDateValue);
       }
@@ -2779,8 +3078,9 @@ public class ImportWindow extends javax.swing.JFrame {
     getContentPane().add(jLabel4, gridBagConstraints);
 
     cbFormat.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "<vyberte formát>", "Fio - obchody export",
-         "⚠️ BrokerJet - HTML export (legacy)", "IB - TradeLog", "⚠️ IB - FlexQuery Trades only CSV",
-         "T212 Invest  - csv  mena: USD", "T212 Invest  - csv  mena: CZK", "Revolut - csv", "Trading 212", "IBKR Flex" }));
+        "⚠️ BrokerJet - HTML export (legacy)", "IB - TradeLog", "⚠️ IB - FlexQuery Trades only CSV",
+        "T212 Invest  - csv  mena: USD", "T212 Invest  - csv  mena: CZK", "Revolut - csv", "Trading 212",
+        "IBKR Flex" }));
     cbFormat.setMinimumSize(new java.awt.Dimension(100, 20));
     cbFormat.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2861,7 +3161,6 @@ public class ImportWindow extends javax.swing.JFrame {
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
     getContentPane().add(bSelectFile, gridBagConstraints);
-
 
     lSelectedFile.setText("(soubor nevybrán)");
     gridBagConstraints = new java.awt.GridBagConstraints();
@@ -2959,7 +3258,8 @@ public class ImportWindow extends javax.swing.JFrame {
 
     cbUpdateDuplicates = new javax.swing.JCheckBox();
     cbUpdateDuplicates.setText("Aktualizovat duplikáty");
-    cbUpdateDuplicates.setToolTipText("Přepíše Poznámky, Poplatky a Datum vypořádání u existujících záznamů. Pokud existuje TxnID, doplní se i přesný čas (sekundy) v poli Datum.");
+    cbUpdateDuplicates.setToolTipText(
+        "Přepíše Poznámky, Poplatky a Datum vypořádání u existujících záznamů. Pokud existuje TxnID, doplní se i přesný čas (sekundy) v poli Datum.");
     cbUpdateDuplicates.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         cbUpdateDuplicatesActionPerformed(evt);
@@ -3036,27 +3336,27 @@ public class ImportWindow extends javax.swing.JFrame {
   private boolean isTrading212Format() {
     return cbFormat != null && cbFormat.getSelectedIndex() == 8; // Trading 212 is index 8
   }
-  
+
   private boolean isIBKRFlexFormat() {
     return cbFormat != null && cbFormat.getSelectedIndex() == 9; // IBKR Flex API is index 9
   }
-  
+
   /**
    * Check if valid API credentials are configured
    */
   private boolean hasValidApiCredentials() {
     String apiKey = cz.datesoft.stockAccounting.Settings.getTrading212ApiKey();
     String apiSecret = cz.datesoft.stockAccounting.Settings.getTrading212ApiSecret();
-    return apiKey != null && !apiKey.trim().isEmpty() 
+    return apiKey != null && !apiKey.trim().isEmpty()
         && apiSecret != null && !apiSecret.trim().isEmpty();
   }
-  
+
   /**
    * Open settings window to Trading 212 API tab
    */
   private void openSettings_Trading212Tab() {
     SettingsWindow settingsWindow = new SettingsWindow(mainWindow, true);
-    
+
     // Re-check credentials and update UI after settings window closes
     settingsWindow.addWindowListener(new java.awt.event.WindowAdapter() {
       public void windowClosed(java.awt.event.WindowEvent e) {
@@ -3064,12 +3364,13 @@ public class ImportWindow extends javax.swing.JFrame {
         updateRefreshButtonState();
       }
     });
-    
+
     // Open settings - user can navigate to Trading 212 tab manually
-    // Note: setSelectedTab() could be added to SettingsWindow for automatic navigation
+    // Note: setSelectedTab() could be added to SettingsWindow for automatic
+    // navigation
     settingsWindow.showDialog();
   }
-  
+
   /**
    * Update import button state based on API credentials
    */
@@ -3107,7 +3408,7 @@ public class ImportWindow extends javax.swing.JFrame {
       bImport.setToolTipText("Importovat data do databáze");
     }
   }
-  
+
   /**
    * Update refresh button state based on cache availability
    */
@@ -3152,11 +3453,11 @@ public class ImportWindow extends javax.swing.JFrame {
       lCacheStatus = new javax.swing.JLabel("Trading 212: Vyberte zdroj dat (API / soubor)");
 
       cbTrading212ImportMode = new javax.swing.JComboBox<>(new String[] {
-        "Vše (obchody + transformace + dividendy + úroky)",
-        "Pouze obchody",
-        "Pouze transformace",
-        "Pouze dividendy",
-        "Pouze úroky"
+          "Vše (obchody + transformace + dividendy + úroky)",
+          "Pouze obchody",
+          "Pouze transformace",
+          "Pouze dividendy",
+          "Pouze úroky"
       });
       cbTrading212ImportMode.setToolTipText("Určuje, které typy záznamů se mají zobrazit v náhledu a importovat");
 
@@ -3278,14 +3579,21 @@ public class ImportWindow extends javax.swing.JFrame {
     }
 
     // Ensure visibility
-    if (pT212Buttons != null) pT212Buttons.setVisible(true);
+    if (pT212Buttons != null)
+      pT212Buttons.setVisible(true);
     cbTrading212Year.setVisible(true);
-    if (cbTrading212ImportMode != null) cbTrading212ImportMode.setVisible(true);
-    if (bT212Fetch != null) bT212Fetch.setVisible(true);
-    if (bT212File != null) bT212File.setVisible(true);
-    if (bT212Clear != null) bT212Clear.setVisible(true);
-    if (bT212RefreshPreview != null) bT212RefreshPreview.setVisible(true);
-    if (bT212Merge != null) bT212Merge.setVisible(true);
+    if (cbTrading212ImportMode != null)
+      cbTrading212ImportMode.setVisible(true);
+    if (bT212Fetch != null)
+      bT212Fetch.setVisible(true);
+    if (bT212File != null)
+      bT212File.setVisible(true);
+    if (bT212Clear != null)
+      bT212Clear.setVisible(true);
+    if (bT212RefreshPreview != null)
+      bT212RefreshPreview.setVisible(true);
+    if (bT212Merge != null)
+      bT212Merge.setVisible(true);
     lCacheStatus.setVisible(true);
 
     // Initial update
@@ -3303,14 +3611,17 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private int getTrading212ImportMode() {
-    if (cbTrading212ImportMode == null) return T212_MODE_ALL;
+    if (cbTrading212ImportMode == null)
+      return T212_MODE_ALL;
     int idx = cbTrading212ImportMode.getSelectedIndex();
-    if (idx < 0) return T212_MODE_ALL;
+    if (idx < 0)
+      return T212_MODE_ALL;
     return idx;
   }
 
   private void refreshTrading212PreviewFromCachedCsv() {
-    if (!isTrading212Format()) return;
+    if (!isTrading212Format())
+      return;
 
     // If there is no cached content, nothing to refresh.
     if (lastTrading212AllTransactions == null || lastTrading212AllTransactions.isEmpty()) {
@@ -3322,7 +3633,8 @@ public class ImportWindow extends javax.swing.JFrame {
     }
 
     try {
-      // Reuse cached parsed set; apply current mode + collision normalization + duplicate filtering.
+      // Reuse cached parsed set; apply current mode + collision normalization +
+      // duplicate filtering.
       populateTrading212Preview(lastTrading212AllTransactions,
           lastTrading212SourceLabel != null ? lastTrading212SourceLabel : "Trading 212",
           lastTrading212YearForCache);
@@ -3332,21 +3644,27 @@ public class ImportWindow extends javax.swing.JFrame {
     }
   }
 
-  private static java.util.Vector<Transaction> filterTrading212Transactions(java.util.Vector<Transaction> in, int mode) {
-    if (in == null) return new java.util.Vector<>();
-    if (mode == T212_MODE_ALL) return new java.util.Vector<>(in);
+  private static java.util.Vector<Transaction> filterTrading212Transactions(java.util.Vector<Transaction> in,
+      int mode) {
+    if (in == null)
+      return new java.util.Vector<>();
+    if (mode == T212_MODE_ALL)
+      return new java.util.Vector<>(in);
 
     java.util.Vector<Transaction> out = new java.util.Vector<>();
     for (Transaction t : in) {
-      if (t == null) continue;
+      if (t == null)
+        continue;
       int d = t.getDirection();
 
       if (mode == T212_MODE_TRADES_ONLY) {
-        if (d == Transaction.DIRECTION_SBUY || d == Transaction.DIRECTION_SSELL) out.add(t);
+        if (d == Transaction.DIRECTION_SBUY || d == Transaction.DIRECTION_SSELL)
+          out.add(t);
         continue;
       }
       if (mode == T212_MODE_TRANS_ONLY) {
-        if (d == Transaction.DIRECTION_TRANS_ADD || d == Transaction.DIRECTION_TRANS_SUB) out.add(t);
+        if (d == Transaction.DIRECTION_TRANS_ADD || d == Transaction.DIRECTION_TRANS_SUB)
+          out.add(t);
         continue;
       }
       if (mode == T212_MODE_DIVI_ONLY) {
@@ -3366,7 +3684,7 @@ public class ImportWindow extends javax.swing.JFrame {
     }
     return out;
   }
-  
+
   private void updateCacheStatus() {
     if (lCacheStatus != null) {
       // Prefer showing current source/mode status.
@@ -3381,33 +3699,30 @@ public class ImportWindow extends javax.swing.JFrame {
       if (selectedItem != null) {
         try {
           int year = Integer.parseInt(selectedItem.split(" ")[0]);
-           if (importState.hasCachedTransactions(year)) {
-             int count = importState.getCachedTransactions(year).size();
-             lCacheStatus.setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: " + count + " transakcí (session)");
-           } else {
-             // Also check disk cache if we have accountId.
-             String accountId = importState.getAccountId();
-             if (accountId != null && !accountId.isEmpty()) {
-               Trading212CsvCache csvCache = new Trading212CsvCache();
-               if (csvCache.hasCachedCsv(accountId, year)) {
-                 lCacheStatus.setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: CSV k dispozici (disk)");
-               } else {
-                 lCacheStatus.setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: Žádná data");
-               }
-             } else {
-               lCacheStatus.setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: Žádná data");
-             }
-           }
+          if (importState.hasCachedTransactions(year)) {
+            int count = importState.getCachedTransactions(year).size();
+            lCacheStatus
+                .setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: " + count + " transakcí (session)");
+          } else {
+            // Also check disk cache if we have accountId.
+            String accountId = importState.getAccountId();
+            if (accountId != null && !accountId.isEmpty()) {
+              Trading212CsvCache csvCache = new Trading212CsvCache();
+              if (csvCache.hasCachedCsv(accountId, year)) {
+                lCacheStatus.setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: CSV k dispozici (disk)");
+              } else {
+                lCacheStatus.setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: Žádná data");
+              }
+            } else {
+              lCacheStatus.setText("Trading 212: Zdroj = API (rok " + year + ") | Cache: Žádná data");
+            }
+          }
         } catch (NumberFormatException e) {
           // ignore
         }
       }
     }
   }
-
-
-
-
 
   private void hideTrading212YearSelection() {
     if (pT212Buttons != null) {
@@ -3422,11 +3737,16 @@ public class ImportWindow extends javax.swing.JFrame {
     if (bClearPreview != null) {
       bClearPreview.setVisible(false);
     }
-    if (bT212Fetch != null) bT212Fetch.setVisible(false);
-    if (bT212File != null) bT212File.setVisible(false);
-    if (bT212Clear != null) bT212Clear.setVisible(false);
-    if (bT212RefreshPreview != null) bT212RefreshPreview.setVisible(false);
-    if (bT212Merge != null) bT212Merge.setVisible(false);
+    if (bT212Fetch != null)
+      bT212Fetch.setVisible(false);
+    if (bT212File != null)
+      bT212File.setVisible(false);
+    if (bT212Clear != null)
+      bT212Clear.setVisible(false);
+    if (bT212RefreshPreview != null)
+      bT212RefreshPreview.setVisible(false);
+    if (bT212Merge != null)
+      bT212Merge.setVisible(false);
     if (bRefreshFromApi != null) {
       bRefreshFromApi.setVisible(false);
     }
@@ -3436,7 +3756,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void updateTrading212ButtonsState() {
-    if (!isTrading212Format()) return;
+    if (!isTrading212Format())
+      return;
     if (bT212Fetch != null) {
       bT212Fetch.setEnabled(hasValidApiCredentials());
     }
@@ -3459,15 +3780,18 @@ public class ImportWindow extends javax.swing.JFrame {
     if (cbTrading212Year != null) {
       boolean apiMode = (currentFile == null);
       cbTrading212Year.setEnabled(apiMode);
-      cbTrading212Year.setToolTipText(apiMode ? "Vyberte rok pro API report" : "Platí jen pro API (při načtení ze souboru se nepoužívá)");
+      cbTrading212Year.setToolTipText(
+          apiMode ? "Vyberte rok pro API report" : "Platí jen pro API (při načtení ze souboru se nepoužívá)");
     }
 
     updateTrading212StatusLine();
   }
 
   private void updateTrading212StatusLine() {
-    if (!isTrading212Format()) return;
-    if (lCacheStatus == null) return;
+    if (!isTrading212Format())
+      return;
+    if (lCacheStatus == null)
+      return;
 
     StringBuilder sb = new StringBuilder();
     if (currentFile != null) {
@@ -3492,7 +3816,7 @@ public class ImportWindow extends javax.swing.JFrame {
     }
     lCacheStatus.setText(sb.toString());
   }
-  
+
   /**
    * Setup IBKR Flex UI components (simplified - current year only)
    */
@@ -3528,16 +3852,17 @@ public class ImportWindow extends javax.swing.JFrame {
       cbIBKRFlexCaIC.setSelected(false);
       cbIBKRFlexCaTO.setSelected(false);
       cbIBKRFlexImportMode = new javax.swing.JComboBox<>(new String[] {
-        "Vše (obchody + transformace + dividendy + úroky)",
-        "Pouze obchody",
-        "Pouze transformace",
-        "Pouze dividendy",
-        "Pouze úroky"
+          "Vše (obchody + transformace + dividendy + úroky)",
+          "Pouze obchody",
+          "Pouze transformace",
+          "Pouze dividendy",
+          "Pouze úroky"
       });
       cbIBKRFlexImportMode.setToolTipText(
           "Určuje, které typy dat se mají importovat (dividendy/úroky se načítají ze sekce CTRN, pokud je v CSV přítomná)");
       lblIBKRFlexStatus = new javax.swing.JLabel("Vyberte zdroj dat: API nebo lokální soubor");
-      // Two-row layout to avoid FlowLayout wrapping/clipping when button texts change.
+      // Two-row layout to avoid FlowLayout wrapping/clipping when button texts
+      // change.
       pIBKRFlexButtons = new javax.swing.JPanel(new java.awt.BorderLayout(0, 4));
 
       // AssetClass filter (multi-select)
@@ -3583,14 +3908,14 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       });
       updateIbkrAssetFilterButtonText();
-      
+
       // Add action listeners
       bIBKRFlexFetch.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
           ibkrFlexFetchClicked();
         }
       });
-      
+
       bIBKRFlexFile.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
           ibkrFlexFileClicked();
@@ -3599,11 +3924,12 @@ public class ImportWindow extends javax.swing.JFrame {
 
       bIBKRFlexMerge.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
-          if (!isIBKRFlexFormat()) return;
+          if (!isIBKRFlexFormat())
+            return;
           performIBKRFlexImport(true);
         }
       });
-      
+
       bIBKRFlexClear.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
           clearIbkrPreviewAndCache();
@@ -3652,7 +3978,7 @@ public class ImportWindow extends javax.swing.JFrame {
           }
         }
       });
-      
+
       // Build left-aligned button row grouped into compact sections
       javax.swing.JPanel pSource = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
       pSource.setBorder(javax.swing.BorderFactory.createTitledBorder("1) Zdroj"));
@@ -3713,11 +4039,11 @@ public class ImportWindow extends javax.swing.JFrame {
       gbc.insets = new java.awt.Insets(0, 5, 5, 5);
       gbc.weightx = 1.0;
       getContentPane().add(lblIBKRFlexStatus, gbc);
-      
+
       // Repack to show new components
       pack();
     }
-    
+
     // Ensure visibility
     bIBKRFlexFetch.setVisible(true);
     bIBKRFlexFile.setVisible(true);
@@ -3737,10 +4063,14 @@ public class ImportWindow extends javax.swing.JFrame {
     if (cbIBKRFlexIncludeCorporateActions != null) {
       cbIBKRFlexIncludeCorporateActions.setVisible(true);
     }
-    if (cbIBKRFlexCaRS != null) cbIBKRFlexCaRS.setVisible(true);
-    if (cbIBKRFlexCaTC != null) cbIBKRFlexCaTC.setVisible(true);
-    if (cbIBKRFlexCaIC != null) cbIBKRFlexCaIC.setVisible(true);
-    if (cbIBKRFlexCaTO != null) cbIBKRFlexCaTO.setVisible(true);
+    if (cbIBKRFlexCaRS != null)
+      cbIBKRFlexCaRS.setVisible(true);
+    if (cbIBKRFlexCaTC != null)
+      cbIBKRFlexCaTC.setVisible(true);
+    if (cbIBKRFlexCaIC != null)
+      cbIBKRFlexCaIC.setVisible(true);
+    if (cbIBKRFlexCaTO != null)
+      cbIBKRFlexCaTO.setVisible(true);
     if (bIBKRFlexAssetFilter != null) {
       bIBKRFlexAssetFilter.setVisible(true);
     }
@@ -3756,11 +4086,11 @@ public class ImportWindow extends javax.swing.JFrame {
       lblIBKRFlexStatus.setVisible(true);
     }
     lblIBKRFlexStatus.setVisible(true);
-    
+
     // Update button state based on preview data
     updateIBKRFlexButtonState();
   }
-  
+
   /**
    * Hide IBKR Flex UI components
    */
@@ -3789,10 +4119,14 @@ public class ImportWindow extends javax.swing.JFrame {
     if (cbIBKRFlexIncludeCorporateActions != null) {
       cbIBKRFlexIncludeCorporateActions.setVisible(false);
     }
-    if (cbIBKRFlexCaRS != null) cbIBKRFlexCaRS.setVisible(false);
-    if (cbIBKRFlexCaTC != null) cbIBKRFlexCaTC.setVisible(false);
-    if (cbIBKRFlexCaIC != null) cbIBKRFlexCaIC.setVisible(false);
-    if (cbIBKRFlexCaTO != null) cbIBKRFlexCaTO.setVisible(false);
+    if (cbIBKRFlexCaRS != null)
+      cbIBKRFlexCaRS.setVisible(false);
+    if (cbIBKRFlexCaTC != null)
+      cbIBKRFlexCaTC.setVisible(false);
+    if (cbIBKRFlexCaIC != null)
+      cbIBKRFlexCaIC.setVisible(false);
+    if (cbIBKRFlexCaTO != null)
+      cbIBKRFlexCaTO.setVisible(false);
     if (pIBKRFlexButtons != null) {
       pIBKRFlexButtons.setVisible(false);
     }
@@ -3806,14 +4140,14 @@ public class ImportWindow extends javax.swing.JFrame {
       lblIBKRFlexStatus.setVisible(false);
     }
   }
-  
+
   /**
    * Show IBKR Flex UI components
    */
   private void showIBKRFlexUI() {
     setupIBKRFlexUI();
   }
-  
+
   /**
    * Update IBKR Flex button state based on preview data
    */
@@ -3821,7 +4155,7 @@ public class ImportWindow extends javax.swing.JFrame {
     if (bIBKRFlexFetch == null) {
       return;
     }
-    
+
     boolean hasWork = !transactions.rows.isEmpty() || (duplicatesToUpdate != null && !duplicatesToUpdate.isEmpty());
 
     // Fetch button is always fetch; merge is a separate button (like Trading 212).
@@ -3831,7 +4165,7 @@ public class ImportWindow extends javax.swing.JFrame {
     if (bIBKRFlexMerge != null) {
       bIBKRFlexMerge.setEnabled(hasWork);
     }
-    
+
     // Enable/disable clear button
     if (bIBKRFlexClear != null) {
       bIBKRFlexClear.setEnabled(hasWork);
@@ -3846,7 +4180,7 @@ public class ImportWindow extends javax.swing.JFrame {
       setIbkrFlexUiVisible(true);
     }
   }
-  
+
   /**
    * Handle IBKR Flex fetch/merge button click
    */
@@ -3857,12 +4191,12 @@ public class ImportWindow extends javax.swing.JFrame {
 
     // Keep content filters visible.
     setIbkrFlexUiVisible(true);
-    
+
     // Always fetch; merge is done via a dedicated button.
     System.out.println("[IBKR:001] Fetching fresh data from IBKR Flex API");
     performIBKRFlexImport(false);
   }
-  
+
   /**
    * Handle IBKR Flex file import button click
    */
@@ -3870,9 +4204,9 @@ public class ImportWindow extends javax.swing.JFrame {
     if (!isIBKRFlexFormat()) {
       return;
     }
-    
+
     System.out.println("[IBKR:FILE:001] File import button clicked");
-    
+
     java.io.File selectedFile = chooseFileForOpen("Vybrat IBKR Flex CSV soubor", new String[] { ".csv" });
     if (selectedFile == null) {
       System.out.println("[IBKR:FILE:002] User cancelled file selection");
@@ -3880,7 +4214,8 @@ public class ImportWindow extends javax.swing.JFrame {
     }
 
     // Treat selecting a new file as starting a new preview session.
-    // This avoids confusion where the old preview remains visible while the new file is being parsed.
+    // This avoids confusion where the old preview remains visible while the new
+    // file is being parsed.
     clearIbkrPreviewAndCache();
 
     // Defensive: the format dropdown can fire events during long operations.
@@ -3895,41 +4230,41 @@ public class ImportWindow extends javax.swing.JFrame {
     } catch (Exception e) {
       // Best effort
     }
-    
+
     System.out.println("[IBKR:FILE:003] Selected file: " + selectedFile.getAbsolutePath());
-    
+
     // Update status label to show loading
     lblIBKRFlexStatus.setText("Načítání souboru: " + selectedFile.getName() + "...");
-    
-     try {
-       // Read file content (fast) and then refresh preview asynchronously (slow)
+
+    try {
+      // Read file content (fast) and then refresh preview asynchronously (slow)
       String csvContent = readFileToString(selectedFile);
 
       lastIbkrCsvContent = csvContent;
       lastIbkrSourceLabel = selectedFile.getName();
       ibkrPreviewDirty = false;
-       if (bIBKRFlexRefreshPreview != null) {
-          bIBKRFlexRefreshPreview.setEnabled(false);
-        }
-       System.out.println("[IBKR:FILE:004] File read successfully, size: " + csvContent.length() + " chars");
+      if (bIBKRFlexRefreshPreview != null) {
+        bIBKRFlexRefreshPreview.setEnabled(false);
+      }
+      System.out.println("[IBKR:FILE:004] File read successfully, size: " + csvContent.length() + " chars");
 
-       // Ensure the content controls remain visible even if layout refreshes.
-       setIbkrFlexUiVisible(true);
+      // Ensure the content controls remain visible even if layout refreshes.
+      setIbkrFlexUiVisible(true);
 
       refreshIbkrPreviewFromCachedCsvAsync();
       return;
-      
+
     } catch (Exception e) {
       System.err.println("[IBKR:FILE:ERROR] Failed to import file: " + e.getMessage());
       e.printStackTrace();
-      
+
       // Show user-friendly error
       javax.swing.JOptionPane.showMessageDialog(this,
-        "Soubor nelze načíst jako IBKR Flex CSV.\n" +
-        "Zkontrolujte, že jste vybrali správný formát a soubor je z IBKR Flex Query.\n\n" +
-        "Chyba: " + e.getMessage(),
-        "Chyba při načítání souboru", javax.swing.JOptionPane.ERROR_MESSAGE);
-      
+          "Soubor nelze načíst jako IBKR Flex CSV.\n" +
+              "Zkontrolujte, že jste vybrali správný formát a soubor je z IBKR Flex Query.\n\n" +
+              "Chyba: " + e.getMessage(),
+          "Chyba při načítání souboru", javax.swing.JOptionPane.ERROR_MESSAGE);
+
       // Reset status label
       lblIBKRFlexStatus.setText("Vyberte zdroj dat: API nebo lokální soubor");
     }
@@ -3940,10 +4275,10 @@ public class ImportWindow extends javax.swing.JFrame {
    */
   private String readFileToString(java.io.File file) throws java.io.IOException {
     StringBuilder content = new StringBuilder();
-    
+
     // Try UTF-8 first (IBKR standard)
     try (java.io.BufferedReader reader = new java.io.BufferedReader(
-         new java.io.InputStreamReader(new java.io.FileInputStream(file), "UTF-8"))) {
+        new java.io.InputStreamReader(new java.io.FileInputStream(file), "UTF-8"))) {
       String line;
       while ((line = reader.readLine()) != null) {
         content.append(line).append("\n");
@@ -3952,24 +4287,24 @@ public class ImportWindow extends javax.swing.JFrame {
       // Fallback to ISO-8859-1 if UTF-8 fails
       System.out.println("[FILE:READ] UTF-8 failed, trying ISO-8859-1");
       try (java.io.BufferedReader reader = new java.io.BufferedReader(
-           new java.io.InputStreamReader(new java.io.FileInputStream(file), "ISO-8859-1"))) {
+          new java.io.InputStreamReader(new java.io.FileInputStream(file), "ISO-8859-1"))) {
         String line;
         while ((line = reader.readLine()) != null) {
           content.append(line).append("\n");
         }
       }
     }
-    
+
     return content.toString();
   }
-  
+
   /**
    * Filter transactions to current year only
    */
   private Vector<Transaction> filterToCurrentYear(Vector<Transaction> transactions) {
     int currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR);
     Vector<Transaction> filtered = new Vector<>();
-    
+
     java.util.Calendar cal = java.util.Calendar.getInstance();
     for (Transaction tx : transactions) {
       if (tx.getDate() != null) {
@@ -3980,86 +4315,89 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       }
     }
-    
-    System.out.println("[FILTER:001] Filtered to current year (" + currentYear + "): " + 
-                       transactions.size() + " → " + filtered.size() + " transactions");
+
+    System.out.println("[FILTER:001] Filtered to current year (" + currentYear + "): " +
+        transactions.size() + " → " + filtered.size() + " transactions");
     return filtered;
   }
-  
+
   /**
    * Perform IBKR Flex import (fetch from API or merge to database)
+   * 
    * @param mergeMode true = merge preview to database, false = fetch from API
    */
   private void performIBKRFlexImport(boolean mergeMode) {
     System.out.println("[IBKR:VALIDATE:001] performIBKRFlexImport called with mergeMode=" + mergeMode);
-    
+
     if (!isIBKRFlexFormat()) {
       System.out.println("[IBKR:VALIDATE:002] ❌ Format check: FAIL (not IBKR format)");
       return;
     }
-    
+
     System.out.println("[IBKR:VALIDATE:003] ✅ Format check: PASS");
-    
+
     if (mergeMode) {
       // MERGE MODE: Merge existing preview data to database
       System.out.println("[IBKR:MERGE:001] Starting merge mode - merging preview to database");
-      
+
       try {
         // Track initial count for accurate reporting
         int initialTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
         System.out.println("[IBKR:MERGE:002] Initial transaction count in database: " + initialTransactionCount);
-        
+
         TransactionSet mainDbForUndo = mainWindow.getTransactionDatabase();
         mainDbForUndo.beginImportUndoCapture();
         transactions.mergeTo(mainDbForUndo);
-        
+
         // Update duplicates (IBKR Flex: always on)
         int updatedCount = 0;
         if (!duplicatesToUpdate.isEmpty()) {
           TransactionSet mainDb = mainWindow.getTransactionDatabase();
-          
+
           System.out.println("[IBKR:UPDATE:001] Updating " + duplicatesToUpdate.size() + " duplicate transactions");
-          
-           // Start batch update to prevent double-updating same transaction
-           mainDb.startBatchUpdate();
-          
-            updatedCount += mainDb.updateDuplicateTransactions(duplicatesToUpdate);
-          
+
+          // Start batch update to prevent double-updating same transaction
+          mainDb.startBatchUpdate();
+
+          updatedCount += mainDb.updateDuplicateTransactions(duplicatesToUpdate);
+
           // End batch update
           mainDb.endBatchUpdate();
-          
+
           System.out.println("[IBKR:UPDATE:002] Successfully updated " + updatedCount + " transactions");
         }
-        
+
         // Clear duplicates list
         duplicatesToUpdate.clear();
-        
+
         // Invalidate transformation cache after import
         System.out.println("[IBKR:MERGE:003] Invalidating transformation cache after IBKR import");
         mainWindow.getTransactionDatabase().invalidateTransformationCache();
-        
+
         // Refresh metadata filter dropdowns after import
         System.out.println("[IBKR:MERGE:004] Refreshing metadata filters after IBKR import");
         mainWindow.refreshMetadataFilters();
-        
+
         // Calculate actual transactions added
         int finalTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
         int transactionsAdded = finalTransactionCount - initialTransactionCount;
-        System.out.println("[IBKR:MERGE:005] Final transaction count: " + finalTransactionCount + ", added: " + transactionsAdded);
-        
+        System.out.println(
+            "[IBKR:MERGE:005] Final transaction count: " + finalTransactionCount + ", added: " + transactionsAdded);
+
         // Force immediate table refresh on EDT
         javax.swing.SwingUtilities.invokeLater(() -> {
           mainWindow.refreshTable();
           mainWindow.jumpToFirstImportChangeInView();
         });
-        
+
         // Non-blocking status bar summary (avoid modal dialog)
         mainWindow.setTransientStatusMessage(
             "IBKR Flex: přidáno " + transactionsAdded + ", aktualizováno " + updatedCount,
             10000L);
 
-        AppLog.info("IBKR Flex: sloučení dokončeno (přidáno " + transactionsAdded + ", aktualizováno " + updatedCount + ")");
-        
+        AppLog.info(
+            "IBKR Flex: sloučení dokončeno (přidáno " + transactionsAdded + ", aktualizováno " + updatedCount + ")");
+
         // Clear preview for next import
         clearPreview();
         updateIBKRFlexButtonState();
@@ -4069,93 +4407,97 @@ public class ImportWindow extends javax.swing.JFrame {
         // For IBKR Flex, close the import window after a successful merge.
         clearIbkrCachedData();
         setVisible(false);
-        
+
         System.out.println("[IBKR:MERGE:006] ✅ Merge completed successfully");
       } catch (Exception e) {
         System.out.println("[IBKR:MERGE:007] ❌ Merge failed: " + e.getMessage());
         e.printStackTrace();
         AppLog.error("IBKR Flex: sloučení selhalo: " + e.getMessage(), e);
-        javax.swing.JOptionPane.showMessageDialog(this, 
+        javax.swing.JOptionPane.showMessageDialog(this,
             "Chyba při slučování: " + e.getMessage(),
             "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);
       }
       return;
     }
-    
+
     // FETCH MODE: Download data from IBKR Flex API
     System.out.println("[IBKR:VALIDATE:004] ✅ Merge mode check: PASS (fetch mode)");
-    
+
     // Get credentials
     String token = cz.datesoft.stockAccounting.Settings.getIbkrFlexToken();
     String queryId = cz.datesoft.stockAccounting.Settings.getIbkrFlexQueryId();
-    
+
     System.out.println("[IBKR:VALIDATE:005] Credentials check:");
     System.out.println("   ├─ Token: " + (token != null && !token.trim().isEmpty() ? "✅ PRESENT" : "❌ MISSING"));
     System.out.println("   └─ Query ID: " + (queryId != null && !queryId.trim().isEmpty() ? "✅ PRESENT" : "❌ MISSING"));
-    
+
     if (token == null || token.trim().isEmpty() || queryId == null || queryId.trim().isEmpty()) {
       System.out.println("[IBKR:VALIDATE:006] ❌ Credentials validation: FAIL - showing error dialog");
       javax.swing.JOptionPane.showMessageDialog(this,
           "IBKR Flex API přihlašovací údaje nejsou nakonfigurovány.\n" +
-          "Nastavte je v Nastavení → IBKR Flex záložce.",
+              "Nastavte je v Nastavení → IBKR Flex záložce.",
           "Chybí přihlašovací údaje", javax.swing.JOptionPane.WARNING_MESSAGE);
       return;
     }
-    
+
     System.out.println("[IBKR:VALIDATE:007] ✅ All validations passed - proceeding to API call");
-    
+
     try {
       // Create importer
       IBKRFlexImporter importer = new IBKRFlexImporter(token, queryId);
       importer.setAllowedAssetClasses(getSelectedIbkrAssetClasses());
-       importer.setIncludeCorporateActions(cbIBKRFlexIncludeCorporateActions == null || cbIBKRFlexIncludeCorporateActions.isSelected());
-       int mode = getIbkrImportMode();
-        importer.setIncludeTrades(mode != IBKR_MODE_TRANS_ONLY && mode != IBKR_MODE_DIVI_ONLY && mode != IBKR_MODE_INTEREST_ONLY);
-        // Default: include everything (CTRN) unless a mode disables it.
+      importer.setIncludeCorporateActions(
+          cbIBKRFlexIncludeCorporateActions == null || cbIBKRFlexIncludeCorporateActions.isSelected());
+      int mode = getIbkrImportMode();
+      importer.setIncludeTrades(
+          mode != IBKR_MODE_TRANS_ONLY && mode != IBKR_MODE_DIVI_ONLY && mode != IBKR_MODE_INTEREST_ONLY);
+      // Default: include everything (CTRN) unless a mode disables it.
+      importer.setIncludeCashTransactions(true);
+      if (mode == IBKR_MODE_TRADES_ONLY) {
+        importer.setIncludeCorporateActions(false);
+        importer.setIncludeCashTransactions(false);
+      } else if (mode == IBKR_MODE_TRANS_ONLY) {
+        importer.setIncludeCorporateActions(true);
+        importer.setIncludeCashTransactions(false);
+      } else if (mode == IBKR_MODE_DIVI_ONLY) {
+        importer.setIncludeCorporateActions(false);
         importer.setIncludeCashTransactions(true);
-        if (mode == IBKR_MODE_TRADES_ONLY) {
-          importer.setIncludeCorporateActions(false);
-          importer.setIncludeCashTransactions(false);
-        } else if (mode == IBKR_MODE_TRANS_ONLY) {
-          importer.setIncludeCorporateActions(true);
-          importer.setIncludeCashTransactions(false);
-        } else if (mode == IBKR_MODE_DIVI_ONLY) {
-          importer.setIncludeCorporateActions(false);
-          importer.setIncludeCashTransactions(true);
-        } else if (mode == IBKR_MODE_INTEREST_ONLY) {
-          importer.setIncludeCorporateActions(false);
-          importer.setIncludeCashTransactions(true);
-        }
+      } else if (mode == IBKR_MODE_INTEREST_ONLY) {
+        importer.setIncludeCorporateActions(false);
+        importer.setIncludeCashTransactions(true);
+      }
       importer.setParentFrame(mainWindow);
-      
+
       // Import current year data
       int currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR);
       Vector<Integer> years = new Vector<>();
       years.add(currentYear);
-      
+
       System.out.println("[IBKR:PROGRESS:001] Creating progress dialog for IBKR Flex import");
-      
-      // Create progress dialog (modal) - this will show progress and wait for completion
+
+      // Create progress dialog (modal) - this will show progress and wait for
+      // completion
       IBKRFlexProgressDialog progressDialog = new IBKRFlexProgressDialog(
-        mainWindow, importer, years);
-      
+          mainWindow, importer, years);
+
       // Start import first (runs in background)
       progressDialog.startImport();
-      
+
       // Then show dialog and wait for completion (blocks until done)
       IBKRFlexImporter.ImportResult result = progressDialog.waitForCompletion();
-      
+
       System.out.println("[IBKR:RESULT:001] Progress dialog completed - result.success=" + result.success);
-      
+
       if (!result.success) {
         System.out.println("[IBKR:ERROR:001] Import failed: " + result.message);
         javax.swing.JOptionPane.showMessageDialog(this,
-          "Import selhal: " + result.message,
-          "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);
+            "Import selhal: " + result.message,
+            "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);
         return;
       }
 
-      // Store cached CSV if available so preview can be refreshed without re-downloading
+      // Store cached CSV if available so preview can be refreshed without
+      // re-downloading
       if (result.yearsImported != null && !result.yearsImported.isEmpty()) {
         IBKRFlexImporter.ImportYearResult yr = result.yearsImported.get(0);
         if (yr != null && yr.csvData != null && !yr.csvData.isEmpty()) {
@@ -4164,6 +4506,44 @@ public class ImportWindow extends javax.swing.JFrame {
           ibkrPreviewDirty = false;
           if (bIBKRFlexRefreshPreview != null) {
             bIBKRFlexRefreshPreview.setEnabled(false);
+          }
+        }
+      }
+
+      // Check for existing transactions for current year and ask to delete
+      if (mainWindow.getTransactionDatabase().getRowCountRaw() > 0) {
+        boolean hasTransactionsForYear = false;
+        for (int i = 0; i < mainWindow.getTransactionDatabase().getRowCountRaw(); i++) {
+          Transaction t = mainWindow.getTransactionDatabase().getRowAt(i);
+          if (t != null && t.getDate() != null) {
+            java.util.GregorianCalendar gc = new java.util.GregorianCalendar();
+            gc.setTime(t.getDate());
+            if (gc.get(java.util.GregorianCalendar.YEAR) == currentYear) {
+              hasTransactionsForYear = true;
+              break;
+            }
+          }
+        }
+
+        if (hasTransactionsForYear) {
+          int choice = javax.swing.JOptionPane.showConfirmDialog(this,
+              "Databáze již obsahuje záznamy pro rok " + currentYear + ".\n" +
+                  "Chcete je před importem vymazat (aktualizace smazáním)?\n\n" +
+                  "Pokud zvolíte NE, import proběhne jako aktualizace (může vést k duplicitám).",
+              "Existující data",
+              javax.swing.JOptionPane.YES_NO_OPTION,
+              javax.swing.JOptionPane.WARNING_MESSAGE);
+
+          if (choice == javax.swing.JOptionPane.YES_OPTION) {
+            int deleted = mainWindow.getTransactionDatabase().deleteTransactionsForYear(currentYear);
+            String msg = "Vymazáno " + deleted + " záznamů pro rok " + currentYear + ".";
+            System.out.println("[IBKR:DELETE] " + msg);
+            if (lblIBKRFlexStatus != null) {
+              lblIBKRFlexStatus.setText(msg);
+            }
+
+            // Refresh main table immediately to verify deletion visually
+            javax.swing.SwingUtilities.invokeLater(() -> mainWindow.refreshTable());
           }
         }
       }
@@ -4185,7 +4565,7 @@ public class ImportWindow extends javax.swing.JFrame {
       refreshIbkrPreviewFromCachedCsvAsync();
 
       System.out.println("[IBKR:COMPLETE:001] API download finished - preview refresh scheduled");
-      
+
     } catch (Exception e) {
       String errorMessage = "Chyba při importu z IBKR: " + e.getMessage();
       System.out.println("[IBKR:ERROR:003] Exception during import: " + errorMessage);
@@ -4236,118 +4616,122 @@ public class ImportWindow extends javax.swing.JFrame {
   private void performTrading212Import(boolean mergeMode) {
     performTrading212Import(mergeMode, false); // Default: no force refresh
   }
-  
+
   private void performTrading212Import(boolean mergeMode, boolean forceRefresh) {
-    // Note: No importInProgress check here - internal method called from startImport()
+    // Note: No importInProgress check here - internal method called from
+    // startImport()
     // which already manages concurrency protection for external calls
 
-    System.out.println("[VALIDATE:001] performTrading212Import called with mergeMode=" + mergeMode + ", forceRefresh=" + forceRefresh);
+    System.out.println(
+        "[VALIDATE:001] performTrading212Import called with mergeMode=" + mergeMode + ", forceRefresh=" + forceRefresh);
 
     if (!isTrading212Format()) {
-        System.out.println("[VALIDATE:002] ❌ Format check: FAIL (not Trading212 format)");
+      System.out.println("[VALIDATE:002] ❌ Format check: FAIL (not Trading212 format)");
       return;
     }
 
     System.out.println("[VALIDATE:003] ✅ Format check: PASS");
 
     if (mergeMode) {
-        // MERGE MODE: Merge existing preview data to database
-        System.out.println("[MERGE:001] Starting merge mode - merging preview to database");
+      // MERGE MODE: Merge existing preview data to database
+      System.out.println("[MERGE:001] Starting merge mode - merging preview to database");
 
-        try {
-            // Track initial count for accurate reporting
-            int initialTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
-            System.out.println("[MERGE:001b] Initial transaction count in database: " + initialTransactionCount);
+      try {
+        // Track initial count for accurate reporting
+        int initialTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
+        System.out.println("[MERGE:001b] Initial transaction count in database: " + initialTransactionCount);
 
-            TransactionSet mainDbForUndo = mainWindow.getTransactionDatabase();
-            mainDbForUndo.beginImportUndoCapture();
-            transactions.mergeTo(mainDbForUndo);
+        TransactionSet mainDbForUndo = mainWindow.getTransactionDatabase();
+        mainDbForUndo.beginImportUndoCapture();
+        transactions.mergeTo(mainDbForUndo);
 
-            // Update duplicates if checkbox is checked
-            int updatedCount = 0;
-            if (cbUpdateDuplicates.isSelected() && !duplicatesToUpdate.isEmpty()) {
-              TransactionSet mainDb = mainWindow.getTransactionDatabase();
-              
-              System.out.println("[UPDATE:001] Updating " + duplicatesToUpdate.size() + " duplicate transactions");
-              
-              // Start batch update to prevent double-updating same transaction
-              mainDb.startBatchUpdate();
-              
-               updatedCount += mainDb.updateDuplicateTransactions(duplicatesToUpdate);
-              
-              // End batch update
-              mainDb.endBatchUpdate();
-              
-              System.out.println("[UPDATE:002] Successfully updated " + updatedCount + " transactions");
-            }
+        // Update duplicates if checkbox is checked
+        int updatedCount = 0;
+        if (cbUpdateDuplicates.isSelected() && !duplicatesToUpdate.isEmpty()) {
+          TransactionSet mainDb = mainWindow.getTransactionDatabase();
 
-            // Clear duplicates list
-            duplicatesToUpdate.clear();
+          System.out.println("[UPDATE:001] Updating " + duplicatesToUpdate.size() + " duplicate transactions");
 
-            // Invalidate transformation cache after import (new transactions may have transformations)
-            System.out.println("DEBUG: Invalidating transformation cache after API import");
-            mainWindow.getTransactionDatabase().invalidateTransformationCache();
+          // Start batch update to prevent double-updating same transaction
+          mainDb.startBatchUpdate();
 
-            // Refresh metadata filter dropdowns after API import
-            System.out.println("DEBUG: Refreshing metadata filters after API import");
-            mainWindow.refreshMetadataFilters();
+          updatedCount += mainDb.updateDuplicateTransactions(duplicatesToUpdate);
 
-            // Calculate actual transactions added
-            int finalTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
-            int transactionsAdded = finalTransactionCount - initialTransactionCount;
-            System.out.println("[MERGE:001c] Final transaction count: " + finalTransactionCount + ", added: " + transactionsAdded);
+          // End batch update
+          mainDb.endBatchUpdate();
 
-            // Force immediate table refresh on EDT
-            javax.swing.SwingUtilities.invokeLater(() -> {
-              mainWindow.refreshTable();
-              mainWindow.jumpToFirstImportChangeInView();
-            });
-
-            mainWindow.enableUndoImportIfAvailable();
-
-            // Get the year from the dropdown to update status
-            String selectedItem = (String) cbTrading212Year.getSelectedItem();
-            if (selectedItem != null) {
-              String yearStr = selectedItem.split(" ")[0];
-              try {
-                int year = Integer.parseInt(yearStr);
-
-                 if (trading212PreviewFromApi) {
-                   // Update import state and persist to Settings (only after successful merge)
-                   importState.markYearFullyImported(year, java.time.LocalDateTime.now());
-
-                   // Refresh year dropdown to show updated status
-                   refreshTrading212YearStatuses();
-                 }
-               } catch (NumberFormatException e) {
-                 // Ignore if year parsing fails
-               }
-             }
-
-            // Show success message with accurate count
-            String message = "Úspěšně importováno " + transactionsAdded + " transakcí!\n";
-            if (updatedCount > 0) {
-              message += "Aktualizováno: " + updatedCount + " existujících záznamů\n\n";
-              message += "Aktualizované řádky jsou zvýrazněny žlutě v hlavním okně.\n\n";
-            } else {
-              message += "\n";
-            }
-            message += "Metoda importu: CSV Report (komplexní data včetně objednávek, dividend a úroků)\n\n";
-            message += "Nyní můžete importovat další rok nebo zavřít toto okno.";
-            
-            javax.swing.JOptionPane.showMessageDialog(mainWindow,
-                message,
-                "Import dokončen", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-
-            // Clear preview for next import
-            clearPreviewAfterMerge();
-
-            System.out.println("[MERGE:002] ✅ Merge completed successfully");
-        } catch (Exception e) {
-            System.out.println("[MERGE:003] ❌ Merge failed: " + e.getMessage());
-            javax.swing.JOptionPane.showMessageDialog(this, "Merge failed: " + e.getMessage());
+          System.out.println("[UPDATE:002] Successfully updated " + updatedCount + " transactions");
         }
-        return;
+
+        // Clear duplicates list
+        duplicatesToUpdate.clear();
+
+        // Invalidate transformation cache after import (new transactions may have
+        // transformations)
+        System.out.println("DEBUG: Invalidating transformation cache after API import");
+        mainWindow.getTransactionDatabase().invalidateTransformationCache();
+
+        // Refresh metadata filter dropdowns after API import
+        System.out.println("DEBUG: Refreshing metadata filters after API import");
+        mainWindow.refreshMetadataFilters();
+
+        // Calculate actual transactions added
+        int finalTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
+        int transactionsAdded = finalTransactionCount - initialTransactionCount;
+        System.out.println(
+            "[MERGE:001c] Final transaction count: " + finalTransactionCount + ", added: " + transactionsAdded);
+
+        // Force immediate table refresh on EDT
+        javax.swing.SwingUtilities.invokeLater(() -> {
+          mainWindow.refreshTable();
+          mainWindow.jumpToFirstImportChangeInView();
+        });
+
+        mainWindow.enableUndoImportIfAvailable();
+
+        // Get the year from the dropdown to update status
+        String selectedItem = (String) cbTrading212Year.getSelectedItem();
+        if (selectedItem != null) {
+          String yearStr = selectedItem.split(" ")[0];
+          try {
+            int year = Integer.parseInt(yearStr);
+
+            if (trading212PreviewFromApi) {
+              // Update import state and persist to Settings (only after successful merge)
+              importState.markYearFullyImported(year, java.time.LocalDateTime.now());
+
+              // Refresh year dropdown to show updated status
+              refreshTrading212YearStatuses();
+            }
+          } catch (NumberFormatException e) {
+            // Ignore if year parsing fails
+          }
+        }
+
+        // Show success message with accurate count
+        String message = "Úspěšně importováno " + transactionsAdded + " transakcí!\n";
+        if (updatedCount > 0) {
+          message += "Aktualizováno: " + updatedCount + " existujících záznamů\n\n";
+          message += "Aktualizované řádky jsou zvýrazněny žlutě v hlavním okně.\n\n";
+        } else {
+          message += "\n";
+        }
+        message += "Metoda importu: CSV Report (komplexní data včetně objednávek, dividend a úroků)\n\n";
+        message += "Nyní můžete importovat další rok nebo zavřít toto okno.";
+
+        javax.swing.JOptionPane.showMessageDialog(mainWindow,
+            message,
+            "Import dokončen", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+
+        // Clear preview for next import
+        clearPreviewAfterMerge();
+
+        System.out.println("[MERGE:002] ✅ Merge completed successfully");
+      } catch (Exception e) {
+        System.out.println("[MERGE:003] ❌ Merge failed: " + e.getMessage());
+        javax.swing.JOptionPane.showMessageDialog(this, "Merge failed: " + e.getMessage());
+      }
+      return;
     }
 
     System.out.println("[VALIDATE:004] ✅ Merge mode check: PASS (preview mode)");
@@ -4357,7 +4741,7 @@ public class ImportWindow extends javax.swing.JFrame {
     System.out.println("[VALIDATE:006] Year selection raw: '" + selectedItem + "'");
 
     if (selectedItem == null) {
-        System.out.println("[VALIDATE:007] ❌ Year selection: NULL - showing 'select year' dialog");
+      System.out.println("[VALIDATE:007] ❌ Year selection: NULL - showing 'select year' dialog");
       javax.swing.JOptionPane.showMessageDialog(this, "Please select a year to import.");
       return;
     }
@@ -4371,7 +4755,8 @@ public class ImportWindow extends javax.swing.JFrame {
       year = Integer.parseInt(yearStr);
       System.out.println("[VALIDATE:010] ✅ Year parsing: SUCCESS - year = " + year);
     } catch (NumberFormatException e) {
-      System.out.println("[VALIDATE:011] ❌ Year parsing: FAILED - '" + yearStr + "' not numeric - showing error dialog");
+      System.out
+          .println("[VALIDATE:011] ❌ Year parsing: FAILED - '" + yearStr + "' not numeric - showing error dialog");
       javax.swing.JOptionPane.showMessageDialog(this, "Invalid year selection: " + selectedItem);
       return;
     }
@@ -4384,7 +4769,8 @@ public class ImportWindow extends javax.swing.JFrame {
 
     System.out.println("[VALIDATE:013] Credentials check:");
     System.out.println("   ├─ API Key: " + (apiKey != null && !apiKey.trim().isEmpty() ? "✅ PRESENT" : "❌ MISSING"));
-    System.out.println("   ├─ API Secret: " + (apiSecret != null && !apiSecret.trim().isEmpty() ? "✅ PRESENT" : "❌ MISSING"));
+    System.out
+        .println("   ├─ API Secret: " + (apiSecret != null && !apiSecret.trim().isEmpty() ? "✅ PRESENT" : "❌ MISSING"));
 
     if (apiKey == null || apiKey.trim().isEmpty() ||
         apiSecret == null || apiSecret.trim().isEmpty()) {
@@ -4409,14 +4795,17 @@ public class ImportWindow extends javax.swing.JFrame {
         System.out.println("[API:001] Background thread started - doInBackground()");
         cz.datesoft.stockAccounting.Trading212Importer importer = new cz.datesoft.stockAccounting.Trading212Importer(
             apiKey, apiSecret, cz.datesoft.stockAccounting.Settings.getTrading212UseDemo());
-        importer.setParentFrame(mainWindow); // Pass MainWindow reference for progress dialogs (more reliable than getOwner())
+        importer.setParentFrame(mainWindow); // Pass MainWindow reference for progress dialogs (more reliable than
+                                             // getOwner())
         importer.setForceRefresh(forceRefresh); // Set force refresh flag to bypass cache if requested
         cz.datesoft.stockAccounting.Trading212Importer.ImportResult result = importer.importYear(year, this);
         System.out.println("[API:005] importYear() completed");
         System.out.println("[API:006] Result object: " + (result != null ? "NOT NULL" : "NULL"));
         System.out.println("[API:007] result.success = " + (result != null ? result.success : "N/A"));
-        System.out.println("[API:008] result.transactionsImported = " + (result != null ? result.transactionsImported : "N/A"));
-        System.out.println("[API:009] result.transactions size = " + (result != null && result.transactions != null ? result.transactions.size() : "N/A"));
+        System.out.println(
+            "[API:008] result.transactionsImported = " + (result != null ? result.transactionsImported : "N/A"));
+        System.out.println("[API:009] result.transactions size = "
+            + (result != null && result.transactions != null ? result.transactions.size() : "N/A"));
         return result;
       }
 
@@ -4436,22 +4825,23 @@ public class ImportWindow extends javax.swing.JFrame {
           System.out.println("[RESULT:004] get() succeeded - result retrieved");
           System.out.println("[RESULT:005] Processing result - success: " + result.success);
 
-           if (result.success) {
-             trading212PreviewFromApi = true;
-             System.out.println("[RESULT:006] ✅ API fetch successful - processing " + result.transactions.size() + " transactions");
+          if (result.success) {
+            trading212PreviewFromApi = true;
+            System.out.println(
+                "[RESULT:006] ✅ API fetch successful - processing " + result.transactions.size() + " transactions");
 
-              // Update year status immediately, even if the result is empty.
-              if (result.transactions == null || result.transactions.isEmpty()) {
-                importState.markYearEmptyImported(year, java.time.LocalDateTime.now());
-              }
-              refreshTrading212YearStatuses();
+            // Update year status immediately, even if the result is empty.
+            if (result.transactions == null || result.transactions.isEmpty()) {
+              importState.markYearEmptyImported(year, java.time.LocalDateTime.now());
+            }
+            refreshTrading212YearStatuses();
 
-              // Cache for mode switching without re-fetch.
-              lastTrading212AllTransactions = new java.util.Vector<>(result.transactions);
-              lastTrading212SourceLabel = "API";
-              lastTrading212YearForCache = Integer.valueOf(year);
+            // Cache for mode switching without re-fetch.
+            lastTrading212AllTransactions = new java.util.Vector<>(result.transactions);
+            lastTrading212SourceLabel = "API";
+            lastTrading212YearForCache = Integer.valueOf(year);
 
-              populateTrading212Preview(result.transactions, "API", Integer.valueOf(year));
+            populateTrading212Preview(result.transactions, "API", Integer.valueOf(year));
 
           } else {
             System.out.println("[RESULT:007] ❌ API fetch failed - message: " + result.message);
@@ -4479,8 +4869,6 @@ public class ImportWindow extends javax.swing.JFrame {
 
     worker.execute();
   }
-
-
 
   /**
    * Clear preview data after successful merge
@@ -4538,72 +4926,78 @@ public class ImportWindow extends javax.swing.JFrame {
    * Update UI components visibility based on selected format
    */
   private void updateUiForFormat(int formatIndex) {
-     boolean isApiFormat = (formatIndex == 8 || formatIndex == 9); // Trading 212 (API/csv) or IBKR Flex
-     boolean isTrading212 = (formatIndex == 8);
-     boolean isIBKR = (formatIndex == 9);
+    boolean isApiFormat = (formatIndex == 8 || formatIndex == 9); // Trading 212 (API/csv) or IBKR Flex
+    boolean isTrading212 = (formatIndex == 8);
+    boolean isIBKR = (formatIndex == 9);
 
-    // Clear preview when switching to API format to prevent data contamination from previous imports
+    // Clear preview when switching to API format to prevent data contamination from
+    // previous imports
     if (isApiFormat && transactions.getRowCount() > 0) {
       System.out.println("[FORMAT:001] Clearing preview when switching to API format");
       clearPreview();
     }
 
-     // Hide date selection UI for Trading 212 and IBKR Flex (they don't use the date pickers)
-     jLabel1.setVisible(!isApiFormat); // "Importovat od:"
-     jLabel2.setVisible(!isApiFormat); // "do:"
-     startDate.setVisible(!isApiFormat);
-     endDate.setVisible(!isApiFormat);
+    // Hide date selection UI for Trading 212 and IBKR Flex (they don't use the date
+    // pickers)
+    jLabel1.setVisible(!isApiFormat); // "Importovat od:"
+    jLabel2.setVisible(!isApiFormat); // "do:"
+    startDate.setVisible(!isApiFormat);
+    endDate.setVisible(!isApiFormat);
 
-     // Keep preview tables visible for API formats - they show fetched data
-     // IBKR Flex uses its own status line; hide the generic preview header to avoid layout conflicts.
-     lPreview.setVisible(!isIBKR);
-     jScrollPane1.setVisible(true);
-     lUnimported.setVisible(true);
-     niScrollPane.setVisible(true);
+    // Keep preview tables visible for API formats - they show fetched data
+    // IBKR Flex uses its own status line; hide the generic preview header to avoid
+    // layout conflicts.
+    lPreview.setVisible(!isIBKR);
+    jScrollPane1.setVisible(true);
+    lUnimported.setVisible(true);
+    niScrollPane.setVisible(true);
 
-     // Hide refresh button for Trading 212 and IBKR Flex (they manage preview via file/API flow)
-     bRefresh.setVisible(!isApiFormat);
+    // Hide refresh button for Trading 212 and IBKR Flex (they manage preview via
+    // file/API flow)
+    bRefresh.setVisible(!isApiFormat);
 
-      // For Trading 212 and IBKR Flex we use dedicated buttons (API/file/merge).
-      // Hide the generic bottom "Importovat" button to avoid duplicate paths.
-      bImport.setVisible(!(isTrading212 || isIBKR));
-      // Cancel is redundant when bImport is hidden; user can close the window directly.
-      bCancel.setVisible(!(isTrading212 || isIBKR));
+    // For Trading 212 and IBKR Flex we use dedicated buttons (API/file/merge).
+    // Hide the generic bottom "Importovat" button to avoid duplicate paths.
+    bImport.setVisible(!(isTrading212 || isIBKR));
+    // Cancel is redundant when bImport is hidden; user can close the window
+    // directly.
+    bCancel.setVisible(!(isTrading212 || isIBKR));
 
-     // Hide duplicates checkbox for IBKR (we already support duplicates via existing checkbox logic)
-     cbUpdateDuplicates.setVisible(!isIBKR);
+    // Hide duplicates checkbox for IBKR (we already support duplicates via existing
+    // checkbox logic)
+    cbUpdateDuplicates.setVisible(!isIBKR);
 
-      // Show/hide API-specific UI
-      if (isTrading212) {
-        setupTrading212YearSelection();
-        if (cbTrading212ImportMode != null) {
-          cbTrading212ImportMode.setVisible(true);
-        }
-        hideIBKRFlexUI();
-      } else if (isIBKR) {
-        showIBKRFlexUI();
-        hideTrading212YearSelection();
-      } else {
-        hideTrading212YearSelection();
-        hideIBKRFlexUI();
+    // Show/hide API-specific UI
+    if (isTrading212) {
+      setupTrading212YearSelection();
+      if (cbTrading212ImportMode != null) {
+        cbTrading212ImportMode.setVisible(true);
       }
+      hideIBKRFlexUI();
+    } else if (isIBKR) {
+      showIBKRFlexUI();
+      hideTrading212YearSelection();
+    } else {
+      hideTrading212YearSelection();
+      hideIBKRFlexUI();
+    }
 
     if (lblIbkrFlexCsvInfo != null) {
       lblIbkrFlexCsvInfo.setVisible(isIBKR);
     }
 
-      // Generic file picker is used for legacy file formats only.
-      // Trading 212 and IBKR Flex have their own dedicated source buttons.
-      boolean showGenericFilePicker = (formatIndex != 8 && formatIndex != 9) && isLocalFileFormat(formatIndex);
-      if (bSelectFile != null) {
-        bSelectFile.setVisible(showGenericFilePicker);
+    // Generic file picker is used for legacy file formats only.
+    // Trading 212 and IBKR Flex have their own dedicated source buttons.
+    boolean showGenericFilePicker = (formatIndex != 8 && formatIndex != 9) && isLocalFileFormat(formatIndex);
+    if (bSelectFile != null) {
+      bSelectFile.setVisible(showGenericFilePicker);
+    }
+    if (lSelectedFile != null) {
+      lSelectedFile.setVisible(showGenericFilePicker);
+      if (showGenericFilePicker) {
+        updateSelectedFileLabel();
       }
-      if (lSelectedFile != null) {
-        lSelectedFile.setVisible(showGenericFilePicker);
-        if (showGenericFilePicker) {
-          updateSelectedFileLabel();
-        }
-      }
+    }
 
     // Show/hide IBKR Flex UI block
     if (formatIndex == 9) {
@@ -4627,14 +5021,15 @@ public class ImportWindow extends javax.swing.JFrame {
     pack();
 
     // Defensive: keep IBKR Flex controls visible.
-    // Some callbacks (busy overlay, format switching, etc.) may toggle individual widgets.
+    // Some callbacks (busy overlay, format switching, etc.) may toggle individual
+    // widgets.
     if (formatIndex == 9) {
       setIbkrFlexUiVisible(true);
     }
 
-      // Update the IBKR Flex CSV info label (shown next to Format dropdown).
-      updateIbkrFlexCsvInfoLabel();
-      updateTrading212CsvDetailsButtonState();
+    // Update the IBKR Flex CSV info label (shown next to Format dropdown).
+    updateIbkrFlexCsvInfoLabel();
+    updateTrading212CsvDetailsButtonState();
     updateTrading212CsvDetailsButtonState();
   }
 
@@ -4673,7 +5068,8 @@ public class ImportWindow extends javax.swing.JFrame {
         for (String k : keys) {
           Integer c = secCounts.get(k);
           sb.append("- ").append(k);
-          if (c != null) sb.append(" [rows=").append(c).append("]");
+          if (c != null)
+            sb.append(" [rows=").append(c).append("]");
           sb.append("\n");
         }
       }
@@ -4695,14 +5091,17 @@ public class ImportWindow extends javax.swing.JFrame {
       sb.append("ACCT (účet / vlastník)\n");
       for (java.util.Map.Entry<String, java.util.Map<String, String>> e : acct.entrySet()) {
         String acc = e.getKey() != null ? e.getKey().trim() : "";
-        if (acc.isEmpty()) acc = "(unknown)";
+        if (acc.isEmpty())
+          acc = "(unknown)";
         sb.append("- ").append(acc);
         java.util.Map<String, String> m = e.getValue();
         if (m != null) {
           String title = m.get("AccountTitle");
           String alias = m.get("AccountAlias");
-          if (title != null && !title.trim().isEmpty()) sb.append(" | ").append(title.trim());
-          if (alias != null && !alias.trim().isEmpty()) sb.append(" | ").append(alias.trim());
+          if (title != null && !title.trim().isEmpty())
+            sb.append(" | ").append(title.trim());
+          if (alias != null && !alias.trim().isEmpty())
+            sb.append(" | ").append(alias.trim());
         }
         sb.append("\n");
       }
@@ -4729,7 +5128,8 @@ public class ImportWindow extends javax.swing.JFrame {
       for (String k : keys) {
         Integer c = tradeTypes.get(k);
         sb.append("- ").append(k);
-        if (c != null) sb.append(" [rows=").append(c).append("]");
+        if (c != null)
+          sb.append(" [rows=").append(c).append("]");
         sb.append("\n");
       }
       sb.append("\n");
@@ -4769,7 +5169,8 @@ public class ImportWindow extends javax.swing.JFrame {
       for (String k : keys) {
         Integer c = caTypes.get(k);
         sb.append("- ").append(k);
-        if (c != null) sb.append(" [rows=").append(c).append("]");
+        if (c != null)
+          sb.append(" [rows=").append(c).append("]");
         sb.append("\n");
       }
       sb.append("\n");
@@ -4779,34 +5180,42 @@ public class ImportWindow extends javax.swing.JFrame {
     int fxtrAdded = lastIBKRParser.getFxtrDividendFallbackCount();
     if (fxtrCand > 0 || fxtrAdded > 0) {
       sb.append("FXTR\n");
-      if (fxtrCand > 0) sb.append("- kandidáti na dividendu: ").append(fxtrCand).append("\n");
-      if (fxtrAdded > 0) sb.append("- importováno jako dividendy (fallback): ").append(fxtrAdded).append("\n");
+      if (fxtrCand > 0)
+        sb.append("- kandidáti na dividendu: ").append(fxtrCand).append("\n");
+      if (fxtrAdded > 0)
+        sb.append("- importováno jako dividendy (fallback): ").append(fxtrAdded).append("\n");
       sb.append("\n");
     }
 
     java.util.List<IBKRFlexParser.FlexAccountSections> accounts = lastIBKRParser.getFlexAccountSections();
-    java.util.Map<String, java.util.List<String>> missingByAcc = lastIBKRParser.getMissingMandatoryV2SectionsByAccount();
+    java.util.Map<String, java.util.List<String>> missingByAcc = lastIBKRParser
+        .getMissingMandatoryV2SectionsByAccount();
     if (accounts == null || accounts.isEmpty()) {
       sb.append("Žádné sekce nebyly detekovány.\n");
     } else {
       for (IBKRFlexParser.FlexAccountSections a : accounts) {
-        if (a == null) continue;
+        if (a == null)
+          continue;
         String acc = a.accountId != null ? a.accountId.trim() : "";
-        if (acc.isEmpty()) acc = "(unknown)";
+        if (acc.isEmpty())
+          acc = "(unknown)";
         sb.append(acc).append("\n");
 
         java.util.LinkedHashSet<String> printed = new java.util.LinkedHashSet<>();
         if (a.sections != null) {
           for (IBKRFlexParser.FlexSection s : a.sections) {
-            if (s == null) continue;
+            if (s == null)
+              continue;
             String label = s.label != null ? s.label.trim() : "";
             String shortLabel = label;
             int semi = shortLabel.indexOf(';');
-            if (semi >= 0) shortLabel = shortLabel.substring(0, semi).trim();
+            if (semi >= 0)
+              shortLabel = shortLabel.substring(0, semi).trim();
             if (shortLabel.isEmpty()) {
               shortLabel = s.code != null ? s.code.trim() : "";
             }
-            if (shortLabel.isEmpty()) continue;
+            if (shortLabel.isEmpty())
+              continue;
 
             StringBuilder line = new StringBuilder();
             line.append("  - ").append(shortLabel);
@@ -4856,15 +5265,18 @@ public class ImportWindow extends javax.swing.JFrame {
     try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.StringReader(csvContent))) {
       String line;
       while ((line = reader.readLine()) != null) {
-        if (line == null) continue;
+        if (line == null)
+          continue;
         String t = line.trim();
-        if (t.isEmpty()) continue;
+        if (t.isEmpty())
+          continue;
 
         // v2 control lines - ignore in legacy summary
         String[] fields = IBKRFlexParser.splitCsvLineStatic(t);
         if (fields != null && fields.length > 0) {
           String ctl = IBKRFlexParser.controlTypeStatic(fields);
-          if (ctl != null && (ctl.equals("BOF") || ctl.equals("BOA") || ctl.equals("BOS") || ctl.equals("EOS") || ctl.equals("EOA") || ctl.equals("EOF"))) {
+          if (ctl != null && (ctl.equals("BOF") || ctl.equals("BOA") || ctl.equals("BOS") || ctl.equals("EOS")
+              || ctl.equals("EOA") || ctl.equals("EOF"))) {
             continue;
           }
         }
@@ -4874,12 +5286,15 @@ public class ImportWindow extends javax.swing.JFrame {
           // Heuristic: use parser's section detector.
           // Note: detectSectionType is private; we infer based on header tokens.
           String lower = t.toLowerCase();
-          if (lower.contains("transactiontype") && lower.contains("tradeprice") && lower.contains("iborderid") && lower.contains("exchange")) {
+          if (lower.contains("transactiontype") && lower.contains("tradeprice") && lower.contains("iborderid")
+              && lower.contains("exchange")) {
             current = "TRADES";
           } else if (lower.contains("actiondescription") && lower.contains("actionid")) {
             current = "CORPORATE_ACTIONS";
-          } else if ((lower.contains("date/time") || lower.contains("date / time")) && (lower.contains("settledate") || lower.contains("settle date"))
-              && lower.contains("availablefortradingdate") && (lower.contains(",amount,") || lower.contains("\"amount\"") || lower.contains("amount,"))) {
+          } else if ((lower.contains("date/time") || lower.contains("date / time"))
+              && (lower.contains("settledate") || lower.contains("settle date"))
+              && lower.contains("availablefortradingdate")
+              && (lower.contains(",amount,") || lower.contains("\"amount\"") || lower.contains("amount,"))) {
             current = "CASH_TRANSACTIONS";
           } else if ((lower.contains("fxcurrency") || lower.contains("fx currency"))
               && (lower.contains("activitydescription") || lower.contains("activity description"))
@@ -4887,7 +5302,8 @@ public class ImportWindow extends javax.swing.JFrame {
               && (lower.contains("functionalcurrency") || lower.contains("functional currency"))
               && (lower.contains("realizedp/l") || lower.contains("realized p/l") || lower.contains("realizedpl"))) {
             current = "FXTR";
-          } else if (lower.contains("transaction type") && lower.contains("trade price") && !lower.contains("iborderid")) {
+          } else if (lower.contains("transaction type") && lower.contains("trade price")
+              && !lower.contains("iborderid")) {
             current = "OPTIONS_SUMMARY";
           } else {
             current = "UNKNOWN";
@@ -4930,8 +5346,10 @@ public class ImportWindow extends javax.swing.JFrame {
     try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.StringReader(csvContent))) {
       String line;
       while ((line = reader.readLine()) != null) {
-        if (line == null) continue;
-        if (line.trim().isEmpty()) continue;
+        if (line == null)
+          continue;
+        if (line.trim().isEmpty())
+          continue;
 
         // Header
         if (!headerSeen) {
@@ -4947,11 +5365,14 @@ public class ImportWindow extends javax.swing.JFrame {
           continue;
         }
 
-        if (actionIdx < 0) continue;
+        if (actionIdx < 0)
+          continue;
         String[] fields = Trading212CsvParser.parseCsvFieldsStatic(line);
-        if (fields == null || actionIdx >= fields.length) continue;
+        if (fields == null || actionIdx >= fields.length)
+          continue;
         String a = fields[actionIdx] != null ? fields[actionIdx].trim() : "";
-        if (a.isEmpty()) continue;
+        if (a.isEmpty())
+          continue;
         out.put(a, out.getOrDefault(a, 0) + 1);
       }
     } catch (Exception e) {
@@ -4960,7 +5381,8 @@ public class ImportWindow extends javax.swing.JFrame {
 
     java.util.List<String> keys = new java.util.ArrayList<>(out.keySet());
     keys.sort(String::compareToIgnoreCase);
-    return new T212ActionSummary(java.util.Collections.unmodifiableMap(out), java.util.Collections.unmodifiableList(keys));
+    return new T212ActionSummary(java.util.Collections.unmodifiableMap(out),
+        java.util.Collections.unmodifiableList(keys));
   }
 
   private static java.util.LinkedHashSet<String> t212SupportedActions() {
@@ -4979,30 +5401,39 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private static boolean isTrading212ActionSupported(String action) {
-    if (action == null) return false;
+    if (action == null)
+      return false;
     String lower = action.trim().toLowerCase();
-    if (lower.isEmpty()) return false;
+    if (lower.isEmpty())
+      return false;
 
     // Trades
-    if (lower.equals("market buy") || lower.equals("limit buy")) return true;
-    if (lower.equals("market sell") || lower.equals("limit sell")) return true;
+    if (lower.equals("market buy") || lower.equals("limit buy"))
+      return true;
+    if (lower.equals("market sell") || lower.equals("limit sell"))
+      return true;
 
     // Dividends (many variants)
-    if (lower.startsWith("dividend (")) return true;
+    if (lower.startsWith("dividend ("))
+      return true;
 
     // Corporate actions
-    if (lower.equals("stock split close") || lower.equals("stock split open")) return true;
+    if (lower.equals("stock split close") || lower.equals("stock split open"))
+      return true;
 
     // Interests
-    if (lower.equals("interest on cash") || lower.equals("lending interest")) return true;
+    if (lower.equals("interest on cash") || lower.equals("lending interest"))
+      return true;
 
     return false;
   }
 
   private static boolean isTrading212ActionIgnored(String action) {
-    if (action == null) return false;
+    if (action == null)
+      return false;
     String lower = action.trim().toLowerCase();
-    if (lower.isEmpty()) return false;
+    if (lower.isEmpty())
+      return false;
 
     // Keep in sync with Trading212CsvParser.parseCsvLine() ignore list.
     return lower.equals("deposit")
@@ -5013,7 +5444,8 @@ public class ImportWindow extends javax.swing.JFrame {
   }
 
   private void showTrading212CsvDetailsDialog() {
-    if (!isTrading212Format()) return;
+    if (!isTrading212Format())
+      return;
     if (lastTrading212CsvContent == null || lastTrading212CsvContent.trim().isEmpty()) {
       javax.swing.JOptionPane.showMessageDialog(this,
           "Nejprve načtěte data (Načíst z API / Načíst ze souboru).",
@@ -5028,7 +5460,8 @@ public class ImportWindow extends javax.swing.JFrame {
     java.util.List<String> ignoredPresent = new java.util.ArrayList<>();
     java.util.List<String> unsupportedPresent = new java.util.ArrayList<>();
     for (String a : summary.uniqueSorted) {
-      if (a == null) continue;
+      if (a == null)
+        continue;
       if (isTrading212ActionSupported(a)) {
         supportedPresent.add(a);
       } else if (isTrading212ActionIgnored(a)) {
@@ -5056,7 +5489,8 @@ public class ImportWindow extends javax.swing.JFrame {
       for (String a : summary.uniqueSorted) {
         Integer c = summary.counts.get(a);
         sb.append("- ").append(a);
-        if (c != null) sb.append(" [rows=").append(c).append("]");
+        if (c != null)
+          sb.append(" [rows=").append(c).append("]");
         sb.append("\n");
       }
     }
@@ -5075,7 +5509,8 @@ public class ImportWindow extends javax.swing.JFrame {
       for (String a : supportedPresent) {
         Integer c = summary.counts.get(a);
         sb.append("- ").append(a);
-        if (c != null) sb.append(" [rows=").append(c).append("]");
+        if (c != null)
+          sb.append(" [rows=").append(c).append("]");
         sb.append("\n");
       }
     }
@@ -5089,7 +5524,8 @@ public class ImportWindow extends javax.swing.JFrame {
       for (String a : ignoredPresent) {
         Integer c = summary.counts.get(a);
         sb.append("- ").append(a);
-        if (c != null) sb.append(" [rows=").append(c).append("]");
+        if (c != null)
+          sb.append(" [rows=").append(c).append("]");
         sb.append("\n");
       }
     }
@@ -5102,7 +5538,8 @@ public class ImportWindow extends javax.swing.JFrame {
       for (String a : unsupportedPresent) {
         Integer c = summary.counts.get(a);
         sb.append("- ").append(a);
-        if (c != null) sb.append(" [rows=").append(c).append("]");
+        if (c != null)
+          sb.append(" [rows=").append(c).append("]");
         sb.append("\n");
       }
     }
@@ -5219,12 +5656,17 @@ public class ImportWindow extends javax.swing.JFrame {
    */
   private void logUIComponentStates() {
     System.out.println("[UI:STATE] Current UI component states:");
-    System.out.println("[UI:STATE]   - Format dropdown: " + cbFormat.getSelectedIndex() + " (" + cbFormat.getSelectedItem() + ")");
+    System.out.println(
+        "[UI:STATE]   - Format dropdown: " + cbFormat.getSelectedIndex() + " (" + cbFormat.getSelectedItem() + ")");
     System.out.println("[UI:STATE]   - Window title: '" + getTitle() + "'");
-    System.out.println("[UI:STATE]   - T212 year selector visible: " + (cbTrading212Year != null ? cbTrading212Year.isVisible() : "null"));
-    System.out.println("[UI:STATE]   - Clear preview button visible: " + (bClearPreview != null ? bClearPreview.isVisible() : "null"));
-    System.out.println("[UI:STATE]   - Cache status label visible: " + (lCacheStatus != null ? lCacheStatus.isVisible() : "null"));
-    System.out.println("[UI:STATE]   - Preview table row count: " + (transactions != null ? transactions.getRowCount() : "null"));
+    System.out.println("[UI:STATE]   - T212 year selector visible: "
+        + (cbTrading212Year != null ? cbTrading212Year.isVisible() : "null"));
+    System.out.println(
+        "[UI:STATE]   - Clear preview button visible: " + (bClearPreview != null ? bClearPreview.isVisible() : "null"));
+    System.out.println(
+        "[UI:STATE]   - Cache status label visible: " + (lCacheStatus != null ? lCacheStatus.isVisible() : "null"));
+    System.out.println(
+        "[UI:STATE]   - Preview table row count: " + (transactions != null ? transactions.getRowCount() : "null"));
     System.out.println("[UI:STATE]   - Import in progress flag: " + importInProgress);
     System.out.println("[UI:STATE]   - Current file: " + (currentFile != null ? currentFile.getName() : "null"));
   }
@@ -5255,7 +5697,7 @@ public class ImportWindow extends javax.swing.JFrame {
     boolean imported = importState.isYearFullyImported(year);
     boolean partial = importState.getLastImportDate(year) != null;
     boolean empty = importState.isYearEmptyImported(year);
-    
+
     // Check if cached (requires account ID, which we get from importState)
     boolean cached = false;
     String accountId = importState.getAccountId();
@@ -5263,7 +5705,7 @@ public class ImportWindow extends javax.swing.JFrame {
       Trading212CsvCache csvCache = new Trading212CsvCache();
       cached = csvCache.hasCachedCsv(accountId, year);
     }
-    
+
     // Build status string
     if (empty) {
       return "(Imported: 0 transakcí)";
@@ -5283,7 +5725,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
   private void bImportActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bImportActionPerformed
   {// GEN-HEADEREND:event_bImportActionPerformed
-    // Really do import
+   // Really do import
     System.out.println("[BUTTON:001] Importovat button clicked");
     try {
       int formatIndex = cbFormat != null ? cbFormat.getSelectedIndex() : 0;
@@ -5293,7 +5735,8 @@ public class ImportWindow extends javax.swing.JFrame {
       }
 
       if (isTrading212Format()) {
-        // Trading 212 uses dedicated source buttons; the generic bottom import button is hidden.
+        // Trading 212 uses dedicated source buttons; the generic bottom import button
+        // is hidden.
         return;
       } else {
         // Handle regular file-based import
@@ -5305,30 +5748,30 @@ public class ImportWindow extends javax.swing.JFrame {
         if (cbUpdateDuplicates.isSelected() && !duplicatesToUpdate.isEmpty()) {
           int updatedCount = 0;
           TransactionSet mainDb = mainWindow.getTransactionDatabase();
-          
+
           System.out.println("[UPDATE:001] Updating " + duplicatesToUpdate.size() + " duplicate transactions");
-          
+
           // Start batch update to prevent double-updating same transaction
           mainDb.startBatchUpdate();
-          
+
           updatedCount += mainDb.updateDuplicateTransactions(duplicatesToUpdate);
-          
+
           // End batch update
           mainDb.endBatchUpdate();
-          
+
           // Notify table of changes
           mainDb.fireTableDataChanged();
-          
+
           System.out.println("[UPDATE:002] Successfully updated " + updatedCount + " transactions");
-          
+
           // Show success message to user
           if (updatedCount > 0) {
-            JOptionPane.showMessageDialog(this, 
-              "Importováno: " + transactions.getRowCount() + " nových záznamů\n" +
-              "Aktualizováno: " + updatedCount + " existujících záznamů\n\n" +
-              "Aktualizované řádky jsou zvýrazněny žlutě v hlavním okně.",
-              "Import dokončen", 
-              JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                "Importováno: " + transactions.getRowCount() + " nových záznamů\n" +
+                    "Aktualizováno: " + updatedCount + " existujících záznamů\n\n" +
+                    "Aktualizované řádky jsou zvýrazněny žlutě v hlavním okně.",
+                "Import dokončen",
+                JOptionPane.INFORMATION_MESSAGE);
           }
         }
 
@@ -5356,7 +5799,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
   private void bRefreshActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bRefreshActionPerformed
   {// GEN-HEADEREND:event_bRefreshActionPerformed
-    // For local file imports we may not have a file selected yet.
+   // For local file imports we may not have a file selected yet.
     int formatIndex = cbFormat != null ? cbFormat.getSelectedIndex() : 0;
     if (isLocalFileFormat(formatIndex) && currentFile == null) {
       selectLocalImportFile();
@@ -5371,52 +5814,53 @@ public class ImportWindow extends javax.swing.JFrame {
     dispose();
   }// GEN-LAST:event_bCancelActionPerformed
 
-   private void cbFormatActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_cbFormatActionPerformed
+  private void cbFormatActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_cbFormatActionPerformed
 
-      System.out.println("[FORMAT:SWITCH] cbFormatActionPerformed triggered - new format index: " + cbFormat.getSelectedIndex());
+    System.out.println(
+        "[FORMAT:SWITCH] cbFormatActionPerformed triggered - new format index: " + cbFormat.getSelectedIndex());
 
-      // Disable legacy T212 Invest CSV formats (keep visible, prevent selection).
-      int idxNow = cbFormat.getSelectedIndex();
-      if (idxNow == 5 || idxNow == 6) {
-        javax.swing.JOptionPane.showMessageDialog(this,
-            "Formát T212 Invest (legacy) je dočasně vypnutý.\nPoužijte prosím formát 'Trading 212'.",
-            "Trading 212", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-        cbFormat.setSelectedIndex(lastValidFormatIndex);
-        return;
-      }
+    // Disable legacy T212 Invest CSV formats (keep visible, prevent selection).
+    int idxNow = cbFormat.getSelectedIndex();
+    if (idxNow == 5 || idxNow == 6) {
+      javax.swing.JOptionPane.showMessageDialog(this,
+          "Formát T212 Invest (legacy) je dočasně vypnutý.\nPoužijte prosím formát 'Trading 212'.",
+          "Trading 212", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      cbFormat.setSelectedIndex(lastValidFormatIndex);
+      return;
+    }
 
-      lastValidFormatIndex = idxNow;
+    lastValidFormatIndex = idxNow;
 
-      // Clear programmatic format override when user manually changes format
-      currentImportFormat = 0;
+    // Clear programmatic format override when user manually changes format
+    currentImportFormat = 0;
 
-      updateObsoleteFormatWarning();
+    updateObsoleteFormatWarning();
 
-     if (cbFormat.getSelectedIndex() != 0) {
-       System.out.println("[FORMAT:SWITCH] Updating UI for format: " + cbFormat.getSelectedIndex());
-       updateUiForFormat(cbFormat.getSelectedIndex());
-       updateWindowTitle(); // Update window title based on format
+    if (cbFormat.getSelectedIndex() != 0) {
+      System.out.println("[FORMAT:SWITCH] Updating UI for format: " + cbFormat.getSelectedIndex());
+      updateUiForFormat(cbFormat.getSelectedIndex());
+      updateWindowTitle(); // Update window title based on format
 
       // Log UI component states after format change
       logUIComponentStates();
 
-        if (isTrading212Format()) {
-         // Trading 212: show year selector for API flow.
-         // For local CSV, preview is loaded automatically after file selection.
-         if (currentFile != null) {
-           loadImport();
-         }
-        } else if (isIBKRFlexFormat()) {
-         // For IBKR Flex API format, show the IBKR UI
-         // Don't auto-fetch - wait for user to click Import button
-        } else {
-          loadImport(); // For file-based formats
+      if (isTrading212Format()) {
+        // Trading 212: show year selector for API flow.
+        // For local CSV, preview is loaded automatically after file selection.
+        if (currentFile != null) {
+          loadImport();
         }
-     }
+      } else if (isIBKRFlexFormat()) {
+        // For IBKR Flex API format, show the IBKR UI
+        // Don't auto-fetch - wait for user to click Import button
+      } else {
+        loadImport(); // For file-based formats
+      }
+    }
 
-     // Save the selected format for persistence across app restarts
-     cz.datesoft.stockAccounting.Settings.setLastImportFormat(cbFormat.getSelectedIndex());
-     cz.datesoft.stockAccounting.Settings.save();
+    // Save the selected format for persistence across app restarts
+    cz.datesoft.stockAccounting.Settings.setLastImportFormat(cbFormat.getSelectedIndex());
+    cz.datesoft.stockAccounting.Settings.save();
 
   }// GEN-LAST:event_cbFormatActionPerformed
 
@@ -5424,7 +5868,7 @@ public class ImportWindow extends javax.swing.JFrame {
     // Save checkbox state to settings
     cz.datesoft.stockAccounting.Settings.setUpdateDuplicatesOnImport(cbUpdateDuplicates.isSelected());
     cz.datesoft.stockAccounting.Settings.save();
-    
+
     if (isIBKRFlexFormat()) {
       markIbkrPreviewDirty("Nastavení duplikátů změněno – náhled není aktuální, klikněte na Obnovit náhled");
       return;
@@ -5435,7 +5879,6 @@ public class ImportWindow extends javax.swing.JFrame {
       loadImport(); // Reload to update the label text
     }
   }// GEN-LAST:event_cbUpdateDuplicatesActionPerformed
-
 
   /**
    * @param args the command line arguments
