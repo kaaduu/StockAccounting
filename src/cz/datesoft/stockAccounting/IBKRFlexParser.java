@@ -80,6 +80,7 @@ public class IBKRFlexParser {
     private int COL_TRANSACTION_ID = -1;     // TransactionID (per-fill ID)
     private int COL_IB_ORDER_ID = -1;        // IBOrderID (order-level ID, shared across fills)
     private int COL_MULTIPLIER = -1;         // Contract size multiplier (for options/futures)
+    private int COL_LEVEL_OF_DETAIL = -1;    // LevelOfDetail (EXECUTION / ORDER / SYMBOL_SUMMARY / ...)
     // Corporate actions section columns (47-col header)
     private int COL_CA_REPORT_DATE = -1;     // "Report Date"
     private int COL_CA_DATETIME = -1;        // "Date/Time"
@@ -117,6 +118,7 @@ public class IBKRFlexParser {
         COL_TRANSACTION_ID = -1;
         COL_IB_ORDER_ID = -1;
         COL_MULTIPLIER = -1;
+        COL_LEVEL_OF_DETAIL = -1;
         COL_CA_REPORT_DATE = -1;
         COL_CA_DATETIME = -1;
         COL_CA_ACTION_DESCRIPTION = -1;
@@ -549,7 +551,8 @@ public class IBKRFlexParser {
             return CashRowOutcome.IMPORTED;
         }
         if (t.equalsIgnoreCase("Other Fees")) {
-            return CashRowOutcome.IMPORTED;
+            // Fees are not needed for CZ tax purposes and should not be imported.
+            return CashRowOutcome.IGNORED;
         }
         if (t.equalsIgnoreCase("Broker Interest Received")) {
             return CashRowOutcome.IMPORTED;
@@ -1439,6 +1442,10 @@ public class IBKRFlexParser {
             else if (h.equals("code") || h.contains("notes/codes")) {
                 COL_CODE = i;
             }
+            // LevelOfDetail (v2/v3 Flex)
+            else if (h.equals("levelofdetail") || h.equals("level of detail")) {
+                COL_LEVEL_OF_DETAIL = i;
+            }
             else if (h.equals("actionid") || h.equals("action id")) {
                 COL_ACTION_ID = i;
             }
@@ -1887,9 +1894,34 @@ public class IBKRFlexParser {
     private Transaction parseCsvLine(String line) throws Exception {
         String[] fields = splitCsvLine(line);
 
+        // FXTR dividend fallback must work even when we don't treat FXTR headers as
+        // "columnsDetected" for trade parsing.
+        if (currentSectionType == SectionType.FXTR) {
+            noteFxtrDividendCandidate(fields);
+            return null;
+        }
+
         if (!columnsDetected) {
             logger.warning("Columns not detected, skipping line");
             return null;
+        }
+
+        // Cash transactions (CTRN) must be parsed before any heuristics.
+        // CTRN rows can have 40+ columns and contain values like SubCategory=COMMON,
+        // which would otherwise trip the corporate-action heuristic.
+        if (currentSectionType == SectionType.CASH_TRANSACTIONS) {
+            return parseCashTransaction(fields);
+        }
+
+        // Trades section (TRNT): newer Flex exports include rows that are not actual fills
+        // (e.g. SYMBOL_SUMMARY, ASSET_SUMMARY, ORDER). Import only EXECUTION rows.
+        if (currentSectionType == SectionType.TRADES) {
+            if (COL_LEVEL_OF_DETAIL >= 0 && COL_LEVEL_OF_DETAIL < fields.length) {
+                String lod = fields[COL_LEVEL_OF_DETAIL] != null ? fields[COL_LEVEL_OF_DETAIL].trim() : "";
+                if (!lod.isEmpty() && !lod.equalsIgnoreCase("EXECUTION")) {
+                    return null;
+                }
+            }
         }
 
         // Validate array bounds for all required columns
@@ -1918,19 +1950,6 @@ public class IBKRFlexParser {
                 return parseCorporateAction(fields);
             }
         }
-
-            // Cash transactions (CTRN) can be treated as dividends/taxes in newer v2 exports.
-            // We only parse these when the current section is explicitly detected as CASH_TRANSACTIONS.
-            if (currentSectionType == SectionType.CASH_TRANSACTIONS) {
-                return parseCashTransaction(fields);
-            }
-
-            // FXTR (Forex P/L Details) is not imported as transactions directly,
-            // but we may use it as a fallback source for dividend brutto rows.
-            if (currentSectionType == SectionType.FXTR) {
-                noteFxtrDividendCandidate(fields);
-                return null;
-            }
 
         // Parse trade date - prefer DateTime (has time component) over Date
         String dateStr;
@@ -2177,8 +2196,8 @@ public class IBKRFlexParser {
                     direction = Transaction.DIRECTION_DIVI_TAX;
                 }
             } else if (type.equalsIgnoreCase("Other Fees")) {
-                // Import dividend-related fees as tax-like costs.
-                direction = Transaction.DIRECTION_DIVI_TAX;
+                // Fees are intentionally ignored (not imported).
+                return null;
             } else if (type.equalsIgnoreCase("Broker Interest Received")) {
                 ticker = "Kreditni.Urok";
                 direction = Transaction.DIRECTION_INT_BRUTTO;
@@ -2266,7 +2285,8 @@ public class IBKRFlexParser {
         if (!isDividend) return;
 
         // Only brutto: ignore explicit tax lines.
-        if (upper.contains("- TAX")) return;
+        // IBKR uses suffixes like "- US TAX", "- CA TAX", ...
+        if (upper.contains("TAX")) return;
 
         RawFxtrDividendRow r = new RawFxtrDividendRow();
         if (COL_FXTR_CLIENT_ACCOUNT_ID >= 0 && COL_FXTR_CLIENT_ACCOUNT_ID < fields.length) {

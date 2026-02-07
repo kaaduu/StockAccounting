@@ -234,13 +234,28 @@ public class ImportWindow extends javax.swing.JFrame {
 
     getContentPane().doLayout();
 
-    transactions = new TransactionSet();
+    // Preview table: allow toggling only "Ignorovat" (disabled) flag.
+    // Other fields are imported as parsed and should not be edited here.
+    transactions = new TransactionSet() {
+      @Override
+      public boolean isCellEditable(int row, int column) {
+        // Column 16 = "Ignorovat"
+        if (column == 16) {
+          java.util.Vector<Transaction> v = (filteredRows != null) ? filteredRows : rows;
+          return row >= 0 && row < v.size(); // not the extra last empty row
+        }
+        return false;
+      }
+    };
     table.setModel(transactions);
 
     table.getColumnModel().getColumn(0).setPreferredWidth(200);
     table.getColumnModel().getColumn(0).setCellRenderer(new CZDateRenderer());
 
     table.getColumnModel().getColumn(10).setCellRenderer(new CZDateRenderer());
+
+    // Enable table so the "Ignorovat" checkbox can be toggled.
+    table.setEnabled(true);
 
     // niTable.setTableHeader(new JTableHeader());
 
@@ -3229,7 +3244,8 @@ public class ImportWindow extends javax.swing.JFrame {
         return canEdit[columnIndex];
       }
     });
-    table.setEnabled(false);
+    // Enabled in constructor after model is attached.
+    table.setEnabled(true);
     jScrollPane1.setViewportView(table);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
@@ -5628,7 +5644,7 @@ public class ImportWindow extends javax.swing.JFrame {
     sb.append("- Dividends\n");
     sb.append("- Payment in Lieu of Dividends\n");
     sb.append("- Withholding Tax\n");
-    sb.append("- Other Fees (pokud chcete poplatky)\n");
+    sb.append("- Other Fees (ignorováno)\n");
     sb.append("- Broker Interest Received / Paid (pokud chcete úroky)\n");
     sb.append("- Broker Fees (volitelné; zatím se importují jako disabled)\n");
     sb.append("\nPoznámka: Dividendové/úrokové položky se v CSV objevují jako CTRN a importují se do tabulky.\n\n");
