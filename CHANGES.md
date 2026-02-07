@@ -32,7 +32,18 @@ Všechny významné změny projektu StockAccounting budou zdokumentovány v tomt
 - Import → Trading 212: přidáno tlačítko „Detaily...“ pro zobrazení seznamu akcí (Action) v CSV, včetně počtů a seznamu podporovaných akcí.
 - Import → Trading 212: dividendy se nyní importují pro všechny akce `Dividend (...)`, ne jen pro konkrétní variantu názvu.
 - Import → Trading 212: „Detaily...“ nyní správně rozpoznají všechny varianty `Dividend (...)` jako podporované a oddělují záměrně ignorované akce (Deposit/Withdrawal/konverze) od nepodporovaných.
-- Import → IBKR Flex: „Detaily...“ nyní fungují i pro legacy CSV (zobrazí alespoň sekce a počty řádků) a pro v2 navíc ukazují přehled typů v TRADES/CTRN/CORP (importováno/disabled/ignorováno) včetně FXTR dividend fallback.
+- Import → IBKR Flex: „Detaily...” nyní fungují i pro legacy CSV (zobrazí alespoň sekce a počty řádků) a pro v2 navíc ukazují přehled typů v TRADES/CTRN/CORP (importováno/disabled/ignorováno) včetně FXTR dividend fallback.
+
+## [IBKR Flex: CTRN „Other Fees” se neimportují] - 2026-02-06
+
+### Změněno
+- Import → IBKR Flex: cash typ CTRN „Other Fees” (např. ADR fee a market-data poplatky) se nově ignoruje, aby se nemapoval jako „Dividenda/Daň”. Dividendové a úrokové položky (Dividends / Withholding Tax / Broker Interest) zůstávají importované.
+
+### Opraveno
+- Import → IBKR Flex: dividendy v sekci CTRN se už nemohou chybně vyhodnotit jako corporate action (např. kvůli hodnotě `COMMON` v poli SubCategory); CTRN se parsuje před heuristikami.
+- Import → IBKR Flex: FXTR dividend fallback nyní funguje i u CSV v2 s řádky typu `HEADER/DATA` (brutto dividendy se doplní ze sekce FXTR, pokud v CTRN chybí) a zároveň se z FXTR vyfiltrují řádky obsahující `TAX`.
+- Import → IBKR Flex: v sekci TRNT (Trades) se nově importují jen řádky `LevelOfDetail=EXECUTION`; řádky typu `ORDER`/`SYMBOL_SUMMARY`/`ASSET_SUMMARY` se ignorují.
+- Import → Náhled importu: v tabulce náhledu lze nově ručně přepínat pouze sloupec „Ignorovat“ (ostatní pole jsou v náhledu zamknutá).
 
 ## [Kurzy měn: automatická detekce roků a měn] - 2026-01-26
 
