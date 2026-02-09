@@ -4,6 +4,11 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [IBKR Flex: CTRN LevelOfDetail filtr pro Flex v3] - 2026-02-09
+
+### Opraveno
+- Import → IBKR Flex: v sekci CTRN (Cash Transactions) se nově importují pouze řádky `LevelOfDetail=DETAIL`. Řádky `SUMMARY` (agregáty bez TransactionID) se vyfiltrují, aby se zabránilo duplicitám ve Flex v3 exportech.
+
 ## [Trading 212: sjednocený import (API + CSV) + dividendy/úroky/transformace] - 2026-01-27
 
 ### Přidáno

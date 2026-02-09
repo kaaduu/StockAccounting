@@ -95,6 +95,7 @@ public class IBKRFlexParser {
     private int COL_CTRN_AMOUNT = -1;        // "Amount"
     private int COL_CTRN_TYPE = -1;          // "Type" (Dividends / Withholding Tax / Payment In Lieu / Other Fees)
     private int COL_CTRN_TRANSACTION_ID = -1; // "TransactionID"
+    private int COL_CTRN_LEVEL_OF_DETAIL = -1; // "LevelOfDetail" (DETAIL vs SUMMARY in v3)
 
     private void resetDetectedColumns() {
         COL_DATE = -1;
@@ -129,6 +130,7 @@ public class IBKRFlexParser {
         COL_CTRN_AMOUNT = -1;
         COL_CTRN_TYPE = -1;
         COL_CTRN_TRANSACTION_ID = -1;
+        COL_CTRN_LEVEL_OF_DETAIL = -1;
 
         COL_FXTR_CLIENT_ACCOUNT_ID = -1;
         COL_FXTR_FX_CURRENCY = -1;
@@ -1442,9 +1444,11 @@ public class IBKRFlexParser {
             else if (h.equals("code") || h.contains("notes/codes")) {
                 COL_CODE = i;
             }
-            // LevelOfDetail (v2/v3 Flex)
+            // LevelOfDetail (v2/v3 Flex): bind to both TRADES and CTRN variables
+            // to ensure correct detection across different header sections
             else if (h.equals("levelofdetail") || h.equals("level of detail")) {
                 COL_LEVEL_OF_DETAIL = i;
+                COL_CTRN_LEVEL_OF_DETAIL = i;
             }
             else if (h.equals("actionid") || h.equals("action id")) {
                 COL_ACTION_ID = i;
@@ -1556,6 +1560,7 @@ public class IBKRFlexParser {
         logger.info("  CTRN Amount: " + COL_CTRN_AMOUNT);
         logger.info("  CTRN Type: " + COL_CTRN_TYPE);
         logger.info("  CTRN TransactionID: " + COL_CTRN_TRANSACTION_ID);
+        logger.info("  CTRN LevelOfDetail: " + COL_CTRN_LEVEL_OF_DETAIL);
         
         // Warnings for optional but useful columns
         if (COL_BUY_SELL < 0) {
@@ -2111,6 +2116,15 @@ public class IBKRFlexParser {
 
             String type = fields[COL_CTRN_TYPE].trim();
             if (type.isEmpty()) return null;
+
+            // Flex v3: CTRN includes SUMMARY rows (aggregates) alongside DETAIL rows.
+            // Import only DETAIL rows to avoid duplicates; SUMMARY rows have empty TransactionID.
+            if (COL_CTRN_LEVEL_OF_DETAIL >= 0 && COL_CTRN_LEVEL_OF_DETAIL < fields.length) {
+                String lod = fields[COL_CTRN_LEVEL_OF_DETAIL] != null ? fields[COL_CTRN_LEVEL_OF_DETAIL].trim() : "";
+                if ("SUMMARY".equalsIgnoreCase(lod)) {
+                    return null;
+                }
+            }
 
             // Track presence of dividend brutto types in CTRN (per account) for FXTR fallback suppression.
             if (type.equalsIgnoreCase("Dividends") || type.equalsIgnoreCase("Payment In Lieu Of Dividends")) {
