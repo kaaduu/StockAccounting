@@ -4,6 +4,158 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Přesun nástroje ibkr-report do kořenového adresáře projektu] - 2026-02-11
+
+### Přidáno
+- Nástroj `ibkr-report` přesunut z `data/ibkr-report/` do kořenového adresáře projektu `ibkr-report/`.
+- Nástroj je nyní součástí Git repozitáře a bude verzován společně s hlavní aplikací.
+- Přidán `.gitignore` pro Go projekt (vynechání binárních souborů, vendor adresáře, IDE souborů).
+- Aktualizována hlavní README.md s dokumentací nového nástroje.
+
+### Struktura
+```
+ibkr-report/
+├── cmd/ibkr-report/main.go    # Hlavní vstupní bod
+├── pkg/
+│   ├── parser/types.go        # Parsování CSV
+│   ├── cli/                   # CLI příkazy
+│   └── tui/app.go             # TUI rozhraní
+├── README.md                  # Dokumentace nástroje
+├── Makefile                   # Build skripty
+└── go.mod, go.sum            # Go závislosti
+```
+
+## [Oprava TUI: samostné přepínače pro přepínání mezi zobrazeními] - 2026-02-11
+
+### Přidáno
+- TUI: opraven klávesová obsluha v `pkg/tui/app.go` pro přepínání mezi zobrazením dat, seznamu hlaviček a výběrem sloupců.
+- Předchozí kód spojoval podmínky pro `h` a `Space` jedním příkazem, což neumožňovalo správný přechod.
+- Oprava: rozdělení klávesových obsluh na samostatné bloky:
+  - `h` klávesa: přepíná mezi daty a seznam hlaviček, explicitně nastavuje `inColumnSelect = false`.
+  - `Space` klávesa v seznamu hlaviček: přepíná do/z režimu výběru sloupců (`inColumnSelect = !inColumnSelect`).
+  - `Space` klávesa ve výběru sloupců: přepíná výběr konkrétního sloupce.
+  - `Enter` klávesa ve výběru sloupců: aplikuje výběr a vrací do zobrazení dat.
+- TUI: zobrazení dat respektuje vybrané sloupce - zobrazují se pouze sloupce označené [✓].
+
+### Technické detaily
+- TUI: klávesová obsluha používá oddělené podmínky pro každou akci, což zajišťuje správný stavový přechod.
+- TUI: `renderTablePreview()` aktualizována pro používání `selectedColumns` mapy místo pevného limitu sloupců.
+- Při žádném výběru se zobrazí prvních 5 sloupců jako náhled.
+- Při výběru se zobrazí pouze vybrané sloupce s počtem a informací.
+
+### Klávesové zkratky
+- `h` v datovém pohledu: zobrazí seznam hlaviček
+- `Space` v seznamu hlaviček: přepíná výběr sloupců
+- `Space` ve výběru sloupců: přepíná výběr
+- `Enter` ve výběru sloupců: aplikuje
+- `Esc`: zruší a vrací zpět
+- `h` v seznamu hlaviček: zpět k datům
+
+## [Oprava TUI: výběr a zobrazení sloupců v sekci] - 2026-02-11
+
+### Přidáno
+- TUI: přidána podpora pro výběr sloupců k zobrazení v detailním pohledu sekce.
+- TUI: Space v pohledu hlaviček přepíná do režimu výběru sloupců se zaškrtávacím polí.
+- TUI: v režimu výběru sloupců šipky ↑/↓ navigují mezi sloupci, Enter přepíná výběr sloupce, Esc ruší výběr.
+- TUI: zobrazení dat respektuje vybrané sloupce - zobrazují se pouze sloupce označené [✓].
+- Dokumentace v README.md aktualizována o klávesových zkratkách pro výběr sloupců.
+
+### Technické detaily
+- TUI: přidána pole `selectedColumns map[string]bool` do struktury `State` pro sledování vybraných sloupců.
+- TUI: přidáno pole `inColumnSelect bool` pro rozlišení režimu výběru sloupců a běžného zobrazení hlaviček.
+- TUI: funkce `renderTablePreview()` aktualizována pro použití vybraných sloupců místo pevněného limitu 5.
+- TUI: funkce `renderDetailView()` rozdělena na logiku zobrazení: a) režim výběru sloupců, b) seznam hlaviček, c) zobrazení dat.
+- Při žádné výběru sloupců se zobrazí prvních 5 sloupců jako náhled (kvůli terminálové šířce).
+
+### Klávesové zkratky
+- `Space` v pohledu hlaviček: přepíná do režimu výběru sloupců
+- `Space` v režimu výběru sloupců: přepíná zaškrtávní polí
+- `Enter` v režimu výběru sloupců: aplikuje výběr a vrací do zobrazení dat
+- `Esc` v režimu výběru sloupců: ruší výběr
+
+## [Oprava parser: unikátní kopie řezu hlaviček sekce] - 2026-02-11
+
+### Přidáno
+- Parser v `pkg/parser/types.go` při zpracování řádku `HEADER` vytvářel nový řez místo přímé reference na data z CSV.
+- Předchozí kód `section.Headers = record[2:]` modifikoval sdílená data v paměti, což způsobovalo zobrazení nesprávných hlaviček a dat při přepínání mezi sekcemi.
+- Oprava: použití příkazu `copy()` k vytvoření nezávislé kopie řezu hlaviček pro každou sekci.
+
+### Technické detaily
+- Parser: funkce `parseBOS()` vytváří sekci, ale původní řez `record` z CSV čtení může být sdílen.
+- Řezy v Go jsou odkazy na podkladová pole; modifikace řezu ovlivňuje původní data.
+- Nový kód vytváří nový řez pomocí `make([]string, len(...))` a `copy()` pro zajištění datové integrity.
+
+## [Oprava TUI: mutace sdíleného řezu section.Headers] - 2026-02-11
+
+### Opraveno
+- TUI: opravena chyba v `renderTablePreview()` funkci v `pkg/tui/app.go`.
+- Předchozí kód `section.Headers = section.Headers[:maxCols]` modifikoval sdílený řez ze souboru CSV.
+- To způsobovalo, že při přepínání mezi sekcemi se zobrazovaly vždy stejné (neprávné) hlavičky a data z první zobrazené sekce.
+- Oprava: vytvoření lokální proměnné `headers` místo přímé modifikace `section.Headers`.
+- Funkce nyní správně zobrazuje hlavičky a data pro každou sekci nezávisle.
+
+### Technické detaily
+- Go slice mutation bug: řez v jazyce Go je odkaz na podkladové pole; modifikace řezu ovlivňuje původní data.
+- Oprava používá nový řez `section.Headers[:maxCols]` pro zobrazení, ale původní `section.Headers` zůstává nezměněna.
+- TUI nyní správně zobrazuje různé sekce (FIFO, POST, CTRN atd.) s jejich správnými hlavičkami.
+
+## [Headers listing: zobrazení sloupců sekce v CLI a TUI] - 2026-02-11
+
+### Přidáno
+- CLI: přidán přepínač `--headers` (nebo `-H`) pro příkaz `list` k zobrazení všech sloupců každé sekce.
+- CLI: zobrazení sloupců v jednom řádku oddělených znakem `|` v pořadí jak se vyskytují v souboru.
+- TUI: přidán přepínač `h` v detailním zobrazení sekce pro přepínání mezi zobrazením dat a seznamem sloupců.
+- TUI: nový pohled seznamu sloupců, který zobrazuje všechny dostupné sloupce s možností navigace pomocí šipek.
+- TUI: při zobrazení sloupců se `h` vrací zpět k datům; znovu stisknutím `h` se zobrazí sloupce.
+
+### Technické detaily
+- CLI: přidána funkce `FormatSectionsWithHeaders()` pro formátování sekce se sloupci.
+- CLI: sloupce spojeny znakem `|` pro kompaktní zobrazení v jednom řádku.
+- TUI: přidáno pole `showHeaders` do struktury `State` pro sledování aktuálního zobrazení.
+- TUI: funkce `renderDetailView()` byla upravena pro podmíněné vykreslování podle `showHeaders`.
+- TUI: funkce `getMaxRow()` rozšířena o obsluhu pohledu se sloupci (vrací počet sloupců místo řádků).
+- TUI: obsluha klávesy `h` v `handleKeyMsg()` pro přepínání mezi zobrazením dat a sloupců.
+- Dokumentace v README.md aktualizována o klávesové zkratce `h` a přepínání zobrazení.
+
+## [Nový CLI nástroj: ibkr-report pro parsování IBKR CSV souborů] - 2026-02-11
+
+### Přidáno
+- Nový Go CLI nástroj `ibkr-report` pro parsování IBKR (Interactive Brokers) CSV souborů.
+- Příkaz `list`: zobrazení všech sekcí v CSV souboru s počtem záznamů.
+- Příkaz `show`: zobrazení konkrétní sekce s podporou výběru sloupců, filtrování a řazení.
+- Příkaz `tui`: interaktivní terminálové rozhraní (TUI) pro procházení sestav.
+- Podpora pro filtrování záznamů podle libovolného sloupce (např. `--col AssetClass=STK`).
+- Podpora pro řazení záznamů podle libovolného sloupce s možností vzestupného i sestupného řazení.
+- Barevné zvýraznění PnL hodnot (zelená pro zisk, červená pro ztrátu).
+- ASCII tabulkový výstup s automatickým šířkováním sloupců.
+
+### Technické detaily
+- Parser zpracovává IBKR formát s bloky BOS/HEADER/DATA/EOS.
+- Vytvořeno v jazyce Go 1.24+, kompilovatelné do jednoho binárního souboru.
+- Použity knihovny: Cobra (CLI), tablewriter (tabulky), Bubbletea (TUI).
+- Makefile s cíli pro sestavení na Linux AMD64.
+- Dokumentace v README.md s příklady použití.
+
+### Podporované sekce
+- ACCT: Informace o účtu
+- FIFO: Shrnutí realizovaných a nerealizovaných výkonů
+- POST: Pozice k datu obchodu
+- TRNT: Historie obchodů
+- OPTT: Cvičení, přiřazení a expirace opcí
+- PEND: Čekající cvičení opcí
+- PPPO: Pozice z předchozího období
+- CORP: Korporátní akce
+- CTRN: Hotovostní transakce
+
+## [Oprava kompilace: duplicitní proměnná v IBKRFlexParser] - 2026-02-11
+
+### Opraveno
+- IBKR Flex: odstraněna duplicitní deklarace proměnné `COL_CTRN_ISIN` v `IBKRFlexParser.java`, která způsobovala selhání sestavení projektu.
+
+### Technické detaily
+- Fix syntaxe v `TestRenderer.java` (odstraněna přebytečná složená závorka).
+- Ověřeno úspěšné sestavení pomocí `./build.sh`.
+
 ## [Dividendy: seskupení podle země s textovými indikátory] - 2026-02-11
 
 ### Přidáno

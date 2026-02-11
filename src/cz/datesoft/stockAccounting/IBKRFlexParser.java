@@ -98,7 +98,8 @@ public class IBKRFlexParser {
     private int COL_CTRN_TRANSACTION_ID = -1; // "TransactionID"
     private int COL_CTRN_LEVEL_OF_DETAIL = -1; // "LevelOfDetail" (DETAIL vs SUMMARY in v3)
     private int COL_CTRN_ISIN = -1; // "ISIN"
-    private int COL_CTRN_ISSUER_COUNTRY_CODE = -1; // "IssuerCountryCode"
+    private int COL_CTRN_ISSUER_COUNTRY_CODE = -1; // "IssuerCountryCode" (Legacy/Specific to CTRN)
+    private int COL_ISSUER_COUNTRY_CODE = -1; // "IssuerCountryCode" (General)
 
     private void resetDetectedColumns() {
         COL_DATE = -1;
@@ -136,6 +137,7 @@ public class IBKRFlexParser {
         COL_CTRN_LEVEL_OF_DETAIL = -1;
         COL_CTRN_ISIN = -1;
         COL_CTRN_ISSUER_COUNTRY_CODE = -1;
+        COL_ISSUER_COUNTRY_CODE = -1;
 
         COL_FXTR_CLIENT_ACCOUNT_ID = -1;
         COL_FXTR_FX_CURRENCY = -1;
@@ -1572,6 +1574,11 @@ public class IBKRFlexParser {
                 COL_ISIN = i;
                 COL_CTRN_ISIN = i;
             }
+            // Issuer Country Code
+            else if (h.equals("issuercountrycode") || h.equals("issuer country code")) {
+                COL_ISSUER_COUNTRY_CODE = i;
+                COL_CTRN_ISSUER_COUNTRY_CODE = i; // Map for backward compatibility
+            }
             // Asset Class (CRITICAL: if missing, likely wrong header section - skip
             // parsing)
             else if (h.equals("assetclass") || h.equals("asset class") || h.equals("assetcategory")) {
@@ -1623,6 +1630,7 @@ public class IBKRFlexParser {
                 COL_MULTIPLIER = i;
             } else if (h.equals("issuercountrycode") || h.equals("issuer country code")) {
                 COL_CTRN_ISSUER_COUNTRY_CODE = i;
+                COL_ISSUER_COUNTRY_CODE = i;
             }
             // CA type is handled by the shared "type" handler above.
         }
@@ -2256,9 +2264,15 @@ public class IBKRFlexParser {
         if (!isin.isEmpty()) {
             transaction.setIsin(isin);
         }
-        String country = (COL_CTRN_ISSUER_COUNTRY_CODE >= 0 && COL_CTRN_ISSUER_COUNTRY_CODE < fields.length)
-                ? fields[COL_CTRN_ISSUER_COUNTRY_CODE].trim()
-                : "";
+        String country = "";
+        // Try new general column first
+        if (COL_ISSUER_COUNTRY_CODE >= 0 && COL_ISSUER_COUNTRY_CODE < fields.length) {
+            country = fields[COL_ISSUER_COUNTRY_CODE].trim();
+        }
+        // Fallback to legacy CTRN column if empty and available (unlikely, but safe)
+        if (country.isEmpty() && COL_CTRN_ISSUER_COUNTRY_CODE >= 0 && COL_CTRN_ISSUER_COUNTRY_CODE < fields.length) {
+            country = fields[COL_CTRN_ISSUER_COUNTRY_CODE].trim();
+        }
         if (country.isEmpty() && isin.length() >= 2) {
             String prefix = isin.substring(0, 2);
             if (prefix.matches("[A-Z]{2}")) {
@@ -3020,7 +3034,10 @@ public class IBKRFlexParser {
         // 5. Issuer Country - skip if not present
         // Try to detect column, fallback to ISIN prefix
         String country = "";
-        if (COL_CTRN_ISSUER_COUNTRY_CODE >= 0 && COL_CTRN_ISSUER_COUNTRY_CODE < fields.length) {
+        if (COL_ISSUER_COUNTRY_CODE >= 0 && COL_ISSUER_COUNTRY_CODE < fields.length) {
+            country = fields[COL_ISSUER_COUNTRY_CODE].trim();
+        }
+        if (country.isEmpty() && COL_CTRN_ISSUER_COUNTRY_CODE >= 0 && COL_CTRN_ISSUER_COUNTRY_CODE < fields.length) {
             country = fields[COL_CTRN_ISSUER_COUNTRY_CODE].trim();
         }
         if (country.isEmpty() && isin.length() >= 2) {

@@ -96,5 +96,39 @@ Detailní informace pro vývojáře viz [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
+## Nástroje
+
+### ibkr-report - CLI prohlížeč IBKR CSV
+Interaktivní nástroj příkazové řádky pro prohlížení IBKR (Interactive Brokers) CSV souborů s pokročilým TUI rozhraním.
+
+**Funkce:**
+- **Seznam sekcí**: Zobrazení všech dostupných sekcí v CSV souboru
+- **Filtrování**: Podpora filtrování záznamů podle libovolného sloupce
+- **TUI mód**: Interaktivní terminálové rozhraní s:
+  - Prohlížením dat s vertikálním zarovnáním sloupců
+  - Editací viditelných sloupců (přepínání checkboxů)
+  - Automatickým ukládáním preferencí sloupců
+  - Paginací pro dlouhé seznamy (PgUp/PgDn)
+
+**Použití:**
+```bash
+cd ibkr-report
+make build
+./bin/ibkr-report list soubor.csv
+./bin/ibkr-report show soubor.csv FIFO --columns Symbol,TotalFifoPnl
+./bin/ibkr-report tui soubor.csv
+```
+
+**Klávesové zkratky v TUI:**
+- `↑/↓` - Navigace
+- `Space` - Přepnutí sloupce (v módu editace)
+- `PgUp/PgDn` - Stránkování
+- `Enter/Esc` - Návrat
+- `h` - Přepnutí mezi daty a editací sloupců
+
+Více informací viz [ibkr-report/README.md](ibkr-report/README.md).
+
+---
+
 **Původní dokumentace**: http://lemming.ucw.cz/ucetnictvi/
 **Repozitář**: https://github.com/kaaduu/StockAccounting
