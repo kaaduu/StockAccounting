@@ -45,8 +45,8 @@ public class IBKRFlexParser {
         public final java.util.List<String> missingMandatorySections;
 
         FlexAccountSections(String accountId,
-                            java.util.List<FlexSection> sections,
-                            java.util.List<String> missingMandatorySections) {
+                java.util.List<FlexSection> sections,
+                java.util.List<String> missingMandatorySections) {
             this.accountId = accountId;
             this.sections = sections;
             this.missingMandatorySections = missingMandatorySections;
@@ -58,7 +58,8 @@ public class IBKRFlexParser {
     private final java.util.Map<String, java.util.List<FlexSection>> flexSectionsByAccount = new java.util.LinkedHashMap<>();
     private final java.util.Map<String, java.util.List<String>> missingMandatoryV2SectionsByAccount = new java.util.LinkedHashMap<>();
 
-    // Column indices - initialized to -1 (not found), will be detected from CSV header
+    // Column indices - initialized to -1 (not found), will be detected from CSV
+    // header
     private int COL_DATE = -1;
     private int COL_SETTLEMENT_DATE = -1;
     private int COL_TRANSACTION_TYPE = -1;
@@ -72,30 +73,32 @@ public class IBKRFlexParser {
     private int COL_NET_PROCEEDS = -1;
     private int COL_CODE = -1;
     private int COL_EXCHANGE = -1;
-    private int COL_BUY_SELL = -1;  // IBKR has dedicated Buy/Sell column
-    private int COL_CLIENT_ACCOUNT_ID = -1;  // ClientAccountID
-    private int COL_ISIN = -1;               // ISIN
-    private int COL_ASSET_CLASS = -1;        // AssetClass (STK, OPT, FUT)
-    private int COL_DATETIME = -1;           // DateTime (with time component)
-    private int COL_TRANSACTION_ID = -1;     // TransactionID (per-fill ID)
-    private int COL_IB_ORDER_ID = -1;        // IBOrderID (order-level ID, shared across fills)
-    private int COL_MULTIPLIER = -1;         // Contract size multiplier (for options/futures)
-    private int COL_LEVEL_OF_DETAIL = -1;    // LevelOfDetail (EXECUTION / ORDER / SYMBOL_SUMMARY / ...)
+    private int COL_BUY_SELL = -1; // IBKR has dedicated Buy/Sell column
+    private int COL_CLIENT_ACCOUNT_ID = -1; // ClientAccountID
+    private int COL_ISIN = -1; // ISIN
+    private int COL_ASSET_CLASS = -1; // AssetClass (STK, OPT, FUT)
+    private int COL_DATETIME = -1; // DateTime (with time component)
+    private int COL_TRANSACTION_ID = -1; // TransactionID (per-fill ID)
+    private int COL_IB_ORDER_ID = -1; // IBOrderID (order-level ID, shared across fills)
+    private int COL_MULTIPLIER = -1; // Contract size multiplier (for options/futures)
+    private int COL_LEVEL_OF_DETAIL = -1; // LevelOfDetail (EXECUTION / ORDER / SYMBOL_SUMMARY / ...)
     // Corporate actions section columns (47-col header)
-    private int COL_CA_REPORT_DATE = -1;     // "Report Date"
-    private int COL_CA_DATETIME = -1;        // "Date/Time"
+    private int COL_CA_REPORT_DATE = -1; // "Report Date"
+    private int COL_CA_DATETIME = -1; // "Date/Time"
     private int COL_CA_ACTION_DESCRIPTION = -1; // "ActionDescription"
-    private int COL_CA_TYPE = -1;            // "Type" (RS/TC/IC/TO)
-    private int COL_ACTION_ID = -1;          // "ActionID"
+    private int COL_CA_TYPE = -1; // "Type" (RS/TC/IC/TO)
+    private int COL_ACTION_ID = -1; // "ActionID"
     private boolean columnsDetected = false;
 
     // Cash transactions (CTRN) section columns
-    private int COL_CTRN_DATETIME = -1;      // "Date/Time"
-    private int COL_CTRN_SETTLE_DATE = -1;   // "SettleDate"
-    private int COL_CTRN_AMOUNT = -1;        // "Amount"
-    private int COL_CTRN_TYPE = -1;          // "Type" (Dividends / Withholding Tax / Payment In Lieu / Other Fees)
+    private int COL_CTRN_DATETIME = -1; // "Date/Time"
+    private int COL_CTRN_SETTLE_DATE = -1; // "SettleDate"
+    private int COL_CTRN_AMOUNT = -1; // "Amount"
+    private int COL_CTRN_TYPE = -1; // "Type" (Dividends / Withholding Tax / Payment In Lieu / Other Fees)
     private int COL_CTRN_TRANSACTION_ID = -1; // "TransactionID"
     private int COL_CTRN_LEVEL_OF_DETAIL = -1; // "LevelOfDetail" (DETAIL vs SUMMARY in v3)
+    private int COL_CTRN_ISIN = -1; // "ISIN"
+    private int COL_CTRN_ISSUER_COUNTRY_CODE = -1; // "IssuerCountryCode"
 
     private void resetDetectedColumns() {
         COL_DATE = -1;
@@ -131,6 +134,8 @@ public class IBKRFlexParser {
         COL_CTRN_TYPE = -1;
         COL_CTRN_TRANSACTION_ID = -1;
         COL_CTRN_LEVEL_OF_DETAIL = -1;
+        COL_CTRN_ISIN = -1;
+        COL_CTRN_ISSUER_COUNTRY_CODE = -1;
 
         COL_FXTR_CLIENT_ACCOUNT_ID = -1;
         COL_FXTR_FX_CURRENCY = -1;
@@ -140,10 +145,15 @@ public class IBKRFlexParser {
         columnsDetected = false;
     }
 
-    // Statistics tracking (populated during parsing, queryable after parseCsvReport() completes)
+    // Statistics tracking (populated during parsing, queryable after
+    // parseCsvReport() completes)
     private int skippedZeroNetEvents = 0;
     private List<String> skippedZeroNetTickers = new ArrayList<>();
     private int importedCorporateActionEvents = 0;
+    private int importedCashTransactionEvents = 0;
+
+    private final java.util.List<RawCorporateActionRow> corporateActionRows = new java.util.ArrayList<>();
+    private final java.util.List<RawCashTransactionRow> cashTransactionRows = new java.util.ArrayList<>();
 
     // Detailed content statistics (best-effort; based on raw CSV rows)
     private final java.util.Map<String, Integer> tradeTransactionTypeCounts = new java.util.LinkedHashMap<>();
@@ -174,18 +184,21 @@ public class IBKRFlexParser {
             String accountId = e.getKey();
             java.util.List<FlexSection> secs = e.getValue() == null ? java.util.List.of() : e.getValue();
             java.util.List<String> missing = missingMandatoryV2SectionsByAccount.get(accountId);
-            if (missing == null) missing = java.util.List.of();
+            if (missing == null)
+                missing = java.util.List.of();
             out.add(new FlexAccountSections(accountId,
-                java.util.Collections.unmodifiableList(secs),
-                java.util.Collections.unmodifiableList(missing)));
+                    java.util.Collections.unmodifiableList(secs),
+                    java.util.Collections.unmodifiableList(missing)));
         }
         return java.util.Collections.unmodifiableList(out);
     }
 
     private static String normalizeSectionLabel(String label) {
-        if (label == null) return "";
+        if (label == null)
+            return "";
         String t = label.trim();
-        if (t.isEmpty()) return "";
+        if (t.isEmpty())
+            return "";
         int semi = t.indexOf(';');
         if (semi >= 0) {
             t = t.substring(0, semi).trim();
@@ -195,7 +208,8 @@ public class IBKRFlexParser {
 
     private void validateMandatoryV2Sections() {
         missingMandatoryV2SectionsByAccount.clear();
-        if (flexCsvVersion != FlexCsvVersion.V2_HEADERS_AND_TRAILERS) return;
+        if (flexCsvVersion != FlexCsvVersion.V2_HEADERS_AND_TRAILERS)
+            return;
 
         for (java.util.Map.Entry<String, java.util.List<FlexSection>> e : flexSectionsByAccount.entrySet()) {
             String accountId = e.getKey();
@@ -204,20 +218,24 @@ public class IBKRFlexParser {
             boolean hasCorporateActions = false;
             if (secs != null) {
                 for (FlexSection s : secs) {
-                    if (s == null) continue;
+                    if (s == null)
+                        continue;
                     String code = s.code != null ? s.code.trim() : "";
                     String label = normalizeSectionLabel(s.label);
                     if (!hasTrades && (code.equalsIgnoreCase("TRNT") || label.equalsIgnoreCase("Trades"))) {
                         hasTrades = true;
                     }
-                    if (!hasCorporateActions && (code.equalsIgnoreCase("CORP") || label.equalsIgnoreCase("Corporate Actions"))) {
+                    if (!hasCorporateActions
+                            && (code.equalsIgnoreCase("CORP") || label.equalsIgnoreCase("Corporate Actions"))) {
                         hasCorporateActions = true;
                     }
                 }
             }
             java.util.List<String> missing = new java.util.ArrayList<>();
-            if (!hasTrades) missing.add("Trades");
-            if (!hasCorporateActions) missing.add("Corporate Actions");
+            if (!hasTrades)
+                missing.add("Trades");
+            if (!hasCorporateActions)
+                missing.add("Corporate Actions");
             if (!missing.isEmpty()) {
                 missingMandatoryV2SectionsByAccount.put(accountId, missing);
                 logger.warning("IBKR Flex v2: Account " + accountId + " missing mandatory sections: " + missing);
@@ -226,7 +244,8 @@ public class IBKRFlexParser {
     }
 
     private static String stripOuterQuotes(String s) {
-        if (s == null) return null;
+        if (s == null)
+            return null;
         String t = s.trim();
         // Handle UTF-8 BOM that may appear at the beginning of the first token
         if (!t.isEmpty() && t.charAt(0) == '\uFEFF') {
@@ -241,7 +260,8 @@ public class IBKRFlexParser {
     // Static helpers for lightweight, best-effort parsing outside of an instance.
     // (Used by ImportWindow "Detaily..." legacy section summary.)
     public static String[] splitCsvLineStatic(String line) {
-        if (line == null) return new String[0];
+        if (line == null)
+            return new String[0];
         java.util.List<String> fields = new java.util.ArrayList<>();
         StringBuilder current = new StringBuilder();
         boolean inQuotes = false;
@@ -262,25 +282,31 @@ public class IBKRFlexParser {
     }
 
     public static String controlTypeStatic(String[] fields) {
-        if (fields == null || fields.length == 0) return null;
+        if (fields == null || fields.length == 0)
+            return null;
         return stripOuterQuotes(fields[0]);
     }
 
     private static boolean isFlexControlLine(String[] fields) {
-        if (fields == null || fields.length == 0) return false;
+        if (fields == null || fields.length == 0)
+            return false;
         String f0 = stripOuterQuotes(fields[0]);
-        if (f0 == null) return false;
-        return f0.equals("BOF") || f0.equals("BOA") || f0.equals("BOS") || f0.equals("EOS") || f0.equals("EOA") || f0.equals("EOF");
+        if (f0 == null)
+            return false;
+        return f0.equals("BOF") || f0.equals("BOA") || f0.equals("BOS") || f0.equals("EOS") || f0.equals("EOA")
+                || f0.equals("EOF");
     }
 
     private static String controlType(String[] fields) {
-        if (fields == null || fields.length == 0) return null;
+        if (fields == null || fields.length == 0)
+            return null;
         return stripOuterQuotes(fields[0]);
     }
 
     private void noteFlexControlLine(String[] fields) {
         String type = controlType(fields);
-        if (type == null) return;
+        if (type == null)
+            return;
         if (type.equals("BOF") || type.equals("BOA") || type.equals("EOA") || type.equals("EOF")) {
             // ignore
             return;
@@ -288,8 +314,10 @@ public class IBKRFlexParser {
         if (type.equals("BOS")) {
             String code = (fields.length > 1) ? stripOuterQuotes(fields[1]) : "";
             String label = (fields.length > 2) ? stripOuterQuotes(fields[2]) : "";
-            if (code == null) code = "";
-            if (label == null) label = "";
+            if (code == null)
+                code = "";
+            if (label == null)
+                label = "";
             flexSections.add(new FlexSection(code, label));
             return;
         }
@@ -300,7 +328,8 @@ public class IBKRFlexParser {
             if (fields.length > 2) {
                 try {
                     String n = stripOuterQuotes(fields[2]);
-                    if (n != null && !n.isEmpty()) rows = Integer.parseInt(n);
+                    if (n != null && !n.isEmpty())
+                        rows = Integer.parseInt(n);
                 } catch (Exception ignored) {
                 }
             }
@@ -321,9 +350,11 @@ public class IBKRFlexParser {
     }
 
     private static BigDecimal parseDecimal(String value) {
-        if (value == null) return BigDecimal.ZERO;
+        if (value == null)
+            return BigDecimal.ZERO;
         String t = value.trim();
-        if (t.isEmpty()) return BigDecimal.ZERO;
+        if (t.isEmpty())
+            return BigDecimal.ZERO;
         try {
             return new BigDecimal(t);
         } catch (Exception e) {
@@ -332,7 +363,8 @@ public class IBKRFlexParser {
     }
 
     private static BigDecimal normalizeFee(BigDecimal feeAbs) {
-        // Match IB TradeLog behavior: fees stored with 6 decimals, effectively truncated.
+        // Match IB TradeLog behavior: fees stored with 6 decimals, effectively
+        // truncated.
         // This avoids +0.000001 differences for ...xxxxx50 cases.
         return feeAbs.setScale(6, RoundingMode.DOWN);
     }
@@ -359,7 +391,8 @@ public class IBKRFlexParser {
     // Cash transactions (CTRN) inclusion (dividends/withholding/fees)
     private boolean includeCashTransactions = true;
 
-    // Fallback: some v2 exports place dividend brutto rows into FXTR instead of CTRN.
+    // Fallback: some v2 exports place dividend brutto rows into FXTR instead of
+    // CTRN.
     private boolean enableFxtrDividendFallback = true;
 
     // FXTR (Forex P/L Details) section columns
@@ -501,10 +534,13 @@ public class IBKRFlexParser {
     }
 
     private static void incCount(java.util.Map<String, Integer> map, String key) {
-        if (map == null) return;
-        if (key == null) return;
+        if (map == null)
+            return;
+        if (key == null)
+            return;
         String k = key.trim();
-        if (k.isEmpty()) return;
+        if (k.isEmpty())
+            return;
         map.put(k, map.getOrDefault(k, 0) + 1);
     }
 
@@ -515,8 +551,10 @@ public class IBKRFlexParser {
     }
 
     private CashRowOutcome classifyCashRow(String type, String ticker, String description, double amount) {
-        if (type == null || type.trim().isEmpty()) return CashRowOutcome.IGNORED;
-        if (amount == 0.0) return CashRowOutcome.IGNORED;
+        if (type == null || type.trim().isEmpty())
+            return CashRowOutcome.IGNORED;
+        if (amount == 0.0)
+            return CashRowOutcome.IGNORED;
 
         String t = type.trim();
         String tick = ticker == null ? "" : ticker.trim();
@@ -584,10 +622,13 @@ public class IBKRFlexParser {
     }
 
     private boolean isCorporateActionTypeAllowed(String type) {
-        if (allowedCorporateActionTypes == null) return true;
-        if (type == null) return false;
+        if (allowedCorporateActionTypes == null)
+            return true;
+        if (type == null)
+            return false;
         String t = type.trim().toUpperCase();
-        if (t.isEmpty()) return false;
+        if (t.isEmpty())
+            return false;
         return allowedCorporateActionTypes.contains(t);
     }
 
@@ -606,8 +647,10 @@ public class IBKRFlexParser {
     }
 
     private boolean isAssetClassAllowed(String assetClass) {
-        if (allowedAssetClasses == null) return true;
-        if (assetClass == null) return false;
+        if (allowedAssetClasses == null)
+            return true;
+        if (assetClass == null)
+            return false;
         return allowedAssetClasses.contains(assetClass.trim().toUpperCase());
     }
 
@@ -615,10 +658,14 @@ public class IBKRFlexParser {
         String lower = headerLine.toLowerCase();
 
         // Trades / executions section
-        boolean hasTransactionType = lower.contains("\"transactiontype\"") || lower.contains(",transactiontype,") || lower.contains("transactiontype,") || lower.contains(",transactiontype");
-        boolean hasTradePrice = lower.contains("\"tradeprice\"") || lower.contains(",tradeprice,") || lower.contains("tradeprice,") || lower.contains(",tradeprice");
-        boolean hasIbOrderId = lower.contains("\"iborderid\"") || lower.contains(",iborderid,") || lower.contains("iborderid,") || lower.contains(",iborderid");
-        boolean hasExchange = lower.contains("\"exchange\"") || lower.contains(",exchange,") || lower.contains("exchange,") || lower.contains(",exchange");
+        boolean hasTransactionType = lower.contains("\"transactiontype\"") || lower.contains(",transactiontype,")
+                || lower.contains("transactiontype,") || lower.contains(",transactiontype");
+        boolean hasTradePrice = lower.contains("\"tradeprice\"") || lower.contains(",tradeprice,")
+                || lower.contains("tradeprice,") || lower.contains(",tradeprice");
+        boolean hasIbOrderId = lower.contains("\"iborderid\"") || lower.contains(",iborderid,")
+                || lower.contains("iborderid,") || lower.contains(",iborderid");
+        boolean hasExchange = lower.contains("\"exchange\"") || lower.contains(",exchange,")
+                || lower.contains("exchange,") || lower.contains(",exchange");
         if (hasTransactionType && hasTradePrice && hasIbOrderId && hasExchange) {
             return SectionType.TRADES;
         }
@@ -638,25 +685,32 @@ public class IBKRFlexParser {
         }
 
         // Cash transactions section (dividends, withholding tax, fees, interest)
-        boolean hasAvailableForTradingDate = lower.contains("availablefortradingdate") || lower.contains("available for trading date");
+        boolean hasAvailableForTradingDate = lower.contains("availablefortradingdate")
+                || lower.contains("available for trading date");
         boolean hasSettleDate = lower.contains("settledate") || lower.contains("settle date");
-        boolean hasAmount = lower.contains(",amount,") || lower.contains("\"amount\"") || lower.contains("amount,") || lower.contains(",amount");
+        boolean hasAmount = lower.contains(",amount,") || lower.contains("\"amount\"") || lower.contains("amount,")
+                || lower.contains(",amount");
         boolean hasDateTimeSlash = lower.contains("date/time") || lower.contains("date / time");
         boolean hasTransactionId = lower.contains("transactionid") || lower.contains("transaction id");
-        boolean hasType = lower.contains(",type,") || lower.contains("\"type\"") || lower.contains("type,") || lower.contains(",type");
+        boolean hasType = lower.contains(",type,") || lower.contains("\"type\"") || lower.contains("type,")
+                || lower.contains(",type");
         // CTRN appears in multiple Flex variants:
         // - legacy: includes AvailableForTradingDate
-        // - newer: may omit AvailableForTradingDate but still includes TransactionID/Type/Amount
-        if (hasDateTimeSlash && hasSettleDate && hasAmount && (hasAvailableForTradingDate || (hasType && hasTransactionId))) {
+        // - newer: may omit AvailableForTradingDate but still includes
+        // TransactionID/Type/Amount
+        if (hasDateTimeSlash && hasSettleDate && hasAmount
+                && (hasAvailableForTradingDate || (hasType && hasTransactionId))) {
             return SectionType.CASH_TRANSACTIONS;
         }
 
         // FXTR (Forex P/L Details) section
         boolean hasFxCurrency = lower.contains("fxcurrency") || lower.contains("fx currency");
-        boolean hasActivityDescription = lower.contains("activitydescription") || lower.contains("activity description");
+        boolean hasActivityDescription = lower.contains("activitydescription")
+                || lower.contains("activity description");
         boolean hasReportDate = lower.contains("reportdate") || lower.contains("report date");
         boolean hasFunctionalCurrency = lower.contains("functionalcurrency") || lower.contains("functional currency");
-        boolean hasRealizedPl = lower.contains("realizedp/l") || lower.contains("realized p/l") || lower.contains("realizedpl");
+        boolean hasRealizedPl = lower.contains("realizedp/l") || lower.contains("realized p/l")
+                || lower.contains("realizedpl");
         if (hasFxCurrency && hasActivityDescription && hasReportDate && hasFunctionalCurrency && hasRealizedPl) {
             return SectionType.FXTR;
         }
@@ -669,18 +723,22 @@ public class IBKRFlexParser {
     }
 
     private void parseAccountInfoRow(String currentAccountId, String[] fields) {
-        if (currentAcctHeaders == null || fields == null) return;
+        if (currentAcctHeaders == null || fields == null)
+            return;
 
         java.util.Map<String, String> m = new java.util.LinkedHashMap<>();
         int n = Math.min(currentAcctHeaders.length, fields.length);
         for (int i = 0; i < n; i++) {
             String k = currentAcctHeaders[i] != null ? currentAcctHeaders[i].trim() : "";
-            if (k.isEmpty()) continue;
+            if (k.isEmpty())
+                continue;
             String v = fields[i] != null ? fields[i].trim() : "";
-            if (v.isEmpty()) continue;
+            if (v.isEmpty())
+                continue;
             m.put(k, v);
         }
-        if (m.isEmpty()) return;
+        if (m.isEmpty())
+            return;
 
         String acc = null;
         if (m.containsKey("ClientAccountID")) {
@@ -691,9 +749,11 @@ public class IBKRFlexParser {
         if (acc == null || acc.trim().isEmpty()) {
             acc = currentAccountId;
         }
-        if (acc == null) acc = "";
+        if (acc == null)
+            acc = "";
         acc = acc.trim();
-        if (acc.isEmpty()) return;
+        if (acc.isEmpty())
+            return;
 
         accountInfoByAccountId.putIfAbsent(acc, m);
     }
@@ -710,9 +770,11 @@ public class IBKRFlexParser {
     }
 
     private String normalizeCorporateActionSymbol(String type, String symbol) {
-        if (symbol == null) return "";
+        if (symbol == null)
+            return "";
         String s = symbol.trim();
-        if (s.isEmpty()) return "";
+        if (s.isEmpty())
+            return "";
 
         // IBKR internal suffixes
         if (s.endsWith(".OLD")) {
@@ -753,8 +815,8 @@ public class IBKRFlexParser {
             RawCorporateActionRow row = new RawCorporateActionRow();
             row.actionId = fields[COL_ACTION_ID].trim();
             row.accountId = (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length)
-                ? fields[COL_CLIENT_ACCOUNT_ID].trim()
-                : "";
+                    ? fields[COL_CLIENT_ACCOUNT_ID].trim()
+                    : "";
             row.type = fields[COL_CA_TYPE].trim();
             row.code = (COL_CODE >= 0 && COL_CODE < fields.length) ? fields[COL_CODE].trim() : "";
             row.symbol = fields[COL_SYMBOL].trim();
@@ -764,8 +826,8 @@ public class IBKRFlexParser {
                 row.dateTimeStr = fields[COL_CA_REPORT_DATE].trim();
             }
             row.actionDescription = (COL_CA_ACTION_DESCRIPTION >= 0 && COL_CA_ACTION_DESCRIPTION < fields.length)
-                ? fields[COL_CA_ACTION_DESCRIPTION].trim()
-                : ((COL_NAME >= 0 && COL_NAME < fields.length) ? fields[COL_NAME].trim() : "");
+                    ? fields[COL_CA_ACTION_DESCRIPTION].trim()
+                    : ((COL_NAME >= 0 && COL_NAME < fields.length) ? fields[COL_NAME].trim() : "");
 
             if (row.actionId.isEmpty() || row.type.isEmpty() || row.symbol.isEmpty()) {
                 return null;
@@ -797,7 +859,8 @@ public class IBKRFlexParser {
         for (Map.Entry<String, List<RawCorporateActionRow>> e : byActionId.entrySet()) {
             String actionId = e.getKey();
             List<RawCorporateActionRow> grp = e.getValue();
-            if (grp.isEmpty()) continue;
+            if (grp.isEmpty())
+                continue;
 
             // Use the earliest datetime in the group
             Date eventDate;
@@ -805,29 +868,34 @@ public class IBKRFlexParser {
                 grp.sort(Comparator.comparing(r -> r.dateTimeStr));
                 eventDate = parseDate(grp.get(0).dateTimeStr);
             } catch (Exception ex) {
-                logger.warning("Failed to parse corporate action Date/Time for ActionID=" + actionId + ": " + ex.getMessage());
+                logger.warning(
+                        "Failed to parse corporate action Date/Time for ActionID=" + actionId + ": " + ex.getMessage());
                 continue;
             }
 
             // Net quantities per raw symbol (INCLUDING Code=Ca rows)
             Map<String, BigDecimal> netByRawSymbol = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
             for (RawCorporateActionRow r : grp) {
-                if (r.symbol == null || r.symbol.trim().isEmpty()) continue;
+                if (r.symbol == null || r.symbol.trim().isEmpty())
+                    continue;
                 netByRawSymbol.merge(r.symbol.trim(), r.quantity, BigDecimal::add);
             }
 
             // Build a shared note for the event
             String type = grp.get(0).type;
             String desc = grp.get(0).actionDescription;
-            if (desc == null) desc = "";
+            if (desc == null)
+                desc = "";
 
-            // Aggregate by normalized ticker, but keep OUT and IN separately (needed for splits)
+            // Aggregate by normalized ticker, but keep OUT and IN separately (needed for
+            // splits)
             Map<String, BigDecimal> outByTicker = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
             Map<String, BigDecimal> inByTicker = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
             List<String> origSymbols = new ArrayList<>();
             for (Map.Entry<String, BigDecimal> n : netByRawSymbol.entrySet()) {
                 BigDecimal net = n.getValue();
-                if (net == null) continue;
+                if (net == null)
+                    continue;
                 if (net.abs().compareTo(new BigDecimal("0.000001")) <= 0) {
                     continue;
                 }
@@ -850,14 +918,16 @@ public class IBKRFlexParser {
                 }
             }
 
-            // Drop no-op events after normalization: IC and TO often become same ticker with equal OUT/IN.
+            // Drop no-op events after normalization: IC and TO often become same ticker
+            // with equal OUT/IN.
             if (type != null && (type.equalsIgnoreCase("IC") || type.equalsIgnoreCase("TO"))) {
                 boolean onlyOneTicker = outByTicker.size() == 1 && inByTicker.size() == 1 &&
-                    outByTicker.keySet().iterator().next().equalsIgnoreCase(inByTicker.keySet().iterator().next());
+                        outByTicker.keySet().iterator().next().equalsIgnoreCase(inByTicker.keySet().iterator().next());
                 if (onlyOneTicker) {
                     BigDecimal out = outByTicker.values().iterator().next();
                     BigDecimal in = inByTicker.values().iterator().next();
-                    if (out != null && in != null && out.subtract(in).abs().compareTo(new BigDecimal("0.000001")) <= 0) {
+                    if (out != null && in != null
+                            && out.subtract(in).abs().compareTo(new BigDecimal("0.000001")) <= 0) {
                         // No-op for FIFO; skip
                         continue;
                     }
@@ -871,7 +941,8 @@ public class IBKRFlexParser {
             }
 
             String accountId = grp.get(0).accountId;
-            if (accountId == null) accountId = "";
+            if (accountId == null)
+                accountId = "";
             accountId = accountId.trim();
 
             // Emit OUT first, then IN
@@ -881,19 +952,18 @@ public class IBKRFlexParser {
             for (Map.Entry<String, BigDecimal> o : outByTicker.entrySet()) {
                 try {
                     Transaction t = new Transaction(
-                        0,
-                        eventDate,
-                        Transaction.DIRECTION_TRANS_SUB,
-                        o.getKey(),
-                        o.getValue().doubleValue(),
-                        0.0,
-                        "USD",
-                        0.0,
-                        "USD",
-                        "",
-                        eventDate,
-                        notePrefix
-                    );
+                            0,
+                            eventDate,
+                            Transaction.DIRECTION_TRANS_SUB,
+                            o.getKey(),
+                            o.getValue().doubleValue(),
+                            0.0,
+                            "USD",
+                            0.0,
+                            "USD",
+                            "",
+                            eventDate,
+                            notePrefix);
                     t.setBroker("IB");
                     if (!accountId.isBlank()) {
                         t.setAccountId(accountId);
@@ -910,19 +980,18 @@ public class IBKRFlexParser {
             for (Map.Entry<String, BigDecimal> i2 : inByTicker.entrySet()) {
                 try {
                     Transaction t = new Transaction(
-                        0,
-                        eventDate,
-                        Transaction.DIRECTION_TRANS_ADD,
-                        i2.getKey(),
-                        i2.getValue().doubleValue(),
-                        0.0,
-                        "USD",
-                        0.0,
-                        "USD",
-                        "",
-                        eventDate,
-                        notePrefix
-                    );
+                            0,
+                            eventDate,
+                            Transaction.DIRECTION_TRANS_ADD,
+                            i2.getKey(),
+                            i2.getValue().doubleValue(),
+                            0.0,
+                            "USD",
+                            0.0,
+                            "USD",
+                            "",
+                            eventDate,
+                            notePrefix);
                     t.setBroker("IB");
                     if (!accountId.isBlank()) {
                         t.setAccountId(accountId);
@@ -954,22 +1023,28 @@ public class IBKRFlexParser {
                 c2.setTime(d2);
                 int y1 = c1.get(java.util.Calendar.YEAR);
                 int y2 = c2.get(java.util.Calendar.YEAR);
-                if (y1 != y2) return Integer.compare(y1, y2);
+                if (y1 != y2)
+                    return Integer.compare(y1, y2);
                 int m1 = c1.get(java.util.Calendar.MONTH);
                 int m2 = c2.get(java.util.Calendar.MONTH);
-                if (m1 != m2) return Integer.compare(m1, m2);
+                if (m1 != m2)
+                    return Integer.compare(m1, m2);
                 int day1 = c1.get(java.util.Calendar.DAY_OF_MONTH);
                 int day2 = c2.get(java.util.Calendar.DAY_OF_MONTH);
-                if (day1 != day2) return Integer.compare(day1, day2);
+                if (day1 != day2)
+                    return Integer.compare(day1, day2);
             }
             int dirCmp = Integer.compare(t1.getDirection(), t2.getDirection());
-            if (dirCmp != 0) return dirCmp;
+            if (dirCmp != 0)
+                return dirCmp;
             if (d1 != null && d2 != null) {
                 int timeCmp = d1.compareTo(d2);
-                if (timeCmp != 0) return timeCmp;
+                if (timeCmp != 0)
+                    return timeCmp;
             }
             int tickerCmp = String.valueOf(t1.getTicker()).compareToIgnoreCase(String.valueOf(t2.getTicker()));
-            if (tickerCmp != 0) return tickerCmp;
+            if (tickerCmp != 0)
+                return tickerCmp;
             return Double.compare(Math.abs(t2.getAmount()), Math.abs(t1.getAmount()));
         });
 
@@ -992,6 +1067,8 @@ public class IBKRFlexParser {
         flexSections.clear();
         flexSectionsByAccount.clear();
         missingMandatoryV2SectionsByAccount.clear();
+        corporateActionRows.clear();
+        cashTransactionRows.clear();
         resetDetectedColumns();
 
         ibOrderGroupCount = 0;
@@ -999,7 +1076,7 @@ public class IBKRFlexParser {
         ibOrderConsolidatedFillCount = 0;
         accountInfoByAccountId.clear();
         currentAcctHeaders = null;
-        
+
         Vector<Transaction> transactions = new Vector<>();
         int corporateActionCount = 0;
         ignoredOptionsSummaryRows = 0;
@@ -1007,12 +1084,9 @@ public class IBKRFlexParser {
         accountsWithCtrnDividendBrutto.clear();
         fxtrDividendFallbackCount = 0;
         fxtrDividendFallbackAccounts.clear();
-        
-    // For IBOrderID consolidation
-    Map<String, List<RawExchTradeRow>> orderGroups = new HashMap<>();
 
-        // Corporate actions raw rows (ActionID-based netting)
-        List<RawCorporateActionRow> corporateActionRows = new ArrayList<>();
+        // For IBOrderID consolidation
+        Map<String, List<RawExchTradeRow>> orderGroups = new HashMap<>();
 
         // v2: track current account and current section context
         String currentAccountId = "";
@@ -1025,7 +1099,8 @@ public class IBKRFlexParser {
             boolean v2ExpectSectionHeader = false;
 
             while ((line = reader.readLine()) != null) {
-                if (line == null) continue;
+                if (line == null)
+                    continue;
                 if (line.trim().isEmpty()) {
                     continue;
                 }
@@ -1033,35 +1108,44 @@ public class IBKRFlexParser {
                 String[] fieldsForControl = splitCsvLine(line);
                 if (fieldsForControl != null && fieldsForControl.length > 0) {
                     String ctl = controlType(fieldsForControl);
-                    if (ctl != null && (ctl.equals("BOF") || ctl.equals("BOA") || ctl.equals("BOS") || ctl.equals("EOS") || ctl.equals("EOA") || ctl.equals("EOF"))) {
+                    if (ctl != null && (ctl.equals("BOF") || ctl.equals("BOA") || ctl.equals("BOS") || ctl.equals("EOS")
+                            || ctl.equals("EOA") || ctl.equals("EOF"))) {
                         if (flexCsvVersion == FlexCsvVersion.UNKNOWN) {
                             flexCsvVersion = FlexCsvVersion.V2_HEADERS_AND_TRAILERS;
                             inV2 = true;
                         } else if (flexCsvVersion == FlexCsvVersion.V1_LEGACY) {
-                            throw new Exception("IBKR Flex CSV: mixed versions detected (legacy header CSV + BOF/BOS trailer records)");
+                            throw new Exception(
+                                    "IBKR Flex CSV: mixed versions detected (legacy header CSV + BOF/BOS trailer records)");
                         }
 
                         if (ctl.equals("BOA")) {
-                            currentAccountId = (fieldsForControl.length > 1) ? stripOuterQuotes(fieldsForControl[1]) : "";
-                            if (currentAccountId == null) currentAccountId = "";
+                            currentAccountId = (fieldsForControl.length > 1) ? stripOuterQuotes(fieldsForControl[1])
+                                    : "";
+                            if (currentAccountId == null)
+                                currentAccountId = "";
                             currentAccountId = currentAccountId.trim();
                             flexSectionsByAccount.computeIfAbsent(currentAccountId, k -> new java.util.ArrayList<>());
                         }
                         if (ctl.equals("BOS")) {
                             String code = (fieldsForControl.length > 1) ? stripOuterQuotes(fieldsForControl[1]) : "";
                             String label = (fieldsForControl.length > 2) ? stripOuterQuotes(fieldsForControl[2]) : "";
-                            if (code == null) code = "";
-                            if (label == null) label = "";
+                            if (code == null)
+                                code = "";
+                            if (label == null)
+                                label = "";
                             code = code.trim();
                             label = label.trim();
                             FlexSection s = new FlexSection(code, label);
-                            flexSectionsByAccount.computeIfAbsent(currentAccountId, k -> new java.util.ArrayList<>()).add(s);
+                            flexSectionsByAccount.computeIfAbsent(currentAccountId, k -> new java.util.ArrayList<>())
+                                    .add(s);
                         }
 
                         noteFlexControlLine(fieldsForControl);
                         if (ctl.equals("BOS")) {
-                            currentV2SectionCode = (fieldsForControl.length > 1) ? stripOuterQuotes(fieldsForControl[1]) : "";
-                            if (currentV2SectionCode == null) currentV2SectionCode = "";
+                            currentV2SectionCode = (fieldsForControl.length > 1) ? stripOuterQuotes(fieldsForControl[1])
+                                    : "";
+                            if (currentV2SectionCode == null)
+                                currentV2SectionCode = "";
                             currentV2SectionCode = currentV2SectionCode.trim();
                             v2ExpectSectionHeader = true;
                             // Next non-empty line should be the section header.
@@ -1090,7 +1174,7 @@ public class IBKRFlexParser {
                 } else if (inV2) {
                     // In v2, allow unquoted headers as well.
                     if (!headerDetected && !v2ExpectSectionHeader &&
-                        (line.startsWith("\"ClientAccountID\"") || line.startsWith("ClientAccountID,"))) {
+                            (line.startsWith("\"ClientAccountID\"") || line.startsWith("ClientAccountID,"))) {
                         // Header-like line without BOS marker => likely mixed or malformed.
                         throw new Exception("IBKR Flex CSV: malformed v2 file (section header without BOS marker)");
                     }
@@ -1174,26 +1258,27 @@ public class IBKRFlexParser {
                 try {
                     String[] fields = fieldsForControl;
 
-                // Ignore options/positions summary section (not executions)
-                if (currentSectionType == SectionType.OPTIONS_SUMMARY) {
-                    ignoredOptionsSummaryRows++;
-                    continue;
-                }
+                    // Ignore options/positions summary section (not executions)
+                    if (currentSectionType == SectionType.OPTIONS_SUMMARY) {
+                        ignoredOptionsSummaryRows++;
+                        continue;
+                    }
 
-                // v2: ignore unsupported sections entirely
-                if (inV2 && currentSectionType == SectionType.UNKNOWN) {
-                    continue;
-                }
+                    // v2: ignore unsupported sections entirely
+                    if (inV2 && currentSectionType == SectionType.UNKNOWN) {
+                        continue;
+                    }
 
-                if (currentSectionType == SectionType.ACCOUNT_INFO) {
-                    parseAccountInfoRow(currentAccountId, fieldsForControl);
-                    continue;
-                }
+                    if (currentSectionType == SectionType.ACCOUNT_INFO) {
+                        parseAccountInfoRow(currentAccountId, fieldsForControl);
+                        continue;
+                    }
 
                     // Collect raw content stats (best-effort, independent of import filters)
                     if (currentSectionType == SectionType.TRADES) {
                         if (COL_TRANSACTION_TYPE >= 0 && COL_TRANSACTION_TYPE < fields.length) {
-                            String txType = fields[COL_TRANSACTION_TYPE] != null ? fields[COL_TRANSACTION_TYPE].trim() : "";
+                            String txType = fields[COL_TRANSACTION_TYPE] != null ? fields[COL_TRANSACTION_TYPE].trim()
+                                    : "";
                             if (!txType.isEmpty()) {
                                 incCount(tradeTransactionTypeCounts, txType);
                             }
@@ -1207,26 +1292,17 @@ public class IBKRFlexParser {
                         }
                     } else if (currentSectionType == SectionType.CASH_TRANSACTIONS) {
                         String cashType = (COL_CTRN_TYPE >= 0 && COL_CTRN_TYPE < fields.length)
-                            ? (fields[COL_CTRN_TYPE] != null ? fields[COL_CTRN_TYPE].trim() : "")
-                            : "";
+                                ? (fields[COL_CTRN_TYPE] != null ? fields[COL_CTRN_TYPE].trim() : "")
+                                : "";
                         if (!cashType.isEmpty()) {
                             incCount(cashTypeSeenCounts, cashType);
-                            String tick = (COL_SYMBOL >= 0 && COL_SYMBOL < fields.length)
-                                ? (fields[COL_SYMBOL] != null ? fields[COL_SYMBOL].trim() : "")
-                                : "";
-                            String desc = (COL_NAME >= 0 && COL_NAME < fields.length)
-                                ? (fields[COL_NAME] != null ? fields[COL_NAME].trim() : "")
-                                : "";
-                            double amt = (COL_CTRN_AMOUNT >= 0 && COL_CTRN_AMOUNT < fields.length)
-                                ? parseDouble(fields[COL_CTRN_AMOUNT])
-                                : 0.0;
-                            CashRowOutcome outcome = classifyCashRow(cashType, tick, desc, amt);
-                            if (outcome == CashRowOutcome.IMPORTED) {
-                                incCount(cashTypeImportedCounts, cashType);
-                            } else if (outcome == CashRowOutcome.DISABLED) {
-                                incCount(cashTypeDisabledCounts, cashType);
-                            } else {
-                                incCount(cashTypeIgnoredCounts, cashType);
+                            // Collect CTRN rows for grouping/netting
+                            RawCashTransactionRow row = createRawCashRow(fields);
+                            if (row != null) {
+                                if (inV2 && (row.accountId == null || row.accountId.trim().isEmpty())) {
+                                    row.accountId = currentAccountId;
+                                }
+                                cashTransactionRows.add(row);
                             }
                         }
                     }
@@ -1245,20 +1321,22 @@ public class IBKRFlexParser {
                         continue;
                     }
 
-                    // Filter by AssetClass for trade section only. Corporate actions must remain visible.
+                    // Filter by AssetClass for trade section only. Corporate actions must remain
+                    // visible.
                     // Include ExchTrade, BookTrade, FracShare (all are trade-like).
                     if (currentSectionType == SectionType.TRADES &&
-                        COL_TRANSACTION_TYPE >= 0 && COL_TRANSACTION_TYPE < fields.length) {
+                            COL_TRANSACTION_TYPE >= 0 && COL_TRANSACTION_TYPE < fields.length) {
                         String assetClass = (COL_ASSET_CLASS >= 0 && COL_ASSET_CLASS < fields.length)
-                            ? fields[COL_ASSET_CLASS].trim()
-                            : "";
+                                ? fields[COL_ASSET_CLASS].trim()
+                                : "";
                         String txType = fields[COL_TRANSACTION_TYPE].trim();
-                        boolean isTradeLike = txType.equals("ExchTrade") || txType.equals("BookTrade") || txType.equals("FracShare");
+                        boolean isTradeLike = txType.equals("ExchTrade") || txType.equals("BookTrade")
+                                || txType.equals("FracShare");
                         if (isTradeLike && !isAssetClassAllowed(assetClass)) {
                             continue;
                         }
                     }
-                    
+
                     // Check if this is ExchTrade with IBOrderID for grouping
                     if (isExchTradeWithOrderId(fields)) {
                         RawExchTradeRow row = createRawRow(fields);
@@ -1269,20 +1347,23 @@ public class IBKRFlexParser {
                         }
                         continue; // Skip adding individual transaction
                     }
-                    
+
                     // Regular parsing for non-groupable rows
                     if (currentSectionType == SectionType.CORPORATE_ACTIONS) {
-                        RawCorporateActionRow ca = parseCorporateActionRow(fields);
+                        RawCorporateActionRow ca = createRawCorporateActionRow(fields);
                         if (ca != null) {
                             if (inV2 && (ca.accountId == null || ca.accountId.trim().isEmpty())) {
                                 ca.accountId = currentAccountId;
                             }
                             corporateActionRows.add(ca);
                         }
+                    } else if (currentSectionType == SectionType.CASH_TRANSACTIONS) {
+                        // Handled above via collection
                     } else {
                         Transaction transaction = parseCsvLine(line);
                         if (transaction != null) {
-                            if (inV2 && (transaction.getAccountId() == null || transaction.getAccountId().trim().isEmpty())) {
+                            if (inV2 && (transaction.getAccountId() == null
+                                    || transaction.getAccountId().trim().isEmpty())) {
                                 transaction.setAccountId(currentAccountId);
                             }
                             transactions.add(transaction);
@@ -1337,6 +1418,29 @@ public class IBKRFlexParser {
             }
         }
 
+        // Convert cash transactions using ActionID-based netting
+        if (includeCashTransactions && !cashTransactionRows.isEmpty()) {
+            Map<String, List<RawCashTransactionRow>> byAccAndAction = new LinkedHashMap<>();
+            for (RawCashTransactionRow r : cashTransactionRows) {
+                String acc = r.accountId == null ? "" : r.accountId.trim();
+                String actionId = r.actionId == null ? "" : r.actionId.trim();
+                String type = r.type == null ? "" : r.type.trim();
+                // Group by accountId|ActionID|Type. If ActionID is empty, don't group (each row
+                // is own group).
+                // Including Type ensures Dividends and Withholding Tax for same ActionID stay
+                // separate.
+                String key = actionId.isEmpty() ? ("row_" + java.util.UUID.randomUUID().toString())
+                        : (acc + "|" + actionId + "|" + type);
+                byAccAndAction.computeIfAbsent(key, k -> new ArrayList<>()).add(r);
+            }
+            Vector<Transaction> cashTx = new Vector<>();
+            for (List<RawCashTransactionRow> grp : byAccAndAction.values()) {
+                cashTx.addAll(buildCashTransactionsFromActionIdNetting(grp));
+            }
+            transactions.addAll(cashTx);
+            importedCashTransactionEvents = cashTx.size();
+        }
+
         // Validate file structure for v2 reports regardless of import filters.
         validateMandatoryV2Sections();
 
@@ -1346,9 +1450,10 @@ public class IBKRFlexParser {
         }
 
         logger.info("Parsed " + transactions.size() + " transactions from IBKR Flex CSV " +
-                    "(consolidated " + orderGroups.size() + " order groups, " + corporateActionCount + " corporate actions, " +
-                    ignoredOptionsSummaryRows + " ignored options summary rows)");
-        
+                "(consolidated " + orderGroups.size() + " order groups, " + corporateActionCount
+                + " corporate actions, " + importedCashTransactionEvents + " cash transaction events, " +
+                ignoredOptionsSummaryRows + " ignored options summary rows)");
+
         return transactions;
     }
 
@@ -1357,10 +1462,10 @@ public class IBKRFlexParser {
 
         logger.info("Detecting columns from header with " + headers.length + " fields");
         if (headers.length > 0) {
-            logger.fine("First few header fields: " + 
-                       (headers.length >= 1 ? "'" + headers[0] + "'" : "") +
-                       (headers.length >= 2 ? ", '" + headers[1] + "'" : "") +
-                       (headers.length >= 3 ? ", '" + headers[2] + "'" : ""));
+            logger.fine("First few header fields: " +
+                    (headers.length >= 1 ? "'" + headers[0] + "'" : "") +
+                    (headers.length >= 2 ? ", '" + headers[1] + "'" : "") +
+                    (headers.length >= 3 ? ", '" + headers[2] + "'" : ""));
         }
 
         for (int i = 0; i < headers.length; i++) {
@@ -1388,7 +1493,8 @@ public class IBKRFlexParser {
                 COL_TRANSACTION_TYPE = i;
             }
             // NOTE: Do not use a broad "contains('transaction')" fallback here.
-            // CTRN headers include TransactionID, which would be incorrectly captured as TransactionType
+            // CTRN headers include TransactionID, which would be incorrectly captured as
+            // TransactionType
             // and then prevent TransactionID from being detected.
             // Symbol
             else if (h.equals("symbol") || h.equals("ticker")) {
@@ -1425,7 +1531,8 @@ public class IBKRFlexParser {
             // Commission - prioritize main commission field
             else if (h.equals("ibcommission") || h.equals("commission")) {
                 COL_COMMISSION = i;
-            } else if (COL_COMMISSION < 0 && (h.contains("commission") || h.contains("fee")) && !h.contains("currency")) {
+            } else if (COL_COMMISSION < 0 && (h.contains("commission") || h.contains("fee"))
+                    && !h.contains("currency")) {
                 COL_COMMISSION = i;
             }
             // Net proceeds
@@ -1449,14 +1556,11 @@ public class IBKRFlexParser {
             else if (h.equals("levelofdetail") || h.equals("level of detail")) {
                 COL_LEVEL_OF_DETAIL = i;
                 COL_CTRN_LEVEL_OF_DETAIL = i;
-            }
-            else if (h.equals("actionid") || h.equals("action id")) {
+            } else if (h.equals("actionid") || h.equals("action id")) {
                 COL_ACTION_ID = i;
-            }
-            else if (h.equals("actiondescription") || h.equals("action description")) {
+            } else if (h.equals("actiondescription") || h.equals("action description")) {
                 COL_CA_ACTION_DESCRIPTION = i;
-            }
-            else if (h.equals("report date")) {
+            } else if (h.equals("report date")) {
                 COL_CA_REPORT_DATE = i;
             }
             // Client Account ID
@@ -1466,8 +1570,10 @@ public class IBKRFlexParser {
             // ISIN
             else if (h.equals("isin")) {
                 COL_ISIN = i;
+                COL_CTRN_ISIN = i;
             }
-            // Asset Class (CRITICAL: if missing, likely wrong header section - skip parsing)
+            // Asset Class (CRITICAL: if missing, likely wrong header section - skip
+            // parsing)
             else if (h.equals("assetclass") || h.equals("asset class") || h.equals("assetcategory")) {
                 COL_ASSET_CLASS = i;
             }
@@ -1484,14 +1590,15 @@ public class IBKRFlexParser {
                 COL_CTRN_DATETIME = i;
             }
             // Cash transactions (CTRN)
-            else if (h.equals("settledate") || h.equals("settle date") || h.equals("settledatetarget") || h.equals("settledatesource")) {
+            else if (h.equals("settledate") || h.equals("settle date") || h.equals("settledatetarget")
+                    || h.equals("settledatesource")) {
                 COL_CTRN_SETTLE_DATE = i;
-            }
-            else if (h.equals("amount")) {
+            } else if (h.equals("amount")) {
                 COL_CTRN_AMOUNT = i;
             }
             // Note: "Type" is ambiguous (Corporate Actions type vs Cash transaction type).
-            // Bind both to the current header; section validation will ensure we use the right one.
+            // Bind both to the current header; section validation will ensure we use the
+            // right one.
             else if (h.equals("type")) {
                 COL_CTRN_TYPE = i;
                 COL_CA_TYPE = i;
@@ -1514,21 +1621,24 @@ public class IBKRFlexParser {
             // Multiplier (contract size for options/futures)
             else if (h.equals("multiplier")) {
                 COL_MULTIPLIER = i;
+            } else if (h.equals("issuercountrycode") || h.equals("issuer country code")) {
+                COL_CTRN_ISSUER_COUNTRY_CODE = i;
             }
             // CA type is handled by the shared "type" handler above.
         }
 
         columnsDetected = true;
-        
+
         // CRITICAL: AssetClass should always be present in trade data
-        // If missing, we're likely reading a different section (summary, positions, etc.)
+        // If missing, we're likely reading a different section (summary, positions,
+        // etc.)
         if (COL_ASSET_CLASS < 0) {
             logger.warning("AssetClass column not found - likely parsing wrong header section");
             logger.warning("This header may be for account summary, positions, or other non-trade data");
             logger.warning("Trade data headers should include: TradeDate, Symbol, Quantity, AssetClass, etc.");
             // Don't throw exception yet - let validation catch missing required columns
         }
-        
+
         // Log detected columns for debugging
         logger.info("Detected IBKR CSV columns:");
         logger.info("  Date: " + COL_DATE);
@@ -1561,7 +1671,7 @@ public class IBKRFlexParser {
         logger.info("  CTRN Type: " + COL_CTRN_TYPE);
         logger.info("  CTRN TransactionID: " + COL_CTRN_TRANSACTION_ID);
         logger.info("  CTRN LevelOfDetail: " + COL_CTRN_LEVEL_OF_DETAIL);
-        
+
         // Warnings for optional but useful columns
         if (COL_BUY_SELL < 0) {
             logger.warning("Buy/Sell column not found - will infer direction from TransactionType");
@@ -1572,55 +1682,77 @@ public class IBKRFlexParser {
         if (COL_CURRENCY < 0) {
             logger.warning("Currency column not found - will use default");
         }
-        
+
         // Do not validate required columns here. Validation depends on the section type
-        // (Trades vs Corporate Actions vs ignored sections) and is handled by the caller.
+        // (Trades vs Corporate Actions vs ignored sections) and is handled by the
+        // caller.
     }
 
     private void validateRequiredColumnsForSection(SectionType sectionType) {
-        if (sectionType == null) sectionType = SectionType.UNKNOWN;
+        if (sectionType == null)
+            sectionType = SectionType.UNKNOWN;
 
         if (sectionType == SectionType.TRADES) {
             java.util.List<String> missing = new java.util.ArrayList<>();
-            if (COL_DATE < 0 && COL_DATETIME < 0) missing.add("Date/DateTime");
-            if (COL_SYMBOL < 0) missing.add("Symbol");
-            if (COL_QUANTITY < 0) missing.add("Quantity");
-            if (COL_PRICE < 0) missing.add("TradePrice/Price");
+            if (COL_DATE < 0 && COL_DATETIME < 0)
+                missing.add("Date/DateTime");
+            if (COL_SYMBOL < 0)
+                missing.add("Symbol");
+            if (COL_QUANTITY < 0)
+                missing.add("Quantity");
+            if (COL_PRICE < 0)
+                missing.add("TradePrice/Price");
             if (!missing.isEmpty()) {
-                throw new RuntimeException("Cannot parse IBKR CSV Trades section - missing required columns: " + missing);
+                throw new RuntimeException(
+                        "Cannot parse IBKR CSV Trades section - missing required columns: " + missing);
             }
             return;
         }
 
         if (sectionType == SectionType.CORPORATE_ACTIONS) {
             java.util.List<String> missing = new java.util.ArrayList<>();
-            if (COL_ACTION_ID < 0) missing.add("ActionID");
-            if (COL_CA_TYPE < 0) missing.add("Type");
-            if (COL_CA_DATETIME < 0 && COL_CA_REPORT_DATE < 0) missing.add("Date/Time");
-            if (COL_SYMBOL < 0) missing.add("Symbol");
-            if (COL_QUANTITY < 0) missing.add("Quantity");
+            if (COL_ACTION_ID < 0)
+                missing.add("ActionID");
+            if (COL_CA_TYPE < 0)
+                missing.add("Type");
+            if (COL_CA_DATETIME < 0 && COL_CA_REPORT_DATE < 0)
+                missing.add("Date/Time");
+            if (COL_SYMBOL < 0)
+                missing.add("Symbol");
+            if (COL_QUANTITY < 0)
+                missing.add("Quantity");
             if (!missing.isEmpty()) {
-                throw new RuntimeException("Cannot parse IBKR CSV Corporate Actions section - missing required columns: " + missing);
+                throw new RuntimeException(
+                        "Cannot parse IBKR CSV Corporate Actions section - missing required columns: " + missing);
             }
         }
 
         if (sectionType == SectionType.CASH_TRANSACTIONS) {
             java.util.List<String> missing = new java.util.ArrayList<>();
-            if (COL_CTRN_DATETIME < 0 && COL_CA_DATETIME < 0) missing.add("Date/Time");
-            if (COL_CTRN_SETTLE_DATE < 0 && COL_SETTLEMENT_DATE < 0) missing.add("SettleDate");
-            if (COL_CTRN_AMOUNT < 0) missing.add("Amount");
-            if (COL_CTRN_TYPE < 0) missing.add("Type");
+            if (COL_CTRN_DATETIME < 0 && COL_CA_DATETIME < 0)
+                missing.add("Date/Time");
+            if (COL_CTRN_SETTLE_DATE < 0 && COL_SETTLEMENT_DATE < 0)
+                missing.add("SettleDate");
+            if (COL_CTRN_AMOUNT < 0)
+                missing.add("Amount");
+            if (COL_CTRN_TYPE < 0)
+                missing.add("Type");
             if (!missing.isEmpty()) {
-                throw new RuntimeException("Cannot parse IBKR CSV Cash Transactions section - missing required columns: " + missing);
+                throw new RuntimeException(
+                        "Cannot parse IBKR CSV Cash Transactions section - missing required columns: " + missing);
             }
         }
 
         if (sectionType == SectionType.FXTR) {
             java.util.List<String> missing = new java.util.ArrayList<>();
-            if (COL_FXTR_DATETIME < 0) missing.add("DateTime");
-            if (COL_FXTR_ACTIVITY_DESCRIPTION < 0) missing.add("ActivityDescription");
-            if (COL_FXTR_FX_CURRENCY < 0) missing.add("FXCurrency");
-            if (COL_FXTR_QUANTITY < 0) missing.add("Quantity");
+            if (COL_FXTR_DATETIME < 0)
+                missing.add("DateTime");
+            if (COL_FXTR_ACTIVITY_DESCRIPTION < 0)
+                missing.add("ActivityDescription");
+            if (COL_FXTR_FX_CURRENCY < 0)
+                missing.add("FXCurrency");
+            if (COL_FXTR_QUANTITY < 0)
+                missing.add("Quantity");
             if (!missing.isEmpty()) {
                 throw new RuntimeException("Cannot parse IBKR CSV FXTR section - missing required columns: " + missing);
             }
@@ -1634,50 +1766,57 @@ public class IBKRFlexParser {
 
     private boolean isExchTradeWithOrderId(String[] fields) {
         // Check if TransactionType == "ExchTrade"
-        if (COL_TRANSACTION_TYPE < 0 || COL_TRANSACTION_TYPE >= fields.length) return false;
-        if (!"ExchTrade".equals(fields[COL_TRANSACTION_TYPE].trim())) return false;
-        
+        if (COL_TRANSACTION_TYPE < 0 || COL_TRANSACTION_TYPE >= fields.length)
+            return false;
+        if (!"ExchTrade".equals(fields[COL_TRANSACTION_TYPE].trim()))
+            return false;
+
         // Check if IBOrderID is present and non-empty
-        if (COL_IB_ORDER_ID < 0 || COL_IB_ORDER_ID >= fields.length) return false;
+        if (COL_IB_ORDER_ID < 0 || COL_IB_ORDER_ID >= fields.length)
+            return false;
         String ibOrderId = fields[COL_IB_ORDER_ID].trim();
         return !ibOrderId.isEmpty();
     }
-    
+
     private RawExchTradeRow createRawRow(String[] fields) {
         try {
             RawExchTradeRow row = new RawExchTradeRow();
-            
+
             // Essential fields
             row.ibOrderId = fields[COL_IB_ORDER_ID].trim();
             row.quantity = parseDouble(fields[COL_QUANTITY]);
             row.price = parseDouble(fields[COL_PRICE]);
             row.commission = (COL_COMMISSION >= 0 && COL_COMMISSION < fields.length)
-                ? parseDecimal(fields[COL_COMMISSION])
-                : BigDecimal.ZERO; // Keep original sign
+                    ? parseDecimal(fields[COL_COMMISSION])
+                    : BigDecimal.ZERO; // Keep original sign
             row.exchange = (COL_EXCHANGE >= 0 && COL_EXCHANGE < fields.length) ? fields[COL_EXCHANGE].trim() : "";
-            
+
             // Shared fields from first row
             row.symbol = (COL_SYMBOL >= 0 && COL_SYMBOL < fields.length) ? fields[COL_SYMBOL].trim() : "";
             row.currency = (COL_CURRENCY >= 0 && COL_CURRENCY < fields.length) ? fields[COL_CURRENCY].trim() : "USD";
             row.dateStr = getDateStr(fields);
-            row.settlementStr = (COL_SETTLEMENT_DATE >= 0 && COL_SETTLEMENT_DATE < fields.length) ? fields[COL_SETTLEMENT_DATE].trim() : row.dateStr;
+            row.settlementStr = (COL_SETTLEMENT_DATE >= 0 && COL_SETTLEMENT_DATE < fields.length)
+                    ? fields[COL_SETTLEMENT_DATE].trim()
+                    : row.dateStr;
             row.buySell = (COL_BUY_SELL >= 0 && COL_BUY_SELL < fields.length) ? fields[COL_BUY_SELL].trim() : "";
-            row.assetClass = (COL_ASSET_CLASS >= 0 && COL_ASSET_CLASS < fields.length) ? fields[COL_ASSET_CLASS].trim() : "STK";
+            row.assetClass = (COL_ASSET_CLASS >= 0 && COL_ASSET_CLASS < fields.length) ? fields[COL_ASSET_CLASS].trim()
+                    : "STK";
             row.description = (COL_NAME >= 0 && COL_NAME < fields.length) ? fields[COL_NAME].trim() : "";
             row.noteParts = buildNoteParts(fields); // For building consolidated note
-            
+
             // Multiplier
-            double multiplier = (COL_MULTIPLIER >= 0 && COL_MULTIPLIER < fields.length) 
-                ? parseDouble(fields[COL_MULTIPLIER]) : 1.0;
+            double multiplier = (COL_MULTIPLIER >= 0 && COL_MULTIPLIER < fields.length)
+                    ? parseDouble(fields[COL_MULTIPLIER])
+                    : 1.0;
             row.quantity *= multiplier;
-            
+
             return row;
         } catch (Exception e) {
             logger.warning("Failed to create raw row: " + e.getMessage());
             return null;
         }
     }
-    
+
     private String getDateStr(String[] fields) {
         if (COL_DATETIME >= 0 && COL_DATETIME < fields.length && !fields[COL_DATETIME].trim().isEmpty()) {
             return fields[COL_DATETIME];
@@ -1686,21 +1825,27 @@ public class IBKRFlexParser {
         }
         return "";
     }
-    
+
     private List<String> buildNoteParts(String[] fields) {
         List<String> parts = new ArrayList<>();
         // Build similar to buildNote but collect parts for reuse
         String description = (COL_NAME >= 0 && COL_NAME < fields.length) ? fields[COL_NAME].trim() : "";
-        if (!description.isEmpty()) parts.add(description);
+        if (!description.isEmpty())
+            parts.add(description);
         parts.add("Broker:IB");
-        
-        String accountId = (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length) ? fields[COL_CLIENT_ACCOUNT_ID].trim() : "";
-        if (!accountId.isEmpty()) parts.add("AccountID:" + accountId);
-        
+
+        String accountId = (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length)
+                ? fields[COL_CLIENT_ACCOUNT_ID].trim()
+                : "";
+        if (!accountId.isEmpty())
+            parts.add("AccountID:" + accountId);
+
         String isin = (COL_ISIN >= 0 && COL_ISIN < fields.length) ? fields[COL_ISIN].trim() : "";
-        if (!isin.isEmpty()) parts.add("ISIN:" + isin);
-        
-        // TxnID shown in UI: prefer IBOrderID (shared across fills) so consolidated trades have stable ID
+        if (!isin.isEmpty())
+            parts.add("ISIN:" + isin);
+
+        // TxnID shown in UI: prefer IBOrderID (shared across fills) so consolidated
+        // trades have stable ID
         String txnId = "";
         if (COL_IB_ORDER_ID >= 0 && COL_IB_ORDER_ID < fields.length) {
             txnId = fields[COL_IB_ORDER_ID].trim();
@@ -1708,41 +1853,46 @@ public class IBKRFlexParser {
         if (txnId.isEmpty() && COL_TRANSACTION_ID >= 0 && COL_TRANSACTION_ID < fields.length) {
             txnId = fields[COL_TRANSACTION_ID].trim();
         }
-        if (!txnId.isEmpty()) parts.add("TxnID:" + txnId);
-        
+        if (!txnId.isEmpty())
+            parts.add("TxnID:" + txnId);
+
         String code = (COL_CODE >= 0 && COL_CODE < fields.length) ? fields[COL_CODE].trim() : "";
-        if (!code.isEmpty()) parts.add("Code:" + code);
-        
+        if (!code.isEmpty())
+            parts.add("Code:" + code);
+
         return parts;
     }
-    
+
     private Transaction consolidateGroup(List<RawExchTradeRow> group) {
-        if (group.isEmpty()) return null;
-        
+        if (group.isEmpty())
+            return null;
+
         // Sort by date to get earliest
         group.sort(Comparator.comparing(r -> r.dateStr));
         RawExchTradeRow first = group.get(0);
-        
+
         // Direction: assume all same, take from first or quantity sign
         int direction = determineGroupDirection(group, first);
-        
+
         // Totals
         double totalQuantity = 0;
         double totalAbsQuantity = 0;
         double weightedSum = 0;
         BigDecimal commissionSum = BigDecimal.ZERO;
         Set<String> exchanges = new TreeSet<>(); // Sorted unique
-        
+
         for (RawExchTradeRow row : group) {
             totalQuantity += row.quantity;
             double absQ = Math.abs(row.quantity);
             totalAbsQuantity += absQ;
             weightedSum += absQ * row.price;
-            // Commission can be negative (cost) or positive (rebate). Match TradeLog: abs(sum(signed)).
+            // Commission can be negative (cost) or positive (rebate). Match TradeLog:
+            // abs(sum(signed)).
             commissionSum = commissionSum.add(row.commission);
-            if (!row.exchange.isEmpty()) exchanges.add(row.exchange);
+            if (!row.exchange.isEmpty())
+                exchanges.add(row.exchange);
         }
-        
+
         double avgPrice = totalAbsQuantity > 0 ? weightedSum / totalAbsQuantity : 0;
         // Display-friendly rounding: avoid binary floating artifacts.
         // Price precision: keep up to 6 decimals (TradePrice can have 4+ decimals),
@@ -1750,7 +1900,7 @@ public class IBKRFlexParser {
         avgPrice = roundTo(avgPrice, 6);
         double totalFee = normalizeFee(commissionSum.abs()).doubleValue();
         double amount = Math.abs(totalQuantity);
-        
+
         // Dates
         Date tradeDate;
         try {
@@ -1766,32 +1916,32 @@ public class IBKRFlexParser {
             logger.warning("Failed to parse settlement date in consolidation: " + e.getMessage());
             settlementDate = tradeDate;
         }
-        
+
         // Exchanges for Trh
         String consolidatedMarket = String.join(",", exchanges);
-        
+
         // Note: use first's parts, but indicate consolidation
         List<String> noteParts = new ArrayList<>(first.noteParts);
         noteParts.add("Consolidated:" + group.size() + "fills");
         String note = String.join("|", noteParts);
-        
+
         try {
             Transaction t = new Transaction(
-                0,
-                tradeDate,
-                direction,
-                first.symbol,
-                amount,
-                avgPrice,
-                first.currency,
-                totalFee,
-                first.currency,
-                consolidatedMarket,
-                settlementDate,
-                note
-            );
+                    0,
+                    tradeDate,
+                    direction,
+                    first.symbol,
+                    amount,
+                    avgPrice,
+                    first.currency,
+                    totalFee,
+                    first.currency,
+                    consolidatedMarket,
+                    settlementDate,
+                    note);
             // Persisted metadata
-            // Persisted metadata is set from parsed fields in buildNoteParts(); note hydration is a fallback only.
+            // Persisted metadata is set from parsed fields in buildNoteParts(); note
+            // hydration is a fallback only.
             t.setBroker("IB");
             t.hydrateMetadataFromNote();
             return t;
@@ -1800,12 +1950,12 @@ public class IBKRFlexParser {
             return null;
         }
     }
-    
+
     private int determineGroupDirection(List<RawExchTradeRow> group, RawExchTradeRow first) {
         // All should have same sign of quantity
         boolean allBuy = group.stream().allMatch(r -> r.quantity > 0);
         boolean allSell = group.stream().allMatch(r -> r.quantity < 0);
-        
+
         if (allBuy) {
             return getDirectionForAsset(first.assetClass, true); // Buy
         } else if (allSell) {
@@ -1816,23 +1966,27 @@ public class IBKRFlexParser {
             return mapTransactionTypeToDirection("ExchTrade", first.buySell, first.assetClass);
         }
     }
-    
+
     private int getDirectionForAsset(String assetClass, boolean isBuy) {
         String upper = assetClass.toUpperCase().trim();
         boolean isDerivative = upper.equals("OPT") || upper.equals("FUT") || upper.equals("FOP") || upper.equals("WAR");
         boolean isCash = upper.equals("CASH") || upper.equals("FX");
-        
+
         if (isBuy) {
-            if (isCash) return Transaction.DIRECTION_CBUY;
-            if (isDerivative) return Transaction.DIRECTION_DBUY;
+            if (isCash)
+                return Transaction.DIRECTION_CBUY;
+            if (isDerivative)
+                return Transaction.DIRECTION_DBUY;
             return Transaction.DIRECTION_SBUY;
         } else {
-            if (isCash) return Transaction.DIRECTION_CSELL;
-            if (isDerivative) return Transaction.DIRECTION_DSELL;
+            if (isCash)
+                return Transaction.DIRECTION_CSELL;
+            if (isDerivative)
+                return Transaction.DIRECTION_DSELL;
             return Transaction.DIRECTION_SSELL;
         }
     }
-    
+
     private Transaction createTransactionFromRow(RawExchTradeRow row) {
         // Similar to parseCsvLine but for single row
         int direction = getDirectionForAsset(row.assetClass, row.quantity > 0);
@@ -1852,23 +2006,22 @@ public class IBKRFlexParser {
             settlementDate = tradeDate;
         }
         String note = String.join("|", row.noteParts);
-        
+
         try {
             double fee = normalizeFee(row.commission.abs()).doubleValue();
             Transaction t = new Transaction(
-                0,
-                tradeDate,
-                direction,
-                row.symbol,
-                amount,
-                row.price,
-                row.currency,
-                fee,
-                row.currency,
-                row.exchange,
-                settlementDate,
-                note
-            );
+                    0,
+                    tradeDate,
+                    direction,
+                    row.symbol,
+                    amount,
+                    row.price,
+                    row.currency,
+                    fee,
+                    row.currency,
+                    row.exchange,
+                    settlementDate,
+                    note);
 
             t.setBroker("IB");
             t.hydrateMetadataFromNote();
@@ -1878,7 +2031,7 @@ public class IBKRFlexParser {
             return null;
         }
     }
-    
+
     // Inner class for raw rows (only populated during grouping)
     private static class RawExchTradeRow {
         String ibOrderId;
@@ -1895,7 +2048,7 @@ public class IBKRFlexParser {
         String description;
         List<String> noteParts;
     }
-    
+
     private Transaction parseCsvLine(String line) throws Exception {
         String[] fields = splitCsvLine(line);
 
@@ -1918,7 +2071,8 @@ public class IBKRFlexParser {
             return parseCashTransaction(fields);
         }
 
-        // Trades section (TRNT): newer Flex exports include rows that are not actual fills
+        // Trades section (TRNT): newer Flex exports include rows that are not actual
+        // fills
         // (e.g. SYMBOL_SUMMARY, ASSET_SUMMARY, ORDER). Import only EXECUTION rows.
         if (currentSectionType == SectionType.TRADES) {
             if (COL_LEVEL_OF_DETAIL >= 0 && COL_LEVEL_OF_DETAIL < fields.length) {
@@ -1930,28 +2084,32 @@ public class IBKRFlexParser {
         }
 
         // Validate array bounds for all required columns
-        int maxRequiredIndex = Math.max(COL_DATE, Math.max(COL_SYMBOL, 
-                                Math.max(COL_QUANTITY, COL_PRICE)));
+        int maxRequiredIndex = Math.max(COL_DATE, Math.max(COL_SYMBOL,
+                Math.max(COL_QUANTITY, COL_PRICE)));
         if (fields.length <= maxRequiredIndex) {
-            logger.warning("Line has insufficient fields: " + fields.length + 
-                          " (need at least " + (maxRequiredIndex + 1) + ")");
+            logger.warning("Line has insufficient fields: " + fields.length +
+                    " (need at least " + (maxRequiredIndex + 1) + ")");
             return null;
         }
 
-        // Check if this is a corporate action (reverse split, ticker change, merger, etc.)
+        // Check if this is a corporate action (reverse split, ticker change, merger,
+        // etc.)
         // Corporate action rows have fewer columns (~47 vs 85 for regular trades)
         // Common codes: RS (Reverse Split), TC (Ticker Change/Merger)
         // Also, Symbol column (index 6) is typically "COMMON" instead of actual ticker
         // Note: Corporate actions have their own header section in the CSV, so we use
-        // hardcoded indices based on the corporate action CSV structure (after splitCsvLine):
-        // Symbol at index 6, Description at 7, Full desc at 8, Code at 38, share change at 33
+        // hardcoded indices based on the corporate action CSV structure (after
+        // splitCsvLine):
+        // Symbol at index 6, Description at 7, Full desc at 8, Code at 38, share change
+        // at 33
         if (fields.length < 60 && fields.length > 40) {
             // Might be corporate action - check Code field at index 38 and Symbol at 6
             String codeValue = fields.length > 38 ? fields[38].trim() : "";
             String symbolValue = fields.length > 6 ? fields[6].trim() : "";
             if (codeValue.equals("RS") || codeValue.equals("TC") || symbolValue.equals("COMMON")) {
                 // This is a corporate action row - parse differently
-                logger.info("Detected corporate action row (Code=" + codeValue + ", Symbol=" + symbolValue + ", fields=" + fields.length + ")");
+                logger.info("Detected corporate action row (Code=" + codeValue + ", Symbol=" + symbolValue + ", fields="
+                        + fields.length + ")");
                 return parseCorporateAction(fields);
             }
         }
@@ -1969,7 +2127,7 @@ public class IBKRFlexParser {
             dateStr = "";
         }
         Date tradeDate = parseDate(dateStr);
-        
+
         // Parse settlement date for "datum vypořádání" column
         Date settlementDate = tradeDate; // Default to trade date
         if (COL_SETTLEMENT_DATE >= 0 && COL_SETTLEMENT_DATE < fields.length) {
@@ -1984,51 +2142,61 @@ public class IBKRFlexParser {
                 }
             }
         }
-        
+
         // Safe access with bounds checking for optional columns
-        String transactionType = (COL_TRANSACTION_TYPE >= 0 && COL_TRANSACTION_TYPE < fields.length) 
-            ? fields[COL_TRANSACTION_TYPE] : "";
-        String buySell = (COL_BUY_SELL >= 0 && COL_BUY_SELL < fields.length) 
-            ? fields[COL_BUY_SELL] : "";
-        String assetClass = (COL_ASSET_CLASS >= 0 && COL_ASSET_CLASS < fields.length) 
-            ? fields[COL_ASSET_CLASS] : "STK";
-        
+        String transactionType = (COL_TRANSACTION_TYPE >= 0 && COL_TRANSACTION_TYPE < fields.length)
+                ? fields[COL_TRANSACTION_TYPE]
+                : "";
+        String buySell = (COL_BUY_SELL >= 0 && COL_BUY_SELL < fields.length)
+                ? fields[COL_BUY_SELL]
+                : "";
+        String assetClass = (COL_ASSET_CLASS >= 0 && COL_ASSET_CLASS < fields.length)
+                ? fields[COL_ASSET_CLASS]
+                : "STK";
+
         // Determine direction using AssetClass to distinguish Stock/Derivative/Cash
         int direction = mapTransactionTypeToDirection(transactionType, buySell, assetClass);
-        
+
         // Use full ticker string from Symbol column (preserves option contract details)
         // For stocks: "AMZN"
-        // For options: "ORCL  260116C00220000" (full contract string)
-        String ticker = (COL_SYMBOL >= 0 && COL_SYMBOL < fields.length) 
-            ? fields[COL_SYMBOL].trim() : "";
-        
+        // For options: "ORCL 260116C00220000" (full contract string)
+        String ticker = (COL_SYMBOL >= 0 && COL_SYMBOL < fields.length)
+                ? fields[COL_SYMBOL].trim()
+                : "";
+
         // Parse raw quantity (may be negative for SELL orders)
         double rawQuantity = parseDouble(fields[COL_QUANTITY]);
-        
+
         // Apply multiplier (contract size for options/futures, typically 1 for stocks)
-        double multiplier = (COL_MULTIPLIER >= 0 && COL_MULTIPLIER < fields.length) 
-            ? parseDouble(fields[COL_MULTIPLIER]) : 1.0;
+        double multiplier = (COL_MULTIPLIER >= 0 && COL_MULTIPLIER < fields.length)
+                ? parseDouble(fields[COL_MULTIPLIER])
+                : 1.0;
         double quantity = rawQuantity * multiplier;
-        
+
         double price = parseDouble(fields[COL_PRICE]);
-        
-        String currency = (COL_CURRENCY >= 0 && COL_CURRENCY < fields.length) 
-            ? fields[COL_CURRENCY].trim() : "USD";
-        
+
+        String currency = (COL_CURRENCY >= 0 && COL_CURRENCY < fields.length)
+                ? fields[COL_CURRENCY].trim()
+                : "USD";
+
         // IBKR sends commissions as negative values (e.g., -1.50 for $1.50 fee)
         // Transaction model expects positive fee values, so we negate/abs them
-        // IBKR commission can be negative (cost) or positive (rebate). Match TradeLog: fee = abs(commission).
+        // IBKR commission can be negative (cost) or positive (rebate). Match TradeLog:
+        // fee = abs(commission).
         BigDecimal commissionSigned = (COL_COMMISSION >= 0 && COL_COMMISSION < fields.length)
-            ? parseDecimal(fields[COL_COMMISSION])
-            : BigDecimal.ZERO;
+                ? parseDecimal(fields[COL_COMMISSION])
+                : BigDecimal.ZERO;
         double commission = normalizeFee(commissionSigned.abs()).doubleValue();
-        
-        String exchange = (COL_EXCHANGE >= 0 && COL_EXCHANGE < fields.length) 
-            ? fields[COL_EXCHANGE].trim() : "";
-        String code = (COL_CODE >= 0 && COL_CODE < fields.length) 
-            ? fields[COL_CODE].trim() : "";
 
-        // If direction is still 0 (unknown), try to infer from quantity sign or Buy/Sell column
+        String exchange = (COL_EXCHANGE >= 0 && COL_EXCHANGE < fields.length)
+                ? fields[COL_EXCHANGE].trim()
+                : "";
+        String code = (COL_CODE >= 0 && COL_CODE < fields.length)
+                ? fields[COL_CODE].trim()
+                : "";
+
+        // If direction is still 0 (unknown), try to infer from quantity sign or
+        // Buy/Sell column
         if (direction == 0) {
             if (!buySell.isEmpty()) {
                 String buySellLower = buySell.toLowerCase().trim();
@@ -2038,7 +2206,7 @@ public class IBKRFlexParser {
                     direction = Transaction.DIRECTION_SSELL;
                 }
             }
-            
+
             // If still unknown, use quantity sign
             if (direction == 0) {
                 if (quantity > 0) {
@@ -2053,7 +2221,7 @@ public class IBKRFlexParser {
         }
 
         double amount = Math.abs(quantity);
-        
+
         // Calculate total for validation/logging (not passed to Transaction)
         // Transaction calculates total internally from price × amount
         double total = 0;
@@ -2062,13 +2230,13 @@ public class IBKRFlexParser {
             total = price * amount;
         } else {
             // Sell: use net proceeds if available, otherwise calculate
-            total = (COL_NET_PROCEEDS >= 0 && COL_NET_PROCEEDS < fields.length) ? 
-                parseDouble(fields[COL_NET_PROCEEDS]) : price * amount;
+            total = (COL_NET_PROCEEDS >= 0 && COL_NET_PROCEEDS < fields.length) ? parseDouble(fields[COL_NET_PROCEEDS])
+                    : price * amount;
         }
 
         Transaction transaction = new Transaction(
                 0,
-                tradeDate,           // Trade date with time component from DateTime
+                tradeDate, // Trade date with time component from DateTime
                 direction,
                 ticker,
                 amount,
@@ -2077,12 +2245,30 @@ public class IBKRFlexParser {
                 commission,
                 currency,
                 exchange,
-                settlementDate,      // Settlement date for "datum vypořádání"
-                buildNote(fields, code)
-        );
+                settlementDate, // Settlement date for "datum vypořádání"
+                buildNote(fields, code));
 
         // Persisted metadata (independent of note format)
         transaction.setBroker("IB");
+
+        // ISIN and Issuer Country
+        String isin = (COL_ISIN >= 0 && COL_ISIN < fields.length) ? fields[COL_ISIN].trim() : "";
+        if (!isin.isEmpty()) {
+            transaction.setIsin(isin);
+        }
+        String country = (COL_CTRN_ISSUER_COUNTRY_CODE >= 0 && COL_CTRN_ISSUER_COUNTRY_CODE < fields.length)
+                ? fields[COL_CTRN_ISSUER_COUNTRY_CODE].trim()
+                : "";
+        if (country.isEmpty() && isin.length() >= 2) {
+            String prefix = isin.substring(0, 2);
+            if (prefix.matches("[A-Z]{2}")) {
+                country = prefix;
+            }
+        }
+        if (!country.isEmpty()) {
+            transaction.setIssuerCountry(country);
+        }
+
         if (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length) {
             String acc = fields[COL_CLIENT_ACCOUNT_ID].trim();
             if (!acc.isEmpty()) {
@@ -2110,15 +2296,20 @@ public class IBKRFlexParser {
         try {
             // Required fields
             int idxDateTime = COL_CTRN_DATETIME >= 0 ? COL_CTRN_DATETIME : COL_CA_DATETIME;
-            if (idxDateTime < 0 || idxDateTime >= fields.length) return null;
-            if (COL_CTRN_AMOUNT < 0 || COL_CTRN_AMOUNT >= fields.length) return null;
-            if (COL_CTRN_TYPE < 0 || COL_CTRN_TYPE >= fields.length) return null;
+            if (idxDateTime < 0 || idxDateTime >= fields.length)
+                return null;
+            if (COL_CTRN_AMOUNT < 0 || COL_CTRN_AMOUNT >= fields.length)
+                return null;
+            if (COL_CTRN_TYPE < 0 || COL_CTRN_TYPE >= fields.length)
+                return null;
 
             String type = fields[COL_CTRN_TYPE].trim();
-            if (type.isEmpty()) return null;
+            if (type.isEmpty())
+                return null;
 
             // Flex v3: CTRN includes SUMMARY rows (aggregates) alongside DETAIL rows.
-            // Import only DETAIL rows to avoid duplicates; SUMMARY rows have empty TransactionID.
+            // Import only DETAIL rows to avoid duplicates; SUMMARY rows have empty
+            // TransactionID.
             if (COL_CTRN_LEVEL_OF_DETAIL >= 0 && COL_CTRN_LEVEL_OF_DETAIL < fields.length) {
                 String lod = fields[COL_CTRN_LEVEL_OF_DETAIL] != null ? fields[COL_CTRN_LEVEL_OF_DETAIL].trim() : "";
                 if ("SUMMARY".equalsIgnoreCase(lod)) {
@@ -2126,7 +2317,8 @@ public class IBKRFlexParser {
                 }
             }
 
-            // Track presence of dividend brutto types in CTRN (per account) for FXTR fallback suppression.
+            // Track presence of dividend brutto types in CTRN (per account) for FXTR
+            // fallback suppression.
             if (type.equalsIgnoreCase("Dividends") || type.equalsIgnoreCase("Payment In Lieu Of Dividends")) {
                 if (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length) {
                     String acc = fields[COL_CLIENT_ACCOUNT_ID] != null ? fields[COL_CLIENT_ACCOUNT_ID].trim() : "";
@@ -2137,7 +2329,8 @@ public class IBKRFlexParser {
             }
 
             String dateTimeStr = fields[idxDateTime].trim();
-            if (dateTimeStr.isEmpty()) return null;
+            if (dateTimeStr.isEmpty())
+                return null;
 
             Date tradeDate = parseDate(dateTimeStr);
 
@@ -2154,13 +2347,14 @@ public class IBKRFlexParser {
             }
 
             String currency = (COL_CURRENCY >= 0 && COL_CURRENCY < fields.length)
-                ? fields[COL_CURRENCY].trim()
-                : "USD";
-            if (currency.isEmpty()) currency = "USD";
+                    ? fields[COL_CURRENCY].trim()
+                    : "USD";
+            if (currency.isEmpty())
+                currency = "USD";
 
             String ticker = (COL_SYMBOL >= 0 && COL_SYMBOL < fields.length)
-                ? fields[COL_SYMBOL].trim()
-                : "";
+                    ? fields[COL_SYMBOL].trim()
+                    : "";
 
             String description = (COL_NAME >= 0 && COL_NAME < fields.length) ? fields[COL_NAME].trim() : "";
             String code = (COL_CODE >= 0 && COL_CODE < fields.length) ? fields[COL_CODE].trim() : "";
@@ -2230,25 +2424,31 @@ public class IBKRFlexParser {
             // Amount for dividend/interest engine is stored in price, with amount=1.
             double price = amount;
 
+            // Engine expects tax to be negative
+            if ((direction == Transaction.DIRECTION_DIVI_TAX || direction == Transaction.DIRECTION_INT_TAX)
+                    && price > 0) {
+                price = -price;
+            }
+
             Transaction tx = new Transaction(
-                0,
-                tradeDate,
-                direction,
-                ticker,
-                1.0,
-                price,
-                currency,
-                0.0,
-                currency,
-                "",
-                settlementDate,
-                description
-            );
+                    0,
+                    tradeDate,
+                    direction,
+                    ticker,
+                    1.0,
+                    price,
+                    currency,
+                    0.0,
+                    currency,
+                    "",
+                    settlementDate,
+                    description);
 
             tx.setBroker("IB");
             if (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length) {
                 String accountId = fields[COL_CLIENT_ACCOUNT_ID].trim();
-                if (!accountId.isEmpty()) tx.setAccountId(accountId);
+                if (!accountId.isEmpty())
+                    tx.setAccountId(accountId);
             }
             // Use TransactionID when present.
             // Be defensive: column detection can be influenced by previous sections; prefer
@@ -2263,14 +2463,44 @@ public class IBKRFlexParser {
                     tx.setTxnId(txnId);
                 }
             }
-            if (!code.isEmpty()) tx.setCode(code);
+            if (!code.isEmpty())
+                tx.setCode(code);
+
+            // ISIN and Issuer Country
+            String isin = (COL_ISIN >= 0 && COL_ISIN < fields.length) ? fields[COL_ISIN].trim() : "";
+            if (isin.isEmpty() && COL_CTRN_ISIN >= 0 && COL_CTRN_ISIN < fields.length) {
+                isin = fields[COL_CTRN_ISIN].trim();
+            }
+            if (!isin.isEmpty()) {
+                tx.setIsin(isin);
+            }
+
+            String country = (COL_CTRN_ISSUER_COUNTRY_CODE >= 0 && COL_CTRN_ISSUER_COUNTRY_CODE < fields.length)
+                    ? fields[COL_CTRN_ISSUER_COUNTRY_CODE].trim()
+                    : "";
+            if (country.isEmpty() && isin.length() >= 2) {
+                String prefix = isin.substring(0, 2);
+                if (prefix.matches("[A-Z]{2}")) {
+                    country = prefix;
+                }
+            }
+            if (!country.isEmpty()) {
+                tx.setIssuerCountry(country);
+            }
 
             // Add extra context so user can distinguish cash types
+            StringBuilder note = new StringBuilder(description == null ? "" : description);
+            note.append("|Broker:IB");
             if (!type.isEmpty()) {
-                String base = description == null ? "" : description;
-                String note = base + "|Broker:IB|Type:" + type;
-                tx.setNote(note);
+                note.append("|Type:").append(type);
             }
+            if (!isin.isEmpty()) {
+                note.append("|ISIN:").append(isin);
+            }
+            if (!country.isEmpty()) {
+                note.append("|IssuerCountry:").append(country);
+            }
+            tx.setNote(note.toString());
 
             if (disabled) {
                 tx.setDisabled(true);
@@ -2284,23 +2514,32 @@ public class IBKRFlexParser {
     }
 
     private void noteFxtrDividendCandidate(String[] fields) {
-        if (!enableFxtrDividendFallback) return;
-        if (fields == null) return;
+        if (!enableFxtrDividendFallback)
+            return;
+        if (fields == null)
+            return;
 
-        if (COL_FXTR_ACTIVITY_DESCRIPTION < 0 || COL_FXTR_ACTIVITY_DESCRIPTION >= fields.length) return;
-        if (COL_FXTR_FX_CURRENCY < 0 || COL_FXTR_FX_CURRENCY >= fields.length) return;
-        if (COL_FXTR_DATETIME < 0 || COL_FXTR_DATETIME >= fields.length) return;
-        if (COL_FXTR_QUANTITY < 0 || COL_FXTR_QUANTITY >= fields.length) return;
+        if (COL_FXTR_ACTIVITY_DESCRIPTION < 0 || COL_FXTR_ACTIVITY_DESCRIPTION >= fields.length)
+            return;
+        if (COL_FXTR_FX_CURRENCY < 0 || COL_FXTR_FX_CURRENCY >= fields.length)
+            return;
+        if (COL_FXTR_DATETIME < 0 || COL_FXTR_DATETIME >= fields.length)
+            return;
+        if (COL_FXTR_QUANTITY < 0 || COL_FXTR_QUANTITY >= fields.length)
+            return;
 
         String desc = fields[COL_FXTR_ACTIVITY_DESCRIPTION] != null ? fields[COL_FXTR_ACTIVITY_DESCRIPTION].trim() : "";
-        if (desc.isEmpty()) return;
+        if (desc.isEmpty())
+            return;
         String upper = desc.toUpperCase();
         boolean isDividend = upper.contains("CASH DIVIDEND") || upper.contains("PAYMENT IN LIEU OF DIVIDEND");
-        if (!isDividend) return;
+        if (!isDividend)
+            return;
 
         // Only brutto: ignore explicit tax lines.
         // IBKR uses suffixes like "- US TAX", "- CA TAX", ...
-        if (upper.contains("TAX")) return;
+        if (upper.contains("TAX"))
+            return;
 
         RawFxtrDividendRow r = new RawFxtrDividendRow();
         if (COL_FXTR_CLIENT_ACCOUNT_ID >= 0 && COL_FXTR_CLIENT_ACCOUNT_ID < fields.length) {
@@ -2312,32 +2551,43 @@ public class IBKRFlexParser {
         r.fxCurrency = fields[COL_FXTR_FX_CURRENCY] != null ? fields[COL_FXTR_FX_CURRENCY].trim() : "";
         r.activityDescription = desc;
         r.quantity = parseDouble(fields[COL_FXTR_QUANTITY]);
-        if (r.dateTimeStr.isEmpty() || r.fxCurrency.isEmpty()) return;
-        if (r.quantity == 0.0) return;
+        if (r.dateTimeStr.isEmpty() || r.fxCurrency.isEmpty())
+            return;
+        if (r.quantity == 0.0)
+            return;
 
         fxtrDividendRows.add(r);
     }
 
     private static String extractTickerFromDividendActivityDescription(String activityDescription) {
-        if (activityDescription == null) return "";
+        if (activityDescription == null)
+            return "";
         String s = activityDescription.trim();
-        if (s.isEmpty()) return "";
+        if (s.isEmpty())
+            return "";
         int idx = s.indexOf('(');
-        if (idx <= 0) return "";
+        if (idx <= 0)
+            return "";
         String t = s.substring(0, idx).trim();
-        // FXTR can contain non-ticker descriptions (e.g. "Net cash activity"); reject multi-word prefixes.
-        if (t.contains(" ")) return "";
+        // FXTR can contain non-ticker descriptions (e.g. "Net cash activity"); reject
+        // multi-word prefixes.
+        if (t.contains(" "))
+            return "";
         return t;
     }
 
     private void applyFxtrDividendFallback(Vector<Transaction> transactions) {
-        if (!enableFxtrDividendFallback) return;
-        if (!includeCashTransactions) return;
-        if (fxtrDividendRows.isEmpty()) return;
+        if (!enableFxtrDividendFallback)
+            return;
+        if (!includeCashTransactions)
+            return;
+        if (fxtrDividendRows.isEmpty())
+            return;
 
         // If any account has dividend brutto in CTRN, do not fallback for that account.
         for (RawFxtrDividendRow r : fxtrDividendRows) {
-            if (r == null) continue;
+            if (r == null)
+                continue;
             String acc = r.accountId == null ? "" : r.accountId.trim();
             if (!acc.isEmpty() && accountsWithCtrnDividendBrutto.contains(acc)) {
                 continue;
@@ -2364,19 +2614,18 @@ public class IBKRFlexParser {
             Transaction tx;
             try {
                 tx = new Transaction(
-                    0,
-                    d,
-                    Transaction.DIRECTION_DIVI_BRUTTO,
-                    ticker,
-                    1.0,
-                    r.quantity,
-                    currency,
-                    0.0,
-                    currency,
-                    "",
-                    d,
-                    r.activityDescription
-                );
+                        0,
+                        d,
+                        Transaction.DIRECTION_DIVI_BRUTTO,
+                        ticker,
+                        1.0,
+                        r.quantity,
+                        currency,
+                        0.0,
+                        currency,
+                        "",
+                        d,
+                        r.activityDescription);
             } catch (Exception e) {
                 continue;
             }
@@ -2411,9 +2660,9 @@ public class IBKRFlexParser {
             logger.warning("Empty date string, using current date");
             return new Date();
         }
-        
+
         String trimmed = dateStr.trim();
-        
+
         // Format 1: Compact DateTime with semicolon (YYYYMMDD;HHMMSS)
         // Example: "20260116;114042"
         if (trimmed.contains(";") && trimmed.matches("\\d{8};\\d{6}")) {
@@ -2425,8 +2674,9 @@ public class IBKRFlexParser {
                 // Fall through to try other formats
             }
         }
-        
-        // Format 2: Standard DateTime with space or semicolon (YYYY-MM-DD HH:MM:SS or YYYY-MM-DD;HH:MM:SS)
+
+        // Format 2: Standard DateTime with space or semicolon (YYYY-MM-DD HH:MM:SS or
+        // YYYY-MM-DD;HH:MM:SS)
         if ((trimmed.contains(" ") || trimmed.contains(";")) && trimmed.contains("-")) {
             SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             try {
@@ -2436,28 +2686,29 @@ public class IBKRFlexParser {
                 // Fall through to try other formats
             }
         }
-        
+
         // Format 3: Compact date format (YYYYMMDD)
         if (trimmed.length() == 8 && trimmed.matches("\\d{8}")) {
             SimpleDateFormat compactFormat = new SimpleDateFormat("yyyyMMdd");
             return compactFormat.parse(trimmed);
         }
-        
+
         // Format 4: Standard date format (YYYY-MM-DD)
         if (trimmed.matches("\\d{4}-\\d{2}-\\d{2}")) {
             SimpleDateFormat standardFormat = new SimpleDateFormat("yyyy-MM-dd");
             return standardFormat.parse(trimmed);
         }
-        
+
         throw new Exception("Unrecognized date format: " + trimmed);
     }
 
     /**
      * Map IBKR transaction type to Transaction direction constant
-     * Uses AssetClass to determine if trade is Stock (S), Derivative (D), or Cash (C)
+     * Uses AssetClass to determine if trade is Stock (S), Derivative (D), or Cash
+     * (C)
      * 
-     * @param txType Transaction type (e.g., "ExchTrade", "Trade")
-     * @param buySell Buy/Sell indicator
+     * @param txType     Transaction type (e.g., "ExchTrade", "Trade")
+     * @param buySell    Buy/Sell indicator
      * @param assetClass Asset class (STK, OPT, FUT, CASH, FX)
      * @return Transaction direction constant
      */
@@ -2465,56 +2716,60 @@ public class IBKRFlexParser {
         if (txType == null) {
             txType = "";
         }
-        
+
         String typeLower = txType.toLowerCase().trim();
         String buySellLower = (buySell != null) ? buySell.toLowerCase().trim() : "";
         String assetClassUpper = (assetClass != null) ? assetClass.toUpperCase().trim() : "STK";
-        
+
         // Determine transaction category based on AssetClass
         // STK = Stock (Typ CP) → DIRECTION_SBUY/SSELL
-        // OPT, FUT, FOP, WAR = Derivatives (Typ Derivát) → DIRECTION_DBUY/DSELL  
+        // OPT, FUT, FOP, WAR = Derivatives (Typ Derivát) → DIRECTION_DBUY/DSELL
         // CASH, FX = Cash/FX → DIRECTION_CBUY/CSELL
-        boolean isDerivative = assetClassUpper.equals("OPT") || 
-                              assetClassUpper.equals("FUT") || 
-                              assetClassUpper.equals("FOP") || 
-                              assetClassUpper.equals("WAR");
+        boolean isDerivative = assetClassUpper.equals("OPT") ||
+                assetClassUpper.equals("FUT") ||
+                assetClassUpper.equals("FOP") ||
+                assetClassUpper.equals("WAR");
         boolean isCash = assetClassUpper.equals("CASH") || assetClassUpper.equals("FX");
-        
-        logger.fine("Direction mapping: txType=" + txType + ", buySell=" + buySell + 
-                   ", assetClass=" + assetClass + " → isDerivative=" + isDerivative + 
-                   ", isCash=" + isCash);
-        
+
+        logger.fine("Direction mapping: txType=" + txType + ", buySell=" + buySell +
+                ", assetClass=" + assetClass + " → isDerivative=" + isDerivative +
+                ", isCash=" + isCash);
+
         // Determine buy vs sell
         boolean isBuy = false;
         boolean isSell = false;
-        
+
         // Priority 1: Buy/Sell column (most reliable for ExchTrade)
         if (!buySellLower.isEmpty()) {
             isBuy = buySellLower.equals("buy");
             isSell = buySellLower.equals("sell");
         }
-        
+
         // Priority 2: Transaction type keywords
         if (!isBuy && !isSell) {
             isBuy = typeLower.contains("buy") || typeLower.contains("purchase");
             isSell = typeLower.contains("sell") || typeLower.contains("sale");
         }
-        
+
         // Map to appropriate direction constant
         if (isBuy) {
-            if (isCash) return Transaction.DIRECTION_CBUY;
-            if (isDerivative) return Transaction.DIRECTION_DBUY;
+            if (isCash)
+                return Transaction.DIRECTION_CBUY;
+            if (isDerivative)
+                return Transaction.DIRECTION_DBUY;
             return Transaction.DIRECTION_SBUY;
         }
-        
+
         if (isSell) {
-            if (isCash) return Transaction.DIRECTION_CSELL;
-            if (isDerivative) return Transaction.DIRECTION_DSELL;
+            if (isCash)
+                return Transaction.DIRECTION_CSELL;
+            if (isDerivative)
+                return Transaction.DIRECTION_DSELL;
             return Transaction.DIRECTION_SSELL;
         }
-        
-        logger.warning("Could not determine direction from txType='" + txType + 
-                      "', buySell='" + buySell + "', assetClass='" + assetClass + "'");
+
+        logger.warning("Could not determine direction from txType='" + txType +
+                "', buySell='" + buySell + "', assetClass='" + assetClass + "'");
         return 0; // Unknown - will be inferred from quantity sign in parseCsvLine()
     }
 
@@ -2523,14 +2778,16 @@ public class IBKRFlexParser {
      * 
      * Handles reverse splits (RS) and ticker changes/mergers (TC).
      * 
-     * Corporate action rows have different structure (47 columns vs 85 for regular trades).
+     * Corporate action rows have different structure (47 columns vs 85 for regular
+     * trades).
      * After our CSV parser handles quoted fields with commas, the indices are:
      * - Column 6: Symbol = "COMMON" (generic marker for corporate actions)
      * - Column 7: Description = actual ticker (e.g., "CODX.OLD", "CS", "UBS")
      * - Column 8: Full description with split/merger details
      * - Column 27: Date
      * - Column 28: DateTime (format: "YYYYMMDD;HHMMSS")
-     * - Column 32: Value field (important for TC - cost basis transfer, market value)
+     * - Column 32: Value field (important for TC - cost basis transfer, market
+     * value)
      * - Column 33: Quantity/Share change (e.g., "45.6667", "-1370", "66.726")
      * - Column 38: Code = "RS" (Reverse Split) or "TC" (Ticker Change/Merger)
      * 
@@ -2539,37 +2796,38 @@ public class IBKRFlexParser {
      */
     private Transaction parseCorporateAction(String[] fields) throws Exception {
         logger.fine("Parsing corporate action row with " + fields.length + " fields");
-        
+
         if (fields.length < 40) {
             logger.warning("Corporate action row has too few fields: " + fields.length);
             return null;
         }
-        
+
         // Extract ticker from Description column (index 7)
-        // For corporate actions, Symbol column (index 6) is "COMMON", Description has actual ticker
+        // For corporate actions, Symbol column (index 6) is "COMMON", Description has
+        // actual ticker
         String originalTicker = fields[7].trim();
         if (originalTicker.isEmpty()) {
             logger.warning("Corporate action has empty ticker in Description column");
             return null;
         }
-        
+
         // Strip .OLD suffix (IBKR internal notation for corporate actions)
         // We need base ticker name to match against historical trades
         String ticker = stripOldSuffix(originalTicker);
         if (!ticker.equals(originalTicker)) {
             logger.fine("Stripped .OLD suffix: " + originalTicker + " → " + ticker);
         }
-        
+
         // Extract share change from Quantity column (index 33)
         // Negative = shares removed (old ticker, e.g., CODX.OLD: -1370)
         // Positive = shares added (new ticker, e.g., CODX: +45.6667)
         double shareChange = parseDouble(fields[33]);
-        
+
         if (shareChange == 0) {
             logger.fine("Skipping corporate action with zero share change for " + ticker);
             return null;
         }
-        
+
         // Extract Value field (column 32) - important for TC (ticker changes/mergers)
         // This represents cost basis transfer or market value at conversion
         // Used for tax reporting purposes
@@ -2577,7 +2835,7 @@ public class IBKRFlexParser {
         if (fields.length > 32 && fields[32] != null) {
             valueField = fields[32].trim();
         }
-        
+
         // Parse date from DateTime column (index 28)
         // Format: "20260101;202500" (YYYYMMDD;HHMMSS)
         String dateStr = fields[28].trim();
@@ -2586,11 +2844,11 @@ public class IBKRFlexParser {
             dateStr = fields[27].trim();
         }
         Date actionDate = parseDate(dateStr);
-        
+
         // Determine direction based on share change sign
         int direction;
         double amount;
-        
+
         if (shareChange < 0) {
             // Old ticker: shares being removed
             // Example: CODX.OLD -1370 shares
@@ -2604,58 +2862,60 @@ public class IBKRFlexParser {
             direction = Transaction.DIRECTION_TRANS_ADD;
             amount = shareChange; // Keep fractional (45.6667, not floor to 45)
         }
-        
+
         // Extract full description for note field (index 8)
-        // Example: "CODX.OLD(US1897631057) SPLIT 1 FOR 30 (CODX.OLD, CO-DIAGNOSTICS INC, US1897631057)"
+        // Example: "CODX.OLD(US1897631057) SPLIT 1 FOR 30 (CODX.OLD, CO-DIAGNOSTICS
+        // INC, US1897631057)"
         String fullDescription = "";
         if (fields.length > 8 && fields[8] != null) {
             fullDescription = fields[8].trim();
         }
-        
+
         // Get code column (index 38)
         String code = (fields.length > 38) ? fields[38].trim() : ""; // "RS" or "TC"
-        
+
         // Build note with code prefix, optional value, and full description
-        // For TC (ticker changes/mergers), include Value field if present for tax reference
+        // For TC (ticker changes/mergers), include Value field if present for tax
+        // reference
         // For RS (reverse splits), typically no value
         String note;
-        if (code.equals("TC") && !valueField.isEmpty() && 
-            !valueField.equals("0") && !valueField.equals("0.0")) {
+        if (code.equals("TC") && !valueField.isEmpty() &&
+                !valueField.equals("0") && !valueField.equals("0.0")) {
             // TC with value - include for tax reference
             note = code + " (Value: " + valueField + "): " + fullDescription;
         } else {
             // RS or TC without value - standard format
             note = code + ": " + fullDescription;
         }
-        
+
         // Create transformation transaction
         // Price = 0 (transformations don't have transaction prices)
         // Fee = 0 (no commission on corporate actions)
         Transaction t = new Transaction(
-            0,                    // serial (will be assigned by TransactionSet)
-            actionDate,          // date
-            direction,           // TRANS_SUB or TRANS_ADD
-            ticker,              // actual ticker from Description column
-            amount,              // shares (positive, with fractional for TRANS_ADD)
-            0.0,                 // price = 0 for transformations
-            "USD",               // currency
-            0.0,                 // fee = 0
-            "USD",               // fee currency
-            "",                  // market (not relevant for corporate actions)
-            actionDate,          // executionDate = same as date
-            note                 // full description from IBKR
+                0, // serial (will be assigned by TransactionSet)
+                actionDate, // date
+                direction, // TRANS_SUB or TRANS_ADD
+                ticker, // actual ticker from Description column
+                amount, // shares (positive, with fractional for TRANS_ADD)
+                0.0, // price = 0 for transformations
+                "USD", // currency
+                0.0, // fee = 0
+                "USD", // fee currency
+                "", // market (not relevant for corporate actions)
+                actionDate, // executionDate = same as date
+                note // full description from IBKR
         );
-        
+
         // Log with indication if .OLD was stripped
         String tickerDisplay = ticker;
         if (!ticker.equals(originalTicker)) {
             tickerDisplay = ticker + " (was: " + originalTicker + ")";
         }
-        
-        logger.info("Parsed corporate action: " + tickerDisplay + " " + 
-                    (direction == Transaction.DIRECTION_TRANS_SUB ? "OUT" : "IN") + 
-                    " " + amount + " shares (Code: " + code + ")");
-        
+
+        logger.info("Parsed corporate action: " + tickerDisplay + " " +
+                (direction == Transaction.DIRECTION_TRANS_SUB ? "OUT" : "IN") +
+                " " + amount + " shares (Code: " + code + ")");
+
         return t;
     }
 
@@ -2680,10 +2940,10 @@ public class IBKRFlexParser {
      * we need to use the base ticker name to match against historical trades.
      * 
      * Examples:
-     *   EVFM.OLD  → EVFM
-     *   CALA.OLD  → CALA
-     *   SYN.OLD   → SYN
-     *   EVFM      → EVFM (unchanged)
+     * EVFM.OLD → EVFM
+     * CALA.OLD → CALA
+     * SYN.OLD → SYN
+     * EVFM → EVFM (unchanged)
      * 
      * @param ticker Original ticker from IBKR CSV
      * @return Ticker with .OLD suffix removed
@@ -2718,26 +2978,28 @@ public class IBKRFlexParser {
 
     /**
      * Build Note field matching IB TradeLog format
-     * Format: [Description]|Broker:IB|AccountID:[ID]|ISIN:[ISIN]|TxnID:[ID]|Code:[Code]
+     * Format:
+     * [Description]|Broker:IB|AccountID:[ID]|ISIN:[ISIN]|TxnID:[ID]|Code:[Code]
      * 
      * Fields are omitted entirely if not present (no empty values)
      * This matches the format used by ImportIBTradeLog for consistency
      * 
      * @param fields CSV fields array
-     * @param code Status/notes code from CSV
+     * @param code   Status/notes code from CSV
      * @return Formatted note string
      */
     private String buildNote(String[] fields, String code) {
         StringBuilder note = new StringBuilder();
-        
+
         // 1. Description (company name) - always first, even if empty
-        String description = (COL_NAME >= 0 && COL_NAME < fields.length) 
-            ? fields[COL_NAME].trim() : "";
+        String description = (COL_NAME >= 0 && COL_NAME < fields.length)
+                ? fields[COL_NAME].trim()
+                : "";
         note.append(description);
-        
+
         // 2. Broker identifier - ALWAYS use "IB" for consistency with IB TradeLog
         note.append("|Broker:IB");
-        
+
         // 3. Account ID - skip if not present
         if (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length) {
             String accountId = fields[COL_CLIENT_ACCOUNT_ID].trim();
@@ -2745,16 +3007,33 @@ public class IBKRFlexParser {
                 note.append("|AccountID:").append(accountId);
             }
         }
-        
-        // 4. ISIN - skip if not present (following Trading 212 pattern)
+
+        // 4. ISIN - skip if not present
+        String isin = "";
         if (COL_ISIN >= 0 && COL_ISIN < fields.length) {
-            String isin = fields[COL_ISIN].trim();
+            isin = fields[COL_ISIN].trim();
             if (!isin.isEmpty()) {
                 note.append("|ISIN:").append(isin);
             }
         }
-        
-        // 5. Transaction/order ID
+
+        // 5. Issuer Country - skip if not present
+        // Try to detect column, fallback to ISIN prefix
+        String country = "";
+        if (COL_CTRN_ISSUER_COUNTRY_CODE >= 0 && COL_CTRN_ISSUER_COUNTRY_CODE < fields.length) {
+            country = fields[COL_CTRN_ISSUER_COUNTRY_CODE].trim();
+        }
+        if (country.isEmpty() && isin.length() >= 2) {
+            String prefix = isin.substring(0, 2);
+            if (prefix.matches("[A-Z]{2}")) {
+                country = prefix;
+            }
+        }
+        if (!country.isEmpty()) {
+            note.append("|IssuerCountry:").append(country);
+        }
+
+        // 6. Transaction/order ID
         // Prefer IBOrderID so the UI TxnID matches consolidated orders.
         // Fallback to TransactionID (per-fill) and then legacy hardcoded index.
         String txnId = "";
@@ -2771,12 +3050,12 @@ public class IBKRFlexParser {
         if (!txnId.isEmpty()) {
             note.append("|TxnID:").append(txnId);
         }
-        
+
         // 6. Code/Status - skip if not present
         if (code != null && !code.trim().isEmpty()) {
             note.append("|Code:").append(code.trim());
         }
-        
+
         logger.fine("Built note: " + note.toString());
         return note.toString();
     }
@@ -2799,79 +3078,79 @@ public class IBKRFlexParser {
     private Vector<Transaction> processCorporateActions(Vector<Transaction> transactions) {
         Vector<Transaction> regularTrades = new Vector<>();
         Vector<Transaction> corporateActions = new Vector<>();
-        
+
         // Separate corporate actions from regular trades
         for (Transaction t : transactions) {
             if (t.getDirection() == Transaction.DIRECTION_TRANS_ADD ||
-                t.getDirection() == Transaction.DIRECTION_TRANS_SUB) {
+                    t.getDirection() == Transaction.DIRECTION_TRANS_SUB) {
                 corporateActions.add(t);
             } else {
                 regularTrades.add(t);
             }
         }
-        
+
         if (corporateActions.isEmpty()) {
             return transactions; // No corporate actions to process
         }
-        
+
         logger.info("Processing " + corporateActions.size() + " corporate action transactions");
-        
+
         // Group corporate actions by event (same date and note prefix)
         Map<String, Vector<Transaction>> events = groupCorporateActionsByEvent(corporateActions);
-        
+
         Vector<Transaction> processedCA = new Vector<>();
         int filteredCount = 0;
-        
+
         for (Map.Entry<String, Vector<Transaction>> entry : events.entrySet()) {
             Vector<Transaction> eventTxns = entry.getValue();
             int originalCount = eventTxns.size();
-            
+
             // Determine if this is RS or TC based on note content
             boolean isReversSplit = eventTxns.get(0).getNote().contains("RS:");
-            
+
             Vector<Transaction> filtered;
             if (isReversSplit) {
                 filtered = filterReverseSplit(eventTxns);
             } else {
                 filtered = filterTickerChange(eventTxns);
             }
-            
+
             filteredCount += (originalCount - filtered.size());
-            
+
             // Check if event has zero net effect (shares sold before corporate action)
             // Only check RS events (TC events rarely have this pattern)
             if (isReversSplit && isZeroNetEvent(filtered)) {
                 String ticker = extractTickerFromNote(filtered.get(0).getNote());
                 String eventDate = new SimpleDateFormat("yyyy-MM-dd").format(filtered.get(0).getDate());
-                
+
                 skippedZeroNetEvents++;
                 skippedZeroNetTickers.add(ticker);
-                
+
                 // Verbose logging as requested
                 logger.info(String.format(
-                    "Skipped zero-net RS: %s (filtered %d→%d rows, net: 0.0 shares, date: %s, reason: shares sold before split)",
-                    ticker, originalCount, filtered.size(), eventDate
-                ));
-                
+                        "Skipped zero-net RS: %s (filtered %d→%d rows, net: 0.0 shares, date: %s, reason: shares sold before split)",
+                        ticker, originalCount, filtered.size(), eventDate));
+
                 // Skip adding to result - don't import these transactions
                 continue;
             }
-            
+
             // This is a legitimate corporate action - count it
             importedCorporateActionEvents++;
-            
+
             // Sort: SUB before ADD (critical for portfolio calculations)
             sortTransactionsByDirection(filtered);
-            
+
             // Apply time offsets to prevent duplicate timestamps
             applyTimeOffsets(filtered);
-            
+
             processedCA.addAll(filtered);
         }
 
         // Final ordering for preview/merge stability:
         // Always show OUT (TRANS_SUB) before IN (TRANS_ADD) within the same day.
-        // This improves readability in import preview and keeps transformation pairs consistent.
+        // This improves readability in import preview and keeps transformation pairs
+        // consistent.
         processedCA.sort((t1, t2) -> {
             Date d1 = t1.getDate();
             Date d2 = t2.getDate();
@@ -2883,40 +3162,46 @@ public class IBKRFlexParser {
                 // Compare only by day first
                 int y1 = c1.get(java.util.Calendar.YEAR);
                 int y2 = c2.get(java.util.Calendar.YEAR);
-                if (y1 != y2) return Integer.compare(y1, y2);
+                if (y1 != y2)
+                    return Integer.compare(y1, y2);
                 int m1 = c1.get(java.util.Calendar.MONTH);
                 int m2 = c2.get(java.util.Calendar.MONTH);
-                if (m1 != m2) return Integer.compare(m1, m2);
+                if (m1 != m2)
+                    return Integer.compare(m1, m2);
                 int day1 = c1.get(java.util.Calendar.DAY_OF_MONTH);
                 int day2 = c2.get(java.util.Calendar.DAY_OF_MONTH);
-                if (day1 != day2) return Integer.compare(day1, day2);
+                if (day1 != day2)
+                    return Integer.compare(day1, day2);
             }
 
             // Same day (or missing dates): OUT before IN
             int dirCmp = Integer.compare(t1.getDirection(), t2.getDirection());
-            if (dirCmp != 0) return dirCmp;
+            if (dirCmp != 0)
+                return dirCmp;
 
             // Same direction: sort by time
             if (d1 != null && d2 != null) {
                 int timeCmp = d1.compareTo(d2);
-                if (timeCmp != 0) return timeCmp;
+                if (timeCmp != 0)
+                    return timeCmp;
             }
 
             // Stable tie-breakers
             int tickerCmp = String.valueOf(t1.getTicker()).compareToIgnoreCase(String.valueOf(t2.getTicker()));
-            if (tickerCmp != 0) return tickerCmp;
+            if (tickerCmp != 0)
+                return tickerCmp;
             return Double.compare(Math.abs(t2.getAmount()), Math.abs(t1.getAmount()));
         });
-        
+
         if (filteredCount > 0) {
             logger.info("Filtered " + filteredCount + " redundant corporate action rows");
         }
-        
+
         // Merge regular trades and processed corporate actions
         Vector<Transaction> result = new Vector<>();
         result.addAll(regularTrades);
         result.addAll(processedCA);
-        
+
         return result;
     }
 
@@ -2928,18 +3213,18 @@ public class IBKRFlexParser {
      */
     private Map<String, Vector<Transaction>> groupCorporateActionsByEvent(Vector<Transaction> corporateActions) {
         Map<String, Vector<Transaction>> events = new LinkedHashMap<>();
-        
+
         for (Transaction t : corporateActions) {
             // Create event key from date and note prefix
             String dateStr = new java.text.SimpleDateFormat("yyyyMMdd").format(t.getDate());
-            String notePrefix = t.getNote().length() > 50 
-                ? t.getNote().substring(0, 50) 
-                : t.getNote();
+            String notePrefix = t.getNote().length() > 50
+                    ? t.getNote().substring(0, 50)
+                    : t.getNote();
             String eventKey = dateStr + "_" + notePrefix;
-            
+
             events.computeIfAbsent(eventKey, k -> new Vector<>()).add(t);
         }
-        
+
         return events;
     }
 
@@ -2947,10 +3232,10 @@ public class IBKRFlexParser {
      * Filter reverse split transactions to remove canceling pairs.
      * 
      * RS anomalies (like EVFM) may have 4 rows:
-     *   +666, -666, -10000, +10000
+     * +666, -666, -10000, +10000
      * 
      * We detect exact canceling pairs and remove them, keeping only:
-     *   -10000 (largest removal), +666 (largest addition)
+     * -10000 (largest removal), +666 (largest addition)
      * 
      * @param transactions RS transactions for a single event
      * @return Filtered transactions (typically 2: one SUB, one ADD)
@@ -2961,15 +3246,15 @@ public class IBKRFlexParser {
         for (Transaction t : transactions) {
             byTicker.computeIfAbsent(t.getTicker(), k -> new Vector<>()).add(t);
         }
-        
+
         Vector<Transaction> kept = new Vector<>();
-        
+
         for (Map.Entry<String, Vector<Transaction>> entry : byTicker.entrySet()) {
             Vector<Transaction> tickerTxns = entry.getValue();
-            
+
             Vector<Transaction> positives = new Vector<>();
             Vector<Transaction> negatives = new Vector<>();
-            
+
             for (Transaction t : tickerTxns) {
                 if (t.getAmount() > 0) {
                     positives.add(t);
@@ -2977,7 +3262,7 @@ public class IBKRFlexParser {
                     negatives.add(t);
                 }
             }
-            
+
             // Find exact canceling pairs
             Set<Transaction> canceling = new HashSet<>();
             for (Transaction pos : positives) {
@@ -2988,7 +3273,7 @@ public class IBKRFlexParser {
                     }
                 }
             }
-            
+
             // Keep non-canceling rows
             Vector<Transaction> nonCanceling = new Vector<>();
             for (Transaction t : tickerTxns) {
@@ -2996,7 +3281,7 @@ public class IBKRFlexParser {
                     nonCanceling.add(t);
                 }
             }
-            
+
             // If everything canceled, use fallback: keep largest absolute values
             if (nonCanceling.isEmpty() && !negatives.isEmpty() && !positives.isEmpty()) {
                 Transaction largestNeg = negatives.get(0);
@@ -3005,23 +3290,23 @@ public class IBKRFlexParser {
                         largestNeg = t;
                     }
                 }
-                
+
                 Transaction largestPos = positives.get(0);
                 for (Transaction t : positives) {
                     if (t.getAmount() > largestPos.getAmount()) {
                         largestPos = t;
                     }
                 }
-                
+
                 nonCanceling.add(largestNeg);
                 nonCanceling.add(largestPos);
-                
+
                 logger.fine("RS fallback for " + entry.getKey() + ": kept largest values");
             }
-            
+
             kept.addAll(nonCanceling);
         }
-        
+
         return kept;
     }
 
@@ -3057,13 +3342,13 @@ public class IBKRFlexParser {
         transactions.sort((t1, t2) -> {
             int dir1 = t1.getDirection();
             int dir2 = t2.getDirection();
-            
+
             // Primary: SUB (direction -2) before ADD (direction +2)
             // SUB is negative, ADD is positive, so natural sort works
             if (dir1 != dir2) {
                 return Integer.compare(dir1, dir2);
             }
-            
+
             // Secondary: larger absolute amounts first
             return Double.compare(Math.abs(t2.getAmount()), Math.abs(t1.getAmount()));
         });
@@ -3083,35 +3368,35 @@ public class IBKRFlexParser {
         if (transactions.isEmpty()) {
             return;
         }
-        
+
         // First transaction keeps original timestamp
         Date originalTime = transactions.get(0).getDate();
-        
+
         for (int i = 1; i < transactions.size(); i++) {
             Transaction t = transactions.get(i);
-            
+
             // Add i seconds to original time
             java.util.Calendar cal = java.util.Calendar.getInstance();
             cal.setTime(originalTime);
             cal.add(java.util.Calendar.SECOND, i);
-            
+
             // Update transaction date and execution date
             Date newTime = cal.getTime();
             t.setDate(newTime);
             t.setExecutionDate(newTime);
-            
+
             // Append time adjustment to note
             String currentNote = t.getNote();
             if (currentNote == null) {
                 currentNote = "";
             }
             t.setNote(currentNote + " [Time: +" + i + " s]");
-            
-            logger.fine("Applied +" + i + " s offset to " + t.getTicker() + 
-                       " transaction (new time: " + newTime + ")");
+
+            logger.fine("Applied +" + i + " s offset to " + t.getTicker() +
+                    " transaction (new time: " + newTime + ")");
         }
     }
-    
+
     /**
      * Detect if a corporate action event has zero net effect
      * (all transactions cancel out to zero shares)
@@ -3119,30 +3404,31 @@ public class IBKRFlexParser {
      * This occurs when shares were sold before the corporate action date,
      * causing IBKR to generate canceling transactions.
      * 
-     * @param transactions Corporate action transactions (after filtering redundant pairs)
+     * @param transactions Corporate action transactions (after filtering redundant
+     *                     pairs)
      * @return true if net effect is zero for all tickers
      */
     private boolean isZeroNetEvent(Vector<Transaction> transactions) {
         if (transactions.isEmpty()) {
             return true;
         }
-        
+
         // Group by ticker and calculate net share change
         Map<String, Double> netByTicker = new HashMap<>();
-        
+
         for (Transaction t : transactions) {
             String ticker = t.getTicker();
             double amount = t.getAmount();
-            
+
             // SUB (direction=-2): negative amount
             // ADD (direction=+2): positive amount
             if (t.getDirection() == Transaction.DIRECTION_TRANS_SUB) {
                 amount = -amount;
             }
-            
+
             netByTicker.merge(ticker, amount, Double::sum);
         }
-        
+
         // Check if ALL tickers net to zero (within epsilon for floating point)
         for (Map.Entry<String, Double> entry : netByTicker.entrySet()) {
             double net = entry.getValue();
@@ -3151,11 +3437,11 @@ public class IBKRFlexParser {
                 return false;
             }
         }
-        
+
         logger.info("Zero-net event detected: All tickers cancel out (net ≈ 0)");
         return true;
     }
-    
+
     /**
      * Extract primary ticker symbol from corporate action note field
      * 
@@ -3170,16 +3456,17 @@ public class IBKRFlexParser {
         if (note == null || note.isEmpty()) {
             return "UNKNOWN";
         }
-        
+
         // Pattern: "RS: TICKER(...)" or "TC: TICKER(...)"
-        // Match 2-letter code, colon, whitespace, then ticker (letters/numbers/dots), then open paren
+        // Match 2-letter code, colon, whitespace, then ticker (letters/numbers/dots),
+        // then open paren
         java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("^[A-Z]{2}:\\s*([A-Z][A-Z0-9.]+)\\(");
         java.util.regex.Matcher matcher = pattern.matcher(note);
-        
+
         if (matcher.find()) {
             return matcher.group(1);
         }
-        
+
         // Fallback: try to extract first word after colon
         String[] parts = note.split(":");
         if (parts.length > 1) {
@@ -3190,10 +3477,10 @@ public class IBKRFlexParser {
                 return words[0].replaceAll("[^A-Z0-9.]", "");
             }
         }
-        
+
         return "UNKNOWN";
     }
-    
+
     /**
      * Get count of zero-net corporate action events skipped in last parse
      * 
@@ -3202,7 +3489,7 @@ public class IBKRFlexParser {
     public int getSkippedZeroNetCount() {
         return skippedZeroNetEvents;
     }
-    
+
     /**
      * Get list of ticker symbols with zero-net events skipped in last parse
      * 
@@ -3211,13 +3498,264 @@ public class IBKRFlexParser {
     public List<String> getSkippedZeroNetTickers() {
         return new ArrayList<>(skippedZeroNetTickers);
     }
-    
+
     /**
      * Get count of corporate action events successfully imported in last parse
      * 
-     * @return Number of corporate action events imported (each event = 1+ transactions)
+     * @return Number of corporate action events imported (each event = 1+
+     *         transactions)
      */
     public int getImportedCorporateActionCount() {
         return importedCorporateActionEvents;
+    }
+
+    private static class RawCashTransactionRow {
+        String actionId;
+        String accountId;
+        String type;
+        String currency;
+        double amount;
+        String dateTimeStr;
+        String settleDateStr;
+        String symbol;
+        String description;
+        String transactionId;
+        String isin;
+        String issuerCountry;
+        String levelOfDetail;
+    }
+
+    private RawCashTransactionRow createRawCashRow(String[] fields) {
+        try {
+            RawCashTransactionRow r = new RawCashTransactionRow();
+            r.type = (COL_CTRN_TYPE >= 0 && COL_CTRN_TYPE < fields.length) ? fields[COL_CTRN_TYPE].trim() : "";
+            r.symbol = (COL_SYMBOL >= 0 && COL_SYMBOL < fields.length) ? fields[COL_SYMBOL].trim() : "";
+            r.description = (COL_NAME >= 0 && COL_NAME < fields.length) ? fields[COL_NAME].trim() : "";
+            r.amount = (COL_CTRN_AMOUNT >= 0 && COL_CTRN_AMOUNT < fields.length) ? parseDouble(fields[COL_CTRN_AMOUNT])
+                    : 0.0;
+            r.currency = (COL_CURRENCY >= 0 && COL_CURRENCY < fields.length) ? fields[COL_CURRENCY].trim() : "CZK";
+            r.dateTimeStr = (COL_CTRN_DATETIME >= 0 && COL_CTRN_DATETIME < fields.length)
+                    ? fields[COL_CTRN_DATETIME].trim()
+                    : "";
+            r.settleDateStr = (COL_CTRN_SETTLE_DATE >= 0 && COL_CTRN_SETTLE_DATE < fields.length)
+                    ? fields[COL_CTRN_SETTLE_DATE].trim()
+                    : "";
+            r.accountId = (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length)
+                    ? fields[COL_CLIENT_ACCOUNT_ID].trim()
+                    : "";
+            r.actionId = (COL_ACTION_ID >= 0 && COL_ACTION_ID < fields.length) ? fields[COL_ACTION_ID].trim() : "";
+            r.isin = (COL_CTRN_ISIN >= 0 && COL_CTRN_ISIN < fields.length) ? fields[COL_CTRN_ISIN].trim() : "";
+            r.issuerCountry = (COL_CTRN_ISSUER_COUNTRY_CODE >= 0 && COL_CTRN_ISSUER_COUNTRY_CODE < fields.length)
+                    ? fields[COL_CTRN_ISSUER_COUNTRY_CODE].trim()
+                    : "";
+            r.levelOfDetail = (COL_CTRN_LEVEL_OF_DETAIL >= 0 && COL_CTRN_LEVEL_OF_DETAIL < fields.length)
+                    ? fields[COL_CTRN_LEVEL_OF_DETAIL].trim()
+                    : "DETAIL";
+
+            int idxTxnId = COL_CTRN_TRANSACTION_ID >= 0 ? COL_CTRN_TRANSACTION_ID : COL_TRANSACTION_ID;
+            r.transactionId = (idxTxnId >= 0 && idxTxnId < fields.length) ? fields[idxTxnId].trim() : "";
+
+            return r;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private RawCorporateActionRow createRawCorporateActionRow(String[] fields) {
+        try {
+            RawCorporateActionRow r = new RawCorporateActionRow();
+            r.actionId = (COL_ACTION_ID >= 0 && COL_ACTION_ID < fields.length) ? fields[COL_ACTION_ID].trim() : "";
+            r.accountId = (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length)
+                    ? fields[COL_CLIENT_ACCOUNT_ID].trim()
+                    : "";
+            r.type = (COL_CA_TYPE >= 0 && COL_CA_TYPE < fields.length) ? fields[COL_CA_TYPE].trim() : "";
+            r.symbol = (COL_SYMBOL >= 0 && COL_SYMBOL < fields.length) ? fields[COL_SYMBOL].trim() : "";
+            r.quantity = (COL_QUANTITY >= 0 && COL_QUANTITY < fields.length) ? parseDecimal(fields[COL_QUANTITY])
+                    : BigDecimal.ZERO;
+            r.dateTimeStr = (COL_CA_DATETIME >= 0 && COL_CA_DATETIME < fields.length) ? fields[COL_CA_DATETIME].trim()
+                    : "";
+            r.actionDescription = (COL_CA_ACTION_DESCRIPTION >= 0 && COL_CA_ACTION_DESCRIPTION < fields.length)
+                    ? fields[COL_CA_ACTION_DESCRIPTION].trim()
+                    : "";
+            return r;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Vector<Transaction> buildCashTransactionsFromActionIdNetting(List<RawCashTransactionRow> group) {
+        Vector<Transaction> results = new Vector<>();
+        if (group == null || group.isEmpty())
+            return results;
+
+        // v2/v3 LevelOfDetail: include DETAIL, SUMMARY, and Data.
+        List<RawCashTransactionRow> details = new ArrayList<>();
+        for (RawCashTransactionRow r : group) {
+            String lod = r.levelOfDetail == null ? "" : r.levelOfDetail.trim().toUpperCase();
+            if (lod.isEmpty() || lod.equals("DETAIL") || lod.equals("SUMMARY") || lod.equals("DATA")) {
+                details.add(r);
+            }
+        }
+
+        if (details.isEmpty())
+            return results;
+
+        // Deduplicate: if we have both DETAIL and SUMMARY/DATA for same row, prefer
+        // DETAIL.
+        // (Usually IBKR reports one or the other per ActionID in a given section, but
+        // safely handle).
+        boolean hasDetail = details.stream().anyMatch(r -> "DETAIL".equalsIgnoreCase(r.levelOfDetail));
+        if (hasDetail) {
+            details.removeIf(r -> !"DETAIL".equalsIgnoreCase(r.levelOfDetail));
+        }
+
+        // Calculate net amount
+        double netAmount = 0;
+        for (RawCashTransactionRow r : details) {
+            netAmount += r.amount;
+        }
+
+        // Zero-sum filtering: avoids importing net-zero entries (e.g. canceled
+        // dividends)
+        if (Math.abs(netAmount) < 0.000001) {
+            skippedZeroNetEvents++;
+            return results;
+        }
+
+        RawCashTransactionRow template = details.get(0);
+        String type = template.type;
+        String ticker = "";
+        // Find first non-empty symbol in group
+        for (RawCashTransactionRow r : details) {
+            if (r.symbol != null && !r.symbol.trim().isEmpty()) {
+                ticker = r.symbol.trim();
+                break;
+            }
+        }
+        String description = template.description;
+        String accountId = template.accountId;
+        String currency = template.currency;
+        boolean disabled = false;
+
+        // Classification logic compatible with parseCashTransaction
+        if (ticker == null || ticker.trim().isEmpty() || ticker.equalsIgnoreCase("COMMON")) {
+            String forcedTicker = null;
+            String descLower = (description == null) ? "" : description.toLowerCase();
+            boolean looksLikeInterest = descLower.contains("credit int") || descLower.contains("interest");
+
+            if (type.equalsIgnoreCase("Withholding Tax") && looksLikeInterest) {
+                forcedTicker = "Kreditni.Urok";
+            } else if (type.equalsIgnoreCase("Withholding Tax")) {
+                forcedTicker = "CASH.internal";
+            } else if (type.equalsIgnoreCase("Broker Interest Received")) {
+                forcedTicker = "Kreditni.Urok";
+            } else if (type.equalsIgnoreCase("Broker Interest Paid")) {
+                forcedTicker = "Debetni.Urok";
+            } else if (type.equalsIgnoreCase("Broker Fees")) {
+                forcedTicker = "Debetni.Urok";
+            } else if (type.equalsIgnoreCase("Payment In Lieu Of Dividends") || type.equalsIgnoreCase("Dividends")) {
+                // Try to extract ticker from description if symbol is missing
+                forcedTicker = extractTickerFromDividendActivityDescription(description);
+            }
+
+            if (forcedTicker == null || forcedTicker.trim().isEmpty()) {
+                incCount(cashTypeIgnoredCounts, type);
+                return results;
+            }
+            ticker = forcedTicker;
+        }
+
+        CashRowOutcome outcome = classifyCashRow(type, ticker, description, netAmount);
+        if (outcome == CashRowOutcome.IGNORED) {
+            incCount(cashTypeIgnoredCounts, type);
+            return results;
+        }
+
+        int direction;
+        if (type.equalsIgnoreCase("Dividends") || type.equalsIgnoreCase("Payment In Lieu Of Dividends")) {
+            direction = Transaction.DIRECTION_DIVI_BRUTTO;
+            if (netAmount < 0)
+                direction = Transaction.DIRECTION_DIVI_TAX; // Adjustment row
+        } else if (type.equalsIgnoreCase("Withholding Tax")) {
+            String descLower = (description == null) ? "" : description.toLowerCase();
+            boolean looksLikeInterest = descLower.contains("credit int") || descLower.contains("interest");
+            if (ticker.equalsIgnoreCase("Kreditni.Urok") && looksLikeInterest) {
+                direction = Transaction.DIRECTION_INT_TAX;
+            } else {
+                direction = Transaction.DIRECTION_DIVI_TAX;
+            }
+        } else if (type.equalsIgnoreCase("Other Fees")) {
+            // Treat other fees as dividend tax for accounting purposes if it belongs to a
+            // dividend action
+            direction = Transaction.DIRECTION_DIVI_TAX;
+        } else if (type.equalsIgnoreCase("Broker Interest Received")) {
+            direction = Transaction.DIRECTION_INT_BRUTTO;
+        } else if (type.equalsIgnoreCase("Broker Interest Paid")) {
+            direction = Transaction.DIRECTION_INT_PAID;
+            disabled = true;
+        } else if (type.equalsIgnoreCase("Broker Fees")) {
+            direction = Transaction.DIRECTION_INT_FEE;
+            disabled = true;
+        } else {
+            incCount(cashTypeIgnoredCounts, type);
+            return results;
+        }
+
+        try {
+            Date d = parseDate(template.dateTimeStr);
+            Date sd = template.settleDateStr.isEmpty() ? d : parseDate(template.settleDateStr);
+
+            double amountForTx = netAmount;
+            // Engine expects tax to be negative. Netted value might already be negative
+            // if it was a payment, but ensure it.
+            if (direction == Transaction.DIRECTION_DIVI_TAX || direction == Transaction.DIRECTION_INT_TAX) {
+                amountForTx = -Math.abs(netAmount);
+            } else {
+                // Brutto values should be positive
+                amountForTx = Math.abs(netAmount);
+            }
+
+            Transaction tx = new Transaction(0, d, direction, ticker, 1.0, amountForTx, currency, 0.0,
+                    currency, "", sd, description);
+            tx.setBroker("IB");
+            tx.setAccountId(accountId);
+            tx.setTxnId(template.transactionId);
+
+            // Populate dedicated metadata fields
+            if (!template.isin.isEmpty()) {
+                tx.setIsin(template.isin);
+            }
+            if (!template.issuerCountry.isEmpty()) {
+                tx.setIssuerCountry(template.issuerCountry);
+            }
+
+            // Build note with ISIN and IssuerCountry
+            StringBuilder note = new StringBuilder(description);
+            note.append("|Broker:IB");
+            note.append("|Type:").append(type);
+            if (!template.issuerCountry.isEmpty()) {
+                note.append("|IssuerCountry:").append(template.issuerCountry);
+            }
+            if (!template.isin.isEmpty()) {
+                note.append("|ISIN:").append(template.isin);
+            }
+            if (!template.actionId.isEmpty()) {
+                note.append("|ActionID:").append(template.actionId);
+            }
+            tx.setNote(note.toString());
+
+            if (disabled || outcome == CashRowOutcome.DISABLED) {
+                tx.setDisabled(true);
+                incCount(cashTypeDisabledCounts, type);
+            } else {
+                incCount(cashTypeImportedCounts, type);
+            }
+
+            results.add(tx);
+        } catch (Exception e) {
+            logger.warning("Failed to build cash transaction from group: " + e.getMessage());
+        }
+
+        return results;
     }
 }

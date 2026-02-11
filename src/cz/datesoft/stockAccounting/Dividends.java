@@ -18,71 +18,80 @@ import java.util.Iterator;
  *
  * @author Michal Kára
  */
-public class Dividends
-{
+public class Dividends {
   /**
    * Class containing information about dividend. Used as a structure.
    */
-  public class Dividend
-  {
+  public class Dividend {
     /** When dividend/tax was paid */
     public Date date;
-    
+
     /** Ticker this dividend is for */
     public String ticker;
-    
+
     /** Brutto dividend */
     public double dividend;
-    
+
     /** Currency dividend is in (may be null when this is just a tax record) */
     public String dividendCurrency;
-    
+
     /** Tax paid */
     public double tax;
-    
+
     /** Tax currency (may be null when this is just a dividend record */
     public String taxCurrency;
-    
-    public Dividend(Date date, String ticker, double dividend, String dividendCurrency, double tax, String taxCurrency)
-    {
+
+    /** ISIN of the asset */
+    public String isin;
+
+    /** ISO country code of the issuer */
+    public String issuerCountry;
+
+    public Dividend(Date date, String ticker, double dividend, String dividendCurrency, double tax, String taxCurrency,
+        String isin, String issuerCountry) {
       this.date = date;
       this.ticker = ticker;
       this.dividend = dividend;
       this.dividendCurrency = dividendCurrency;
       this.tax = tax;
       this.taxCurrency = taxCurrency;
+      this.isin = isin;
+      this.issuerCountry = issuerCountry;
     }
   }
-  
+
   /**
    * Stock trading exception - invalid dividend specs
    */
-  public class DividendException extends Exception
-  {
-    public DividendException(String message) { super(message); }
-  }  
-  
+  public class DividendException extends Exception {
+    public DividendException(String message) {
+      super(message);
+    }
+  }
+
   /**
    * List of dividends and / or taxes
    */
   private Vector<Dividend> divis;
-  
+
   /** Creates a new instance of Dividends */
-  public Dividends()
-  {
+  public Dividends() {
     divis = new Vector<Dividend>();
   }
-  
+
   /**
    * Applies transaction
    */
-  public void applyTransaction(Transaction tx) throws DividendException
-  {
-    if (tx == null) return;
-    if (tx.isDisabled()) return;
-    if (tx.direction == tx.DIRECTION_DIVI_UNKNOWN) throw new DividendException("Zaznam o dividende z "+tx.date+" u tickeru "+tx.ticker+" je nastaven na typ 'D-Neznámá'. Aby mohly být zúčtovány dividendy, musíte jej ručně nastavit na správný typ!");
+  public void applyTransaction(Transaction tx) throws DividendException {
+    if (tx == null)
+      return;
+    if (tx.isDisabled())
+      return;
+    if (tx.direction == tx.DIRECTION_DIVI_UNKNOWN)
+      throw new DividendException("Zaznam o dividende z " + tx.date + " u tickeru " + tx.ticker
+          + " je nastaven na typ 'D-Neznámá'. Aby mohly být zúčtovány dividendy, musíte jej ručně nastavit na správný typ!");
 
-    switch(tx.direction) {
+    switch (tx.direction) {
       case Transaction.DIRECTION_SBUY:
       case Transaction.DIRECTION_SSELL:
       case Transaction.DIRECTION_TRANS_ADD:
@@ -98,28 +107,28 @@ public class Dividends
         // Ignore these
         return;
     }
-    
+
     // Get time at start of the day
     GregorianCalendar cal = new GregorianCalendar();
     // Some imports may not have executionDate set (older data / special cash rows).
     // Fall back to trade date in that case.
     cal.setTime(tx.executionDate != null ? tx.executionDate : tx.date);
-    cal.set(cal.HOUR_OF_DAY,0);
-    cal.set(cal.MINUTE,0);
-    cal.set(cal.SECOND,0);
-    cal.set(cal.MILLISECOND,0);
-    
+    cal.set(cal.HOUR_OF_DAY, 0);
+    cal.set(cal.MINUTE, 0);
+    cal.set(cal.SECOND, 0);
+    cal.set(cal.MILLISECOND, 0);
+
     Date roundedDate = cal.getTime();
-    
+
     if (tx.direction == tx.DIRECTION_DIVI_NETTO15) {
       // Create & add new record
-      divis.add(new Dividend(roundedDate,tx.ticker,tx.price*1.15,tx.priceCurrency,tx.price*1.15-tx.price,tx.priceCurrency));
-    }
-    else if (tx.direction == tx.DIRECTION_DIVI_BRUTTO) {
+      divis.add(new Dividend(roundedDate, tx.ticker, tx.price * 1.15, tx.priceCurrency, tx.price * 1.15 - tx.price,
+          tx.priceCurrency, tx.getIsin(), tx.getIssuerCountry()));
+    } else if (tx.direction == tx.DIRECTION_DIVI_BRUTTO) {
       // Try to find dividend record for same ticker & date with no dividend info
-      for(Iterator<Dividend> i = divis.iterator();i.hasNext();) {
+      for (Iterator<Dividend> i = divis.iterator(); i.hasNext();) {
         Dividend d = i.next();
-        
+
         if ((d.date.equals(roundedDate)) && (d.dividendCurrency == null) && (d.ticker.equalsIgnoreCase(tx.ticker))) {
           // Found it - fill in price
           d.dividend = tx.price;
@@ -127,17 +136,19 @@ public class Dividends
           return;
         }
       }
-      
+
       // Not found - add with no tax info
-      divis.add(new Dividend(roundedDate,tx.ticker,tx.price,tx.priceCurrency,0,null));
-    }
-    else if (tx.direction == tx.DIRECTION_DIVI_TAX) {
-      if (tx.price > 0) throw new DividendException("Daň z dividendy ze "+tx.date+" u tickeru "+tx.ticker+": Daň musí mít zápornou hodnotu (sloupec 'Cena')!");
-      
+      divis.add(new Dividend(roundedDate, tx.ticker, tx.price, tx.priceCurrency, 0, null, tx.getIsin(),
+          tx.getIssuerCountry()));
+    } else if (tx.direction == tx.DIRECTION_DIVI_TAX) {
+      if (tx.price > 0)
+        throw new DividendException("Daň z dividendy ze " + tx.date + " u tickeru " + tx.ticker
+            + ": Daň musí mít zápornou hodnotu (sloupec 'Cena')!");
+
       // Try to find dividend record for same ticker & date with no tax info
-      for(Iterator<Dividend> i = divis.iterator();i.hasNext();) {
+      for (Iterator<Dividend> i = divis.iterator(); i.hasNext();) {
         Dividend d = i.next();
-        
+
         if ((d.date.equals(roundedDate)) && (d.taxCurrency == null) && (d.ticker.equalsIgnoreCase(tx.ticker))) {
           // Found it - fill in tax
           d.tax = -tx.price;
@@ -145,23 +156,22 @@ public class Dividends
           return;
         }
       }
-      
+
       // Not found - add with no tax info
-      divis.add(new Dividend(roundedDate,tx.ticker,0,null,-tx.price,tx.priceCurrency));
-    }
-    else {
+      divis.add(new Dividend(roundedDate, tx.ticker, 0, null, -tx.price, tx.priceCurrency, tx.getIsin(),
+          tx.getIssuerCountry()));
+    } else {
       throw new DividendException("Neznamy typ zaznamu: " + tx.direction);
     }
   }
-  
+
   /**
    * Get dividends
    */
-  public Dividend[] getDividends()
-  {
+  public Dividend[] getDividends() {
     Dividend[] res = new Dividend[divis.size()];
     divis.toArray(res);
-    
+
     return res;
   }
 }

@@ -271,8 +271,10 @@ public class MainWindow extends javax.swing.JFrame {
 
   private void resetDateRangeToDefault() {
     try {
-      if (dcFrom != null) dcFrom.setDate(defaultFromDate());
-      if (dcTo != null) dcTo.setDate(defaultToDate());
+      if (dcFrom != null)
+        dcFrom.setDate(defaultFromDate());
+      if (dcTo != null)
+        dcTo.setDate(defaultToDate());
       applyFilter();
     } catch (Exception e) {
       // ignore
@@ -581,7 +583,8 @@ public class MainWindow extends javax.swing.JFrame {
     cbMarkets.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
     cbType.setModel(
-        new javax.swing.DefaultComboBoxModel(new String[] { "CP", "Derivát", "Transformace", "Dividenda", "Úrok", "Cash" }));
+        new javax.swing.DefaultComboBoxModel(
+            new String[] { "CP", "Derivát", "Transformace", "Dividenda", "Úrok", "Cash" }));
 
     cbTypeFilter = new javax.swing.JComboBox();
     cbTypeFilter.setModel(
@@ -965,7 +968,8 @@ public class MainWindow extends javax.swing.JFrame {
     // View toggles are in the top bar (always visible)
 
     // Undo strip
-    // Buttons already live in the top action bar; keep this panel only as an internal container.
+    // Buttons already live in the top action bar; keep this panel only as an
+    // internal container.
     pUndoStrip = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 4));
     pUndoStrip.setOpaque(false);
     bUndoDelete = new javax.swing.JButton();
@@ -1269,16 +1273,27 @@ public class MainWindow extends javax.swing.JFrame {
     // Efekt (Effect)
     table.getColumnModel().getColumn(14).setPreferredWidth(120);
     table.getColumnModel().getColumn(14).setMaxWidth(200);
+
+    // ActionID
+    table.getColumnModel().getColumn(15).setPreferredWidth(100);
+    table.getColumnModel().getColumn(15).setMaxWidth(150);
+    // Země emitenta (Issuer Country)
+    table.getColumnModel().getColumn(16).setPreferredWidth(80);
+    table.getColumnModel().getColumn(16).setMaxWidth(120);
+    // ISIN
+    table.getColumnModel().getColumn(17).setPreferredWidth(120);
+    table.getColumnModel().getColumn(17).setMaxWidth(150);
+
     // Poznamka (Note)
-    table.getColumnModel().getColumn(15).setPreferredWidth(200);
-    table.getColumnModel().getColumn(15).setMaxWidth(500);
+    table.getColumnModel().getColumn(18).setPreferredWidth(200);
+    table.getColumnModel().getColumn(18).setMaxWidth(500);
 
     // Ignorovat
-    table.getColumnModel().getColumn(16).setPreferredWidth(80);
-    table.getColumnModel().getColumn(16).setMaxWidth(100);
+    table.getColumnModel().getColumn(19).setPreferredWidth(80);
+    table.getColumnModel().getColumn(19).setMaxWidth(100);
 
     // Apply highlighted cell renderer to all non-date columns
-    for (int i = 1; i <= 16; i++) {
+    for (int i = 1; i <= 19; i++) {
       if (i != 0 && i != 10) { // Skip date columns
         table.getColumnModel().getColumn(i).setCellRenderer(highlightRenderer);
       }
@@ -1440,11 +1455,14 @@ public class MainWindow extends javax.swing.JFrame {
 
       int toggled = 0;
       for (int viewRow : selected) {
-        if (viewRow < 0) continue;
+        if (viewRow < 0)
+          continue;
         int modelRow = table.convertRowIndexToModel(viewRow);
-        if (modelRow < 0) continue;
+        if (modelRow < 0)
+          continue;
         // Ignore the extra last empty row
-        if (modelRow >= transactions.rows.size()) continue;
+        if (modelRow >= transactions.rows.size())
+          continue;
         transactions.toggleDisabledAt(modelRow);
         toggled++;
       }
@@ -1478,12 +1496,14 @@ public class MainWindow extends javax.swing.JFrame {
     boolean showColumns = Settings.getShowMetadataColumns();
     TableColumnModel columnModel = table.getColumnModel();
 
-    // Metadata columns are 11-14: Broker, AccountID, TxnID, Effect
-    for (int i = 11; i <= 14; i++) {
+    // Metadata columns are 11-17: Broker, AccountID, TxnID, Effect, ActionID,
+    // IssuerCountry, ISIN
+    for (int i = 11; i <= 17; i++) {
       TableColumn column = columnModel.getColumn(i);
       column.setMinWidth(showColumns ? 1 : 0);
       column.setMaxWidth(showColumns ? Integer.MAX_VALUE : 0);
-      column.setPreferredWidth(showColumns ? (i == 11 ? 80 : i == 12 ? 100 : i == 13 ? 120 : 120) : 0);
+      column.setPreferredWidth(
+          showColumns ? (i == 11 ? 80 : (i == 12 || i == 15) ? 100 : i == 13 || i == 14 || i == 17 ? 120 : 80) : 0);
       column.setWidth(showColumns ? column.getPreferredWidth() : 0);
     }
 
@@ -1933,7 +1953,8 @@ public class MainWindow extends javax.swing.JFrame {
       ticker = q;
       market = q;
       note = q;
-      // Keep advanced filters untouched (type/broker/account/effect/date) so users can combine.
+      // Keep advanced filters untouched (type/broker/account/effect/date) so users
+      // can combine.
     }
 
     // Track current ticker filter for status bar display
@@ -2062,8 +2083,10 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     // Initialize date range to show all loaded data (1900-01-01 to now)
-    if (dcFrom != null) dcFrom.setDate(defaultFromDate());
-    if (dcTo != null) dcTo.setDate(defaultToDate());
+    if (dcFrom != null)
+      dcFrom.setDate(defaultFromDate());
+    if (dcTo != null)
+      dcTo.setDate(defaultToDate());
 
     // Invalidate transformation cache for loaded data
     System.out.println("DEBUG: Invalidating transformation cache after loading .dat file");
@@ -2211,7 +2234,8 @@ public class MainWindow extends javax.swing.JFrame {
         clearFilter();
 
         updateTitle();
-        AppLog.info("Soubor přidán: " + selectedFile.getName() + " (celkem záznamů: " + transactions.getRowCountRaw() + ")");
+        AppLog.info(
+            "Soubor přidán: " + selectedFile.getName() + " (celkem záznamů: " + transactions.getRowCountRaw() + ")");
       } catch (Exception e) {
         AppLog.error("Přidání souboru selhalo: " + e.getMessage(), e);
         JOptionPane.showMessageDialog(this, "Při načítání souboru nastala chyba: " + e);

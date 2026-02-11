@@ -109,7 +109,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
   /** Column names */
   private String[] columnNames = { "Datum", "Typ", "Směr", "Ticker", "Množství", "Kurs", "Měna kursu", "Poplatky",
-      "Měna poplatků", "Trh", "Datum vypořádání", "Broker", "ID účtu", "ID transakce", "Efekt", "Note", "Ignorovat" };
+      "Měna poplatků", "Trh", "Datum vypořádání", "Broker", "ID účtu", "ID transakce", "Efekt", "ActionID",
+      "Země emitenta", "ISIN", "Note", "Ignorovat" };
 
   /**
    * File we are stored in
@@ -452,8 +453,14 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       case 14:
         return tx.getEffect();
       case 15:
-        return tx.getNote();
+        return tx.getMetadataFromNote("ActionID");
       case 16:
+        return tx.getMetadataFromNote("IssuerCountry");
+      case 17:
+        return tx.getMetadataFromNote("ISIN");
+      case 18:
+        return tx.getNote();
+      case 19:
         return tx.isDisabled();
       default:
         return null;
@@ -546,9 +553,13 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       case 12: // AccountID - read-only
       case 13: // TxnID - read-only
       case 14: // Effect - read-only
-        // These columns are derived from Note, cannot be edited directly
+      case 15: // ActionID - read-only
+      case 16: // IssuerCountry - read-only
+      case 17: // ISIN - read-only
+        // These columns are derived from Note or specific metadata, cannot be edited
+        // directly
         return;
-      case 15: // Note (moved from case 11)
+      case 18: // Note
         tx.setNote((String) value);
         fireTableCellUpdated(row, col);
         // Also notify derived columns to refresh
@@ -556,8 +567,11 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         fireTableCellUpdated(row, 12); // AccountID
         fireTableCellUpdated(row, 13); // TxnID
         fireTableCellUpdated(row, 14); // Effect
+        fireTableCellUpdated(row, 15); // ActionID
+        fireTableCellUpdated(row, 16); // IssuerCountry
+        fireTableCellUpdated(row, 17); // ISIN
         break;
-      case 16: // Ignorovat
+      case 19: // Ignorovat
         boolean disable;
         if (value instanceof Boolean) {
           disable = (Boolean) value;
@@ -603,6 +617,13 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       case 8:
       case 9:
       case 11:
+      case 12:
+      case 13:
+      case 14:
+      case 15:
+      case 16:
+      case 17:
+      case 18:
         return String.class;
       case 10:
         return java.util.Date.class;
@@ -610,7 +631,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       case 7:
       case 4:
         return Double.class;
-      case 16:
+      case 19:
         return Boolean.class;
       default:
         return Object.class;
@@ -1537,7 +1558,11 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       changedCols.add(8); // Měna poplatků
     }
     if (!stringEqualExact(oldNote, existing.getNote())) {
-      changedCols.add(15); // Note
+      changedCols.add(18); // Note
+      // Metadata columns (derived from Note or updated with it)
+      for (int i = 11; i <= 17; i++) {
+        changedCols.add(i);
+      }
     }
     if (!changedCols.isEmpty()) {
       updatedColumnsBySerial.put(existing.getSerial(), changedCols);

@@ -4,6 +4,20 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Dividendy: seskupení podle země s textovými indikátory] - 2026-02-11
+
+### Přidáno
+- Tabulka dividend: seskupení podle země dle ISIN kódu a tickeru (USA, Kanada, Švýcarsko, Ostatní).
+- Textové indikátory země: `[US] SOUČET USA`, `[CA] SOUČET Kanada`, `[CH] SOUČET Švýcarsko`.
+- Vizuální stylování: světle modré pozadí a tučné písmo pro řádky součtů zemí, světle zelené pro celkový součet.
+- Záhlaví seskupení: "Skupina podle země" pro přehlednější organizaci dat.
+
+### Technické detaily
+- Metoda `getCountryIndicator()` detekuje zemi z tickeru (US$ pro USA, CA$/.TO/.V pro Kanadu, CHF pro Švýcarsko).
+- Třída `DividendTableRenderer` poskytuje vizuální stylování pro různé typy řádků (záhlaví, součty, data).
+- Řazení zemí abecedně v češtině pro konzistentní zobrazení.
+- Kompatibilita s existující strukturou tabulky bez nutnosti změny modelu.
+
 ## [IBKR Flex: CTRN LevelOfDetail filtr pro Flex v3] - 2026-02-09
 
 ### Opraveno

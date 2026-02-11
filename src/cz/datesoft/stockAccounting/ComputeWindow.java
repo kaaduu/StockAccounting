@@ -6,8 +6,6 @@
 
 package cz.datesoft.stockAccounting;
 
-import java.awt.GraphicsDevice;
-import java.awt.GraphicsEnvironment;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
@@ -24,6 +22,11 @@ import java.awt.Desktop;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.awt.Component;
+import java.awt.Font;
+import java.awt.Color;
+import javax.swing.JLabel;
+import javax.swing.JTable;
 
 /**
  *
@@ -108,9 +111,11 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     if (res == 1 && mainWindow != null) {
       try {
-        java.util.GregorianCalendar from = new java.util.GregorianCalendar(year, java.util.Calendar.DECEMBER, 29, 0, 0, 0);
+        java.util.GregorianCalendar from = new java.util.GregorianCalendar(year, java.util.Calendar.DECEMBER, 29, 0, 0,
+            0);
         from.set(java.util.Calendar.MILLISECOND, 0);
-        java.util.GregorianCalendar to = new java.util.GregorianCalendar(year, java.util.Calendar.DECEMBER, 31, 23, 59, 59);
+        java.util.GregorianCalendar to = new java.util.GregorianCalendar(year, java.util.Calendar.DECEMBER, 31, 23, 59,
+            59);
         to.set(java.util.Calendar.MILLISECOND, 0);
         mainWindow.focusAndFilterYearEndSettlement(from.getTime(), to.getTime());
       } catch (Exception e) {
@@ -976,9 +981,12 @@ public class ComputeWindow extends javax.swing.JDialog {
     ofl.println(".krow-ca td { background:#fcfcfc; color:#666; }");
     ofl.println("</style>");
 
-    // Build per-transaction sell aggregates and per-component timelines using a GLOBAL
-    // FIFO replay. Corporate actions (TRANS_SUB/TRANS_ADD) often span multiple tickers
-    // (e.g. ATNF -> ETHZ, CS -> UBS). Replaying per ticker breaks transformation pairing
+    // Build per-transaction sell aggregates and per-component timelines using a
+    // GLOBAL
+    // FIFO replay. Corporate actions (TRANS_SUB/TRANS_ADD) often span multiple
+    // tickers
+    // (e.g. ATNF -> ETHZ, CS -> UBS). Replaying per ticker breaks transformation
+    // pairing
     // and triggers "pouze jedna transformace" errors.
     java.util.Map<Integer, SellAgg> sellAggBySerial = new java.util.HashMap<>();
 
@@ -1015,7 +1023,8 @@ public class ComputeWindow extends javax.swing.JDialog {
       candidates.add(tx);
     }
 
-    // 2) Build union-find components from corporate actions (TRANS_SUB/TRANS_ADD pairs)
+    // 2) Build union-find components from corporate actions (TRANS_SUB/TRANS_ADD
+    // pairs)
     class UF {
       private final java.util.Map<String, String> parent = new java.util.HashMap<>();
 
@@ -1081,7 +1090,8 @@ public class ComputeWindow extends javax.swing.JDialog {
     }
 
     // 3) Determine which components we want to print:
-    // start from tickersOfInterest (taxable trades in selected year) and include all
+    // start from tickersOfInterest (taxable trades in selected year) and include
+    // all
     // tickers connected via corporate actions.
     java.util.Set<String> interest = new java.util.HashSet<>();
     for (String t : tickersOfInterest) {
@@ -1428,9 +1438,11 @@ public class ComputeWindow extends javax.swing.JDialog {
         else if (isSell)
           ofl.println("<td class=\"center\"><span class=\"kicon sell\">S</span></td>");
         else if (isTransSub)
-          ofl.println("<td class=\"center\"><span class=\"kicon\" style=\"background:#6c757d\" title=\"Corporate action: TRANS_SUB\">CA</span></td>");
+          ofl.println(
+              "<td class=\"center\"><span class=\"kicon\" style=\"background:#6c757d\" title=\"Corporate action: TRANS_SUB\">CA</span></td>");
         else if (isTransAdd)
-          ofl.println("<td class=\"center\"><span class=\"kicon\" style=\"background:#6c757d\" title=\"Corporate action: TRANS_ADD\">CA</span></td>");
+          ofl.println(
+              "<td class=\"center\"><span class=\"kicon\" style=\"background:#6c757d\" title=\"Corporate action: TRANS_ADD\">CA</span></td>");
         else
           ofl.println("<td></td>");
 
@@ -1452,7 +1464,8 @@ public class ComputeWindow extends javax.swing.JDialog {
                   + "</td>");
         }
 
-        // Zisk/% and tax columns: show only when we have a computed aggregate for this transaction.
+        // Zisk/% and tax columns: show only when we have a computed aggregate for this
+        // transaction.
         SellAgg agg = sellAggBySerial.get(tx.getSerial());
         if (agg != null) {
           String pClass = agg.profitCur < 0 ? "red" : "green";
@@ -1528,9 +1541,9 @@ public class ComputeWindow extends javax.swing.JDialog {
 
       // Normalize thousands/decimal separators.
       // Supports:
-      // - Czech: 123 456,78  -> after space removal: 123456,78
-      // - US:    123,456.78
-      // - EU:    123.456,78
+      // - Czech: 123 456,78 -> after space removal: 123456,78
+      // - US: 123,456.78
+      // - EU: 123.456,78
       int lastComma = s.lastIndexOf(',');
       int lastDot = s.lastIndexOf('.');
       if (lastComma >= 0 && lastDot >= 0) {
@@ -1618,6 +1631,335 @@ public class ComputeWindow extends javax.swing.JDialog {
   }
 
   /**
+   * Get country indicator from ticker symbol
+   */
+  private String getCountryIndicator(String isoCode, String ticker) {
+    if (isoCode != null && !isoCode.trim().isEmpty()) {
+      return "[" + isoCode.trim().toUpperCase() + "] ";
+    }
+    if (ticker == null)
+      return "";
+
+    // Check for common ADR patterns
+    if (ticker.contains("US$") || ticker.startsWith("US") ||
+        ticker.matches(".*[A-Z]{2}\\d{1,2}.*")) {
+      return "[US] ";
+    }
+    if (ticker.contains("CA$") || ticker.startsWith("CA") ||
+        ticker.contains(".TO") || ticker.contains(".V")) {
+      return "[CA] ";
+    }
+    if (ticker.startsWith("CH") || ticker.contains("CHF")) {
+      return "[CH] ";
+    }
+
+    return "";
+  }
+
+  /**
+   * Get country name from indicator
+   */
+  private String getCountryName(String indicator) {
+    if (indicator == null || indicator.isEmpty())
+      return "";
+    String code = indicator;
+    if (code.startsWith("[") && code.endsWith("] ")) {
+      code = code.substring(1, code.length() - 2);
+    }
+
+    if (code.equals("US"))
+      return "USA";
+    if (code.equals("CA"))
+      return "Kanada";
+    if (code.equals("CH"))
+      return "Švýcarsko";
+    if (code.equals("CZ"))
+      return "Česko";
+    if (code.equals("DE"))
+      return "Německo";
+    if (code.equals("GB"))
+      return "Británie";
+    if (code.equals("FR"))
+      return "Francie";
+    if (code.equals("IE"))
+      return "Irsko";
+    if (code.equals("NL"))
+      return "Nizozemsko";
+    if (code.equals("BE"))
+      return "Belgie";
+    if (code.equals("LU"))
+      return "Lucembursko";
+    if (code.equals("EU"))
+      return "Evropa";
+
+    return code; // Fallback to code if name unknown
+  }
+
+  /**
+   * Extract country indicator from SOUČET row text
+   * Format: "▶ [US] SOUČET USA" or "▼ [US] SOUČET USA"
+   * Returns: "[US] "
+   */
+  private String extractCountryIndicator(String text) {
+    if (text == null || text.isEmpty())
+      return null;
+
+    // Remove expand/collapse indicator if present
+    String cleaned = text.trim();
+    if (cleaned.startsWith("▶ ") || cleaned.startsWith("▼ ")) {
+      cleaned = cleaned.substring(2);
+    }
+
+    // Extract [XX] pattern
+    int start = cleaned.indexOf('[');
+    int end = cleaned.indexOf(']');
+    if (start >= 0 && end > start) {
+      return cleaned.substring(start, end + 1) + " "; // Include trailing space
+    }
+
+    return null;
+  }
+
+  /**
+   * Custom table model for dividend table with collapsible country groups
+   */
+  class CollapsibleDividendTableModel extends DefaultTableModel {
+    enum RowType {
+      HEADER, DETAIL, COUNTRY_SUBTOTAL, SEPARATOR, TOTAL
+    }
+
+    static class TableRow {
+      Vector<String> data;
+      RowType type;
+      String countryIndicator; // e.g., "[US] ", "[CA] ", null for non-country rows
+
+      TableRow(Vector<String> data, RowType type, String countryIndicator) {
+        this.data = data;
+        this.type = type;
+        this.countryIndicator = countryIndicator;
+      }
+    }
+
+    private java.util.List<TableRow> allRows = new java.util.ArrayList<>();
+    private java.util.Set<String> expandedCountries = new java.util.HashSet<>();
+    private Vector<String> columnNames;
+
+    public CollapsibleDividendTableModel(Vector<String> columnNames) {
+      this.columnNames = columnNames;
+    }
+
+    public void addRow(Vector<String> rowData, RowType type, String countryIndicator) {
+      allRows.add(new TableRow(rowData, type, countryIndicator));
+      fireTableDataChanged();
+    }
+
+    public void clearRows() {
+      allRows.clear();
+      expandedCountries.clear();
+      fireTableDataChanged();
+    }
+
+    public boolean isGroupExpanded(String countryIndicator) {
+      return expandedCountries.contains(countryIndicator);
+    }
+
+    public void toggleGroup(String countryIndicator) {
+      if (expandedCountries.contains(countryIndicator)) {
+        expandedCountries.remove(countryIndicator);
+      } else {
+        expandedCountries.add(countryIndicator);
+      }
+
+      // Update the indicator in the SOUČET row for this country
+      updateCountryIndicator(countryIndicator);
+
+      fireTableDataChanged();
+    }
+
+    private void updateCountryIndicator(String countryIndicator) {
+      for (TableRow row : allRows) {
+        if (row.type == RowType.COUNTRY_SUBTOTAL && countryIndicator.equals(row.countryIndicator)) {
+          String firstCol = row.data.get(0);
+          // Remove old indicator and add new one
+          String newIndicator = expandedCountries.contains(countryIndicator) ? "▼ " : "▶ ";
+
+          // Strip old indicator if present
+          if (firstCol.startsWith("▶ ") || firstCol.startsWith("▼ ")) {
+            firstCol = firstCol.substring(2);
+          }
+
+          row.data.set(0, newIndicator + firstCol);
+          break;
+        }
+      }
+    }
+
+    @Override
+    public int getRowCount() {
+      if (allRows == null)
+        return 0;
+
+      int count = 0;
+      for (TableRow row : allRows) {
+        // Always show non-detail rows
+        if (row.type != RowType.DETAIL) {
+          count++;
+        } else {
+          // Show detail rows only if their country is expanded
+          if (row.countryIndicator != null && expandedCountries.contains(row.countryIndicator)) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    @Override
+    public int getColumnCount() {
+      return columnNames != null ? columnNames.size() : 0;
+    }
+
+    @Override
+    public String getColumnName(int column) {
+      return columnNames.get(column);
+    }
+
+    @Override
+    public Object getValueAt(int rowIndex, int columnIndex) {
+      int visibleRowIndex = 0;
+      for (TableRow row : allRows) {
+        boolean isVisible = (row.type != RowType.DETAIL)
+            || (row.countryIndicator != null && expandedCountries.contains(row.countryIndicator));
+
+        if (isVisible) {
+          if (visibleRowIndex == rowIndex) {
+            return row.data.get(columnIndex);
+          }
+          visibleRowIndex++;
+        }
+      }
+      return null;
+    }
+
+    @Override
+    public boolean isCellEditable(int row, int column) {
+      return false;
+    }
+
+    public RowType getRowType(int rowIndex) {
+      int visibleRowIndex = 0;
+      for (TableRow row : allRows) {
+        boolean isVisible = (row.type != RowType.DETAIL)
+            || (row.countryIndicator != null && expandedCountries.contains(row.countryIndicator));
+
+        if (isVisible) {
+          if (visibleRowIndex == rowIndex) {
+            return row.type;
+          }
+          visibleRowIndex++;
+        }
+      }
+      return null;
+    }
+
+    public String getCountryIndicator(int rowIndex) {
+      int visibleRowIndex = 0;
+      for (TableRow row : allRows) {
+        boolean isVisible = (row.type != RowType.DETAIL)
+            || (row.countryIndicator != null && expandedCountries.contains(row.countryIndicator));
+
+        if (isVisible) {
+          if (visibleRowIndex == rowIndex) {
+            return row.countryIndicator;
+          }
+          visibleRowIndex++;
+        }
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Custom renderer for dividend table with country grouping styling
+   */
+  class DividendTableRenderer extends DefaultTableCellRenderer {
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+        int row, int column) {
+      Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+      if (component instanceof JLabel) {
+        JLabel label = (JLabel) component;
+
+        // Get the text from the first column to check row type
+        String firstColumnText = (String) table.getValueAt(row, 0);
+
+        // Apply full-line background highlighting for summary rows (ALL columns)
+        if (firstColumnText != null && firstColumnText.contains("SOUČET") && !firstColumnText.equals("CELKEM SOUČET")) {
+          // Style for country subtotal rows
+          label.setBackground(new Color(173, 216, 230)); // Light blue
+          label.setFont(label.getFont().deriveFont(Font.BOLD));
+          label.setOpaque(true);
+
+          // Add thick border for subtotal rows
+          label.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+              javax.swing.BorderFactory.createMatteBorder(1, 0, 1, 0, new Color(100, 100, 100)),
+              label.getBorder()));
+        } else if (firstColumnText != null && firstColumnText.equals("CELKEM SOUČET")) {
+          // Style for total row (ALL columns)
+          label.setBackground(new Color(150, 200, 150)); // Light green
+          label.setFont(label.getFont().deriveFont(Font.BOLD));
+          label.setOpaque(true);
+
+          // Add thick border for total row
+          label.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+              javax.swing.BorderFactory.createMatteBorder(2, 0, 2, 0, new Color(80, 120, 80)),
+              label.getBorder()));
+        } else if (firstColumnText != null && firstColumnText.equals("Skupina podle země")) {
+          // Style for group header
+          label.setBackground(new Color(200, 200, 200));
+          label.setFont(label.getFont().deriveFont(Font.BOLD));
+          label.setOpaque(true);
+        } else {
+          // Default styling for regular rows
+          if (!isSelected) {
+            label.setBackground(Color.WHITE);
+            label.setFont(label.getFont().deriveFont(Font.PLAIN));
+            label.setOpaque(true);
+          }
+        }
+
+        // Column-specific text color for "Daň %" column (applies on top of background)
+        if (column == 6) { // Daň % column
+          String valueStr = (String) table.getValueAt(row, column);
+          if (valueStr != null && !valueStr.isEmpty() && valueStr.endsWith("%")) {
+            try {
+              double percent = Double.parseDouble(valueStr.substring(0, valueStr.length() - 1).replace(",", "."));
+              String ticker = (String) table.getValueAt(row, 1);
+              String country = getCountryIndicator(null, ticker);
+
+              if (country.equals("[US] ") && Math.abs(percent - 15.0) > 0.1) {
+                label.setForeground(Color.RED);
+                label.setFont(label.getFont().deriveFont(Font.BOLD));
+              } else if (country.equals("[US] ")) {
+                label.setForeground(new Color(0, 150, 0)); // Green for 15%
+              } else {
+                // Keep default foreground for non-US or summary rows
+                if (!firstColumnText.contains("SOUČET")) {
+                  label.setForeground(Color.BLACK);
+                }
+              }
+            } catch (Exception e) {
+            }
+          }
+        }
+      }
+
+      return component;
+    }
+  }
+
+  /**
    * Convert spaces to &nbsp; entities
    */
   private String spaces2nbsp(String s) {
@@ -1641,6 +1983,35 @@ public class ComputeWindow extends javax.swing.JDialog {
   }
 
   /**
+   * Build ISIN-to-country mapping from all transactions (ignoring year)
+   */
+  private java.util.Map<String, String> buildIsinCountryMap(TransactionSet transactions) {
+    java.util.Map<String, String> map = new java.util.HashMap<>();
+
+    for (Iterator<Transaction> i = transactions.iterator(); i.hasNext();) {
+      Transaction tx = i.next();
+
+      // Filter by year - REMOVED to scan all transactions for metadata
+      // java.util.Date exDate = tx.getExecutionDate() != null ? tx.getExecutionDate()
+      // : tx.getDate();
+      // if (exDate == null) continue;
+      // cal.setTime(exDate);
+      // if (cal.get(GregorianCalendar.YEAR) != year) continue;
+
+      // Extract metadata
+      String isin = tx.getIsin();
+      String country = tx.getIssuerCountry();
+
+      // Add to map if both are present
+      if (isin != null && !isin.isEmpty() && country != null && !country.isEmpty()) {
+        map.put(isin, country);
+      }
+    }
+
+    return map;
+  }
+
+  /**
    * Compute dividends
    */
   private void computeDividends(int year) {
@@ -1648,11 +2019,6 @@ public class ComputeWindow extends javax.swing.JDialog {
     GregorianCalendar cal = new GregorianCalendar();
     // int year = Integer.parseInt(eYear.getText());
 
-    DecimalFormat d2 = new DecimalFormat("00");
-    DecimalFormat dn = new DecimalFormat("#");
-    DecimalFormat fn = new DecimalFormat("0.00#####");
-    fn.setGroupingUsed(true);
-    fn.setGroupingSize(3);
     DecimalFormat f2 = new DecimalFormat("0.00");
     f2.setGroupingUsed(true);
     f2.setGroupingSize(3);
@@ -1660,9 +2026,9 @@ public class ComputeWindow extends javax.swing.JDialog {
     // Sort transactions before we proceed
     transactions.sort();
 
-    // Clear model
-    DefaultTableModel model = (DefaultTableModel) diviTable.getModel();
-    model.setNumRows(0);
+    // Clear model - cast to our custom model
+    CollapsibleDividendTableModel model = (CollapsibleDividendTableModel) diviTable.getModel();
+    model.clearRows();
 
     // Dividend holder
     Dividends divis = new Dividends();
@@ -1692,61 +2058,172 @@ public class ComputeWindow extends javax.swing.JDialog {
       }
     } catch (Exception ex) {
       // Clear model
-      model.setNumRows(0);
+      model.clearRows();
 
-       UiDialogs.error(this,
-           "V průběhu výpočtu došlo k chybě:\n\n" + ex.getMessage() + "\n\nVýpočet byl přerušen.",
-           "Chyba", ex);
+      UiDialogs.error(this,
+          "V průběhu výpočtu došlo k chybě:\n\n" + ex.getMessage() + "\n\nVýpočet byl přerušen.",
+          "Chyba", ex);
 
       return;
     }
 
-    // Put dividends into model & compute summaries
+    // Put dividends into model & compute country-grouped summaries
     double sumDivi = 0;
     double sumTaxes = 0;
 
+    // Build ISIN-to-country mapping from all transactions
+    java.util.Map<String, String> isinToCountry = buildIsinCountryMap(transactions);
+
+    // Group dividends by country
+    java.util.Map<String, java.util.List<Dividends.Dividend>> countryGroups = new java.util.HashMap<>();
+
     Dividends.Dividend[] ds = divis.getDividends();
     for (int i = 0; i < ds.length; i++) {
-      Vector<String> row = new Vector<String>();
       Dividends.Dividend d = ds[i];
 
-      row.add(formatDate(d.date));
-      row.add(d.ticker);
+      // Try to get country from dividend record
+      String issuerCountry = d.issuerCountry;
 
-      // Add dividend
-      if (d.dividendCurrency != null) {
-        row.add(f2.format(d.dividend) + " " + d.dividendCurrency);
-
-        double czk = Stocks.roundToHellers(d.dividend * Settings.getExchangeRate(d.dividendCurrency, d.date));
-        row.add(f2.format(czk));
-
-        sumDivi += czk;
-      } else {
-        row.add("");
-        row.add("");
+      // If not available, try ISIN lookup
+      if ((issuerCountry == null || issuerCountry.isEmpty()) && d.isin != null && !d.isin.isEmpty()) {
+        issuerCountry = isinToCountry.get(d.isin);
       }
 
-      // Add tax
-      if (d.taxCurrency != null) {
-        row.add(f2.format(d.tax) + " " + d.taxCurrency);
+      String countryIndicator = getCountryIndicator(issuerCountry, d.ticker);
 
-        double czk = Stocks.roundToHellers(d.tax * Settings.getExchangeRate(d.taxCurrency, d.date));
-        row.add(f2.format(czk));
-
-        sumTaxes += czk;
-      } else {
-        row.add("");
-        row.add("");
+      // Use "Unknown" as default country
+      if (countryIndicator.isEmpty()) {
+        countryIndicator = "[OTHER] ";
       }
 
-      model.addRow(row);
+      if (!countryGroups.containsKey(countryIndicator)) {
+        countryGroups.put(countryIndicator, new java.util.ArrayList<>());
+      }
+      countryGroups.get(countryIndicator).add(d);
     }
 
-    // Add summary
-    String row[] = { "", "", "", "-----------", "", "-----------" };
-    model.addRow(row);
-    String row2[] = { "", "", "", f2.format(sumDivi), "", f2.format(sumTaxes) };
-    model.addRow(row2);
+    // Sort countries by name (excluding indicator brackets)
+    java.util.List<String> sortedCountries = new java.util.ArrayList<>(countryGroups.keySet());
+    sortedCountries.sort((c1, c2) -> {
+      String name1 = getCountryName(c1);
+      String name2 = getCountryName(c2);
+      if (name1.isEmpty())
+        name1 = "Ostatní";
+      if (name2.isEmpty())
+        name2 = "Ostatní";
+      return name1.compareTo(name2);
+    });
+
+    // Add group header
+    Vector<String> headerRow = new Vector<>();
+    headerRow.add("Skupina podle země");
+    headerRow.add("");
+    headerRow.add("");
+    headerRow.add("Dividendy (CZK)");
+    headerRow.add("");
+    headerRow.add("Daň (CZK)");
+    headerRow.add("Daň %");
+    model.addRow(headerRow, CollapsibleDividendTableModel.RowType.HEADER, null);
+
+    // Process each country group
+    for (String countryIndicator : sortedCountries) {
+      java.util.List<Dividends.Dividend> dividends = countryGroups.get(countryIndicator);
+      double countryDiviSum = 0;
+      double countryTaxSum = 0;
+
+      // Add individual dividend rows for this country
+      for (Dividends.Dividend d : dividends) {
+        Vector<String> row = new Vector<>();
+
+        row.add(formatDate(d.date));
+        row.add(d.ticker);
+
+        // Add dividend
+        if (d.dividendCurrency != null) {
+          row.add(f2.format(d.dividend) + " " + d.dividendCurrency);
+
+          double czk = Stocks.roundToHellers(d.dividend * Settings.getExchangeRate(d.dividendCurrency, d.date));
+          row.add(f2.format(czk));
+
+          countryDiviSum += czk;
+          sumDivi += czk;
+        } else {
+          row.add("");
+          row.add("");
+        }
+
+        // Add tax
+        if (d.taxCurrency != null) {
+          row.add(f2.format(d.tax) + " " + d.taxCurrency);
+
+          double czk = Stocks.roundToHellers(d.tax * Settings.getExchangeRate(d.taxCurrency, d.date));
+          row.add(f2.format(czk));
+
+          countryTaxSum += czk;
+          sumTaxes += czk;
+
+          // Compute Tax %
+          if (d.dividend > 0) {
+            double taxPct = (d.tax / d.dividend) * 100.0;
+            row.add(f2.format(taxPct) + "%");
+          } else {
+            row.add("");
+          }
+        } else {
+          row.add("");
+          row.add("");
+          row.add("");
+        }
+
+        model.addRow(row, CollapsibleDividendTableModel.RowType.DETAIL, countryIndicator);
+      }
+
+      // Add country subtotal
+      String countryName = getCountryName(countryIndicator);
+      if (countryName.isEmpty())
+        countryName = "Ostatní";
+
+      Vector<String> subtotalRow = new Vector<>();
+      // Add expand/collapse indicator (collapsed by default)
+      String indicator = model.isGroupExpanded(countryIndicator) ? "▼ " : "▶ ";
+      subtotalRow.add(indicator + countryIndicator + "SOUČET " + countryName);
+      subtotalRow.add("");
+      subtotalRow.add("");
+      subtotalRow.add(f2.format(countryDiviSum));
+      subtotalRow.add("");
+      subtotalRow.add(f2.format(countryTaxSum));
+      if (countryDiviSum > 0) {
+        subtotalRow.add(f2.format((countryTaxSum / countryDiviSum) * 100.0) + "%");
+      } else {
+        subtotalRow.add("");
+      }
+      model.addRow(subtotalRow, CollapsibleDividendTableModel.RowType.COUNTRY_SUBTOTAL, countryIndicator);
+    }
+
+    // Add final summary
+    Vector<String> separatorRow = new Vector<>();
+    separatorRow.add("");
+    separatorRow.add("");
+    separatorRow.add("");
+    separatorRow.add("-----------");
+    separatorRow.add("");
+    separatorRow.add("-----------");
+    separatorRow.add(""); // 7th column for Daň %
+    model.addRow(separatorRow, CollapsibleDividendTableModel.RowType.SEPARATOR, null);
+
+    Vector<String> totalRow = new Vector<>();
+    totalRow.add("CELKEM SOUČET");
+    totalRow.add("");
+    totalRow.add("");
+    totalRow.add(f2.format(sumDivi));
+    totalRow.add("");
+    totalRow.add(f2.format(sumTaxes));
+    if (sumDivi > 0) {
+      totalRow.add(f2.format((sumTaxes / sumDivi) * 100.0) + "%");
+    } else {
+      totalRow.add("");
+    }
+    model.addRow(totalRow, CollapsibleDividendTableModel.RowType.TOTAL, null);
   }
 
   /**
@@ -1860,7 +2337,8 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     String[] empty = { "", "", "", "-----------", "", "-----------", "", "-----------", "", "-----------" };
     model.addRow(empty);
-    String[] sums = { "", "", "", f2.format(sumInterest), "", f2.format(sumTax), "", f2.format(sumPaid), "", f2.format(sumFee) };
+    String[] sums = { "", "", "", f2.format(sumInterest), "", f2.format(sumTax), "", f2.format(sumPaid), "",
+        f2.format(sumFee) };
     model.addRow(sums);
   }
 
@@ -2362,29 +2840,46 @@ public class ComputeWindow extends javax.swing.JDialog {
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
     getContentPane().add(jPanel2, gridBagConstraints);
 
-    diviTable.setModel(new javax.swing.table.DefaultTableModel(
-        new Object[][] {
+    // Initialize with CollapsibleDividendTableModel for expand/collapse
+    // functionality
+    Vector<String> columnNames = new Vector<>();
+    columnNames.add("Datum");
+    columnNames.add("Ticker");
+    columnNames.add("Dividenda");
+    columnNames.add("Dividenda CZK");
+    columnNames.add("Zaplacená daň");
+    columnNames.add("Zaplacená daň CZK");
+    columnNames.add("Daň %");
 
-        },
-        new String[] {
-            "Datum", "Ticker", "Dividenda", "Dividenda CZK", "Zaplacená daň", "Zaplacená daň CZK"
-        }) {
-      Class[] types = new Class[] {
-          java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class,
-          java.lang.String.class, java.lang.String.class
-      };
-      boolean[] canEdit = new boolean[] {
-          false, false, false, false, false, false
-      };
+    diviTable.setModel(new CollapsibleDividendTableModel(columnNames));
 
-      public Class getColumnClass(int columnIndex) {
-        return types[columnIndex];
-      }
+    // Create custom renderer for dividend table
+    DividendTableRenderer dividendRenderer = new DividendTableRenderer();
+    diviTable.getColumnModel().getColumn(0).setCellRenderer(dividendRenderer); // Date/Country column
+    diviTable.getColumnModel().getColumn(3).setCellRenderer(dividendRenderer); // Dividend CZK column
+    diviTable.getColumnModel().getColumn(5).setCellRenderer(dividendRenderer); // Tax CZK column
+    diviTable.getColumnModel().getColumn(6).setCellRenderer(dividendRenderer); // Tax % column
 
-      public boolean isCellEditable(int rowIndex, int columnIndex) {
-        return canEdit[columnIndex];
+    // Add mouse listener for expand/collapse on SOUČET rows
+    diviTable.addMouseListener(new java.awt.event.MouseAdapter() {
+      public void mouseClicked(java.awt.event.MouseEvent evt) {
+        int row = diviTable.rowAtPoint(evt.getPoint());
+        if (row >= 0) {
+          String firstCol = (String) diviTable.getValueAt(row, 0);
+          if (firstCol != null && firstCol.contains("SOUČET") && !firstCol.equals("CELKEM SOUČET")) {
+            // Extract country indicator from the text
+            // Format: "▶ [US] SOUČET USA" or "▼ [US] SOUČET USA"
+            String countryIndicator = extractCountryIndicator(firstCol);
+            if (countryIndicator != null) {
+              CollapsibleDividendTableModel model = (CollapsibleDividendTableModel) diviTable.getModel();
+              model.toggleGroup(countryIndicator);
+              // toggleGroup now handles updating the indicator and refreshing the table
+            }
+          }
+        }
       }
     });
+
     jScrollPane2.setViewportView(diviTable);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
@@ -2908,7 +3403,8 @@ public class ComputeWindow extends javax.swing.JDialog {
             te.closeTradeDate = t.close != null ? t.close.tradeDate : null;
             te.closeExecutionDate = t.close != null ? t.close.executionDate : null;
 
-            // Income year is based on executionDate (t.getIncomeDate uses open.date/close.date).
+            // Income year is based on executionDate (t.getIncomeDate uses
+            // open.date/close.date).
             te.incomeExecutionDate = t.getIncomeDate();
             te.incomeTradeDate = t.open.amount < 0 ? t.open.tradeDate : (t.close != null ? t.close.tradeDate : null);
 

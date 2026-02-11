@@ -18,8 +18,7 @@ import java.io.PrintWriter;
 /**
  * Transaction (buy or sell)
  */
-public class Transaction implements java.lang.Comparable, java.io.Serializable
-{
+public class Transaction implements java.lang.Comparable, java.io.Serializable {
   /** Direction constants */
   public static final int DIRECTION_SBUY = 1;
   public static final int DIRECTION_SSELL = -1;
@@ -39,40 +38,43 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   public static final int DIRECTION_INT_TAX = 21;
   public static final int DIRECTION_INT_PAID = 22;
   public static final int DIRECTION_INT_FEE = 23;
-  
+
   /** Serial number - used in sorting when dates equal */
   int serial;
-  
+
   /** Date */
   Date date;
-  
+
   /** Direction */
   int direction;
-  
+
   /** Ticker */
   String ticker;
-    
-  /** Amount. Amount is double because due to splits etc. there can be non-integer amount */
+
+  /**
+   * Amount. Amount is double because due to splits etc. there can be non-integer
+   * amount
+   */
   Double amount;
-  
+
   /** Price */
   Double price;
-  
+
   /** Price currency */
   String priceCurrency;
-  
+
   /** Fee */
   Double fee;
-  
+
   /** Fee currency */
   String feeCurrency;
-  
+
   /** Local double number format */
   DecimalFormat ff;
-  
+
   /** Market */
   String market;
-  
+
   /** Execution date */
   Date executionDate;
 
@@ -81,38 +83,38 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   String accountId;
   String txnId;
   String code;
+  String isin;
+  String issuerCountry;
 
   /** Disabled transaction: visible but ignored by computations */
   boolean disabled;
 
-    /** Note */
+  /** Note */
   String note;
-  
+
   /**
    * Clear milliseconds in the date (keep seconds).
    */
-  private static Date clearSMS(Date d)
-  {
+  private static Date clearSMS(Date d) {
     GregorianCalendar cal = new GregorianCalendar();
-    
+
     cal.setTime(d);
-    cal.set(GregorianCalendar.MILLISECOND,0);
-    
+    cal.set(GregorianCalendar.MILLISECOND, 0);
+
     return cal.getTime();
   }
-    
+
   /**
    * Create "empty" transaction, just with a serial
    */
-  protected Transaction(int serial)
-  {
+  protected Transaction(int serial) {
     ff = new DecimalFormat("#.#######");
-    
+
     this.serial = serial;
-    
+
     this.date = null;
     this.direction = 0;
-    this.ticker = null;    
+    this.ticker = null;
     this.amount = null;
     this.price = null;
     this.priceCurrency = null;
@@ -123,6 +125,8 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.accountId = null;
     this.txnId = null;
     this.code = null;
+    this.isin = null;
+    this.issuerCountry = null;
     this.note = null;
   }
 
@@ -151,6 +155,8 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       t.accountId = this.accountId;
       t.txnId = this.txnId;
       t.code = this.code;
+      t.isin = this.isin;
+      t.issuerCountry = this.issuerCountry;
       t.disabled = this.disabled;
 
       return t;
@@ -168,17 +174,18 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       t.market = this.market;
       t.executionDate = this.executionDate;
       t.note = this.note;
-      t.broker = this.broker;
-      t.accountId = this.accountId;
       t.txnId = this.txnId;
       t.code = this.code;
+      t.isin = this.isin;
+      t.issuerCountry = this.issuerCountry;
       t.disabled = this.disabled;
       return t;
     }
   }
 
   public void restoreFrom(Transaction snapshot) {
-    if (snapshot == null) return;
+    if (snapshot == null)
+      return;
     this.date = snapshot.date;
     this.direction = snapshot.direction;
     this.ticker = snapshot.ticker;
@@ -194,12 +201,16 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.accountId = snapshot.accountId;
     this.txnId = snapshot.txnId;
     this.code = snapshot.code;
+    this.isin = snapshot.isin;
+    this.issuerCountry = snapshot.issuerCountry;
     this.disabled = snapshot.disabled;
   }
 
   /**
-   * Remove broker/account/transaction metadata from both persisted fields and Note.
-   * Keeps the human-readable description part of Note and any unrelated custom segments.
+   * Remove broker/account/transaction metadata from both persisted fields and
+   * Note.
+   * Keeps the human-readable description part of Note and any unrelated custom
+   * segments.
    */
   public void clearBrokerAccountTxnMetadata() {
     this.broker = null;
@@ -214,13 +225,16 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     String[] parts = this.note.split("\\|");
     java.util.ArrayList<String> kept = new java.util.ArrayList<>();
     for (String p : parts) {
-      if (p == null) continue;
+      if (p == null)
+        continue;
       String s = p.trim();
-      if (s.isEmpty()) continue;
+      if (s.isEmpty())
+        continue;
       int idx = s.indexOf(':');
       if (idx > 0) {
         String key = s.substring(0, idx).trim().toLowerCase();
-        if (key.equals("broker") || key.equals("accountid") || key.equals("txnid") || key.equals("code")) {
+        if (key.equals("broker") || key.equals("accountid") || key.equals("txnid") || key.equals("code")
+            || key.equals("isin") || key.equals("issuercountry")) {
           continue;
         }
       }
@@ -233,14 +247,13 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       this.note = String.join("|", kept);
     }
   }
-  
+
   /**
    * Create transaction from a file
    */
-  protected Transaction(BufferedReader ifl)
-  {
+  protected Transaction(BufferedReader ifl) {
     ff = new DecimalFormat("#.#######");
-    
+
     this.serial = 0;
     this.date = null;
     this.direction = 0;
@@ -252,115 +265,110 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.feeCurrency = null;
     this.market = null;
     this.broker = null;
-    this.accountId = null;
     this.txnId = null;
     this.code = null;
-    this.note = null;
+    this.isin = null;
+    this.issuerCountry = null;
     this.disabled = false;
-    
+
     String a[];
-    for(;;)
-    {
+    for (;;) {
       a = TransactionSet.readLine(ifl);
-      
-      if (a[0] == null) break; // Done - EOF
-      if (a[0].equals(")")) break; // Done - end of row
-      
-      if (a[0].equals("serial")) this.serial = Integer.parseInt(a[1]);
-      else if (a[0].equals("date")) this.date = TransactionSet.parseDate(a[1]);
-      else if (a[0].equals("direction")) this.direction = Integer.parseInt(a[1]);
-      else if (a[0].equals("ticker"))
-      {
-        if (a[1].length() > 0) this.ticker = a[1];
-      }
-      else if (a[0].equals("amount"))
-      {
+
+      if (a[0] == null)
+        break; // Done - EOF
+      if (a[0].equals(")"))
+        break; // Done - end of row
+
+      if (a[0].equals("serial"))
+        this.serial = Integer.parseInt(a[1]);
+      else if (a[0].equals("date"))
+        this.date = TransactionSet.parseDate(a[1]);
+      else if (a[0].equals("direction"))
+        this.direction = Integer.parseInt(a[1]);
+      else if (a[0].equals("ticker")) {
+        if (a[1].length() > 0)
+          this.ticker = a[1];
+      } else if (a[0].equals("amount")) {
         if (a[1] != null)
           this.amount = Double.parseDouble(a[1]);
-      }
-      else if (a[0].equals("price"))
-      {
-        if (!a[1].equals("null")) this.price = Double.parseDouble(a[1]);
-      }
-      else if (a[0].equals("priceCurrency"))
-      {
-        if (!a[1].equals("null")) this.priceCurrency = a[1];
-      }
-      else if (a[0].equals("fee"))
-      {
-        if (!a[1].equals("null")) this.fee = Double.parseDouble(a[1]);
-      }
-      else if (a[0].equals("feeCurrency"))
-      {
-        if (!a[1].equals("null")) this.feeCurrency = a[1];
-      }
-      else if (a[0].equals("market"))
-      {
-        if (!a[1].equals("null")) this.market = a[1];
-      }
-      else if (a[0].equals("exDate"))
-      {
+      } else if (a[0].equals("price")) {
+        if (!a[1].equals("null"))
+          this.price = Double.parseDouble(a[1]);
+      } else if (a[0].equals("priceCurrency")) {
+        if (!a[1].equals("null"))
+          this.priceCurrency = a[1];
+      } else if (a[0].equals("fee")) {
+        if (!a[1].equals("null"))
+          this.fee = Double.parseDouble(a[1]);
+      } else if (a[0].equals("feeCurrency")) {
+        if (!a[1].equals("null"))
+          this.feeCurrency = a[1];
+      } else if (a[0].equals("market")) {
+        if (!a[1].equals("null"))
+          this.market = a[1];
+      } else if (a[0].equals("exDate")) {
         this.executionDate = TransactionSet.parseDate(a[1]);
-      }
-      else if (a[0].equals("note"))
-      {
-        if (!a[1].equals("null")) this.note = a[1];
-      }
-      else if (a[0].equals("broker"))
-      {
-        if (!a[1].equals("null")) this.broker = a[1];
-      }
-      else if (a[0].equals("accountId"))
-      {
-        if (!a[1].equals("null")) this.accountId = a[1];
-      }
-      else if (a[0].equals("txnId"))
-      {
-        if (!a[1].equals("null")) this.txnId = a[1];
-      }
-      else if (a[0].equals("code"))
-      {
-        if (!a[1].equals("null")) this.code = a[1];
-      }
-      else if (a[0].equals("disabled"))
-      {
+      } else if (a[0].equals("note")) {
+        if (!a[1].equals("null"))
+          this.note = a[1];
+      } else if (a[0].equals("broker")) {
+        if (!a[1].equals("null"))
+          this.broker = a[1];
+      } else if (a[0].equals("accountId")) {
+        if (!a[1].equals("null"))
+          this.accountId = a[1];
+      } else if (a[0].equals("txnId")) {
+        if (!a[1].equals("null"))
+          this.txnId = a[1];
+      } else if (a[0].equals("code")) {
+        if (!a[1].equals("null"))
+          this.code = a[1];
+      } else if (a[0].equals("isin")) {
+        if (!a[1].equals("null"))
+          this.isin = a[1];
+      } else if (a[0].equals("issuerCountry")) {
+        if (!a[1].equals("null"))
+          this.issuerCountry = a[1];
+      } else if (a[0].equals("disabled")) {
         this.disabled = (a[1] != null) && (a[1].equals("1") || a[1].equalsIgnoreCase("true"));
       }
     }
 
-    // Backward compatibility: hydrate metadata from note if not present as separate fields.
+    // Backward compatibility: hydrate metadata from note if not present as separate
+    // fields.
     hydrateMetadataFromNote();
 
     /*
-    // Fix type
-    if (this.market != null) {
-      if (this.market.equalsIgnoreCase("--") ||
-          this.market.equalsIgnoreCase("BOX") ||
-          this.market.equalsIgnoreCase("ISE") ||
-          this.market.equalsIgnoreCase("PSE") ||
-          this.market.equalsIgnoreCase("PHLX") ||
-          this.market.equalsIgnoreCase("NASDAQOM") ||
-          this.market.equalsIgnoreCase("CBOE")) {
-        if (this.direction == DIRECTION_SBUY) this.direction = DIRECTION_DBUY;
-        else if (this.direction == DIRECTION_SSELL) this.direction = DIRECTION_DSELL;
-      }
-    }
+     * // Fix type
+     * if (this.market != null) {
+     * if (this.market.equalsIgnoreCase("--") ||
+     * this.market.equalsIgnoreCase("BOX") ||
+     * this.market.equalsIgnoreCase("ISE") ||
+     * this.market.equalsIgnoreCase("PSE") ||
+     * this.market.equalsIgnoreCase("PHLX") ||
+     * this.market.equalsIgnoreCase("NASDAQOM") ||
+     * this.market.equalsIgnoreCase("CBOE")) {
+     * if (this.direction == DIRECTION_SBUY) this.direction = DIRECTION_DBUY;
+     * else if (this.direction == DIRECTION_SSELL) this.direction = DIRECTION_DSELL;
+     * }
+     * }
      */
   }
-  
+
   /**
    * Create new transaction with values
    */
-  public Transaction(int serial, Date date, int direction, String ticker, double amount, double price, String priceCurrency, double fee, String feeCurrency, String market, Date executionDate,String note) throws Exception
-  {
+  public Transaction(int serial, Date date, int direction, String ticker, double amount, double price,
+      String priceCurrency, double fee, String feeCurrency, String market, Date executionDate, String note)
+      throws Exception {
     ff = new DecimalFormat("#.#######");
-    
+
     this.serial = serial;
-    
+
     this.date = clearSMS(date);
-    
-    switch(direction)
-    {
+
+    switch (direction) {
       case DIRECTION_SBUY:
       case DIRECTION_SSELL:
       case DIRECTION_TRANS_ADD:
@@ -379,19 +387,21 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
       case DIRECTION_INT_FEE:
         break;
       default:
-        throw new Exception("Bad direction constant: "+direction);
+        throw new Exception("Bad direction constant: " + direction);
     }
     this.direction = direction;
-    
+
     this.ticker = ticker;
     this.amount = amount;
     this.price = price;
     this.priceCurrency = priceCurrency.toUpperCase();
-    
+
     this.fee = fee;
-    if (feeCurrency == null) this.feeCurrency = this.priceCurrency;
-    else this.feeCurrency = feeCurrency.toUpperCase();
-    
+    if (feeCurrency == null)
+      this.feeCurrency = this.priceCurrency;
+    else
+      this.feeCurrency = feeCurrency.toUpperCase();
+
     this.market = market;
     this.executionDate = (executionDate == null) ? null : clearSMS(executionDate);
     this.note = note;
@@ -400,51 +410,67 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.accountId = null;
     this.txnId = null;
     this.code = null;
+    this.isin = null;
+    this.issuerCountry = null;
 
     hydrateMetadataFromNote();
   }
-  
+
   /**
    * Getters
    */
-  public Date getDate()
-  { return this.date; }
-  public String getStringDate()
-  {
-    if (date == null) return null;
+  public Date getDate() {
+    return this.date;
+  }
+
+  public String getStringDate() {
+    if (date == null)
+      return null;
     java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
     cal.setTime(date);
-    
-    //return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+cal.get(GregorianCalendar.MINUTE);
+
+    // return
+    // cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+"
+    // "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+cal.get(GregorianCalendar.MINUTE);
     int sec = cal.get(GregorianCalendar.SECOND);
     if (sec != 0) {
-      return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+String.format("%02d",cal.get(GregorianCalendar.MINUTE))+":"+String.format("%02d",sec);
+      return cal.get(GregorianCalendar.DAY_OF_MONTH) + "." + (cal.get(GregorianCalendar.MONTH) + 1) + "."
+          + cal.get(GregorianCalendar.YEAR) + " " + cal.get(GregorianCalendar.HOUR_OF_DAY) + ":"
+          + String.format("%02d", cal.get(GregorianCalendar.MINUTE)) + ":" + String.format("%02d", sec);
     }
-    return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+String.format("%02d",cal.get(GregorianCalendar.MINUTE));
-    
+    return cal.get(GregorianCalendar.DAY_OF_MONTH) + "." + (cal.get(GregorianCalendar.MONTH) + 1) + "."
+        + cal.get(GregorianCalendar.YEAR) + " " + cal.get(GregorianCalendar.HOUR_OF_DAY) + ":"
+        + String.format("%02d", cal.get(GregorianCalendar.MINUTE));
+
   }
 
-  public String getStringExecutionDate()
-  {
-    if (executionDate == null) return null;
+  public String getStringExecutionDate() {
+    if (executionDate == null)
+      return null;
     java.util.GregorianCalendar cal = new java.util.GregorianCalendar();
     cal.setTime(executionDate);
-    
+
     int sec = cal.get(GregorianCalendar.SECOND);
     if (sec != 0) {
-      return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+String.format("%02d",cal.get(GregorianCalendar.MINUTE))+":"+String.format("%02d",sec);
+      return cal.get(GregorianCalendar.DAY_OF_MONTH) + "." + (cal.get(GregorianCalendar.MONTH) + 1) + "."
+          + cal.get(GregorianCalendar.YEAR) + " " + cal.get(GregorianCalendar.HOUR_OF_DAY) + ":"
+          + String.format("%02d", cal.get(GregorianCalendar.MINUTE)) + ":" + String.format("%02d", sec);
     }
-    return cal.get(GregorianCalendar.DAY_OF_MONTH)+"."+(cal.get(GregorianCalendar.MONTH)+1)+"."+cal.get(GregorianCalendar.YEAR)+" "+cal.get(GregorianCalendar.HOUR_OF_DAY)+":"+String.format("%02d",cal.get(GregorianCalendar.MINUTE));
+    return cal.get(GregorianCalendar.DAY_OF_MONTH) + "." + (cal.get(GregorianCalendar.MONTH) + 1) + "."
+        + cal.get(GregorianCalendar.YEAR) + " " + cal.get(GregorianCalendar.HOUR_OF_DAY) + ":"
+        + String.format("%02d", cal.get(GregorianCalendar.MINUTE));
   }
 
-  public int getSerial()
-  { return this.serial; }
-  public Integer getDirection()
-  { return direction; }
-  public String getStringDirection()
-  {
-    switch(this.direction)
-    {
+  public int getSerial() {
+    return this.serial;
+  }
+
+  public Integer getDirection() {
+    return direction;
+  }
+
+  public String getStringDirection() {
+    switch (this.direction) {
       case DIRECTION_SBUY:
       case DIRECTION_DBUY:
       case DIRECTION_CBUY:
@@ -477,10 +503,9 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
         return null;
     }
   }
-  public String getStringType()
-  {
-    switch(this.direction)
-    {
+
+  public String getStringType() {
+    switch (this.direction) {
       case DIRECTION_SBUY:
       case DIRECTION_SSELL:
         return "CP";
@@ -507,39 +532,60 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
         return null;
     }
   }
-  public String getTicker()
-  { return ticker; } 
-  public Double getAmount()
-  { return amount; }
-  public Double getFee()
-  { return fee;  }
-  public String getFeeCurrency()
-  { return feeCurrency; }
-  public Double getPrice()
-  { return price; }
-  public String getPriceCurrency()
-  { return priceCurrency; }
-  public String getMarket()
-  { return market; }
-  public Date getExecutionDate()
-  { return executionDate; }
-  public String getNote()
-  { return note; }
-  
+
+  public String getTicker() {
+    return ticker;
+  }
+
+  public Double getAmount() {
+    return amount;
+  }
+
+  public Double getFee() {
+    return fee;
+  }
+
+  public String getFeeCurrency() {
+    return feeCurrency;
+  }
+
+  public Double getPrice() {
+    return price;
+  }
+
+  public String getPriceCurrency() {
+    return priceCurrency;
+  }
+
+  public String getMarket() {
+    return market;
+  }
+
+  public Date getExecutionDate() {
+    return executionDate;
+  }
+
+  public String getNote() {
+    return note;
+  }
+
   /**
    * Setters
    */
-  protected void setDate(Date date)
-  { this.date = clearSMS(date); }
-  public void setDirection(int direction)
-  { this.direction = direction; }
+  protected void setDate(Date date) {
+    this.date = clearSMS(date);
+  }
 
-  public void setType(String newDirection)
-  {
-    if (newDirection == null) return;
+  public void setDirection(int direction) {
+    this.direction = direction;
+  }
+
+  public void setType(String newDirection) {
+    if (newDirection == null)
+      return;
 
     if (newDirection.equalsIgnoreCase("CP")) {
-      switch(direction) {
+      switch (direction) {
         case DIRECTION_DBUY:
         case DIRECTION_CBUY:
         case DIRECTION_SBUY:
@@ -555,9 +601,8 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
         default:
           direction = DIRECTION_SBUY;
       }
-    }
-    else if (newDirection.equalsIgnoreCase("Derivát")) {
-      switch(direction) {
+    } else if (newDirection.equalsIgnoreCase("Derivát")) {
+      switch (direction) {
         case DIRECTION_DBUY:
         case DIRECTION_CBUY:
         case DIRECTION_SBUY:
@@ -573,9 +618,8 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
         default:
           direction = DIRECTION_DBUY;
       }
-    }
-    else if (newDirection.equalsIgnoreCase("Transformace")) {
-      switch(direction) {
+    } else if (newDirection.equalsIgnoreCase("Transformace")) {
+      switch (direction) {
         case DIRECTION_DBUY:
         case DIRECTION_CBUY:
         case DIRECTION_SBUY:
@@ -591,9 +635,8 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
         default:
           direction = DIRECTION_TRANS_ADD;
       }
-    }
-    else if (newDirection.equalsIgnoreCase("Cash")) {
-      switch(direction) {
+    } else if (newDirection.equalsIgnoreCase("Cash")) {
+      switch (direction) {
         case DIRECTION_DBUY:
         case DIRECTION_CBUY:
         case DIRECTION_SBUY:
@@ -609,9 +652,8 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
         default:
           direction = DIRECTION_CBUY;
       }
-    }
-    else if (newDirection.equalsIgnoreCase("Dividenda")) {
-      switch(direction) {
+    } else if (newDirection.equalsIgnoreCase("Dividenda")) {
+      switch (direction) {
         case DIRECTION_DIVI_BRUTTO:
         case DIRECTION_DIVI_NETTO15:
         case DIRECTION_DIVI_TAX:
@@ -620,9 +662,8 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
         default:
           direction = DIRECTION_DIVI_UNKNOWN;
       }
-    }
-    else if (newDirection.equalsIgnoreCase("Úrok") || newDirection.equalsIgnoreCase("Urok")) {
-      switch(direction) {
+    } else if (newDirection.equalsIgnoreCase("Úrok") || newDirection.equalsIgnoreCase("Urok")) {
+      switch (direction) {
         case DIRECTION_INT_BRUTTO:
         case DIRECTION_INT_TAX:
         case DIRECTION_INT_PAID:
@@ -637,9 +678,8 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
   /**
    * Get possible directions
    */
-  public String[] getPossibleDirections()
-  {
-    switch(this.direction) {
+  public String[] getPossibleDirections() {
+    switch (this.direction) {
       case DIRECTION_SBUY:
       case DIRECTION_SSELL:
       case DIRECTION_DBUY:
@@ -665,7 +705,7 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
         String[] i = { "Hrubá", "Daň", "Zaplacený", "Poplatek" };
         return i;
       default:
-        String[] z = { };
+        String[] z = {};
         return z;
     }
   }
@@ -678,398 +718,538 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable
     this.disabled = disabled;
   }
 
-  public void setDirection(String direction)
-  {
-    if (direction == null) return;
+  public void setDirection(String direction) {
+    if (direction == null)
+      return;
 
-    switch(this.direction) {
+    switch (this.direction) {
       case DIRECTION_SBUY:
       case DIRECTION_SSELL:
-        if (direction.equalsIgnoreCase("Nákup")) this.direction = DIRECTION_SBUY;
-        else if (direction.equalsIgnoreCase("Prodej")) this.direction = DIRECTION_SSELL;
+        if (direction.equalsIgnoreCase("Nákup"))
+          this.direction = DIRECTION_SBUY;
+        else if (direction.equalsIgnoreCase("Prodej"))
+          this.direction = DIRECTION_SSELL;
         break;
       case DIRECTION_DBUY:
       case DIRECTION_DSELL:
-        if (direction.equalsIgnoreCase("Nákup")) this.direction = DIRECTION_DBUY;
-        else if (direction.equalsIgnoreCase("Prodej")) this.direction = DIRECTION_DSELL;
+        if (direction.equalsIgnoreCase("Nákup"))
+          this.direction = DIRECTION_DBUY;
+        else if (direction.equalsIgnoreCase("Prodej"))
+          this.direction = DIRECTION_DSELL;
         break;
       case DIRECTION_CBUY:
       case DIRECTION_CSELL:
-        if (direction.equalsIgnoreCase("Nákup")) this.direction = DIRECTION_CBUY;
-        else if (direction.equalsIgnoreCase("Prodej")) this.direction = DIRECTION_CSELL;
+        if (direction.equalsIgnoreCase("Nákup"))
+          this.direction = DIRECTION_CBUY;
+        else if (direction.equalsIgnoreCase("Prodej"))
+          this.direction = DIRECTION_CSELL;
         break;
       case DIRECTION_TRANS_ADD:
       case DIRECTION_TRANS_SUB:
-        if (direction.equalsIgnoreCase("Přidání")) this.direction = DIRECTION_TRANS_ADD;
-        else if (direction.equalsIgnoreCase("Odebrání")) this.direction = DIRECTION_TRANS_SUB;
+        if (direction.equalsIgnoreCase("Přidání"))
+          this.direction = DIRECTION_TRANS_ADD;
+        else if (direction.equalsIgnoreCase("Odebrání"))
+          this.direction = DIRECTION_TRANS_SUB;
         break;
       case DIRECTION_DIVI_BRUTTO:
       case DIRECTION_DIVI_NETTO15:
       case DIRECTION_DIVI_TAX:
       case DIRECTION_DIVI_UNKNOWN:
-        if (direction.equalsIgnoreCase("Hrubá")) this.direction = DIRECTION_DIVI_BRUTTO;
-        else if (direction.equalsIgnoreCase("Čistá 15%")) this.direction = DIRECTION_DIVI_NETTO15;
-        else if (direction.equalsIgnoreCase("Daň")) this.direction = DIRECTION_DIVI_TAX;
-        else if (direction.equalsIgnoreCase("Neznámá")) this.direction = DIRECTION_DIVI_UNKNOWN;
+        if (direction.equalsIgnoreCase("Hrubá"))
+          this.direction = DIRECTION_DIVI_BRUTTO;
+        else if (direction.equalsIgnoreCase("Čistá 15%"))
+          this.direction = DIRECTION_DIVI_NETTO15;
+        else if (direction.equalsIgnoreCase("Daň"))
+          this.direction = DIRECTION_DIVI_TAX;
+        else if (direction.equalsIgnoreCase("Neznámá"))
+          this.direction = DIRECTION_DIVI_UNKNOWN;
         break;
       case DIRECTION_INT_BRUTTO:
       case DIRECTION_INT_TAX:
       case DIRECTION_INT_PAID:
       case DIRECTION_INT_FEE:
-        if (direction.equalsIgnoreCase("Hrubá")) this.direction = DIRECTION_INT_BRUTTO;
-        else if (direction.equalsIgnoreCase("Daň")) this.direction = DIRECTION_INT_TAX;
-        else if (direction.equalsIgnoreCase("Zaplacený")) this.direction = DIRECTION_INT_PAID;
-        else if (direction.equalsIgnoreCase("Poplatek")) this.direction = DIRECTION_INT_FEE;
+        if (direction.equalsIgnoreCase("Hrubá"))
+          this.direction = DIRECTION_INT_BRUTTO;
+        else if (direction.equalsIgnoreCase("Daň"))
+          this.direction = DIRECTION_INT_TAX;
+        else if (direction.equalsIgnoreCase("Zaplacený"))
+          this.direction = DIRECTION_INT_PAID;
+        else if (direction.equalsIgnoreCase("Poplatek"))
+          this.direction = DIRECTION_INT_FEE;
         break;
     }
   }
-  public void setSerial(int serial)
-  { this.serial = serial; }
-  public void setTicker(String ticker)
-  { this.ticker = ticker; }
-  public void setAmount(Double amount)
-  { this.amount = amount; }
-  public void setFee(Double fee)
-  { this.fee = fee; }
-  public void setFeeCurrency(String feeCurrency)
-  { this.feeCurrency = feeCurrency; }
-  public void setPrice(Double price)
-  { this.price = price; }
-  public void setPriceCurrency(String priceCurrency)
-  { this.priceCurrency = priceCurrency; }
-  public void setMarket(String market)
-  { this.market = market; }
-  public void setExecutionDate(Date executionDate)
-  { this.executionDate = (executionDate == null) ? null : clearSMS(executionDate); }
-  public void setNote(String note)
-  { this.note = note; }
 
-  public void setBroker(String broker)
-  { this.broker = broker; }
+  public void setSerial(int serial) {
+    this.serial = serial;
+  }
 
-  public void setAccountId(String accountId)
-  { this.accountId = accountId; }
+  public void setTicker(String ticker) {
+    this.ticker = ticker;
+  }
 
-  public void setTxnId(String txnId)
-  { this.txnId = txnId; }
+  public void setAmount(Double amount) {
+    this.amount = amount;
+  }
 
-  public void setCode(String code)
-  { this.code = code; }
-  
-   /**
-    * Update fields from another transaction (used for re-import updates)
-    * Updates: Note, Fee, FeeCurrency, ExecutionDate
-    * Does NOT update business key fields: Date, Direction, Ticker, Amount, Price, PriceCurrency, Market
-    */
-   public void updateFromTransaction(Transaction source) {
-      // Preserve existing metadata unless source provides new values.
-      String prevBroker = this.broker;
-      String prevAccountId = this.accountId;
-      String prevTxnId = this.txnId;
-      String prevCode = this.code;
+  public void setFee(Double fee) {
+    this.fee = fee;
+  }
 
-      this.setNote(source.getNote());
-      this.setFee(source.getFee());
-      this.setFeeCurrency(source.getFeeCurrency());
-      this.setExecutionDate(source.getExecutionDate());
+  public void setFeeCurrency(String feeCurrency) {
+    this.feeCurrency = feeCurrency;
+  }
 
-      // Prefer explicit fields from source; fall back to parsing source note.
-      java.util.Map<String, String> meta = parseNoteMetadata(source.getNote());
-      String b = (source.broker != null && !source.broker.trim().isEmpty()) ? source.broker : meta.getOrDefault("broker", "");
-      String a = (source.accountId != null && !source.accountId.trim().isEmpty()) ? source.accountId : meta.getOrDefault("accountId", "");
-      String t = (source.txnId != null && !source.txnId.trim().isEmpty()) ? source.txnId : meta.getOrDefault("txnId", "");
-      String c = (source.code != null && !source.code.trim().isEmpty()) ? source.code : meta.getOrDefault("code", "");
+  public void setPrice(Double price) {
+    this.price = price;
+  }
 
-      if (b != null && !b.trim().isEmpty()) this.broker = b.trim(); else this.broker = prevBroker;
-      if (a != null && !a.trim().isEmpty()) this.accountId = a.trim(); else this.accountId = prevAccountId;
-      if (t != null && !t.trim().isEmpty()) this.txnId = t.trim(); else this.txnId = prevTxnId;
-      if (c != null && !c.trim().isEmpty()) this.code = c.trim(); else this.code = prevCode;
-   }
+  public void setPriceCurrency(String priceCurrency) {
+    this.priceCurrency = priceCurrency;
+  }
 
-   /**
-    * Update fields from another transaction (used for re-import updates) when TxnID match is used.
-    *
-    * In this mode we can safely update the timestamp to include missing seconds,
-    * because identity is anchored by TxnID.
-    */
-   public void updateFromTransactionWithTxnIdMatch(Transaction source) {
-     // Keep existing behavior
-     updateFromTransaction(source);
+  public void setMarket(String market) {
+    this.market = market;
+  }
 
-     // Also update trade timestamp
-     this.setDate(source.getDate());
-   }
+  public void setExecutionDate(Date executionDate) {
+    this.executionDate = (executionDate == null) ? null : clearSMS(executionDate);
+  }
 
-   /**
-    * Parse structured note field and extract metadata
-    * Format: Description|Broker:VALUE|AccountID:VALUE|TxnID:VALUE|Code:VALUE
-    * Returns map with keys: broker, accountId, txnId, code
-    */
-   public static java.util.Map<String, String> parseNoteMetadata(String note) {
-     java.util.Map<String, String> metadata = new java.util.HashMap<>();
+  public void setNote(String note) {
+    this.note = note;
+    hydrateMetadataFromNote();
+  }
 
-     if (note == null || note.isEmpty()) {
-       return metadata;
-     }
+  public void setBroker(String broker) {
+    this.broker = broker;
+  }
 
-     // Split by pipe delimiter
-     String[] parts = note.split("\\|");
+  public void setAccountId(String accountId) {
+    this.accountId = accountId;
+  }
 
-     for (String part : parts) {
-       if (part.contains(":")) {
-         String[] keyValue = part.split(":", 2);
-         String key = keyValue[0].trim().toLowerCase();
-         String value = keyValue.length > 1 ? keyValue[1].trim() : "";
+  public void setTxnId(String txnId) {
+    this.txnId = txnId;
+  }
 
-         switch (key) {
-           case "broker":
-             metadata.put("broker", value);
-             break;
-           case "accountid":
-             metadata.put("accountId", value);
-             break;
-           case "txnid":
-             metadata.put("txnId", value);
-             break;
-           case "code":
-             metadata.put("code", value);
-             break;
-         }
-       }
-     }
+  public void setCode(String code) {
+    this.code = code;
+  }
 
-     return metadata;
-   }
+  public void setIsin(String isin) {
+    this.isin = isin;
+  }
 
-   public void hydrateMetadataFromNote() {
-     if (note == null || note.trim().isEmpty()) return;
+  public void setIssuerCountry(String issuerCountry) {
+    this.issuerCountry = issuerCountry;
+  }
 
-     java.util.Map<String, String> meta = parseNoteMetadata(note);
-     if (this.broker == null || this.broker.trim().isEmpty()) {
-       String v = meta.getOrDefault("broker", "");
-       if (!v.isEmpty()) this.broker = v;
-     }
-     if (this.accountId == null || this.accountId.trim().isEmpty()) {
-       String v = meta.getOrDefault("accountId", "");
-       if (!v.isEmpty()) this.accountId = v;
-     }
-     if (this.txnId == null || this.txnId.trim().isEmpty()) {
-       String v = meta.getOrDefault("txnId", "");
-       if (!v.isEmpty()) this.txnId = v;
-     }
-     if (this.code == null || this.code.trim().isEmpty()) {
-       String v = meta.getOrDefault("code", "");
-       if (!v.isEmpty()) this.code = v;
-     }
-   }
+  /**
+   * Update fields from another transaction (used for re-import updates)
+   * Updates: Note, Fee, FeeCurrency, ExecutionDate
+   * Does NOT update business key fields: Date, Direction, Ticker, Amount, Price,
+   * PriceCurrency, Market
+   */
+  public void updateFromTransaction(Transaction source) {
+    // Preserve existing metadata unless source provides new values.
+    String prevBroker = this.broker;
+    String prevAccountId = this.accountId;
+    String prevTxnId = this.txnId;
+    String prevCode = this.code;
 
-   /**
-    * Get broker from note field
-    */
-   public String getBroker() {
-      if (broker != null && !broker.trim().isEmpty()) {
-        return broker.trim();
-      }
-      return parseNoteMetadata(note).getOrDefault("broker", "");
-   }
+    this.setNote(source.getNote());
+    this.setFee(source.getFee());
+    this.setFeeCurrency(source.getFeeCurrency());
+    this.setExecutionDate(source.getExecutionDate());
 
-   /**
-    * Get account ID from note field
-    */
-   public String getAccountId() {
-      if (accountId != null && !accountId.trim().isEmpty()) {
-        return accountId.trim();
-      }
-      return parseNoteMetadata(note).getOrDefault("accountId", "");
-   }
+    // Prefer explicit fields from source; fall back to parsing source note.
+    java.util.Map<String, String> meta = parseNoteMetadata(source.getNote());
+    String b = (source.broker != null && !source.broker.trim().isEmpty()) ? source.broker
+        : meta.getOrDefault("broker", "");
+    String a = (source.accountId != null && !source.accountId.trim().isEmpty()) ? source.accountId
+        : meta.getOrDefault("accountId", "");
+    String t = (source.txnId != null && !source.txnId.trim().isEmpty()) ? source.txnId : meta.getOrDefault("txnId", "");
+    String c = (source.code != null && !source.code.trim().isEmpty()) ? source.code : meta.getOrDefault("code", "");
+    String i = (source.isin != null && !source.isin.trim().isEmpty()) ? source.isin : meta.getOrDefault("isin", "");
+    String ic = (source.issuerCountry != null && !source.issuerCountry.trim().isEmpty()) ? source.issuerCountry
+        : meta.getOrDefault("issuercountry", "");
 
-   /**
-    * Get transaction ID from note field
-    */
-   public String getTxnId() {
-      if (txnId != null && !txnId.trim().isEmpty()) {
-        return txnId.trim();
-      }
-      return parseNoteMetadata(note).getOrDefault("txnId", "");
-   }
+    if (b != null && !b.trim().isEmpty())
+      this.broker = b.trim();
+    else
+      this.broker = prevBroker;
+    if (a != null && !a.trim().isEmpty())
+      this.accountId = a.trim();
+    else
+      this.accountId = prevAccountId;
+    if (t != null && !t.trim().isEmpty())
+      this.txnId = t.trim();
+    else
+      this.txnId = prevTxnId;
+    if (c != null && !c.trim().isEmpty())
+      this.code = c.trim();
+    else
+      this.code = prevCode;
 
-   public String getCode() {
-     if (code != null && !code.trim().isEmpty()) {
-       return code.trim();
-     }
-     return parseNoteMetadata(note).getOrDefault("code", "");
-   }
+    if (i != null && !i.trim().isEmpty())
+      this.isin = i.trim();
+    if (ic != null && !ic.trim().isEmpty())
+      this.issuerCountry = ic.trim();
+  }
 
-    /**
-     * Get effect description for derivatives based on code
-     * A = Assignment, Ex = Exercise, Ep = Expired
-     * Supports multiple codes separated by commas
-     * Only applies to derivative transactions (DIRECTION_DBUY, DIRECTION_DSELL)
-     */
-    public String getEffect() {
-      // Only show effect for derivatives
-      if (direction != DIRECTION_DBUY && direction != DIRECTION_DSELL) {
-        return "";
-      }
+  /**
+   * Update fields from another transaction (used for re-import updates) when
+   * TxnID match is used.
+   *
+   * In this mode we can safely update the timestamp to include missing seconds,
+   * because identity is anchored by TxnID.
+   */
+  public void updateFromTransactionWithTxnIdMatch(Transaction source) {
+    // Keep existing behavior
+    updateFromTransaction(source);
 
-       String codeString = getCode();
-       if (codeString.isEmpty()) {
-         return "";
-       }
+    // Also update trade timestamp
+    this.setDate(source.getDate());
+  }
 
-      // Split by semicolon and process each code (format: Code:A;C or Code:C;Ep)
-      String[] codes = codeString.split(";");
-      java.util.List<String> effects = new java.util.ArrayList<>();
+  /**
+   * Parse structured note field and extract metadata
+   * Format: Description|Broker:VALUE|AccountID:VALUE|TxnID:VALUE|Code:VALUE
+   * Returns map with keys: broker, accountId, txnId, code
+   */
+  public static java.util.Map<String, String> parseNoteMetadata(String note) {
+    java.util.Map<String, String> metadata = new java.util.HashMap<>();
 
-      for (String code : codes) {
-        String trimmedCode = code.trim();
-        String effect = "";
-        switch (trimmedCode) {
-          case "A":
-            effect = "Assignment";
-            break;
-          case "Ex":
-            effect = "Exercise";
-            break;
-          case "Ep":
-            effect = "Expired";
-            break;
-          default:
-            // Ignore unknown codes
-            continue;
-        }
-        if (!effect.isEmpty()) {
-          effects.add(effect);
-        }
-      }
-
-      // Return comma-separated effects or empty string
-      return String.join(", ", effects);
+    if (note == null || note.isEmpty()) {
+      return metadata;
     }
 
-   /**
-    * Compare function
+    // Split by pipe delimiter
+    String[] parts = note.split("\\|");
+
+    for (String part : parts) {
+      if (part.contains(":")) {
+        String[] keyValue = part.split(":", 2);
+        String key = keyValue[0].trim().toLowerCase();
+        String value = keyValue.length > 1 ? keyValue[1].trim() : "";
+
+        switch (key) {
+          case "broker":
+            metadata.put("broker", value);
+            break;
+          case "accountid":
+            metadata.put("accountId", value);
+            break;
+          case "txnid":
+            metadata.put("txnId", value);
+            break;
+          case "code":
+            metadata.put("code", value);
+            break;
+          case "isin":
+            metadata.put("isin", value);
+            break;
+          case "issuercountry":
+            metadata.put("issuercountry", value);
+            break;
+        }
+      }
+    }
+
+    return metadata;
+  }
+
+  public void hydrateMetadataFromNote() {
+    if (note == null || note.trim().isEmpty())
+      return;
+
+    java.util.Map<String, String> meta = parseNoteMetadata(note);
+    if (this.broker == null || this.broker.trim().isEmpty()) {
+      String v = meta.getOrDefault("broker", "");
+      if (!v.isEmpty())
+        this.broker = v;
+    }
+    if (this.accountId == null || this.accountId.trim().isEmpty()) {
+      String v = meta.getOrDefault("accountId", "");
+      if (!v.isEmpty())
+        this.accountId = v;
+    }
+    if (this.txnId == null || this.txnId.trim().isEmpty()) {
+      String v = meta.getOrDefault("txnId", "");
+      if (!v.isEmpty())
+        this.txnId = v;
+    }
+    if (this.code == null || this.code.trim().isEmpty()) {
+      String v = meta.getOrDefault("code", "");
+      if (!v.isEmpty())
+        this.code = v;
+    }
+    if (this.isin == null || this.isin.trim().isEmpty()) {
+      String v = meta.getOrDefault("isin", "");
+      if (!v.isEmpty())
+        this.isin = v;
+    }
+    if (this.issuerCountry == null || this.issuerCountry.trim().isEmpty()) {
+      String v = meta.getOrDefault("issuercountry", "");
+      if (!v.isEmpty())
+        this.issuerCountry = v;
+    }
+  }
+
+  /**
+   * Get broker from note field
    */
-  public int compareTo(Object o)
-  {
+  public String getBroker() {
+    if (broker != null && !broker.trim().isEmpty()) {
+      return broker.trim();
+    }
+    return parseNoteMetadata(note).getOrDefault("broker", "");
+  }
+
+  /**
+   * Get account ID from note field
+   */
+  public String getAccountId() {
+    if (accountId != null && !accountId.trim().isEmpty()) {
+      return accountId.trim();
+    }
+    return parseNoteMetadata(note).getOrDefault("accountId", "");
+  }
+
+  /**
+   * Get transaction ID from note field
+   */
+  public String getTxnId() {
+    if (txnId != null && !txnId.trim().isEmpty()) {
+      return txnId.trim();
+    }
+    return parseNoteMetadata(note).getOrDefault("txnId", "");
+  }
+
+  public String getCode() {
+    if (code != null && !code.trim().isEmpty()) {
+      return code.trim();
+    }
+    return parseNoteMetadata(note).getOrDefault("code", "");
+  }
+
+  public String getIsin() {
+    if (isin != null && !isin.trim().isEmpty()) {
+      return isin.trim();
+    }
+    return parseNoteMetadata(note).getOrDefault("isin", "");
+  }
+
+  public String getIssuerCountry() {
+    if (issuerCountry != null && !issuerCountry.trim().isEmpty()) {
+      return issuerCountry.trim();
+    }
+    return parseNoteMetadata(note).getOrDefault("issuercountry", "");
+  }
+
+  /**
+   * Get effect description for derivatives based on code
+   * A = Assignment, Ex = Exercise, Ep = Expired
+   * Supports multiple codes separated by commas
+   * Only applies to derivative transactions (DIRECTION_DBUY, DIRECTION_DSELL)
+   */
+  public String getEffect() {
+    // Only show effect for derivatives
+    if (direction != DIRECTION_DBUY && direction != DIRECTION_DSELL) {
+      return "";
+    }
+
+    String codeString = getCode();
+    if (codeString.isEmpty()) {
+      return "";
+    }
+
+    // Split by semicolon and process each code (format: Code:A;C or Code:C;Ep)
+    String[] codes = codeString.split(";");
+    java.util.List<String> effects = new java.util.ArrayList<>();
+
+    for (String code : codes) {
+      String trimmedCode = code.trim();
+      String effect = "";
+      switch (trimmedCode) {
+        case "A":
+          effect = "Assignment";
+          break;
+        case "Ex":
+          effect = "Exercise";
+          break;
+        case "Ep":
+          effect = "Expired";
+          break;
+        default:
+          // Ignore unknown codes
+          continue;
+      }
+      if (!effect.isEmpty()) {
+        effects.add(effect);
+      }
+    }
+
+    // Return comma-separated effects or empty string
+    return String.join(", ", effects);
+  }
+
+  /**
+   * Compare function
+   */
+  public int compareTo(Object o) {
     int res;
-    
-    Transaction tx = (Transaction)o;
-    
+
+    Transaction tx = (Transaction) o;
+
     // Compare dates
     res = date.compareTo(tx.getDate());
-    if (res != 0) return res;
-    
+    if (res != 0)
+      return res;
+
     // Compare serials
-    if (serial < tx.getSerial()) return -1;
-    else return 1;
+    if (serial < tx.getSerial())
+      return -1;
+    else
+      return 1;
   }
-  
+
   /**
    * Return whether transaction is completely filled in
    */
-  public boolean isFilledIn()
-  {
+  public boolean isFilledIn() {
     if (disabled) {
       // Allow saving disabled rows even if some fields are incomplete.
       return (serial != 0) && (date != null) && (ticker != null);
     }
-    switch(direction) {
+    switch (direction) {
       case DIRECTION_TRANS_ADD:
       case DIRECTION_TRANS_SUB:
         // We need not price & price currency for transformations
         return ((serial != 0) && (date != null) && (direction != 0) && (ticker != null) &&
-         (amount != null));
+            (amount != null));
       default:
         return ((serial != 0) && (date != null) && (direction != 0) && (ticker != null) &&
-         (amount != null) && (price != null) && (priceCurrency != null));
+            (amount != null) && (price != null) && (priceCurrency != null));
     }
   }
-  
-  public void save(PrintWriter ofl, String prefix) throws java.io.IOException
-  {
+
+  public String getMetadataFromNote(String key) {
+    if (note == null || note.isEmpty())
+      return null;
+
+    // Search for |key:Value| or Key:Value at start
+    String searchKey = "|" + key + ":";
+    int start = note.indexOf(searchKey);
+    if (start < 0 && note.startsWith(key + ":")) {
+      start = 0;
+    } else if (start >= 0) {
+      start += searchKey.length();
+    } else {
+      return null;
+    }
+
+    if (start == 0) {
+      start = key.length() + 1;
+    }
+
+    int end = note.indexOf('|', start);
+    if (end < 0) {
+      return note.substring(start).trim();
+    } else {
+      return note.substring(start, end).trim();
+    }
+  }
+
+  public void save(PrintWriter ofl, String prefix) throws java.io.IOException {
     GregorianCalendar cal = new GregorianCalendar();
-    
+
     cal.setTime(date);
-    
-    ofl.println(prefix+"serial="+serial);
-    ofl.println(prefix+"date="+getStringDate());
-    ofl.println(prefix+"direction="+direction);
-    ofl.println(prefix+"ticker="+ticker);
-    ofl.println(prefix+"amount="+amount);
-    ofl.println(prefix+"price="+price);
-    ofl.println(prefix+"priceCurrency="+priceCurrency);
-    ofl.println(prefix+"fee="+fee);
-    ofl.println(prefix+"feeCurrency="+feeCurrency);
-    ofl.println(prefix+"market="+market);
-    ofl.println(prefix+"exDate="+getStringExecutionDate());
-    ofl.println(prefix+"broker="+getBroker());
-    ofl.println(prefix+"accountId="+getAccountId());
-    ofl.println(prefix+"txnId="+getTxnId());
-    ofl.println(prefix+"code="+getCode());
-    ofl.println(prefix+"disabled=" + (disabled ? "1" : "0"));
-    ofl.println(prefix+"note="+note);
+
+    ofl.println(prefix + "serial=" + serial);
+    ofl.println(prefix + "date=" + getStringDate());
+    ofl.println(prefix + "direction=" + direction);
+    ofl.println(prefix + "ticker=" + ticker);
+    ofl.println(prefix + "amount=" + amount);
+    ofl.println(prefix + "price=" + price);
+    ofl.println(prefix + "priceCurrency=" + priceCurrency);
+    ofl.println(prefix + "fee=" + fee);
+    ofl.println(prefix + "feeCurrency=" + feeCurrency);
+    ofl.println(prefix + "market=" + market);
+    ofl.println(prefix + "exDate=" + getStringExecutionDate());
+    ofl.println(prefix + "broker=" + getBroker());
+    ofl.println(prefix + "accountId=" + getAccountId());
+    ofl.println(prefix + "txnId=" + getTxnId());
+    ofl.println(prefix + "code=" + getCode());
+    ofl.println(prefix + "disabled=" + (disabled ? "1" : "0"));
+    ofl.println(prefix + "note=" + note);
   }
-  
-  public void export(PrintWriter ofl) throws java.io.IOException
-  {
-    //ofl.println(getStringDate()+";"+getStringType()+";"+getStringDirection()+";"+ticker+";"+amount+";"+ff.format(price)+";"+priceCurrency+";"+ff.format(fee)+";"+feeCurrency+";"+market+";"+getStringExecutionDate()+";"+note);
-      ofl.println(getStringDate()+";"+getStringType()+";"+getStringDirection()+";"+ticker+";"+amount+";"+price+";"+priceCurrency+";"+fee+";"+feeCurrency+";"+market+";"+getStringExecutionDate()+";"+getBroker()+";"+getAccountId()+";"+getTxnId()+";"+getEffect()+";"+note);
+
+  public void export(PrintWriter ofl) throws java.io.IOException {
+    // ofl.println(getStringDate()+";"+getStringType()+";"+getStringDirection()+";"+ticker+";"+amount+";"+ff.format(price)+";"+priceCurrency+";"+ff.format(fee)+";"+feeCurrency+";"+market+";"+getStringExecutionDate()+";"+note);
+    ofl.println(getStringDate() + ";" + getStringType() + ";" + getStringDirection() + ";" + ticker + ";" + amount + ";"
+        + price + ";" + priceCurrency + ";" + fee + ";" + feeCurrency + ";" + market + ";" + getStringExecutionDate()
+        + ";" + getBroker() + ";" + getAccountId() + ";" + getTxnId() + ";" + getIsin() + ";" + getIssuerCountry() + ";"
+        + getEffect() + ";" + note);
   }
-  
-    public void exportFIO(PrintWriter ofl) throws java.io.IOException
-  {
-      // Export je pro kacka.baldsoft.com a ta nepodporuje derivaty ani transformace takze pouze exportuje Cenne papiry
-      if (getStringType().equals("CP")) {
-          // price 10.22 but FIO use czech locale we need 10,22 how  silly
-          String price_s = String.valueOf(price).replace(".", ",");
-          //if (fee>0) { String fee_s=String.valueOf(fee).replace(".",",");} else { String fee_s="";}
-          // getStringDirection() Nakup (-amount) vs Prodej(+amount)
-          int sign = 0;
-          if (getStringDirection().equals("Nákup")) {
-              sign = -1;
-          } else {
-              sign = 1;
-          }
 
-          // Get fee
-          String ObjemUSD = "";
-          String ObjemCZK = "";
-          String ObjemEUR = "";
-          if (priceCurrency.equals("USD")) {
-              ObjemUSD = String.valueOf(ff.format(price * amount * sign)).replace(".", ",");
-          }
-          if (priceCurrency.equals("EUR")) {
-              ObjemEUR = String.valueOf(ff.format(price * amount * sign)).replace(".", ",");
-          }
-          if (priceCurrency.equals("CZK")) {
-              ObjemCZK = String.valueOf(ff.format(price * amount * sign)).replace(".", ",");
-          }
+  public void exportFIO(PrintWriter ofl) throws java.io.IOException {
+    // Export je pro kacka.baldsoft.com a ta nepodporuje derivaty ani transformace
+    // takze pouze exportuje Cenne papiry
+    if (getStringType().equals("CP")) {
+      // price 10.22 but FIO use czech locale we need 10,22 how silly
+      String price_s = String.valueOf(price).replace(".", ",");
+      // if (fee>0) { String fee_s=String.valueOf(fee).replace(".",",");} else {
+      // String fee_s="";}
+      // getStringDirection() Nakup (-amount) vs Prodej(+amount)
+      int sign = 0;
+      if (getStringDirection().equals("Nákup")) {
+        sign = -1;
+      } else {
+        sign = 1;
+      }
 
-          String PoplatkyUSD = "";
-          String PoplatkyCZK = "";
-          String PoplatkyEUR = "";
-          switch (feeCurrency) {
-              case "USD":
-                  PoplatkyUSD = String.valueOf(fee).replace(".", ",");
-                  break;
-              case "EUR":
-                  PoplatkyEUR = String.valueOf(fee).replace(".", ",");
-                  break;
-              case "CZK":
-                  PoplatkyCZK = String.valueOf(fee).replace(".", ",");
-                  break;
-              default:
-        ;
-          }
-          String ExeDate[] = getStringExecutionDate().split(" ", 0);
-          String amount_s = String.valueOf(Math.abs(amount)).replace(".",",");
-          String Text = getStringDate() + ";" + getStringDirection() + ";" + ticker + ";" + price_s + ";" + amount_s + ";" + priceCurrency + ";" + ObjemCZK + ";" + PoplatkyCZK + ";" + ObjemUSD + ";" + PoplatkyUSD + ";" + ObjemEUR + ";" + PoplatkyEUR + ";" + note + ";" + ExeDate[0];
-          //String CP1250 = new String(Text.getBytes("Windows-1250"), "UTF-8");
+      // Get fee
+      String ObjemUSD = "";
+      String ObjemCZK = "";
+      String ObjemEUR = "";
+      if (priceCurrency.equals("USD")) {
+        ObjemUSD = String.valueOf(ff.format(price * amount * sign)).replace(".", ",");
+      }
+      if (priceCurrency.equals("EUR")) {
+        ObjemEUR = String.valueOf(ff.format(price * amount * sign)).replace(".", ",");
+      }
+      if (priceCurrency.equals("CZK")) {
+        ObjemCZK = String.valueOf(ff.format(price * amount * sign)).replace(".", ",");
+      }
 
-          //ofl.println(getStringDate()+";"+getStringDirection()+";"+ticker+";"+price_s+";"+(int)Math.abs(amount)+";"+priceCurrency+";"+ObjemCZK+";"+PoplatkyCZK+";"+ObjemUSD+";"+PoplatkyUSD+";"+ObjemEUR+";"+PoplatkyEUR+";"+note+";"+ExeDate[0]);
-          ofl.println(Text);
-      } //is CP only
-  } 
+      String PoplatkyUSD = "";
+      String PoplatkyCZK = "";
+      String PoplatkyEUR = "";
+      switch (feeCurrency) {
+        case "USD":
+          PoplatkyUSD = String.valueOf(fee).replace(".", ",");
+          break;
+        case "EUR":
+          PoplatkyEUR = String.valueOf(fee).replace(".", ",");
+          break;
+        case "CZK":
+          PoplatkyCZK = String.valueOf(fee).replace(".", ",");
+          break;
+        default:
+          ;
+      }
+      String ExeDate[] = getStringExecutionDate().split(" ", 0);
+      String amount_s = String.valueOf(Math.abs(amount)).replace(".", ",");
+      String Text = getStringDate() + ";" + getStringDirection() + ";" + ticker + ";" + price_s + ";" + amount_s + ";"
+          + priceCurrency + ";" + ObjemCZK + ";" + PoplatkyCZK + ";" + ObjemUSD + ";" + PoplatkyUSD + ";" + ObjemEUR
+          + ";" + PoplatkyEUR + ";" + note + ";" + ExeDate[0];
+      // String CP1250 = new String(Text.getBytes("Windows-1250"), "UTF-8");
+
+      // ofl.println(getStringDate()+";"+getStringDirection()+";"+ticker+";"+price_s+";"+(int)Math.abs(amount)+";"+priceCurrency+";"+ObjemCZK+";"+PoplatkyCZK+";"+ObjemUSD+";"+PoplatkyUSD+";"+ObjemEUR+";"+PoplatkyEUR+";"+note+";"+ExeDate[0]);
+      ofl.println(Text);
+    } // is CP only
+  }
 
 }
