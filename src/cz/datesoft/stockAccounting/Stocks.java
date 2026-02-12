@@ -17,6 +17,11 @@ import java.util.Vector;
 import java.util.Iterator;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Calendar;
+import java.text.SimpleDateFormat;
 
 /**
  * Class holding list of stocks we bought and when
@@ -951,13 +956,14 @@ public class Stocks {
 
   /**
    * Transformations not yet applied
+   * Key = yyyy-MM-dd HH:mm|broker|accountId (minute-level)
    */
-  Vector<Transaction> trans;
+  Map<String, List<Transaction>> pendingTransformations;
 
   /** Creates a new instance of Stocks */
   public Stocks() {
     infos = new HashMap<String, StockInfo>();
-    trans = new Vector<Transaction>();
+    pendingTransformations = new HashMap<String, List<Transaction>>();
   }
 
   /**
@@ -976,6 +982,81 @@ public class Stocks {
     infos.put(ticker, res);
 
     return res;
+  }
+
+  /**
+   * Generate a key for grouping transformations
+   * Format: yyyy-MM-dd HH:mm|broker|accountId
+   */
+  private String getTransformationKey(Transaction tx) {
+    Calendar cal = GregorianCalendar.getInstance();
+    cal.setTime(tx.getDate());
+    cal.set(GregorianCalendar.SECOND, 0);
+    cal.set(GregorianCalendar.MILLISECOND, 0);
+
+    SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+    String timeKey = df.format(cal.getTime());
+
+    // Add broker and accountId for disambiguation
+    String broker = tx.getBroker() != null ? tx.getBroker() : "";
+    String accountId = tx.getAccountId() != null ? tx.getAccountId() : "";
+
+    return timeKey + "|" + broker + "|" + accountId;
+  }
+
+  /**
+   * Process a bucket of transformations (all transactions in the same minute)
+   * @param bucket List of transformations to process
+   * @throws TradingException if the bucket is invalid
+   */
+  private void processTransformationBucket(List<Transaction> bucket) throws TradingException {
+    // Split by TxnID
+    Map<String, List<Transaction>> byTxnId = new HashMap<String, List<Transaction>>();
+    List<Transaction> noTxnId = new ArrayList<Transaction>();
+
+    for (Transaction tx : bucket) {
+      String txnId = tx.getTxnId();
+      if (txnId != null && !txnId.isEmpty()) {
+        byTxnId.computeIfAbsent(txnId, k -> new ArrayList<Transaction>()).add(tx);
+      } else {
+        noTxnId.add(tx);
+      }
+    }
+
+    // Process transformations with TxnID
+    for (List<Transaction> group : byTxnId.values()) {
+      if (group.size() != 2) {
+        throw new TradingException(
+          "Transformace s TxnID=" + group.get(0).getTxnId() +
+          " má " + group.size() + " transakcí (očekáváno 2: SUB + ADD). Každá korporátní akce musí mít PŘESNĚ 2 transakce (SUB + ADD)."
+        );
+      }
+      applyTransformationPair(group.get(0), group.get(1));
+    }
+
+    // Process transformations without TxnID (backward compatibility)
+    if (noTxnId.size() == 2) {
+      applyTransformationPair(noTxnId.get(0), noTxnId.get(1));
+    } else if (noTxnId.size() > 2) {
+      throw new TradingException(
+        "Nalezeno " + noTxnId.size() + " transformací ve stejné minutě bez ID transakce.\n\n" +
+        "Pro vyřešení:\n" +
+        "  1) Pokud importujete z IBKR/Trading 212, zkontrolujte nastavení exportu.\n" +
+        "  2) Přidejte ID transakce (TxnID) do obou transakcí.\n" +
+        "  3) Nebo rozdělte transformace do různých minut."
+      );
+    }
+  }
+
+  /**
+   * Flush all pending transformations
+   * @throws TradingException if any transformation is invalid
+   */
+  private void flushPendingTransformation() throws TradingException {
+    for (List<Transaction> bucket : pendingTransformations.values()) {
+      processTransformationBucket(bucket);
+    }
+    pendingTransformations.clear();
   }
 
   /**
@@ -1004,50 +1085,38 @@ public class Stocks {
       throw new TradingException(
           "Ticker: " + tx.getTicker() + ": datum: " + tx.getDate() + ", transakce nemá vyplněný počet!");
 
-    if (trans.size() > 0) {
-      // Check if we should apply transactions
-      Transaction tx1 = trans.get(0);
+    if (pendingTransformations.size() > 0) {
+      // Get key of the first pending transformation
+      String firstKey = pendingTransformations.keySet().iterator().next();
 
-      if ((tx.getDirection() != Transaction.DIRECTION_TRANS_ADD)
-          && (tx.getDirection() != Transaction.DIRECTION_TRANS_SUB))
-        finishTransformations(); // Not a transformation - finish
-      if (tx.getDate().compareTo(tx1.getDate()) != 0)
-        finishTransformations(); // Another date - finish
-      else {
-        // Backward-compatible handling for multiple transformation pairs at the same timestamp:
-        // if a 3rd transformation arrives for the same exact time, finish the current pair
-        // and start a new pair instead of throwing.
-        if (trans.size() == 2) {
-          finishTransformations();
-          // After finishing, treat current transaction as start of a new transformation pair.
-          if ((tx.getDirection() == Transaction.DIRECTION_TRANS_ADD)
-              || (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB)) {
-            trans.add(tx);
-            return null;
-          }
+      // Check if current transaction is a transformation
+      boolean isTransformation = (tx.getDirection() == Transaction.DIRECTION_TRANS_ADD)
+          || (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB);
+
+      if (!isTransformation) {
+        // Not a transformation - flush pending transformations
+        flushPendingTransformation();
+      } else {
+        // Check if the minute key has changed
+        String currentKey = getTransformationKey(tx);
+        if (!currentKey.equals(firstKey)) {
+          // Different minute - flush pending transformations first
+          flushPendingTransformation();
+
+          // Add this transformation to new bucket
+          pendingTransformations.computeIfAbsent(currentKey, k -> new ArrayList<Transaction>()).add(tx);
+        } else {
+          // Same minute - add to current bucket
+          pendingTransformations.get(currentKey).add(tx);
         }
-
-        if (tx.getDirection() == tx1.getDirection()) {
-          throw new TradingException("Ticker: " + tx.getTicker() + ", datum: " + tx.getDate()
-              + ", dvě transformace ve stejný čas jsou stejného typu!");
-        }
-
-        if (trans.size() == 2) {
-          throw new TradingException(
-              "Ticker: " + tx.getTicker() + ", datum: " + tx.getDate() + ", více než dvě transformace ve stejný čas!");
-        }
-
-        // Add transformation
-        trans.add(tx);
-
-        return null;
       }
     }
 
     if ((tx.getDirection() == Transaction.DIRECTION_TRANS_ADD)
         || (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB)) {
-      // Transformation - add
-      trans.add(tx);
+      // Transformation - add to bucket
+      String key = getTransformationKey(tx);
+      pendingTransformations.computeIfAbsent(key, k -> new ArrayList<Transaction>()).add(tx);
       return null;
     }
 
@@ -1136,19 +1205,13 @@ public class Stocks {
   /**
    * Finish transformations that may be yet incomplete
    */
-  public void finishTransformations() throws TradingException {
-    if (trans.size() == 0)
-      return; // Nothing to finish
-
-    if (trans.size() != 2) {
-      Transaction tx = trans.get(0);
-      throw new TradingException(
-          "Ticker: " + tx.getTicker() + ", datum: " + tx.getDate() + ", pouze jedna transformace ve stejný čas!");
-    }
-
-    Transaction tx1 = trans.get(0);
-    Transaction tx2 = trans.get(1);
-
+  /**
+   * Apply a single transformation pair (SUB + ADD)
+   * @param tx1 First transaction (will be adjusted to SUB if needed)
+   * @param tx2 Second transaction
+   * @throws TradingException if validation fails
+   */
+  private void applyTransformationPair(Transaction tx1, Transaction tx2) throws TradingException {
     // Make TX1 to be always SUB
     if (tx1.getDirection() != Transaction.DIRECTION_TRANS_SUB) {
       Transaction tx = tx2;
@@ -1204,13 +1267,18 @@ public class Stocks {
     if (info.getAmountD() == 0) {
       infos.remove(info.getTicker());
     }
-
-    trans.clear();
   }
 
   /**
-   * Get list of stock currently on the acount
+   * Apply a single transformation pair (SUB + ADD)
+   * @param tx1 First transaction (will be adjusted to SUB if needed)
+   * @param tx2 Second transaction
+   * @throws TradingException if validation fails
    */
+  public void finishTransformations() throws TradingException {
+    flushPendingTransformation();
+  }
+
   public String[] getStockTickers() {
     String[] res = new String[infos.size()];
     infos.keySet().toArray(res);

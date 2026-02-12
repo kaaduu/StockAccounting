@@ -19,6 +19,7 @@ import javax.swing.table.TableColumnModel;
 import java.io.File;
 import java.awt.FileDialog;
 import java.awt.Desktop;
+import cz.datesoft.stockAccounting.UiDialogs;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -3084,10 +3085,10 @@ public class ComputeWindow extends javax.swing.JDialog {
       modelDer.setNumRows(0);
       modelCash.setNumRows(0);
 
-      // Show error message
-      JOptionPane.showMessageDialog(this,
-          "V průběhu výpočtu došlo k chybě:\n\n" + ex.getMessage() + "\n\nVýpočet byl přerušen.", "Chyba",
-          JOptionPane.ERROR_MESSAGE);
+      // Show error message with details
+      UiDialogs.error(this,
+          "V průběhu výpočtu došlo k chybě:\n\n" + ex.getMessage() + "\n\nVýpočet byl přerušen.", "Chyba při výpočtu",
+          ex);
 
       return;
     }

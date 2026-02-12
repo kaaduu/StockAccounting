@@ -1183,16 +1183,8 @@ public class ImportWindow extends javax.swing.JFrame {
 
       clearPreview();
 
-      // Enforce minute-level uniqueness rules for transformations.
-      // If a transformation pair exists at a minute, it must be the only content of
-      // that minute.
-      // Any colliding trades/other rows are shifted forward by +N minutes.
-      normalizeIbkrMinuteCollisions(mainWindow.getTransactionDatabase(), parsedTransactions);
-
-      // Disambiguate rare collisions caused by minute-level timestamp precision.
-      // This keeps IBKR Flex re-import stable: update one existing row, insert the
-      // other(s).
-      disambiguateIbkrDuplicateCollisions(mainWindow.getTransactionDatabase(), parsedTransactions);
+      // Note: Time Shifting removed - new TxnID-based grouping handles collisions
+      // Normalization of minute collisions has been replaced with TxnID-based grouping
 
       Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase()
           .filterDuplicates(parsedTransactions);
