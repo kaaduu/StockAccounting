@@ -1005,6 +1005,49 @@ public class Stocks {
   }
 
   /**
+   * Format transaction details for error messages
+   * @param tx Transaction to format
+   * @return Formatted string with transaction details
+   */
+  private String formatTransactionDetails(Transaction tx) {
+    StringBuilder sb = new StringBuilder();
+    
+    // Date
+    sb.append("  Datum: ").append(tx.getStringDate()).append("\n");
+    
+    // Ticker
+    sb.append("  Ticker: ").append(tx.getTicker() != null ? tx.getTicker() : "(nevyplněno)").append("\n");
+    
+    // Direction
+    String direction = tx.getDirection() == Transaction.DIRECTION_TRANS_ADD ? "ADD (Přidání)" :
+                       tx.getDirection() == Transaction.DIRECTION_TRANS_SUB ? "SUB (Odebrání)" : "(neznámý)";
+    sb.append("  Směr: ").append(direction).append("\n");
+    
+    // Amount
+    Double amount = tx.getAmount();
+    sb.append("  Množství: ").append(amount != null ? amount.toString() : "(nevyplněno)").append("\n");
+    
+    // Note (truncate if too long)
+    String note = tx.getNote();
+    if (note == null || note.trim().isEmpty()) {
+      note = "(bez poznámky)";
+    } else if (note.length() > 100) {
+      note = note.substring(0, 97) + "...";
+    }
+    sb.append("  Poznámka: ").append(note).append("\n");
+    
+    // Broker
+    String broker = tx.getBroker();
+    sb.append("  Broker: ").append(broker != null && !broker.isEmpty() ? broker : "(nevyplněno)").append("\n");
+    
+    // Account ID
+    String accountId = tx.getAccountId();
+    sb.append("  Účet: ").append(accountId != null && !accountId.isEmpty() ? accountId : "(nevyplněno)");
+    
+    return sb.toString();
+  }
+
+  /**
    * Process a bucket of transformations (all transactions in the same minute)
    * @param bucket List of transformations to process
    * @throws TradingException if the bucket is invalid
@@ -1037,14 +1080,37 @@ public class Stocks {
     // Process transformations without TxnID (backward compatibility)
     if (noTxnId.size() == 2) {
       applyTransformationPair(noTxnId.get(0), noTxnId.get(1));
-    } else if (noTxnId.size() > 2) {
+    } else if (noTxnId.size() == 1) {
+      // Single transformation without pair
+      Transaction tx = noTxnId.get(0);
       throw new TradingException(
-        "Nalezeno " + noTxnId.size() + " transformací ve stejné minutě bez ID transakce.\n\n" +
-        "Pro vyřešení:\n" +
-        "  1) Pokud importujete z IBKR/Trading 212, zkontrolujte nastavení exportu.\n" +
-        "  2) Přidejte ID transakce (TxnID) do obou transakcí.\n" +
-        "  3) Nebo rozdělte transformace do různých minut."
+        "Nalezena 1 transformace bez páru (očekávány 2: SUB + ADD).\n\n" +
+        "Detaily transakce:\n" +
+        formatTransactionDetails(tx) +
+        "\nPro vyřešení:\n" +
+        "  1) Přidejte ID transakce (TxnID) do obou transakcí.\n" +
+        "  2) Nebo rozdělte transformace do různých minut."
       );
+    } else if (noTxnId.size() > 2) {
+      // Multiple transformations without TxnID - show all details
+      StringBuilder sb = new StringBuilder();
+      sb.append("Nalezeno ").append(noTxnId.size())
+        .append(" transformací ve stejné minutě bez ID transakce.\n\n");
+      
+      for (int i = 0; i < noTxnId.size(); i++) {
+        sb.append("Transakce ").append(i + 1).append(":\n");
+        sb.append(formatTransactionDetails(noTxnId.get(i)));
+        if (i < noTxnId.size() - 1) {
+          sb.append("\n");
+        }
+      }
+      
+      sb.append("\nPro vyřešení:\n");
+      sb.append("  1) Pokud importujete z IBKR/Trading 212, zkontrolujte nastavení exportu.\n");
+      sb.append("  2) Přidejte ID transakce (TxnID) do obou transakcí.\n");
+      sb.append("  3) Nebo rozdělte transformace do různých minut.");
+      
+      throw new TradingException(sb.toString());
     }
   }
 

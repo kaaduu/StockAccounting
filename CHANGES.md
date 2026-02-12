@@ -4,6 +4,25 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Vylepšení chybových zpráv transformací] - 2026-02-12
+
+### Úprava
+- Vylepšena chybová zpráva při více než 2 transformacích bez TxnID ve stejné minutě
+- Chybová zpráva nyní zobrazuje detaily všech transformací (datum, ticker, směr, množství, poznámka, broker, účet)
+- Přidáno explicitní zpracování případu s jednou transformací bez páru (bez TxnID)
+- Detailní informace usnadňují identifikaci problematických dat při ladění
+- Chybová zpráva používá české popisy a zástupné texty pro nevyplněná pole
+
+### Technické detaily
+- Přidána pomocná metoda `formatTransactionDetails()` pro formátování detailů transakce
+- Poznámky delší než 100 znaků jsou zkraceny s "..."
+- Nulové hodnoty jsou zobrazeny jako "(nevyplněno)" nebo "(bez poznámky)"
+- Všechny přístupy k polím jsou nulově bezpečné (null-safe)
+- Zachovány původní kroky řešení v chybové zprávě
+
+### Změny v existujících souborech
+- `Stocks.java`: Metoda `processTransformationBucket()` rozšířena o detailní chybové zprávy
+
 ## [Kontrola chybějících kurzů po importu] - 2026-02-12
 
 ### Nové
