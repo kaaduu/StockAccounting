@@ -4,6 +4,21 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Oprava duplicitních transformací] - 2026-02-12
+
+### Úprava
+- Opravena kritická chyba způsobující duplicitní přidání transformací do `pendingTransformations`
+- Transformace se nyní nepřidává dvakrát při zpracování s čekajícími transformacemi
+- Přidány výčasné návratové příkazy (`return null`) pro zabránění duplicit
+
+### Technické detaily
+- Oprava v metodě `applyTransaction()` (řádky 1174 a 1178)
+- Při zpracování transformací s čekajícími se nyní správně vrací po přidání
+- Druhý blok pro přidání transformací se provádí pouze když nejsou čekající transformace
+
+### Změny v existujících souborech
+- `Stocks.java`: Metoda `applyTransaction()` opravena o duplicitní přidání
+
 ## [Vylepšení chybových zpráv transformací] - 2026-02-12
 
 ### Úprava

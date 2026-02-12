@@ -1171,16 +1171,18 @@ public class Stocks {
 
           // Add this transformation to new bucket
           pendingTransformations.computeIfAbsent(currentKey, k -> new ArrayList<Transaction>()).add(tx);
+          return null;
         } else {
           // Same minute - add to current bucket
           pendingTransformations.get(currentKey).add(tx);
+          return null;
         }
       }
     }
 
     if ((tx.getDirection() == Transaction.DIRECTION_TRANS_ADD)
         || (tx.getDirection() == Transaction.DIRECTION_TRANS_SUB)) {
-      // Transformation - add to bucket
+      // Transformation - add to bucket (only when no pending transformations)
       String key = getTransformationKey(tx);
       pendingTransformations.computeIfAbsent(key, k -> new ArrayList<Transaction>()).add(tx);
       return null;
