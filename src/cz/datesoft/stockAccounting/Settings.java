@@ -173,6 +173,11 @@ public class Settings {
    */
   private static boolean updateDuplicatesOnImport = false;
 
+  /**
+   * Check for missing FX rates after import/load checkbox state
+   */
+  private static boolean checkMissingRatesAfterLoad = true;
+
   // File chooser preference
   public static final int FILE_CHOOSER_NATIVE = 0;
   public static final int FILE_CHOOSER_SWING = 1;
@@ -378,6 +383,15 @@ public class Settings {
       throw new java.lang.IllegalArgumentException("Kurs měny " + currency + " pro rok " + year + " není zadán!");
 
     return d.doubleValue();
+  }
+
+  /**
+   * Add or update a currency ratio
+   */
+  public static void addOrUpdateRatio(String currency, int year, double ratio) {
+    CurrencyRatio newRatio = new CurrencyRatio(currency, year, ratio);
+    ratios.add(newRatio);
+    ratioCacheValid = false;
   }
 
   /**
@@ -827,6 +841,20 @@ public class Settings {
   }
 
   /**
+   * Get check for missing FX rates after import/load checkbox state
+   */
+  public static boolean getCheckMissingRatesAfterLoad() {
+    return checkMissingRatesAfterLoad;
+  }
+
+  /**
+   * Set check for missing FX rates after import/load checkbox state
+   */
+  public static void setCheckMissingRatesAfterLoad(boolean value) {
+    checkMissingRatesAfterLoad = value;
+  }
+
+  /**
    * Get update duplicates on import checkbox state
    */
   public static boolean getUpdateDuplicatesOnImport() {
@@ -1044,6 +1072,9 @@ public class Settings {
     /* Update duplicates on import */
     updateDuplicatesOnImport = p.getBoolean("updateDuplicatesOnImport", false);
 
+    /* Check for missing FX rates after load */
+    checkMissingRatesAfterLoad = p.getBoolean("checkMissingRatesAfterLoad", true);
+
     /* File chooser preference */
     fileChooserMode = p.getInt("fileChooserMode", FILE_CHOOSER_NATIVE);
     if (fileChooserMode != FILE_CHOOSER_NATIVE && fileChooserMode != FILE_CHOOSER_SWING) {
@@ -1151,6 +1182,9 @@ public class Settings {
 
     // Update duplicates on import
     p.putBoolean("updateDuplicatesOnImport", updateDuplicatesOnImport);
+
+    // Check for missing FX rates after load
+    p.putBoolean("checkMissingRatesAfterLoad", checkMissingRatesAfterLoad);
 
     // File chooser preference
     p.putInt("fileChooserMode", fileChooserMode);

@@ -4,6 +4,104 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Kontrola chybějících kurzů po importu] - 2026-02-12
+
+### Nové
+- Automatická kontrola chybějících měnových kurzů po importu transakcí
+- Kontrola denních kurzů i jednotných kurzů (jednotný kurz)
+- Zobrazení dialogu s možností stažení chybějících kurzů z ČNB
+- Nastavení v předvolbách pro povolení/zákaz kontroly (výchozí: zapnuto)
+- Zvýraznění chybějících kurzů v tabulce nastavení (červená barva)
+- Komplexní logování událostí do konzole i do Nápověda → Logy
+
+### Funkce
+- Po úspěšném importu se automaticky kontroluje, zda jsou k dispozici všechny potřebné kurzy
+- Pokud chybějí denní kurzy: uživatel může stáhnout pomocí "Chytré stažení"
+- Pokud chybějí jednotné kurzy: uživatel může otevřít nastavení a vidět zvýrazněné chybějící kurzy
+- Dialog "Chybějící kurzy měn" nabízí možnosti:
+  - "Načíst chybějící kurzy" - automaticky stáhne z ČNB
+  - "Otevřít nastavení" - otevře nastavení kurzů se zvýrazněnými chybějícími položkami
+  - "Ignorovat" - zavře dialog (uživatel může stáhnout kurzy později)
+
+### Nové soubory
+- `FXRateChecker.java` - třída pro kontrolu chybějících kurzů
+- `MissingRatesDialog.java` - dialog pro zobrazení chybějících kurzů a akcí
+
+### Změny v existujících souborech
+- `Settings.java`:
+  - Přidána metoda `addOrUpdateRatio()` pro přidání/aktualizaci jednotného kurzu
+  - Přidáno nastavení `checkMissingRatesAfterImport` (výchozí: true)
+  - Přidány metody getter/setter pro toto nastavení
+- `SettingsWindow.java`:
+  - Přidán renderer `MissingRatesRenderer` pro zvýraznění chybějících kurzů (červeně)
+  - Přidána metoda `highlightMissingRates()` pro zvýraznění chybějících kurzů v tabulce
+  - Přidáno zaškrtávací políčko "Kontrolovat chybějící kurzy po importu" v nastaveních
+- `ImportWindow.java`:
+  - Po importu volá `FXRateChecker.checkForMissingRates()` pokud je kontrola povolena
+  - Zobrazí `MissingRatesDialog` pokud byly nalezeny chybějící kurzy
+
+### Detaily implementace
+- Kontrola zahrnuje denní kurzy (pokud jsou povoleny v nastaveních) a jednotné kurzy
+- Denní kurzy se kontrolují s 7denním lookback pro víkendy a svátky (stejně jako při výpočtu)
+- Načítání kurzů probíhá na pozadí s indikátorem průběhu
+- Při načítání se načítají oba typy kurzů (denní i jednotné)
+- Při chybějících kurzech v nastaveních jsou buňky zvýrazněny červeně
+
+### Oprava - Kontrola kurzů u všech importů
+- **FIXED**: Kontrola chybějících kurzů nyní probíhá u všech typů importu:
+  - Souborové importy (CSV, TradeLog)
+  - IBKR Flex API importy
+  - Trading 212 API importy
+- Před opravou fungovala pouze u běžných souborových importů
+- Vytvořena společná pomocná metoda `performPostImportFXRateCheck()` pro opětovné použití
+
+### Oprava - Kontrola kurzů po načtení .dat souborů
+- **FIXED**: Kontrola chybějících kurzů nyní probíhá i při načtení .dat souborů (otevírání uložených databází)
+- Přejmenováno nastavení z `checkMissingRatesAfterImport` na `checkMissingRatesAfterLoad`
+- Přidáno volání `performPostLoadFXRateCheck()` v `MainWindow.openFile()`
+- Přidáno zpoždění 100ms pro stabilitu UI před kontrolou kurzů
+- Přidáno volání `SwingUtilities.invokeLater()` v `openFile()` pro bezpečné spuštění kontroly
+- Dialog zobrazuje i po načtení existujícího souboru s upraveným textem "načteném souboru"
+- Předvolba "Kontrolovat chybějící kurzy po načtení" nyní ovládá oba scénáře (import i load)
+- Při chybě kontrole zobrazí se chybová zpráva uživateli (stejně jako u importu)
+
+### Logování
+Všechny důležité události jsou logovány do konzole (prefix `[FXRATES:*]`) a do Nápověda → Logy:
+
+**V ImportWindow.java:**
+- `[FXRATES:IMPORT:001]` - Kontrola je spuštěna (pokud je povolena)
+- `[FXRATES:IMPORT:002]` - Nalezeny chybějící kurzy, dialog zobrazen
+- `[FXRATES:IMPORT:003]` - Všechny kurzy jsou k dispozici
+- `[FXRATES:IMPORT:004]` - Kontrola je vypnutá v nastaveních
+
+**Ve FXRateChecker.java:**
+- `[FXRATES:CHECK:001]` - Spuštěna kontrola
+- `[FXRATES:CHECK:002-003]` - Nalezené měny a roky
+- `[FXRATES:CHECK:004]` - ✅ Žádné chybějící kurzy
+- `[FXRATES:CHECK:005-009]` - ⚠ Nalezeny chybějící kurzy (s detaily)
+
+**V MissingRatesDialog.java:**
+- `[FXRATES:DIALOG:001-003]` - Dialog zobrazen (s počty chybějících kurzů)
+- `[FXRATES:DIALOG:004]` - Uživatel ignoroval (zavřel dialog)
+- `[FXRATES:DIALOG:005]` - Uživatel otevřel nastavení
+- `[FXRATES:FETCH:001-004]` - Načítání kurzů spuštěno (s podrobnostmi)
+- `[FXRATES:FETCH:005]` - Načítání dokončeno (s výsledky)
+- `[FXRATES:ERROR:001-002]` - Chyby při načítání kurzů
+
+**V SettingsWindow.java:**
+- `[FXRATES:SETTINGS:001]` - Změna nastavení kontroly (zapnuto/vypnuto)
+- `[FXRATES:SETTINGS:002-007]` - Zvýrazňování chybějících kurzů v tabulce
+
+**AppLog (Nápověda → Logy):**
+- INFO: Spuštění kontroly, výsledky, úspěšné načítání
+- WARN: Nalezeny chybějící kurzy, chyby při načítání
+- ERROR: Výjimky při kontrole nebo načítání
+
+**Logování rozšířeno:**
+- **Import scénář**: `[FXRATES:IMPORT:*]` - logy při importu
+- **Load scénář**: `[FXRATES:LOAD:*]` - logy při načtení .dat souboru
+- Rozlišení logování umožňuje identifikaci scénáře v konzoli i v Nápověda → Logy
+
 ## [TxnID-based seskupování transformací] - 2026-02-12
 
 ### Změněno

@@ -18,6 +18,7 @@ import java.util.GregorianCalendar;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import javax.swing.SwingUtilities;
 
 /**
  *
@@ -4414,6 +4415,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
         // For IBKR Flex, close the import window after a successful merge.
         clearIbkrCachedData();
+        performPostImportFXRateCheck();
         setVisible(false);
 
         System.out.println("[IBKR:MERGE:006] ✅ Merge completed successfully");
@@ -4733,6 +4735,8 @@ public class ImportWindow extends javax.swing.JFrame {
 
         // Clear preview for next import
         clearPreviewAfterMerge();
+
+        performPostImportFXRateCheck();
 
         System.out.println("[MERGE:002] ✅ Merge completed successfully");
       } catch (Exception e) {
@@ -5796,6 +5800,8 @@ public class ImportWindow extends javax.swing.JFrame {
 
         mainWindow.enableUndoImportIfAvailable();
 
+        performPostImportFXRateCheck();
+
         dispose(); // Close window after file import
       }
     } catch (Exception e) {
@@ -5804,6 +5810,47 @@ public class ImportWindow extends javax.swing.JFrame {
       // Keep window open for retry on errors
     }
   }// GEN-LAST:event_bImportActionPerformed
+
+  /**
+   * Perform post-import FX rate check
+   * Checks for missing FX rates after any successful import operation
+   */
+  private void performPostImportFXRateCheck() {
+    SwingUtilities.invokeLater(new Runnable() {
+      public void run() {
+        try {
+          if (Settings.getCheckMissingRatesAfterLoad()) {
+            System.out.println("[FXRATES:IMPORT:001] FX rate check enabled - starting post-import check");
+            AppLog.info("FX Rate Check: Kontrola chybějících kurzů po importu...");
+            
+            FXRateChecker.RatesCheckResult checkResult =
+                FXRateChecker.checkForMissingRates(mainWindow.getTransactionDatabase());
+
+            if (checkResult.hasMissingRates) {
+              System.out.println("[FXRATES:IMPORT:002] ⚠ Missing rates detected - showing dialog");
+              AppLog.info(String.format("FX Rate Check: Nalezeny chybějící kurzy - denní: %d, jednotné: %d",
+                  checkResult.getMissingDailyCount(), checkResult.getMissingUnifiedCount()));
+              
+              MissingRatesDialog dialog = new MissingRatesDialog(
+                  ImportWindow.this,
+                  checkResult,
+                  mainWindow);
+              dialog.setVisible(true);
+            } else {
+              System.out.println("[FXRATES:IMPORT:003] ✅ All FX rates available - no action needed");
+              AppLog.info("FX Rate Check: Všechny kurzy jsou k dispozici (OK)");
+            }
+          } else {
+            System.out.println("[FXRATES:IMPORT:004] FX rate check disabled in settings - skipping");
+          }
+        } catch (Exception e) {
+          AppLog.error("FX Rate Check: Chyba při kontrole chybějících kurzů: " + e.getMessage(), e);
+          System.err.println("[FXRATES:ERROR:001] Error during FX rate check: " + e.getMessage());
+          e.printStackTrace();
+        }
+      }
+    });
+  }
 
   private void bRefreshActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bRefreshActionPerformed
   {// GEN-HEADEREND:event_bRefreshActionPerformed

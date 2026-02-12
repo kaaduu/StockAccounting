@@ -368,6 +368,36 @@ public class SettingsWindow extends javax.swing.JDialog {
   }
 
   /**
+   * Renderer for missing FX rates
+   */
+  private class MissingRatesRenderer extends HighlightedDoubleRenderer {
+    private java.util.Set<String> missingCells;
+
+    @Override
+    public java.awt.Component getTableCellRendererComponent(
+        javax.swing.JTable table, Object value, boolean isSelected,
+        boolean hasFocus, int row, int column) {
+
+      java.awt.Component c = super.getTableCellRendererComponent(
+          table, value, isSelected, hasFocus, row, column);
+
+      String cellKey = row + "," + column;
+
+      if (missingCells != null && missingCells.contains(cellKey)) {
+        if (!isSelected) {
+          c.setBackground(new java.awt.Color(255, 200, 200)); // Light red
+        }
+      }
+
+      return c;
+    }
+
+    public void setMissingCells(java.util.Set<String> missingCells) {
+      this.missingCells = missingCells;
+    }
+  }
+
+  /**
    * Model we use
    */
   RTableModel model;
@@ -383,9 +413,19 @@ public class SettingsWindow extends javax.swing.JDialog {
   HighlightedDoubleRenderer highlightedRenderer;
 
   /**
+   * Renderer for missing rates
+   */
+  MissingRatesRenderer missingRatesRenderer;
+
+  /**
    * Set of fetched/modified cells (format: "row,col")
    */
   java.util.Set<String> fetchedCells;
+
+  /**
+   * Set of missing rate cells (format: "row,col")
+   */
+  java.util.Set<String> missingRateCells;
 
   /**
    * Markets
@@ -401,7 +441,9 @@ public class SettingsWindow extends javax.swing.JDialog {
     this.setLocationByPlatform(true);
     doubleRenderer = new DoubleRenderer();
     highlightedRenderer = new HighlightedDoubleRenderer();
+    missingRatesRenderer = new MissingRatesRenderer();
     fetchedCells = new java.util.HashSet<String>();
+    missingRateCells = new java.util.HashSet<String>();
     initDailyRatesTab();
   }
 
@@ -789,6 +831,26 @@ public class SettingsWindow extends javax.swing.JDialog {
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
     gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
     cardStartup.add(cbAutoLoadLastFile, gridBagConstraints);
+
+    cbCheckMissingRates = new javax.swing.JCheckBox("Kontrolovat chybějící kurzy po načtení");
+    cbCheckMissingRates.setSelected(Settings.getCheckMissingRatesAfterLoad());
+    cbCheckMissingRates.setToolTipText("Po načtení souboru automaticky zkontroluje, zda jsou k dispozici všechny potřebné měnové kurzy");
+    cbCheckMissingRates.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        boolean enabled = cbCheckMissingRates.isSelected();
+        Settings.setCheckMissingRatesAfterLoad(enabled);
+        Settings.save();
+        AppLog.info("FX Rate Check Setting: Změna nastavení - " + (enabled ? "ZAPNUTO" : "VYPNUTO"));
+        System.out.println("[FXRATES:SETTINGS:001] FX rate check setting changed to: " + enabled);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 4;
+    gridBagConstraints.gridwidth = 2;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+    gridBagConstraints.insets = new java.awt.Insets(10, 10, 0, 10);
+    cardStartup.add(cbCheckMissingRates, gridBagConstraints);
 
     // Import highlighting settings
     javax.swing.JLabel lblImportHl = new javax.swing.JLabel("Zvýraznění po importu:");
@@ -3296,6 +3358,69 @@ public class SettingsWindow extends javax.swing.JDialog {
     setVisible(true);
   }
 
+  /**
+   * Highlight missing FX rates in the table
+   */
+  public void highlightMissingRates(FXRateChecker.RatesCheckResult result) {
+    AppLog.info("FX Rate Check: Zvýrazňuji chybějící kurzy v nastaveních");
+    System.out.println("[FXRATES:SETTINGS:002] Highlighting missing rates in settings window");
+    
+    if (result == null || !result.hasMissingRates) {
+      System.out.println("[FXRATES:SETTINGS:003] No missing rates to highlight - returning");
+      return;
+    }
+
+    boolean useDailyRates = Settings.getUseDailyRates();
+    System.out.println("[FXRATES:SETTINGS:004]   - Use daily rates setting: " + useDailyRates);
+
+    if (useDailyRates && result.hasMissingDailyRates()) {
+      System.out.println("[FXRATES:SETTINGS:005]   - Missing daily rates detected, showing daily rates tab");
+      AppLog.warn("FX Rate Check: Chybějící denní kurzy - navedeno na denní kurzy tab");
+      jTabbedPane1.setSelectedIndex(2); // "Denní kurzy" tab
+      JOptionPane.showMessageDialog(this,
+          "Chybí denní kurzy. Použijte tlačítko 'Chytré stažení' pro jejich načtení.",
+          "Chybějící denní kurzy",
+          JOptionPane.WARNING_MESSAGE);
+    } else {
+      System.out.println("[FXRATES:SETTINGS:006]   - Showing unified rates tab");
+      AppLog.info("FX Rate Check: Navedeno na tab jednotných kurzů");
+      jTabbedPane1.setSelectedIndex(1); // "Kurzy měn" tab (unified rates)
+
+      if (result.hasMissingUnifiedRates()) {
+        System.out.println("[FXRATES:SETTINGS:007]   - Highlighting " + missingRateCells.size() + " missing unified rate cells");
+        AppLog.warn("FX Rate Check: Zvýrazněno " + missingRateCells.size() + " chybějících jednotných kurzů");
+        missingRateCells.clear();
+
+        for (java.util.Map.Entry<String, java.util.Set<Integer>> entry :
+                result.missingUnifiedRates.entrySet()) {
+          String currency = entry.getKey();
+          for (Integer year : entry.getValue()) {
+            for (int row = 0; row < model.getRowCount() - 1; row++) {
+              Object yearObj = model.getValueAt(row, 0);
+              if (yearObj != null && ((Integer) yearObj).intValue() == year) {
+                for (int col = 1; col < model.getColumnCount(); col++) {
+                  if (model.getColumnName(col).equals(currency)) {
+                    missingRateCells.add(row + "," + col);
+                    break;
+                  }
+                }
+                break;
+              }
+            }
+          }
+        }
+
+        missingRatesRenderer.setMissingCells(missingRateCells);
+
+        javax.swing.table.TableColumnModel cm = table.getColumnModel();
+        for (int i = 1; i < cm.getColumnCount(); i++) {
+          cm.getColumn(i).setCellRenderer(missingRatesRenderer);
+        }
+        table.repaint();
+      }
+    }
+  }
+
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JButton bAddCurrency;
   private javax.swing.JButton bAddHoliday;
@@ -3381,6 +3506,7 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JLabel lHighlightPreviewUpdated;
   private javax.swing.JCheckBox cbAutoMaximized;
   private javax.swing.JCheckBox cbAutoLoadLastFile;
+  private javax.swing.JCheckBox cbCheckMissingRates;
   private javax.swing.JComboBox cbUiTheme;
   private javax.swing.JComboBox cbUiFontFamily;
   private javax.swing.JSpinner spUiFontSize;

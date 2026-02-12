@@ -10,15 +10,15 @@ import java.awt.Component;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
+import javax.swing.SwingUtilities;
 import com.toedter.calendar.JDateChooser;
 import java.util.Date;
-import java.util.Set;
-import java.io.File;
 import java.util.GregorianCalendar;
-import java.text.SimpleDateFormat;
+import java.util.Set;
 import java.awt.FileDialog;
 import javax.swing.JFileChooser;
 import java.awt.event.KeyEvent;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
@@ -2115,10 +2115,61 @@ public class MainWindow extends javax.swing.JFrame {
 
     updateTitle();
 
+    // Check for missing FX rates after loading a .dat file
+    javax.swing.SwingUtilities.invokeLater(() -> {
+        performPostLoadFXRateCheck();
+    });
+
     // Save as last opened file
     Settings.setLastOpenedFile(selectedFile.getAbsolutePath());
 
     AppLog.info("Soubor načten: " + selectedFile.getName() + " (záznamů: " + transactions.getRowCountRaw() + ")");
+  }
+
+  /**
+   * Perform post-load FX rate check
+   * Checks for missing FX rates after loading a .dat file
+   */
+  private void performPostLoadFXRateCheck() {
+    try {
+      Thread.sleep(100);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+
+    try {
+      if (Settings.getCheckMissingRatesAfterLoad()) {
+        System.out.println("[FXRATES:LOAD:001] FX rate check enabled - starting post-load check");
+        AppLog.info("FX Rate Check: Kontrola chybějících kurzů po načtení souboru...");
+
+        FXRateChecker.RatesCheckResult checkResult =
+            FXRateChecker.checkForMissingRates(transactions);
+
+        if (checkResult.hasMissingRates) {
+          System.out.println("[FXRATES:LOAD:002] ⚠ Missing rates detected in loaded file");
+          AppLog.info(String.format("FX Rate Check: V načteném souboru nalezeny chybějící kurzy - denní: %d, jednotné: %d",
+              checkResult.getMissingDailyCount(), checkResult.getMissingUnifiedCount()));
+
+          MissingRatesDialog dialog = new MissingRatesDialog(
+              MainWindow.this,
+              checkResult,
+              this);
+          dialog.setVisible(true);
+        } else {
+          System.out.println("[FXRATES:LOAD:003] ✅ All FX rates available in loaded file");
+          AppLog.info("FX Rate Check: V načteném souboru jsou všechny kurzy k dispozici (OK)");
+        }
+      } else {
+        System.out.println("[FXRATES:LOAD:004] FX rate check disabled in settings - skipping");
+      }
+    } catch (Exception e) {
+      AppLog.error("FX Rate Check: Chyba při kontrole kurzů po načtení souboru: " + e.getMessage(), e);
+      System.err.println("[FXRATES:ERROR:LOAD] Error during post-load FX rate check: " + e.getMessage());
+      e.printStackTrace();
+      JOptionPane.showMessageDialog(this,
+          "Chyba při kontrole měnových kurzů: " + e.getMessage(),
+          "Chyba", JOptionPane.ERROR_MESSAGE);
+    }
   }
 
   private void tfTickerActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_tfTickerActionPerformed
