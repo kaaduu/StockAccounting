@@ -14,6 +14,7 @@ import java.util.GregorianCalendar;
 import java.text.DecimalFormat;
 import java.io.BufferedReader;
 import java.io.PrintWriter;
+import cz.datesoft.stockAccounting.export.TransactionExporter;
 
 /**
  * Transaction (buy or sell)
@@ -1186,70 +1187,14 @@ public class Transaction implements java.lang.Comparable, java.io.Serializable {
     ofl.println(prefix + "note=" + note);
   }
 
+  @Deprecated
   public void export(PrintWriter ofl) throws java.io.IOException {
-    // ofl.println(getStringDate()+";"+getStringType()+";"+getStringDirection()+";"+ticker+";"+amount+";"+ff.format(price)+";"+priceCurrency+";"+ff.format(fee)+";"+feeCurrency+";"+market+";"+getStringExecutionDate()+";"+note);
-    ofl.println(getStringDate() + ";" + getStringType() + ";" + getStringDirection() + ";" + ticker + ";" + amount + ";"
-        + price + ";" + priceCurrency + ";" + fee + ";" + feeCurrency + ";" + market + ";" + getStringExecutionDate()
-        + ";" + getBroker() + ";" + getAccountId() + ";" + getTxnId() + ";" + getIsin() + ";" + getIssuerCountry() + ";"
-        + getEffect() + ";" + note);
+    TransactionExporter.exportTransaction(this, ofl);
   }
 
+  @Deprecated
   public void exportFIO(PrintWriter ofl) throws java.io.IOException {
-    // Export je pro kacka.baldsoft.com a ta nepodporuje derivaty ani transformace
-    // takze pouze exportuje Cenne papiry
-    if (getStringType().equals("CP")) {
-      // price 10.22 but FIO use czech locale we need 10,22 how silly
-      String price_s = String.valueOf(price).replace(".", ",");
-      // if (fee>0) { String fee_s=String.valueOf(fee).replace(".",",");} else {
-      // String fee_s="";}
-      // getStringDirection() Nakup (-amount) vs Prodej(+amount)
-      int sign = 0;
-      if (getStringDirection().equals("Nákup")) {
-        sign = -1;
-      } else {
-        sign = 1;
-      }
-
-      // Get fee
-      String ObjemUSD = "";
-      String ObjemCZK = "";
-      String ObjemEUR = "";
-      if (priceCurrency.equals("USD")) {
-        ObjemUSD = String.valueOf(ff.format(price * amount * sign)).replace(".", ",");
-      }
-      if (priceCurrency.equals("EUR")) {
-        ObjemEUR = String.valueOf(ff.format(price * amount * sign)).replace(".", ",");
-      }
-      if (priceCurrency.equals("CZK")) {
-        ObjemCZK = String.valueOf(ff.format(price * amount * sign)).replace(".", ",");
-      }
-
-      String PoplatkyUSD = "";
-      String PoplatkyCZK = "";
-      String PoplatkyEUR = "";
-      switch (feeCurrency) {
-        case "USD":
-          PoplatkyUSD = String.valueOf(fee).replace(".", ",");
-          break;
-        case "EUR":
-          PoplatkyEUR = String.valueOf(fee).replace(".", ",");
-          break;
-        case "CZK":
-          PoplatkyCZK = String.valueOf(fee).replace(".", ",");
-          break;
-        default:
-          ;
-      }
-      String ExeDate[] = getStringExecutionDate().split(" ", 0);
-      String amount_s = String.valueOf(Math.abs(amount)).replace(".", ",");
-      String Text = getStringDate() + ";" + getStringDirection() + ";" + ticker + ";" + price_s + ";" + amount_s + ";"
-          + priceCurrency + ";" + ObjemCZK + ";" + PoplatkyCZK + ";" + ObjemUSD + ";" + PoplatkyUSD + ";" + ObjemEUR
-          + ";" + PoplatkyEUR + ";" + note + ";" + ExeDate[0];
-      // String CP1250 = new String(Text.getBytes("Windows-1250"), "UTF-8");
-
-      // ofl.println(getStringDate()+";"+getStringDirection()+";"+ticker+";"+price_s+";"+(int)Math.abs(amount)+";"+priceCurrency+";"+ObjemCZK+";"+PoplatkyCZK+";"+ObjemUSD+";"+PoplatkyUSD+";"+ObjemEUR+";"+PoplatkyEUR+";"+note+";"+ExeDate[0]);
-      ofl.println(Text);
-    } // is CP only
+    TransactionExporter.exportToFIO(this, ofl);
   }
 
 }

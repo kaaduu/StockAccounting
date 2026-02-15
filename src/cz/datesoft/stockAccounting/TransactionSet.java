@@ -2171,8 +2171,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
     // Start writing rows
     for (Transaction t : rows) {
-
-      t.export(ofl);
+      cz.datesoft.stockAccounting.export.TransactionExporter.exportTransaction(t, ofl);
     }
 
     ofl.close();
@@ -2200,8 +2199,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
 
     // Start writing rows
     for (Transaction t : rows) {
-
-      t.exportFIO(ofl);
+      cz.datesoft.stockAccounting.export.TransactionExporter.exportToFIO(t, ofl);
     }
 
     ofl.close();
