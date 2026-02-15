@@ -770,64 +770,65 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     fireTableDataChanged();
   }
 
-  /**
-   * Load from a file
-   */
-  public void load(File srcFile) throws java.io.FileNotFoundException, java.io.IOException {
-    BufferedReader ifl = new BufferedReader(new java.io.FileReader(srcFile));
-    String a[];
+   /**
+    * Load from a file
+    */
+   public void load(File srcFile) throws java.io.FileNotFoundException, java.io.IOException {
+     try (BufferedReader ifl = new BufferedReader(new java.io.FileReader(srcFile))) {
+       String a[];
 
-    // Initialize
-    rows.clear();
-    filteredRows = null;
-    cbmodel.removeAllElements();
-    serialCounter = 1;
+       // Initialize
+       rows.clear();
+       filteredRows = null;
+       cbmodel.removeAllElements();
+       serialCounter = 1;
 
-    // Reset Stocks instance and transformation cache for new data
-    stocksInstance = null;
-    transformationCache.invalidate();
+       // Reset Stocks instance and transformation cache for new data
+       stocksInstance = null;
+       transformationCache.invalidate();
 
-    a = readLine(ifl);
+       a = readLine(ifl);
 
-    if (a[0] == null) {
-      // No data(?)
-      ifl.close();
-      return;
-    }
+       if (a[0] == null) {
+         // No data(?)
+         ifl.close();
+         return;
+       }
 
-    if (!a[0].equals("version")) {
-      // Version not first?
-      ifl.close();
-      return;
-    }
+       if (!a[0].equals("version")) {
+         // Version not first?
+         ifl.close();
+         return;
+       }
 
-    if (!a[1].equals("1")) {
-      // Version not equal
-      ifl.close();
-      return;
-    }
+       if (!a[1].equals("1")) {
+         // Version not equal
+         ifl.close();
+         return;
+       }
 
-    // Start reading lines
-    for (;;) {
-      a = readLine(ifl);
-      if (a[0] == null)
-        break;
+       // Start reading lines
+       for (;;) {
+         a = readLine(ifl);
+         if (a[0] == null)
+           break;
 
-      if (a[0].equals("row (")) {
-        // Add row
-        Transaction tx = new Transaction(ifl);
-        rows.add(tx);
+         if (a[0].equals("row (")) {
+           // Add row
+           Transaction tx = new Transaction(ifl);
+           rows.add(tx);
 
-        cbmodel.putItem(tx.ticker.toUpperCase());
-      } else if (a[0].equals("serialCounter"))
-        this.serialCounter = Integer.parseInt(a[1]);
-      else if (a[0].equals("lastDateSet")) {
-        if (a[1].equalsIgnoreCase("null"))
-          this.lastDateSet = null;
-        else
-          this.lastDateSet = parseDate(a[1]);
-      }
-    }
+           cbmodel.putItem(tx.ticker.toUpperCase());
+         } else if (a[0].equals("serialCounter"))
+           this.serialCounter = Integer.parseInt(a[1]);
+         else if (a[0].equals("lastDateSet")) {
+           if (a[1].equalsIgnoreCase("null"))
+             this.lastDateSet = null;
+           else
+             this.lastDateSet = parseDate(a[1]);
+         }
+       }
+     }
 
     sort();
 
