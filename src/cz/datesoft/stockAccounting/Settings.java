@@ -471,6 +471,12 @@ public class Settings {
   private static Integer twsTimeoutSeconds = null;
   private static String twsDefaultAccount = null;
 
+  private static boolean cloudSyncEnabled = false;
+  private static boolean cloudSyncAutoOnStartup = false;
+  private static boolean cloudSyncAutoOnSave = false;
+  private static boolean cloudSyncAutoOnImport = false;
+  private static long lastCloudSyncTimestamp = 0;
+
   private static String defaultCacheBaseDir() {
     return System.getProperty("user.home") + "/.stockaccounting/cache";
   }
@@ -580,6 +586,66 @@ public class Settings {
     } else {
       p.remove("twsDefaultAccount");
     }
+  }
+
+  public static boolean getCloudSyncEnabled() {
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    cloudSyncEnabled = p.getBoolean("cloudSyncEnabled", false);
+    return cloudSyncEnabled;
+  }
+
+  public static void setCloudSyncEnabled(boolean value) {
+    cloudSyncEnabled = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.putBoolean("cloudSyncEnabled", value);
+  }
+
+  public static boolean getCloudSyncAutoOnStartup() {
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    cloudSyncAutoOnStartup = p.getBoolean("cloudSyncAutoOnStartup", false);
+    return cloudSyncAutoOnStartup;
+  }
+
+  public static void setCloudSyncAutoOnStartup(boolean value) {
+    cloudSyncAutoOnStartup = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.putBoolean("cloudSyncAutoOnStartup", value);
+  }
+
+  public static boolean getCloudSyncAutoOnSave() {
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    cloudSyncAutoOnSave = p.getBoolean("cloudSyncAutoOnSave", false);
+    return cloudSyncAutoOnSave;
+  }
+
+  public static void setCloudSyncAutoOnSave(boolean value) {
+    cloudSyncAutoOnSave = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.putBoolean("cloudSyncAutoOnSave", value);
+  }
+
+  public static boolean getCloudSyncAutoOnImport() {
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    cloudSyncAutoOnImport = p.getBoolean("cloudSyncAutoOnImport", false);
+    return cloudSyncAutoOnImport;
+  }
+
+  public static void setCloudSyncAutoOnImport(boolean value) {
+    cloudSyncAutoOnImport = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.putBoolean("cloudSyncAutoOnImport", value);
+  }
+
+  public static long getLastCloudSyncTimestamp() {
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    lastCloudSyncTimestamp = p.getLong("lastCloudSyncTimestamp", 0);
+    return lastCloudSyncTimestamp;
+  }
+
+  public static void setLastCloudSyncTimestamp(long value) {
+    lastCloudSyncTimestamp = value;
+    java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    p.putLong("lastCloudSyncTimestamp", value);
   }
 
   public static String getIbkrFlexQueryId() {
@@ -1646,6 +1712,286 @@ public class Settings {
             "Chyba",
             javax.swing.JOptionPane.ERROR_MESSAGE);
       }
+    }
+  }
+
+  public static java.util.Map<String, Object> exportAllSettings() {
+    java.util.Map<String, Object> settings = new java.util.HashMap<String, Object>();
+    
+    settings.put("version", System.currentTimeMillis());
+    settings.put("halfYear", halfYear);
+    settings.put("ratios", ratiosToString());
+    settings.put("computeYear", computeYear);
+    settings.put("overTaxFreeDuration", overTaxFreeDuration);
+    settings.put("noIncomeTrades", noIncomeTrades);
+    settings.put("allowShortOverYearBoundary", allowShortOverYearBoundary);
+    settings.put("separateCurrencyInCSVExport", separateCurrencyInCSVExport);
+    settings.put("uiTheme", uiTheme);
+    settings.put("uiFontFamily", uiFontFamily);
+    settings.put("uiFontSize", uiFontSize);
+    settings.put("monospaceFontFamily", monospaceFontFamily);
+    settings.put("monospaceFontSize", monospaceFontSize);
+    settings.put("highlightInsertedEnabled", highlightInsertedEnabled);
+    settings.put("highlightUpdatedEnabled", highlightUpdatedEnabled);
+    settings.put("lastImportFormat", lastImportFormat);
+    settings.put("updateDuplicatesOnImport", updateDuplicatesOnImport);
+    settings.put("showMetadataColumns", showMetadataColumns);
+    settings.put("showSecondsInDateColumns", showSecondsInDateColumns);
+    settings.put("useDailyRates", useDailyRates);
+    settings.put("dailyRates", exportDailyRatesMap());
+    settings.put("markets", markets != null ? markets.saveString() : "");
+    settings.put("dataDirectory", dataDirectory);
+    settings.put("importDirectory", importDirectory);
+    settings.put("cacheBaseDir", cacheBaseDir);
+    settings.put("fileChooserMode", fileChooserMode);
+    settings.put("showAboutOnStartup", showAboutOnStartup);
+    settings.put("autoMaximized", autoMaximized);
+
+    settings.put("trading212ApiKey", trading212ApiKey);
+    settings.put("trading212ApiSecret", trading212ApiSecret);
+    settings.put("trading212UseDemo", trading212UseDemo);
+    settings.put("trading212ImportState", trading212ImportState);
+    
+    settings.put("ibkrFlexQueryId", ibkrFlexQueryId);
+    settings.put("ibkrFlexToken", ibkrFlexToken);
+    
+    settings.put("twsHost", twsHost);
+    settings.put("twsPort", twsPort);
+    settings.put("twsClientId", twsClientId);
+    settings.put("twsTimeoutSeconds", twsTimeoutSeconds);
+    settings.put("twsDefaultAccount", twsDefaultAccount);
+
+    settings.put("cloudSyncEnabled", cloudSyncEnabled);
+    settings.put("cloudSyncAutoOnStartup", cloudSyncAutoOnStartup);
+    settings.put("cloudSyncAutoOnSave", cloudSyncAutoOnSave);
+    settings.put("cloudSyncAutoOnImport", cloudSyncAutoOnImport);
+    settings.put("lastCloudSyncTimestamp", lastCloudSyncTimestamp);
+
+    return settings;
+  }
+
+  public static void importAllSettings(java.util.Map<String, Object> settings) {
+    if (settings.containsKey("halfYear")) {
+      halfYear = (Integer) settings.get("halfYear");
+    }
+    if (settings.containsKey("ratios")) {
+      parseRatiosString((String) settings.get("ratios"));
+    }
+    if (settings.containsKey("computeYear")) {
+      computeYear = (Integer) settings.get("computeYear");
+    }
+    if (settings.containsKey("overTaxFreeDuration")) {
+      overTaxFreeDuration = (Integer) settings.get("overTaxFreeDuration");
+    }
+    if (settings.containsKey("noIncomeTrades")) {
+      noIncomeTrades = (Integer) settings.get("noIncomeTrades");
+    }
+    if (settings.containsKey("allowShortOverYearBoundary")) {
+      allowShortOverYearBoundary = (Boolean) settings.get("allowShortOverYearBoundary");
+    }
+    if (settings.containsKey("separateCurrencyInCSVExport")) {
+      separateCurrencyInCSVExport = (Boolean) settings.get("separateCurrencyInCSVExport");
+    }
+    if (settings.containsKey("uiTheme")) {
+      uiTheme = (Integer) settings.get("uiTheme");
+    }
+    if (settings.containsKey("uiFontFamily")) {
+      uiFontFamily = (String) settings.get("uiFontFamily");
+    }
+    if (settings.containsKey("uiFontSize")) {
+      uiFontSize = (Integer) settings.get("uiFontSize");
+    }
+    if (settings.containsKey("monospaceFontFamily")) {
+      monospaceFontFamily = (String) settings.get("monospaceFontFamily");
+    }
+    if (settings.containsKey("monospaceFontSize")) {
+      monospaceFontSize = (Integer) settings.get("monospaceFontSize");
+    }
+    if (settings.containsKey("highlightInsertedEnabled")) {
+      highlightInsertedEnabled = (Boolean) settings.get("highlightInsertedEnabled");
+    }
+    if (settings.containsKey("highlightUpdatedEnabled")) {
+      highlightUpdatedEnabled = (Boolean) settings.get("highlightUpdatedEnabled");
+    }
+    if (settings.containsKey("lastImportFormat")) {
+      lastImportFormat = (Integer) settings.get("lastImportFormat");
+    }
+    if (settings.containsKey("updateDuplicatesOnImport")) {
+      updateDuplicatesOnImport = (Boolean) settings.get("updateDuplicatesOnImport");
+    }
+    if (settings.containsKey("showMetadataColumns")) {
+      showMetadataColumns = (Boolean) settings.get("showMetadataColumns");
+    }
+    if (settings.containsKey("showSecondsInDateColumns")) {
+      showSecondsInDateColumns = (Boolean) settings.get("showSecondsInDateColumns");
+    }
+    if (settings.containsKey("useDailyRates")) {
+      useDailyRates = (Boolean) settings.get("useDailyRates");
+    }
+    if (settings.containsKey("dailyRates")) {
+      importDailyRatesMap((java.util.Map<String, Double>) settings.get("dailyRates"));
+    }
+    if (settings.containsKey("markets")) {
+      String marketsStr = (String) settings.get("markets");
+      if (marketsStr != null && !marketsStr.isEmpty()) {
+        markets = new Markets(marketsStr);
+      }
+    }
+    if (settings.containsKey("dataDirectory")) {
+      dataDirectory = (String) settings.get("dataDirectory");
+    }
+    if (settings.containsKey("importDirectory")) {
+      importDirectory = (String) settings.get("importDirectory");
+    }
+    if (settings.containsKey("cacheBaseDir")) {
+      cacheBaseDir = (String) settings.get("cacheBaseDir");
+    }
+    if (settings.containsKey("fileChooserMode")) {
+      fileChooserMode = (Integer) settings.get("fileChooserMode");
+    }
+    if (settings.containsKey("showAboutOnStartup")) {
+      showAboutOnStartup = (Boolean) settings.get("showAboutOnStartup");
+    }
+    if (settings.containsKey("autoMaximized")) {
+      autoMaximized = (Boolean) settings.get("autoMaximized");
+    }
+
+    if (settings.containsKey("trading212ApiKey")) {
+      trading212ApiKey = (String) settings.get("trading212ApiKey");
+    }
+    if (settings.containsKey("trading212ApiSecret")) {
+      trading212ApiSecret = (String) settings.get("trading212ApiSecret");
+    }
+    if (settings.containsKey("trading212UseDemo")) {
+      trading212UseDemo = (Boolean) settings.get("trading212UseDemo");
+    }
+    if (settings.containsKey("trading212ImportState")) {
+      trading212ImportState = (String) settings.get("trading212ImportState");
+    }
+    
+    if (settings.containsKey("ibkrFlexQueryId")) {
+      ibkrFlexQueryId = (String) settings.get("ibkrFlexQueryId");
+    }
+    if (settings.containsKey("ibkrFlexToken")) {
+      ibkrFlexToken = (String) settings.get("ibkrFlexToken");
+    }
+    
+    if (settings.containsKey("twsHost")) {
+      twsHost = (String) settings.get("twsHost");
+    }
+    if (settings.containsKey("twsPort")) {
+      twsPort = (Integer) settings.get("twsPort");
+    }
+    if (settings.containsKey("twsClientId")) {
+      twsClientId = (Integer) settings.get("twsClientId");
+    }
+    if (settings.containsKey("twsTimeoutSeconds")) {
+      twsTimeoutSeconds = (Integer) settings.get("twsTimeoutSeconds");
+    }
+    if (settings.containsKey("twsDefaultAccount")) {
+      twsDefaultAccount = (String) settings.get("twsDefaultAccount");
+    }
+
+    if (settings.containsKey("cloudSyncEnabled")) {
+      cloudSyncEnabled = (Boolean) settings.get("cloudSyncEnabled");
+    }
+    if (settings.containsKey("cloudSyncAutoOnStartup")) {
+      cloudSyncAutoOnStartup = (Boolean) settings.get("cloudSyncAutoOnStartup");
+    }
+    if (settings.containsKey("cloudSyncAutoOnSave")) {
+      cloudSyncAutoOnSave = (Boolean) settings.get("cloudSyncAutoOnSave");
+    }
+    if (settings.containsKey("cloudSyncAutoOnImport")) {
+      cloudSyncAutoOnImport = (Boolean) settings.get("cloudSyncAutoOnImport");
+    }
+    if (settings.containsKey("lastCloudSyncTimestamp")) {
+      lastCloudSyncTimestamp = (Long) settings.get("lastCloudSyncTimestamp");
+    }
+
+    save();
+  }
+
+  public static void exportToEncryptedBackup(java.io.OutputStream output, char[] password) throws Exception {
+    java.util.Map<String, Object> settings = exportAllSettings();
+    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+    java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(baos);
+    oos.writeObject(settings);
+    oos.close();
+    
+    byte[] data = baos.toByteArray();
+    byte[] encrypted = EncryptionUtils.encryptData(data, password);
+    output.write(encrypted);
+  }
+
+  public static void importFromEncryptedBackup(java.io.InputStream input, char[] password) throws Exception {
+    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+    byte[] buffer = new byte[4096];
+    int bytesRead;
+    while ((bytesRead = input.read(buffer)) != -1) {
+      baos.write(buffer, 0, bytesRead);
+    }
+    
+    byte[] encrypted = baos.toByteArray();
+    byte[] decrypted = EncryptionUtils.decryptData(encrypted, password);
+    
+    java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(decrypted);
+    java.io.ObjectInputStream ois = new java.io.ObjectInputStream(bais);
+    @SuppressWarnings("unchecked")
+    java.util.Map<String, Object> settings = (java.util.Map<String, Object>) ois.readObject();
+    ois.close();
+    
+    importAllSettings(settings);
+  }
+
+  private static String ratiosToString() {
+    StringBuilder sb = new StringBuilder();
+    for (CurrencyRatio ratio : ratios) {
+      if (sb.length() > 0) {
+        sb.append("\n");
+      }
+      sb.append(ratio.getCurrency()).append("|").append(ratio.getYear()).append("|").append(ratio.getRatio());
+    }
+    return sb.toString();
+  }
+
+  private static void parseRatiosString(String str) {
+    ratios = new java.util.TreeSet<CurrencyRatio>();
+    if (str == null || str.isEmpty()) {
+      return;
+    }
+    String[] lines = str.split("\n");
+    for (String line : lines) {
+      String[] parts = line.split("\\|");
+      if (parts.length == 3) {
+        try {
+          String currency = parts[0].trim();
+          int year = Integer.parseInt(parts[1].trim());
+          double ratio = Double.parseDouble(parts[2].trim());
+          ratios.add(new CurrencyRatio(currency, year, ratio));
+        } catch (NumberFormatException e) {
+          AppLog.warn("Invalid ratio format: " + line);
+        }
+      }
+    }
+  }
+
+  private static java.util.Map<String, Double> exportDailyRatesMap() {
+    java.util.Map<String, Double> map = new java.util.HashMap<String, Double>();
+    if (dailyRates != null) {
+      for (java.util.Map.Entry<String, Double> entry : dailyRates.entrySet()) {
+        map.put(entry.getKey(), entry.getValue());
+      }
+    }
+    return map;
+  }
+
+  private static void importDailyRatesMap(java.util.Map<String, Double> map) {
+    if (dailyRates == null) {
+      dailyRates = new java.util.HashMap<String, Double>();
+    }
+    dailyRates.clear();
+    if (map != null) {
+      dailyRates.putAll(map);
     }
   }
 }

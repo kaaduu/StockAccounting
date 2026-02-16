@@ -403,6 +403,7 @@ public class SettingsWindow extends javax.swing.JDialog {
     highlightedRenderer = new HighlightedDoubleRenderer();
     fetchedCells = new java.util.HashSet<String>();
     initDailyRatesTab();
+    updateCloudSyncUI();
   }
 
   /**
@@ -1724,6 +1725,127 @@ public class SettingsWindow extends javax.swing.JDialog {
     refreshCurrenciesCombo();
   }// GEN-LAST:event_bAddCurrencyActionPerformed
 
+  private void cbCloudSyncEnabledActionPerformed(java.awt.event.ActionEvent evt) {
+    Settings.setCloudSyncEnabled(cbCloudSyncEnabled.isSelected());
+    updateCloudSyncUI();
+  }
+
+  private void cbCloudSyncAutoStartupActionPerformed(java.awt.event.ActionEvent evt) {
+    Settings.setCloudSyncAutoOnStartup(cbCloudSyncAutoStartup.isSelected());
+  }
+
+  private void cbCloudSyncAutoSaveActionPerformed(java.awt.event.ActionEvent evt) {
+    Settings.setCloudSyncAutoOnSave(cbCloudSyncAutoSave.isSelected());
+  }
+
+  private void cbCloudSyncAutoImportActionPerformed(java.awt.event.ActionEvent evt) {
+    Settings.setCloudSyncAutoOnImport(cbCloudSyncAutoImport.isSelected());
+  }
+
+  private void btnCloudConnectActionPerformed(java.awt.event.ActionEvent evt) {
+    try {
+      CloudSyncManager.getInstance().initialize();
+      updateCloudSyncUI();
+      javax.swing.JOptionPane.showMessageDialog(this, "Úspěšně připojeno k Google Drive", "Úspěch", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+    } catch (Exception e) {
+      AppLog.error("Chyba při připojování k Google Drive", e);
+      javax.swing.JOptionPane.showMessageDialog(this, "Chyba při připojování: " + e.getMessage(), "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);
+    }
+  }
+
+  private void btnCloudDisconnectActionPerformed(java.awt.event.ActionEvent evt) {
+    try {
+      CloudSyncManager.getInstance().revokeAuthentication();
+      updateCloudSyncUI();
+      javax.swing.JOptionPane.showMessageDialog(this, "Odpojeno od Google Drive", "Úspěch", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+    } catch (Exception e) {
+      AppLog.error("Chyba při odpojování", e);
+      javax.swing.JOptionPane.showMessageDialog(this, "Chyba při odpojování: " + e.getMessage(), "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);
+    }
+  }
+
+  private void btnCloudBackupActionPerformed(java.awt.event.ActionEvent evt) {
+    char[] password = CloudSyncDialog.showBackupPasswordDialog(this);
+    if (password == null || password.length == 0) {
+      return;
+    }
+
+    try {
+      SyncResult result = CloudSyncManager.getInstance().backupToCloud(password);
+      if (result.isSuccess()) {
+        updateCloudSyncUI();
+        javax.swing.JOptionPane.showMessageDialog(this, result.getMessage(), "Zálohování dokončeno", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+      } else {
+        javax.swing.JOptionPane.showMessageDialog(this, result.getMessage(), "Chyba zálohování", javax.swing.JOptionPane.ERROR_MESSAGE);
+      }
+    } catch (Exception e) {
+      AppLog.error("Chyba při zálohování", e);
+      javax.swing.JOptionPane.showMessageDialog(this, "Chyba: " + e.getMessage(), "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);
+    }
+  }
+
+  private void btnCloudRestoreActionPerformed(java.awt.event.ActionEvent evt) {
+    char[] password = CloudSyncDialog.showRestorePasswordDialog(this);
+    if (password == null || password.length == 0) {
+      return;
+    }
+
+    try {
+      SyncResult result = CloudSyncManager.getInstance().restoreFromCloud(password);
+      if (result.isSuccess()) {
+        updateCloudSyncUI();
+        loadAllSettings();
+        javax.swing.JOptionPane.showMessageDialog(this, result.getMessage() + "\n\nAplikace se restartuje...", "Obnova dokončena", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        System.exit(0);
+      } else {
+        javax.swing.JOptionPane.showMessageDialog(this, result.getMessage(), "Chyba obnovy", javax.swing.JOptionPane.ERROR_MESSAGE);
+      }
+    } catch (Exception e) {
+      AppLog.error("Chyba při obnově", e);
+      javax.swing.JOptionPane.showMessageDialog(this, "Chyba: " + e.getMessage(), "Chyba", javax.swing.JOptionPane.ERROR_MESSAGE);
+    }
+  }
+
+  private void updateCloudSyncUI() {
+    boolean enabled = Settings.getCloudSyncEnabled();
+    boolean connected = CloudSyncManager.getInstance().isAuthenticated();
+
+    cbCloudSyncEnabled.setSelected(enabled);
+    cbCloudSyncAutoStartup.setSelected(Settings.getCloudSyncAutoOnStartup());
+    cbCloudSyncAutoSave.setSelected(Settings.getCloudSyncAutoOnSave());
+    cbCloudSyncAutoImport.setSelected(Settings.getCloudSyncAutoOnImport());
+
+    btnCloudConnect.setEnabled(enabled && !connected);
+    btnCloudDisconnect.setEnabled(connected);
+    btnCloudBackup.setEnabled(enabled && connected);
+    btnCloudRestore.setEnabled(enabled && connected);
+    cbCloudSyncAutoStartup.setEnabled(enabled);
+    cbCloudSyncAutoSave.setEnabled(enabled);
+    cbCloudSyncAutoImport.setEnabled(enabled);
+
+    if (connected) {
+      lblCloudSyncStatus.setText("Stav: Připojeno k Google Drive");
+      lblCloudSyncStatus.setForeground(new java.awt.Color(0, 128, 0));
+      long lastSync = Settings.getLastCloudSyncTimestamp();
+      if (lastSync > 0) {
+        java.time.Instant instant = java.time.Instant.ofEpochMilli(lastSync);
+        java.time.LocalDateTime dt = java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault());
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
+        lblLastSyncTime.setText("Poslední synchronizace: " + dt.format(formatter));
+      } else {
+        lblLastSyncTime.setText("Poslední synchronizace: Nikdy");
+      }
+    } else {
+      lblCloudSyncStatus.setText("Stav: Nepřipojeno");
+      lblCloudSyncStatus.setForeground(new java.awt.Color(128, 128, 128));
+      lblLastSyncTime.setText("Poslední synchronizace: Nikdy");
+    }
+  }
+
+  private void loadAllSettings() {
+    Settings.load();
+  }
+
   private void bOKActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bOKActionPerformed
   {// GEN-HEADEREND:event_bOKActionPerformed
     // Store settings
@@ -2780,6 +2902,133 @@ public class SettingsWindow extends javax.swing.JDialog {
 
     jTabbedPane1.addTab("IBKR TWS API", pTws);
 
+    // Cloud Sync tab
+    pCloudSync = new javax.swing.JPanel();
+    pCloudSync.setLayout(new java.awt.GridBagLayout());
+    java.awt.GridBagConstraints gbcCloud = new java.awt.GridBagConstraints();
+    gbcCloud.insets = new java.awt.Insets(5, 5, 5, 5);
+    gbcCloud.anchor = java.awt.GridBagConstraints.WEST;
+    gbcCloud.fill = java.awt.GridBagConstraints.HORIZONTAL;
+
+    cbCloudSyncEnabled = new javax.swing.JCheckBox("Povolit synchronizaci s Google Drive");
+    gbcCloud.gridx = 0;
+    gbcCloud.gridy = 0;
+    gbcCloud.gridwidth = 2;
+    pCloudSync.add(cbCloudSyncEnabled, gbcCloud);
+
+    lblCloudSyncStatus = new javax.swing.JLabel("Stav: Nepřipojeno");
+    gbcCloud.gridx = 0;
+    gbcCloud.gridy = 1;
+    gbcCloud.gridwidth = 1;
+    pCloudSync.add(lblCloudSyncStatus, gbcCloud);
+
+    lblLastSyncTime = new javax.swing.JLabel("Poslední synchronizace: Nikdy");
+    gbcCloud.gridx = 1;
+    gbcCloud.gridy = 1;
+    gbcCloud.gridwidth = 1;
+    pCloudSync.add(lblLastSyncTime, gbcCloud);
+
+    javax.swing.JLabel lblAutoSync = new javax.swing.JLabel("Automatická synchronizace:");
+    gbcCloud.gridx = 0;
+    gbcCloud.gridy = 2;
+    gbcCloud.gridwidth = 2;
+    pCloudSync.add(lblAutoSync, gbcCloud);
+
+    cbCloudSyncAutoStartup = new javax.swing.JCheckBox("Při spuštění aplikace");
+    gbcCloud.gridx = 0;
+    gbcCloud.gridy = 3;
+    gbcCloud.gridwidth = 1;
+    pCloudSync.add(cbCloudSyncAutoStartup, gbcCloud);
+
+    cbCloudSyncAutoSave = new javax.swing.JCheckBox("Při uložení dat");
+    gbcCloud.gridx = 1;
+    gbcCloud.gridy = 3;
+    gbcCloud.gridwidth = 1;
+    pCloudSync.add(cbCloudSyncAutoSave, gbcCloud);
+
+    cbCloudSyncAutoImport = new javax.swing.JCheckBox("Při importu obchodů");
+    gbcCloud.gridx = 0;
+    gbcCloud.gridy = 4;
+    gbcCloud.gridwidth = 1;
+    pCloudSync.add(cbCloudSyncAutoImport, gbcCloud);
+
+    javax.swing.JPanel panelCloudButtons = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+    btnCloudConnect = new javax.swing.JButton("Připojit");
+    btnCloudDisconnect = new javax.swing.JButton("Odpojit");
+    panelCloudButtons.add(btnCloudConnect);
+    panelCloudButtons.add(btnCloudDisconnect);
+    gbcCloud.gridx = 1;
+    gbcCloud.gridy = 4;
+    gbcCloud.gridwidth = 1;
+    pCloudSync.add(panelCloudButtons, gbcCloud);
+
+    javax.swing.JLabel lblManualSync = new javax.swing.JLabel("Manuální akce:");
+    gbcCloud.gridx = 0;
+    gbcCloud.gridy = 5;
+    gbcCloud.gridwidth = 2;
+    pCloudSync.add(lblManualSync, gbcCloud);
+
+    btnCloudBackup = new javax.swing.JButton("Zálohovat do cloudu");
+    btnCloudRestore = new javax.swing.JButton("Obnovit z cloudu");
+    javax.swing.JPanel panelCloudActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+    panelCloudActions.add(btnCloudBackup);
+    panelCloudActions.add(btnCloudRestore);
+    gbcCloud.gridx = 0;
+    gbcCloud.gridy = 6;
+    gbcCloud.gridwidth = 2;
+    pCloudSync.add(panelCloudActions, gbcCloud);
+
+    lblCloudInfo = new javax.swing.JLabel("<html><i>ℹ️ Poznámka: Všechna data jsou šifrována pomocí AES-256-CBC. Heslo je vyžadováno při každé záloze/obnově.</i></html>");
+    gbcCloud.gridx = 0;
+    gbcCloud.gridy = 7;
+    gbcCloud.gridwidth = 2;
+    gbcCloud.weighty = 1.0;
+    pCloudSync.add(lblCloudInfo, gbcCloud);
+
+    // Cloud sync action listeners
+    cbCloudSyncEnabled.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbCloudSyncEnabledActionPerformed(evt);
+      }
+    });
+    cbCloudSyncAutoStartup.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbCloudSyncAutoStartupActionPerformed(evt);
+      }
+    });
+    cbCloudSyncAutoSave.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbCloudSyncAutoSaveActionPerformed(evt);
+      }
+    });
+    cbCloudSyncAutoImport.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbCloudSyncAutoImportActionPerformed(evt);
+      }
+    });
+    btnCloudConnect.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        btnCloudConnectActionPerformed(evt);
+      }
+    });
+    btnCloudDisconnect.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        btnCloudDisconnectActionPerformed(evt);
+      }
+    });
+    btnCloudBackup.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        btnCloudBackupActionPerformed(evt);
+      }
+    });
+    btnCloudRestore.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        btnCloudRestoreActionPerformed(evt);
+      }
+    });
+
+    jTabbedPane1.addTab("Cloud Sync", pCloudSync);
+
     // System tab should be last
     jTabbedPane1.addTab("System", pSystem);
 
@@ -3386,6 +3635,21 @@ public class SettingsWindow extends javax.swing.JDialog {
   private javax.swing.JSpinner spUiFontSize;
   private javax.swing.JComboBox cbMonospaceFontFamily;
   private javax.swing.JSpinner spMonospaceFontSize;
+  
+  // Cloud Sync tab components
+  private javax.swing.JPanel pCloudSync;
+  private javax.swing.JCheckBox cbCloudSyncEnabled;
+  private javax.swing.JLabel lblCloudSyncStatus;
+  private javax.swing.JLabel lblLastSyncTime;
+  private javax.swing.JCheckBox cbCloudSyncAutoStartup;
+  private javax.swing.JCheckBox cbCloudSyncAutoSave;
+  private javax.swing.JCheckBox cbCloudSyncAutoImport;
+  private javax.swing.JButton btnCloudBackup;
+  private javax.swing.JButton btnCloudRestore;
+  private javax.swing.JButton btnCloudConnect;
+  private javax.swing.JButton btnCloudDisconnect;
+  private javax.swing.JLabel lblCloudInfo;
+  
   // End of variables declaration//GEN-END:variables
 
   /**

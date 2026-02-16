@@ -4,6 +4,34 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Synchronizace s Google Drive] - 2026-02-16
+
+### Přidáno
+- Implementována plná synchronizace nastavení a dat s Google Drive.
+- Podpora OAuth 2.0 autentizace pro Google Drive.
+- Šifrování všech záloh pomocí AES-256-CBC s PBKDF2 (100 000 iterací).
+- HMAC-SHA256 pro ověření integrity dat.
+- Nová záložka "Cloud Sync" v nastavení aplikace.
+- Možnost automatické synchronizace při spuštění, uložení a importu.
+- Detekce konfliktů při synchronizaci s možností výběru verze (místní/cloud).
+- Položky menu "Zálohovat do cloudu", "Obnovit z cloudu" a "Synchronizovat nastavení" v menu Soubor.
+
+### Technické detaily
+- Vytvořeny nové třídy: `GoogleDriveClient`, `CloudSyncManager`, `CloudBackupData`, `SyncResult`, `CloudSyncDialog`, `EncryptionUtils`.
+- Rozšířena třída `Settings` o metody pro export/import nastavení a nová pole pro cloud sync konfiguraci.
+- Zálohy se ukládají v Google Drive AppDataFolder s formátem `StockAccounting-Backup-Settings-YYYYMMDD-HHMMSS.enc`.
+- Klientské tajemství pro Google API se očekávají v souboru `resources/client_secrets.json`.
+
+### Bezpečnost
+- Všechna data šifrována před odesláním do cloudu.
+- Heslo pro šifrování není nikde uloženo, uživatel si musí zapamatovat.
+- API klíče Trading 212 a IBKR jsou také šifrovány v zálohách.
+
+### Poznámky
+- Vyžaduje soubor `client_secrets.json` v resources složce (není verzován v Git repozitáři).
+- Při ztrátě hesla pro šifrování nelze data obnovit (bezpečnostní opatření).
+- První synchronizace vyžaduje připojení k Google Drive přes OAuth 2.0.
+
 ## [Refaktorizace: oddělení logiky exportu a persistence] - 2026-02-16
 
 ### Přidáno

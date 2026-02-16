@@ -1124,6 +1124,34 @@ public class MainWindow extends javax.swing.JFrame {
     jMenu1.add(miExportFIO);
     jMenu1.add(jSeparator2);
 
+    // Cloud Sync menu items
+    miCloudBackup = new javax.swing.JMenuItem();
+    miCloudBackup.setText("Zálohovat do cloudu");
+    miCloudBackup.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        miCloudBackupActionPerformed(evt);
+      }
+    });
+    jMenu1.add(miCloudBackup);
+
+    miCloudRestore = new javax.swing.JMenuItem();
+    miCloudRestore.setText("Obnovit z cloudu");
+    miCloudRestore.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        miCloudRestoreActionPerformed(evt);
+      }
+    });
+    jMenu1.add(miCloudRestore);
+
+    miCloudSync = new javax.swing.JMenuItem();
+    miCloudSync.setText("Synchronizovat nastavení");
+    miCloudSync.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        miCloudSyncActionPerformed(evt);
+      }
+    });
+    jMenu1.add(miCloudSync);
+
     miExit.setAccelerator(
         javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, java.awt.event.InputEvent.CTRL_DOWN_MASK));
     miExit.setText("Konec");
@@ -1812,6 +1840,12 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     AppLog.info("Soubor uložen: " + fl.getName());
+
+    // Auto-sync on save
+    if (Settings.getCloudSyncEnabled() && Settings.getCloudSyncAutoOnSave()) {
+      triggerAutoBackup();
+    }
+
     return true;
   }
 
@@ -2186,6 +2220,122 @@ public class MainWindow extends javax.swing.JFrame {
       }
     }
   }// GEN-LAST:event_miExportFIOActionPerformed
+
+  private void miCloudBackupActionPerformed(java.awt.event.ActionEvent evt) {
+    if (!Settings.getCloudSyncEnabled()) {
+      JOptionPane.showMessageDialog(this, "Synchronizace s cloudem není povolena. Zapněte ji v Nastavení.", "Cloud Sync", JOptionPane.INFORMATION_MESSAGE);
+      return;
+    }
+
+    char[] password = CloudSyncDialog.showBackupPasswordDialog(this);
+    if (password == null || password.length == 0) {
+      return;
+    }
+
+    try {
+      SyncResult result = CloudSyncManager.getInstance().backupToCloud(password);
+      if (result.isSuccess()) {
+        JOptionPane.showMessageDialog(this, result.getMessage(), "Zálohování dokončeno", JOptionPane.INFORMATION_MESSAGE);
+      } else {
+        JOptionPane.showMessageDialog(this, result.getMessage(), "Chyba zálohování", JOptionPane.ERROR_MESSAGE);
+      }
+    } catch (Exception e) {
+      AppLog.error("Chyba při zálohování do cloudu", e);
+      JOptionPane.showMessageDialog(this, "Chyba: " + e.getMessage(), "Chyba", JOptionPane.ERROR_MESSAGE);
+    }
+  }
+
+  private void miCloudRestoreActionPerformed(java.awt.event.ActionEvent evt) {
+    if (!Settings.getCloudSyncEnabled()) {
+      JOptionPane.showMessageDialog(this, "Synchronizace s cloudem není povolena. Zapněte ji v Nastavení.", "Cloud Sync", JOptionPane.INFORMATION_MESSAGE);
+      return;
+    }
+
+    char[] password = CloudSyncDialog.showRestorePasswordDialog(this);
+    if (password == null || password.length == 0) {
+      return;
+    }
+
+    int confirm = JOptionPane.showConfirmDialog(this,
+        "Obnova přepíše všechna aktuální nastavení.\n\nOpravdu chcete pokračovat?",
+        "Potvrdit obnovu", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+    if (confirm != JOptionPane.YES_OPTION) {
+      return;
+    }
+
+    try {
+      SyncResult result = CloudSyncManager.getInstance().restoreFromCloud(password);
+      if (result.isSuccess()) {
+        JOptionPane.showMessageDialog(this, result.getMessage() + "\n\nAplikace se restartuje...", "Obnova dokončena", JOptionPane.INFORMATION_MESSAGE);
+        Settings.load();
+      } else {
+        JOptionPane.showMessageDialog(this, result.getMessage(), "Chyba obnovy", JOptionPane.ERROR_MESSAGE);
+      }
+    } catch (Exception e) {
+      AppLog.error("Chyba při obnově z cloudu", e);
+      JOptionPane.showMessageDialog(this, "Chyba: " + e.getMessage(), "Chyba", JOptionPane.ERROR_MESSAGE);
+    }
+  }
+
+  private void triggerAutoBackup() {
+    try {
+      char[] password = CloudSyncDialog.showBackupPasswordDialog(this);
+      if (password != null && password.length > 0) {
+        SyncResult result = CloudSyncManager.getInstance().backupToCloud(password);
+        if (!result.isSuccess()) {
+          AppLog.warn("Automatická záloha se nepodařila: " + result.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      AppLog.warn("Automatická záloha se nepodařila: " + e.getMessage());
+    }
+  }
+
+  private void miCloudSyncActionPerformed(java.awt.event.ActionEvent evt) {
+    if (!Settings.getCloudSyncEnabled()) {
+      JOptionPane.showMessageDialog(this, "Synchronizace s cloudem není povolena. Zapněte ji v Nastavení.", "Cloud Sync", JOptionPane.INFORMATION_MESSAGE);
+      return;
+    }
+
+    try {
+      SyncResult status = CloudSyncManager.getInstance().checkSyncStatus();
+      if (!status.isSuccess()) {
+        JOptionPane.showMessageDialog(this, "Není připojeno k Google Drive. Připojte se v Nastavení.", "Cloud Sync", JOptionPane.INFORMATION_MESSAGE);
+        return;
+      }
+
+      if (status.hasConflict()) {
+        boolean useCloud = CloudSyncDialog.showConflictDialog(this, status.getConflict());
+        if (useCloud) {
+          char[] password = CloudSyncDialog.showRestorePasswordDialog(this);
+          if (password != null && password.length > 0) {
+            SyncResult restoreResult = CloudSyncManager.getInstance().restoreFromCloud(password);
+            if (restoreResult.isSuccess()) {
+              JOptionPane.showMessageDialog(this, "Data z cloudu byla úspěšně obnovena.", "Synchronizace", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+              JOptionPane.showMessageDialog(this, restoreResult.getMessage(), "Chyba", JOptionPane.ERROR_MESSAGE);
+            }
+          }
+        } else {
+          char[] password = CloudSyncDialog.showBackupPasswordDialog(this);
+          if (password != null && password.length > 0) {
+            SyncResult backupResult = CloudSyncManager.getInstance().backupToCloud(password);
+            if (backupResult.isSuccess()) {
+              JOptionPane.showMessageDialog(this, "Místní data byla úspěšně odeslána do cloudu.", "Synchronizace", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+              JOptionPane.showMessageDialog(this, backupResult.getMessage(), "Chyba", JOptionPane.ERROR_MESSAGE);
+            }
+          }
+        }
+      } else {
+        JOptionPane.showMessageDialog(this, status.getMessage(), "Synchronizace", JOptionPane.INFORMATION_MESSAGE);
+      }
+    } catch (Exception e) {
+      AppLog.error("Chyba při synchronizaci", e);
+      JOptionPane.showMessageDialog(this, "Chyba: " + e.getMessage(), "Chyba", JOptionPane.ERROR_MESSAGE);
+    }
+  }
 
   private void tfNoteActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_tfNoteActionPerformed
     // TODO add your handling code here:
@@ -2647,6 +2797,9 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JMenuItem miSaveAs;
   private javax.swing.JMenuItem miSaveFiltered;
   private javax.swing.JMenuItem miSettings;
+  private javax.swing.JMenuItem miCloudBackup;
+  private javax.swing.JMenuItem miCloudRestore;
+  private javax.swing.JMenuItem miCloudSync;
   private javax.swing.JTable table;
   private javax.swing.JTextField tfMarket;
   private javax.swing.JTextField tfNote;
