@@ -4,6 +4,23 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Refaktorizace: oddělení logiky exportu a persistence] - 2026-02-16
+
+### Přidáno
+- Vytvořena třída `TransactionExporter` v balíčku `export/` pro oddělení exportní logiky.
+- Vytvořena třída `TransactionRepository` pro oddělení logiky ukládání a načítání dat.
+- Metody `export()` a `exportFIO()` ve třídě `Transaction` označeny jako deprecated a delegují na `TransactionExporter`.
+- Metody `save()`, `load()` a `loadAdd()` ve třídě `TransactionSet` nyní používají `TransactionRepository`.
+
+### Upraveno
+- Opraveny prázdné catch bloky v `Main.java` - přidáno logování výjimek.
+- Použit vzor try-with-resources v `TransactionSet` pro uzavírání proudů souborů.
+- Oddělena odpovědnost tříd podle Single Responsibility Principle.
+
+### Poznámky
+- Oddělení TableModel logiky z `TransactionSet` bylo odloženo z důvodu složitosti.
+- Všechny změny jsou zpětně kompatibilní a nemění formát datových souborů.
+
 ## [Přesun nástroje ibkr-report do kořenového adresáře projektu] - 2026-02-11
 
 ### Přidáno

@@ -703,42 +703,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    */
   private void saveInternal(Vector<Transaction> rows, File dstFile)
       throws java.io.FileNotFoundException, java.io.IOException {
-    PrintWriter ofl = new PrintWriter(new java.io.BufferedWriter(new java.io.FileWriter(dstFile)));
-
-    try {
-      GregorianCalendar cal = new GregorianCalendar();
-
-      ofl.println("version=1");
-      ofl.println("serialCounter=" + serialCounter);
-      if (lastDateSet == null)
-        lastDateSet = getMaxDate();
-      if (lastDateSet == null) {
-        ofl.println("lastDateSet=null");
-      } else {
-        cal.setTime(lastDateSet);
-        ofl.println("lastDateSet=" + cal.get(GregorianCalendar.DAY_OF_MONTH) + "."
-            + (cal.get(GregorianCalendar.MONTH) + 1) + "." + cal.get(GregorianCalendar.YEAR) + " "
-            + cal.get(GregorianCalendar.HOUR_OF_DAY) + ":" + cal.get(GregorianCalendar.MINUTE));
-      }
-
-      for (int i = 0; i < rows.size(); i++) {
-        Transaction tx = rows.elementAt(i);
-
-        if (tx.isFilledIn()) {
-          ofl.println("row (");
-          tx.save(ofl, "  ");
-          ofl.println(")");
-        }
-      }
-    } finally {
-      try {
-        ofl.close();
-      } catch (Exception e) {
-      }
-    }
-
+    TransactionRepository.save(rows, serialCounter, lastDateSet, dstFile);
     diskFile = dstFile;
-
     modified = false;
   }
 
@@ -774,138 +740,79 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     * Load from a file
     */
    public void load(File srcFile) throws java.io.FileNotFoundException, java.io.IOException {
-     try (BufferedReader ifl = new BufferedReader(new java.io.FileReader(srcFile))) {
-       String a[];
+     // Initialize
+     rows.clear();
+     filteredRows = null;
+     cbmodel.removeAllElements();
+     serialCounter = 1;
 
-       // Initialize
-       rows.clear();
-       filteredRows = null;
-       cbmodel.removeAllElements();
-       serialCounter = 1;
+     // Reset Stocks instance and transformation cache for new data
+     stocksInstance = null;
+     transformationCache.invalidate();
 
-       // Reset Stocks instance and transformation cache for new data
-       stocksInstance = null;
-       transformationCache.invalidate();
+     // Load data using repository
+     TransactionRepository.LoadedData data = TransactionRepository.load(srcFile, transformationCache);
 
-       a = readLine(ifl);
+     // Process loaded data
+     if (data.transactions != null) {
+       rows.addAll(data.transactions);
+       serialCounter = data.serialCounter;
+       lastDateSet = data.lastDateSet;
 
-       if (a[0] == null) {
-         // No data(?)
-         ifl.close();
-         return;
-       }
-
-       if (!a[0].equals("version")) {
-         // Version not first?
-         ifl.close();
-         return;
-       }
-
-       if (!a[1].equals("1")) {
-         // Version not equal
-         ifl.close();
-         return;
-       }
-
-       // Start reading lines
-       for (;;) {
-         a = readLine(ifl);
-         if (a[0] == null)
-           break;
-
-         if (a[0].equals("row (")) {
-           // Add row
-           Transaction tx = new Transaction(ifl);
-           rows.add(tx);
-
+       // Populate ticker model
+       for (Transaction tx : rows) {
+         if (tx.ticker != null && tx.ticker.length() > 0) {
            cbmodel.putItem(tx.ticker.toUpperCase());
-         } else if (a[0].equals("serialCounter"))
-           this.serialCounter = Integer.parseInt(a[1]);
-         else if (a[0].equals("lastDateSet")) {
-           if (a[1].equalsIgnoreCase("null"))
-             this.lastDateSet = null;
-           else
-             this.lastDateSet = parseDate(a[1]);
          }
        }
      }
 
-    sort();
+      sort();
 
-    // Repair duplicate/broken serials (affects highlighting and batch update logic)
-    normalizeSerialsIfNeeded();
+      // Repair duplicate/broken serials (affects highlighting and batch update logic)
+      normalizeSerialsIfNeeded();
 
-    // We don't fire data changed event, since it is alreday done by the sort()
+      // We don't fire data changed event, since it is alreday done by sort()
 
-    diskFile = srcFile;
-    modified = false;
-  }
-
-  /**
-   * Load from a file and merge with existing data
-   */
-  public void loadAdd(File srcFile) throws java.io.FileNotFoundException, java.io.IOException {
-    BufferedReader ifl = new BufferedReader(new java.io.FileReader(srcFile));
-    String a[];
-
-    // Initialize
-    // rows.clear();
-    filteredRows = null;
-    // cbmodel.removeAllElements();
-    serialCounter = 1;
-
-    a = readLine(ifl);
-
-    if (a[0] == null) {
-      // No data(?)
-      ifl.close();
-      return;
+       diskFile = srcFile;
+       modified = false;
     }
 
-    if (!a[0].equals("version")) {
-      // Version not first?
-      ifl.close();
-      return;
+    /**
+     * Load from a file and merge with existing data
+    */
+   public void loadAdd(File srcFile) throws java.io.FileNotFoundException, java.io.IOException {
+     // Initialize
+     filteredRows = null;
+     serialCounter = 1;
+
+     // Load data using repository
+     TransactionRepository.LoadedData data = TransactionRepository.loadAdd(srcFile, transformationCache);
+
+     // Process loaded data
+     if (data.transactions != null) {
+       rows.addAll(data.transactions);
+       serialCounter = data.serialCounter;
+       if (data.lastDateSet != null) {
+         lastDateSet = data.lastDateSet;
+       }
+
+       // Populate ticker model
+       for (Transaction tx : data.transactions) {
+         if (tx.ticker != null && tx.ticker.length() > 0) {
+           cbmodel.putItem(tx.ticker.toUpperCase());
+         }
+       }
+     }
+
+      sort();
+      normalizeSerialsIfNeeded();
+      fireTableDataChanged();
+      modified = true;
     }
 
-    if (!a[1].equals("1")) {
-      // Version not equal
-      ifl.close();
-      return;
-    }
-
-    // Start reading lines
-    for (;;) {
-      a = readLine(ifl);
-      if (a[0] == null)
-        break;
-
-      if (a[0].equals("row (")) {
-        // Add row
-        Transaction tx = new Transaction(ifl);
-        rows.add(tx);
-
-        cbmodel.putItem(tx.ticker.toUpperCase());
-      } else if (a[0].equals("serialCounter"))
-        this.serialCounter = Integer.parseInt(a[1]);
-      else if (a[0].equals("lastDateSet")) {
-        if (a[1].equalsIgnoreCase("null"))
-          this.lastDateSet = null;
-        else
-          this.lastDateSet = parseDate(a[1]);
-      }
-    }
-
-    sort();
-
-    // We don't fire data changed event, since it is alreday done by the sort()
-
-    diskFile = srcFile;
-    modified = false;
-  }
-
-  /**
-   * Delete row
+   /**
+    * Delete row
    *
    * @param rowNo Row to delete
    *
