@@ -321,6 +321,14 @@ public class MainWindow extends javax.swing.JFrame {
 
     table.setModel(transactions);
     System.out.println("DEBUG: Table model set, calling initTableColumns");
+
+    table.addMouseListener(new java.awt.event.MouseAdapter() {
+      @Override
+      public void mouseClicked(java.awt.event.MouseEvent evt) {
+        tableMouseClicked(evt);
+      }
+    });
+
     // Call mainwindow table initialization - helpers, column setting
     initTableColumns();
 
@@ -2599,6 +2607,38 @@ public class MainWindow extends javax.swing.JFrame {
     transientStatusUntilMs = System.currentTimeMillis() + Math.max(0L, ttlMs);
     System.out.println("INFO: " + msg);
     updateStatusBar();
+  }
+
+  private void tableMouseClicked(java.awt.event.MouseEvent evt) {
+    if (evt.getClickCount() != 2) {
+      return;
+    }
+
+    int column = table.columnAtPoint(evt.getPoint());
+    if (column != 13 && column != 15) {
+      return;
+    }
+
+    int row = table.rowAtPoint(evt.getPoint());
+    if (row < 0) {
+      return;
+    }
+
+    Object value = table.getValueAt(row, column);
+    if (value == null) {
+      setTransientStatusMessage("Zkopírováno: (prázdné)", 3000L);
+      return;
+    }
+
+    String textValue = value.toString();
+    try {
+      java.awt.datatransfer.StringSelection selection = new java.awt.datatransfer.StringSelection(textValue);
+      java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
+      setTransientStatusMessage("Zkopírováno: " + textValue, 3000L);
+    } catch (Exception e) {
+      System.err.println("Chyba při kopírování do schránky: " + e.getMessage());
+      setTransientStatusMessage("Chyba při kopírování", 3000L);
+    }
   }
 
   /**
