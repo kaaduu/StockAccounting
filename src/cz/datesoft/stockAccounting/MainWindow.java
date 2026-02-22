@@ -350,6 +350,7 @@ public class MainWindow extends javax.swing.JFrame {
     dollarIcon = new javax.swing.ImageIcon(iconURL);
     setIconImage(getDollarImage());
     updateTitle();
+    updateRecentFilesMenu();
 
     // Auto-maximize if enabled
     if (Settings.getAutoMaximized()) {
@@ -2210,6 +2211,8 @@ public class MainWindow extends javax.swing.JFrame {
 
     // Save as last opened file
     Settings.setLastOpenedFile(selectedFile.getAbsolutePath());
+    Settings.addRecentFile(selectedFile.getAbsolutePath());
+    updateRecentFilesMenu();
 
     AppLog.info("Soubor načten: " + selectedFile.getName() + " (záznamů: " + transactions.getRowCountRaw() + ")");
   }
