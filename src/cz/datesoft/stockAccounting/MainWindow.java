@@ -1095,6 +1095,9 @@ public class MainWindow extends javax.swing.JFrame {
       }
     });
     jMenu1.add(miSaveAs);
+    menuRecent = new javax.swing.JMenu();
+    menuRecent.setText("Nedávné");
+    jMenu1.add(menuRecent);
 
     miSaveFiltered.setText("Uložit vyfiltrované");
     miSaveFiltered.setEnabled(false);
@@ -2815,6 +2818,7 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JMenu jMenu1;
   private javax.swing.JMenu jMenu2;
   private javax.swing.JMenu jMenu3;
+  private javax.swing.JMenu menuRecent;
   private javax.swing.JMenuBar jMenuBar1;
   private javax.swing.JPanel jPanel1;
   private javax.swing.JPanel jPanel2;
