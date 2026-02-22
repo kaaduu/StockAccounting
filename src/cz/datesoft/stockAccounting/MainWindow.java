@@ -486,6 +486,54 @@ public class MainWindow extends javax.swing.JFrame {
    *
    * @return True when action can proceed, false when cancel was selected.
    */
+  private void updateRecentFilesMenu() {
+    menuRecent.removeAll();
+
+    java.util.List<String> recentFiles = Settings.getRecentFiles();
+    if (recentFiles.isEmpty()) {
+      javax.swing.JMenuItem emptyItem = new javax.swing.JMenuItem("Žádné nedávné soubory");
+      emptyItem.setEnabled(false);
+      menuRecent.add(emptyItem);
+      return;
+    }
+
+    String dataDir = Settings.getDataDirectory();
+
+    for (String filePath : recentFiles) {
+      java.io.File file = new java.io.File(filePath);
+      if (!file.exists()) {
+        Settings.removeRecentFile(filePath);
+        continue;
+      }
+
+      String displayPath = filePath;
+      if (dataDir != null && filePath.startsWith(dataDir)) {
+        displayPath = filePath.substring(dataDir.length());
+        if (displayPath.startsWith(java.io.File.separator)) {
+          displayPath = displayPath.substring(1);
+        }
+      }
+
+      javax.swing.JMenuItem item = new javax.swing.JMenuItem(displayPath);
+      final java.io.File fileRef = file;
+      item.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent e) {
+          try {
+            if (checkModified()) {
+              openFile(fileRef);
+            }
+          } catch (Exception ex) {
+            UiDialogs.error(MainWindow.this,
+                "Při načítání souboru nastala chyba: " + ex.getMessage(),
+                "Chyba", ex);
+          }
+        }
+      });
+      menuRecent.add(item);
+    }
+  }
+
+
   private boolean checkModified() {
     if (transactions.isModified()) {
       int res = JOptionPane.showConfirmDialog(this, "Datový soubor byl modifikován. Přejete si jej uložit?", "Otázka",
