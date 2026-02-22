@@ -8,11 +8,16 @@
  */
 package cz.datesoft.stockAccounting;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  *
  * @author lemming2
  */
 public class Main {
+
+  private static final Logger logger = Logger.getLogger(Main.class.getName());
 
   /**
    * Main window
@@ -30,7 +35,9 @@ public class Main {
     // Apply Look&Feel before any Swing components are created.
     try {
       UiTheme.applyFromSettings();
-    } catch (Exception e) { }
+    } catch (Exception e) {
+      logger.log(Level.SEVERE, "Failed to apply UI theme", e);
+    }
     
     mainWindow = new MainWindow();
     
