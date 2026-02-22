@@ -19,6 +19,9 @@ import java.util.Map;
 import java.util.Calendar;
 import java.text.SimpleDateFormat;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  *
@@ -328,6 +331,44 @@ public class Settings {
     Preferences p = Preferences.userNodeForPackage(Settings.class);
     p.putBoolean("autoLoadLastFile", autoLoad);
   }
+
+  private static final String PREF_KEY_RECENT_FILES = "recentFiles";
+  private static final int MAX_RECENT_FILES = 10;
+
+  public static List<String> getRecentFiles() {
+    Preferences p = Preferences.userNodeForPackage(Settings.class);
+    String files = p.get(PREF_KEY_RECENT_FILES, "");
+    if (files.isEmpty()) return new ArrayList<>();
+    return new ArrayList<>(Arrays.asList(files.split("\\|")));
+  }
+
+  public static void addRecentFile(String path) {
+    if (path == null || path.isEmpty()) return;
+    List<String> files = getRecentFiles();
+    files.remove(path);
+    files.add(0, path);
+    if (files.size() > MAX_RECENT_FILES) {
+      files = files.subList(0, MAX_RECENT_FILES);
+    }
+    saveRecentFiles(files);
+  }
+
+  public static void removeRecentFile(String path) {
+    List<String> files = getRecentFiles();
+    files.remove(path);
+    saveRecentFiles(files);
+  }
+
+  private static void saveRecentFiles(List<String> files) {
+    Preferences p = Preferences.userNodeForPackage(Settings.class);
+    String joined = String.join("|", files);
+    if (joined.isEmpty()) {
+      p.remove(PREF_KEY_RECENT_FILES);
+    } else {
+      p.put(PREF_KEY_RECENT_FILES, joined);
+    }
+  }
+
 
   /**
    * Ratios getter
