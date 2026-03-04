@@ -12,6 +12,8 @@ package cz.datesoft.stockAccounting.imp;
 import java.util.Vector;
 import java.io.File;
 import java.util.Date;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 
 import cz.datesoft.stockAccounting.Transaction;
 
@@ -37,6 +39,9 @@ public class ImportFio extends ImportBase
   private final int ID_FEE_CZK = 10;
   private final int ID_FEE_USD = 11;
   private final int ID_FEE_EUR = 12;
+  private final int ID_VOLUME_CZK = 13;
+  private final int ID_VOLUME_USD = 14;
+  private final int ID_VOLUME_EUR = 15;
   
   /**
    * Our data row with a bit more fields
@@ -44,6 +49,19 @@ public class ImportFio extends ImportBase
   public class FioDataRow extends DataRow
   {
     String text;
+    boolean disabled;
+  }
+  
+  @Override
+  protected void addRow(Vector<Transaction> set, DataRow row) throws Exception {
+    super.addRow(set, row);
+    if (row instanceof FioDataRow) {
+      FioDataRow frow = (FioDataRow) row;
+      if (frow.disabled) {
+        // The transaction was already added, now set disabled flag
+        set.get(set.size() - 1).setDisabled(true);
+      }
+    }
   }
   
   /** Creates a new instance of ImportFio */
@@ -55,7 +73,9 @@ public class ImportFio extends ImportBase
   public Vector<Transaction> doImport(File srcFile, Date startDate, Date endDate, Vector<String[]> notImported) throws ImportException, java.io.IOException
   {
     Vector<Transaction> res = new Vector<Transaction>();
-    java.io.BufferedReader ifl = new java.io.BufferedReader(new java.io.FileReader(srcFile));
+    java.io.BufferedReader ifl = new java.io.BufferedReader(
+        new java.io.InputStreamReader(new java.io.FileInputStream(srcFile), "Windows-1250")
+    );
     String s;
     
     // Establish column names
@@ -77,6 +97,24 @@ public class ImportFio extends ImportBase
     registerColumnName("Poplatky v CZK", ID_FEE_CZK);
     registerColumnName("Poplatky v USD", ID_FEE_USD);
     registerColumnName("Poplatky v EUR", ID_FEE_EUR);
+    registerColumnName("Objem v CZK", ID_VOLUME_CZK);
+    registerColumnName("Objem v USD", ID_VOLUME_USD);
+    registerColumnName("Objem v EUR", ID_VOLUME_EUR);
+
+    // Read first line to extract account ID
+    String firstLine = ifl.readLine();
+    String accountId = null;
+    if (firstLine != null) {
+      java.util.regex.Pattern p = java.util.regex.Pattern.compile("portfolio\"([^\"]+)\"");
+      java.util.regex.Matcher m = p.matcher(firstLine);
+      if (m.find()) {
+        String portfolioText = m.group(1);
+        String[] parts = portfolioText.split(":\\s*");
+        if (parts.length >= 2) {
+          accountId = parts[parts.length - 1].trim();
+        }
+      }
+    }
 
     // Find start
     int neededLen = 0;
@@ -113,6 +151,9 @@ public class ImportFio extends ImportBase
     int feeCZKIdx = getColumnNo(ID_FEE_CZK);
     int feeUSDIdx = getColumnNo(ID_FEE_USD);
     int feeEURIdx = getColumnNo(ID_FEE_EUR);
+    int volumeCZKIdx = getColumnNo(ID_VOLUME_CZK);
+    int volumeUSDIdx = getColumnNo(ID_VOLUME_USD);
+    int volumeEURIdx = getColumnNo(ID_VOLUME_EUR);
     
     // Process data rows
     while((s = ifl.readLine()) != null) {
@@ -122,6 +163,9 @@ public class ImportFio extends ImportBase
       
       if (a.length >= neededLen) {
         FioDataRow drow = new FioDataRow();
+
+        drow.broker = "FIO";
+        drow.accountId = accountId;
 
         String dirStr = a[dirIdx];
 
@@ -175,6 +219,54 @@ public class ImportFio extends ImportBase
                 e.printStackTrace();
               } // Ignore row on exception
             }  
+          }
+          else if (equalsIgoreCaseAndEncoding(a[marketIdx], "Pokladna", "Pokladna")) {
+            try {
+              drow.date = parseDate(a[dateIdx], null);
+
+              boolean outOfDateRange = false;
+              if ((startDate != null) && (drow.date.compareTo(startDate) < 0)) outOfDateRange = true;
+              if ((endDate != null) && (drow.date.compareTo(endDate) > 0)) outOfDateRange = true;
+
+              if (!outOfDateRange) {
+                double volumeCZK = parseNumber(a[volumeCZKIdx]);
+                double volumeUSD = parseNumber(a[volumeUSDIdx]);
+                double volumeEUR = parseNumber(a[volumeEURIdx]);
+
+                if (volumeCZK != 0) {
+                  drow.ticker = "CZK";
+                  drow.amount = Math.abs(volumeCZK);
+                  drow.price = 1.0;
+                  drow.currency = "CZK";
+                } else if (volumeUSD != 0) {
+                  drow.ticker = "USD";
+                  drow.amount = Math.abs(volumeUSD);
+                  drow.price = 1.0;
+                  drow.currency = "USD";
+                } else if (volumeEUR != 0) {
+                  drow.ticker = "EUR";
+                  drow.amount = Math.abs(volumeEUR);
+                  drow.price = 1.0;
+                  drow.currency = "EUR";
+                }
+
+                double volume = volumeCZK + volumeUSD + volumeEUR;
+                drow.direction = volume > 0 ? Transaction.DIRECTION_CBUY : Transaction.DIRECTION_CSELL;
+
+                drow.disabled = true;
+
+                drow.note = a[textIdx];
+                drow.executionDate = parseDate(a[executionIdx], drow.date);
+                drow.market = "";
+
+                addRow(res, drow);
+
+                imported = true;
+              }
+            }
+            catch(Exception e) {
+              e.printStackTrace();
+            }
           }
         }
         else {
