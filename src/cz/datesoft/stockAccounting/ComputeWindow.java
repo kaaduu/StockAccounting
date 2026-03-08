@@ -26,7 +26,7 @@ import java.awt.Component;
 import java.awt.Font;
 import java.awt.Color;
 import javax.swing.JLabel;
-import javax.swing.JTable;
+import javax.swing.JSplitPane;
 
 /**
  *
@@ -154,6 +154,15 @@ public class ComputeWindow extends javax.swing.JDialog {
   }
 
   private final java.util.List<CpTaxExportTrade> lastComputedCpTaxTrades = new java.util.ArrayList<>();
+  private final java.util.List<TickerNativeResultEntry> lastComputedCpTickerNativeResults = new java.util.ArrayList<>();
+  private final java.util.List<TickerNativeResultEntry> lastComputedDerTickerNativeResults = new java.util.ArrayList<>();
+
+  private static class TickerNativeResultEntry {
+    String ticker;
+    String currency;
+    double resultNative;
+    double resultCzk;
+  }
 
   private void saveWindowBounds() {
     try {
@@ -174,6 +183,7 @@ public class ComputeWindow extends javax.swing.JDialog {
     super(parent, modal);
     mainWindow = (MainWindow) parent;
     initComponents();
+    installMainSplitPane();
 
     // Respect user window management (no forced fullscreen).
     setLocationByPlatform(true);
@@ -241,6 +251,8 @@ public class ComputeWindow extends javax.swing.JDialog {
       for (int idx : rightAligned) {
         tcm.getColumn(idx).setCellRenderer(rarenderer);
       }
+      tcm.getColumn(5).setCellRenderer(new SummaryTotalsRenderer(javax.swing.SwingConstants.RIGHT));
+      tcm.getColumn(14).setCellRenderer(new SummaryTotalsRenderer(javax.swing.SwingConstants.RIGHT));
     }
 
     TableColumnModel tcmDiv = diviTable.getColumnModel();
@@ -260,6 +272,207 @@ public class ComputeWindow extends javax.swing.JDialog {
     tcmInt.getColumn(7).setCellRenderer(rarenderer);
     tcmInt.getColumn(8).setCellRenderer(rarenderer);
     tcmInt.getColumn(9).setCellRenderer(rarenderer);
+  }
+
+  private void installMainSplitPane() {
+    java.awt.Container content = getContentPane();
+    content.remove(jTabbedPane1);
+    content.remove(jPanel2);
+    content.remove(jScrollPane2);
+
+    javax.swing.JPanel dividendsPanel = new javax.swing.JPanel(new java.awt.GridBagLayout());
+    java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
+    gbc.gridx = 0;
+    gbc.gridy = 0;
+    gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gbc.weightx = 1.0;
+    dividendsPanel.add(jPanel2, gbc);
+
+    gbc = new java.awt.GridBagConstraints();
+    gbc.gridx = 0;
+    gbc.gridy = 1;
+    gbc.fill = java.awt.GridBagConstraints.BOTH;
+    gbc.weightx = 1.0;
+    gbc.weighty = 1.0;
+    dividendsPanel.add(jScrollPane2, gbc);
+
+    jTabbedPane1.setMinimumSize(new java.awt.Dimension(400, 240));
+    dividendsPanel.setMinimumSize(new java.awt.Dimension(400, 120));
+
+    final JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jTabbedPane1, dividendsPanel);
+    splitPane.setContinuousLayout(true);
+    splitPane.setOneTouchExpandable(true);
+    splitPane.setResizeWeight(0.72);
+
+    java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+    int savedDividerLocation = prefs.getInt("computeWindow.mainSplit.divider", -1);
+    if (savedDividerLocation > 0) {
+      javax.swing.SwingUtilities.invokeLater(() -> splitPane.setDividerLocation(savedDividerLocation));
+    }
+    splitPane.addPropertyChangeListener(JSplitPane.DIVIDER_LOCATION_PROPERTY,
+        evt -> prefs.putInt("computeWindow.mainSplit.divider", splitPane.getDividerLocation()));
+
+    java.awt.GridBagConstraints splitGbc = new java.awt.GridBagConstraints();
+    splitGbc.gridx = 0;
+    splitGbc.gridy = 2;
+    splitGbc.fill = java.awt.GridBagConstraints.BOTH;
+    splitGbc.weightx = 1.0;
+    splitGbc.weighty = 2.0;
+    content.add(splitPane, splitGbc);
+  }
+
+  private boolean isSummaryTotalsRow(JTable table, int row) {
+    if (row < 0 || row >= table.getRowCount()) {
+      return false;
+    }
+    Object labelObj = table.getValueAt(row, 5);
+    if (!(labelObj instanceof String)) {
+      return false;
+    }
+    String label = ((String) labelObj).trim();
+    return "Příjem:".equals(label) || "Prijem:".equals(label) || "Výdej:".equals(label) || "Vydej:".equals(label)
+        || "Zisk:".equals(label);
+  }
+
+  private String safeTickerForGrouping(String ticker) {
+    if (ticker == null)
+      return "(bez tickeru)";
+    String trimmed = ticker.trim();
+    return trimmed.isEmpty() ? "(bez tickeru)" : trimmed;
+  }
+
+  private double convertFeeToPriceCurrency(double fee, String feeCurrency, String priceCurrency, Date conversionDate) {
+    if (fee == 0.0)
+      return 0.0;
+    if (feeCurrency == null || priceCurrency == null || conversionDate == null)
+      return fee;
+    String feeCur = feeCurrency.trim();
+    String priceCur = priceCurrency.trim();
+    if (feeCur.isEmpty() || priceCur.isEmpty() || feeCur.equalsIgnoreCase(priceCur))
+      return fee;
+
+    try {
+      double feeCzk = fee * Settings.getExchangeRate(feeCur, conversionDate);
+      double priceRate = Settings.getExchangeRate(priceCur, conversionDate);
+      if (priceRate == 0.0)
+        return fee;
+      return feeCzk / priceRate;
+    } catch (Exception e) {
+      return fee;
+    }
+  }
+
+  private TickerNativeResultEntry buildTickerNativeResultEntry(Stocks.StockTrade t, String ticker, double resultCzk) {
+    if (t == null || t.open == null || t.close == null)
+      return null;
+    if (t.open.priceCurrency == null && t.close.priceCurrency == null)
+      return null;
+
+    String priceCurrency = t.open.priceCurrency != null ? t.open.priceCurrency : t.close.priceCurrency;
+    String normalizedCurrency = priceCurrency != null ? priceCurrency.trim().toUpperCase() : "CZK";
+    if (normalizedCurrency.isEmpty())
+      normalizedCurrency = "CZK";
+
+    Date openConvDate = t.open.executionDate != null ? t.open.executionDate : t.open.date;
+    Date closeConvDate = t.close.executionDate != null ? t.close.executionDate : t.close.date;
+    double openFeeInPriceCurrency = convertFeeToPriceCurrency(t.open.fee, t.open.feeCurrency, normalizedCurrency,
+        openConvDate);
+    double closeFeeInPriceCurrency = convertFeeToPriceCurrency(t.close.fee, t.close.feeCurrency, normalizedCurrency,
+        closeConvDate);
+
+    double openCash = -t.open.amount * t.open.price - openFeeInPriceCurrency;
+    double closeCash = t.close.amount * t.close.price - closeFeeInPriceCurrency;
+
+    TickerNativeResultEntry e = new TickerNativeResultEntry();
+    e.ticker = safeTickerForGrouping(ticker);
+    e.currency = normalizedCurrency;
+    e.resultNative = openCash + closeCash;
+    e.resultCzk = resultCzk;
+    return e;
+  }
+
+  private void showTickerTotalsDialog(boolean cpTable) {
+    if (yearComputed == 0) {
+      JOptionPane.showMessageDialog(this, "Výsledky nebyly (ještě) dopočítány.");
+      return;
+    }
+
+    java.util.List<TickerNativeResultEntry> source = cpTable ? lastComputedCpTickerNativeResults
+        : lastComputedDerTickerNativeResults;
+    if (source.isEmpty()) {
+      JOptionPane.showMessageDialog(this, "Nejsou dostupné realizované obchody pro zobrazení souhrnu.");
+      return;
+    }
+
+    java.util.Map<String, double[]> grouped = new java.util.TreeMap<>();
+    for (TickerNativeResultEntry e : source) {
+      String key = safeTickerForGrouping(e.ticker) + "|" + (e.currency != null ? e.currency : "CZK");
+      double[] agg = grouped.computeIfAbsent(key, k -> new double[] { 0.0, 0.0, 0.0 }); // [count, totalNative, totalCzk]
+      agg[0] += 1.0;
+      agg[1] += e.resultNative;
+      agg[2] += e.resultCzk;
+    }
+
+    DefaultTableModel model = new DefaultTableModel(
+        new Object[][] {},
+        new String[] { "Ticker", "Počet realizovaných obchodů", "Měna", "Total", "Total CZK" }) {
+      @Override
+      public boolean isCellEditable(int row, int column) {
+        return false;
+      }
+    };
+
+    DecimalFormat f2 = new DecimalFormat("0.00");
+    f2.setGroupingUsed(true);
+    f2.setGroupingSize(3);
+
+    for (java.util.Map.Entry<String, double[]> it : grouped.entrySet()) {
+      String[] keyParts = it.getKey().split("\\|", 2);
+      String ticker = keyParts[0];
+      String currency = keyParts.length > 1 ? keyParts[1] : "CZK";
+      double[] agg = it.getValue();
+      model.addRow(new String[] {
+          ticker,
+          Integer.toString((int) agg[0]),
+          currency,
+          f2.format(agg[1]) + " " + currency,
+          f2.format(agg[2])
+      });
+    }
+
+    JTable groupedTable = new JTable(model);
+    groupedTable.setAutoCreateRowSorter(true);
+    DefaultTableCellRenderer right = new DefaultTableCellRenderer();
+    right.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+    groupedTable.getColumnModel().getColumn(1).setCellRenderer(right);
+    groupedTable.getColumnModel().getColumn(3).setCellRenderer(right);
+    groupedTable.getColumnModel().getColumn(4).setCellRenderer(right);
+
+    javax.swing.JScrollPane sp = new javax.swing.JScrollPane(groupedTable);
+    sp.setPreferredSize(new java.awt.Dimension(760, 420));
+
+    String fxMode = Settings.getUseDailyRates() ? "denní kurzy" : "jednotný kurz";
+    String title = (cpTable ? "Cenné papíry: souhrn podle tickeru" : "Deriváty: souhrn podle tickeru")
+        + " (" + fxMode + ")";
+    JOptionPane.showMessageDialog(this, sp, title, JOptionPane.PLAIN_MESSAGE);
+  }
+
+  class SummaryTotalsRenderer extends DefaultTableCellRenderer {
+    private final int horizontalAlignment;
+
+    SummaryTotalsRenderer(int horizontalAlignment) {
+      this.horizontalAlignment = horizontalAlignment;
+    }
+
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+        int row, int column) {
+      Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+      setHorizontalAlignment(horizontalAlignment);
+      Font tableFont = table.getFont();
+      component.setFont(isSummaryTotalsRow(table, row) ? tableFont.deriveFont(Font.BOLD) : tableFont.deriveFont(Font.PLAIN));
+      return component;
+    }
   }
 
   /**
@@ -2380,12 +2593,14 @@ public class ComputeWindow extends javax.swing.JDialog {
     bSaveCSVCP = new javax.swing.JButton();
     bSaveHTMLCP = new javax.swing.JButton();
     bSaveHTMLCPNew = new javax.swing.JButton();
+    bTickerTotalsCP = new javax.swing.JButton();
     jScrollPane1 = new javax.swing.JScrollPane();
     tableCP = new javax.swing.JTable();
     pDerivates = new javax.swing.JPanel();
     bSaveCSVDer = new javax.swing.JButton();
     bSaveHTMLDer = new javax.swing.JButton();
     bSaveHTMLDerNew = new javax.swing.JButton();
+    bTickerTotalsDer = new javax.swing.JButton();
     jScrollPane3 = new javax.swing.JScrollPane();
     tableDer = new javax.swing.JTable();
     pCash = new javax.swing.JPanel();
@@ -2541,6 +2756,16 @@ public class ComputeWindow extends javax.swing.JDialog {
     gridBagConstraints.insets = new java.awt.Insets(4, 4, 4, 4);
     pCP.add(bSaveHTMLCPNew, gridBagConstraints);
 
+    bTickerTotalsCP.setText("Souhrn tickerů");
+    bTickerTotalsCP.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bTickerTotalsCPActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.insets = new java.awt.Insets(4, 4, 4, 4);
+    pCP.add(bTickerTotalsCP, gridBagConstraints);
+
     tableCP.setModel(new javax.swing.table.DefaultTableModel(
         new Object[][] {
             { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null },
@@ -2613,6 +2838,16 @@ public class ComputeWindow extends javax.swing.JDialog {
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.insets = new java.awt.Insets(4, 4, 4, 4);
     pDerivates.add(bSaveHTMLDerNew, gridBagConstraints);
+
+    bTickerTotalsDer.setText("Souhrn tickerů");
+    bTickerTotalsDer.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bTickerTotalsDerActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.insets = new java.awt.Insets(4, 4, 4, 4);
+    pDerivates.add(bTickerTotalsDer, gridBagConstraints);
 
     tableDer.setModel(new javax.swing.table.DefaultTableModel(
         new Object[][] {
@@ -2977,6 +3212,9 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     // Clear models
     clearComputeResults();
+    lastComputedCpTaxTrades.clear();
+    lastComputedCpTickerNativeResults.clear();
+    lastComputedDerTickerNativeResults.clear();
 
     // Run computation
     Stocks stocks = new Stocks();
@@ -3122,6 +3360,10 @@ public class ComputeWindow extends javax.swing.JDialog {
     saveHtmlNewTrades(tableCP);
   }
 
+  private void bTickerTotalsCPActionPerformed(java.awt.event.ActionEvent evt) {
+    showTickerTotalsDialog(true);
+  }
+
   private void bSaveCSVDerActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_bSaveCSVDerActionPerformed
     save(SaveFormat.CSV, tableDer);
   }// GEN-LAST:event_bSaveCSVDerActionPerformed
@@ -3132,6 +3374,10 @@ public class ComputeWindow extends javax.swing.JDialog {
 
   private void bSaveHTMLDerNewActionPerformed(java.awt.event.ActionEvent evt) {
     saveHtmlNewTrades(tableDer);
+  }
+
+  private void bTickerTotalsDerActionPerformed(java.awt.event.ActionEvent evt) {
+    showTickerTotalsDialog(false);
   }
 
   private void bSaveCSVCashActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bSaveCSVCashActionPerformed
@@ -3164,6 +3410,8 @@ public class ComputeWindow extends javax.swing.JDialog {
   private javax.swing.JButton bSaveHTMLDerNew;
   private javax.swing.JButton bSaveHTMLDivi;
   private javax.swing.JButton bSaveHTMLInterest;
+  private javax.swing.JButton bTickerTotalsCP;
+  private javax.swing.JButton bTickerTotalsDer;
   private javax.swing.JCheckBox cbAllowShortOverYearBoundary;
   private javax.swing.JCheckBox cbComputeDivi;
   private javax.swing.JCheckBox cbComputeInterest;
@@ -3393,6 +3641,18 @@ public class ComputeWindow extends javax.swing.JDialog {
             stats.cash_sumCZK += t.profitCZK;
           else
             stats.der_sumCZK += t.profitCZK;
+
+          if (t.close != null) {
+            String groupedTicker = t.close.ticker != null ? t.close.ticker : t.open.ticker;
+            TickerNativeResultEntry entry = buildTickerNativeResultEntry(t, groupedTicker, t.profitCZK);
+            if (entry != null) {
+              if (cp) {
+                lastComputedCpTickerNativeResults.add(entry);
+              } else if (!cash) {
+                lastComputedDerTickerNativeResults.add(entry);
+              }
+            }
+          }
 
           // Persist CP tax-trade export data (for Kačka-like summaries in HTML new).
           if (cp) {

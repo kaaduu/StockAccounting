@@ -4,6 +4,68 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Podklad pro DP: souhrn podle tickeru v nativní měně] - 2026-03-08
+
+### Přidáno
+- Do karet „Cenné papíry“ a „Deriváty“ v okně „Podklad pro DP“ bylo přidáno nové tlačítko `Souhrn tickerů`.
+- Nové tlačítko otevře samostatný souhrn, který seskupí realizované obchody podle tickeru a měny do jedné řádky.
+- Souhrn obsahuje nový sloupec `Total` s celkovým výsledkem v nativní měně tickeru (součet realizovaných obchodů za daný ticker).
+
+### Upraveno
+- Výchozí tabulky v kartách „Cenné papíry“ a „Deriváty“ zůstávají beze změny; seskupení je dostupné pouze přes nové tlačítko.
+- Při každém novém výpočtu se interní data pro souhrn tickerů znovu sestaví, aby výsledky odpovídaly aktuálnímu filtru a roku.
+- V souhrnu tickerů byl doplněn sloupec `Total CZK` (součet výsledků v CZK).
+- `Total CZK` respektuje zvolený režim přepočtu měn ve výpočtu (`denní kurzy` vs `jednotný kurz`).
+
+## [Podklad pro DP: zvýraznění souhrnných řádků a změna velikosti dividend] - 2026-03-08
+
+### Upraveno
+- Okno „Podklad pro DP“: v tabulkách Cenné papíry/Deriváty/Cash jsou nyní řádky `Příjem:`, `Výdej:` a `Zisk:` zobrazené tučně.
+- Okno „Podklad pro DP“: ve sloupci „Výsledek CZK“ jsou u souhrnných řádků (`Příjem`, `Výdej`, `Zisk`) hodnoty také tučně.
+- Sekce dividend ve spodní části okna je nově oddělena přes posuvný splitter, takže lze tažením měnit velikost prostoru mezi výpočtem a dividendami.
+- Pozice splitteru pro sekci dividend se ukládá do uživatelského nastavení a po otevření okna se obnoví.
+
+## [Otevřít - nový: ochrana dat při neplatném formátu] - 2026-03-08
+
+### Upraveno
+- Načítání přes „Soubor → Otevřít - nový“ je nyní atomické: soubor se nejdřív načte do dočasných struktur a teprve po úspěšném ověření formátu se nahradí aktuální data.
+- Při chybě načtení (neplatný/nepodporovaný formát) zůstane aktuálně otevřená databáze beze změny.
+- Dialog po selhání načtení je nově varování s jasnou informací, že původní data zůstala zachována.
+- Validace formátu je zpřísněna: před načtením se kontrolují první tři hlavičky (`version=`, `serialCounter=`, `lastDateSet=`), včetně ASCII kontroly hlaviček.
+- Soubory bez těchto hlaviček (např. CSV) se nově odmítnou jako neplatný formát místo tichého načtení 0 záznamů.
+
+## [run.sh: kontrola verze Javy před spuštěním] - 2026-03-08
+
+### Upraveno
+- Skript `run.sh` nově před spuštěním kontroluje dostupnost `java` v `PATH` a ověřuje minimální požadovanou verzi Java 21.
+- Při detekci starší verze Javy se aplikace ukončí s jasnou chybovou hláškou a doporučením, místo nejasného `UnsupportedClassVersionError`.
+- Ve skládání classpath ve `run.sh` je odstraněno duplicitní přidání hlavního `StockAccounting.jar`.
+
+## [Java baseline: návrat na minimální Java 17] - 2026-03-08
+
+### Upraveno
+- Build konfigurace (`build.gradle`) je přepnuta z Java 21 na Java 17 (`toolchain`, `options.release`, `JavaExec` launcher), aby byla zachována nejnižší podporovaná verze dle standardu projektu.
+- `run.sh` nyní vyžaduje minimálně Java 17 (místo Java 21) a upravené hlášky odpovídají nové minimální verzi.
+- Proběhla kontrola kódu na zjevné Java 21 specifické API; nebyly nalezeny blokující závislosti pro Java 17.
+- `run.bat` pro Windows je sladěn s požadavkem Java 17+: kontrola dostupnosti `java` v `PATH`, robustnější detekce verze, přechod do adresáře skriptu a jasnější chyba při chybějícím JARu.
+- Ve Windows launcheru pro `dist\lib` se používá classpath `dist\lib\*` bez duplicitního explicitního přidání hlavního JARu.
+
+## [IBKR Flex: import pouze vybraných řádků z náhledu] - 2026-03-05
+
+### Přidáno
+- V náhledu IBKR Flex je nově možné vybírat konkrétní řádky pro import.
+- Přidána tlačítka `Vybrat vše` a `Zrušit výběr` v sekci „2) Náhled“.
+- Po načtení/obnovení náhledu se automaticky vyberou všechny řádky (výchozí chování).
+
+### Upraveno
+- Akce `Sloučit do databáze` nyní u IBKR Flex importuje jen aktuálně vybrané řádky z náhledu.
+- Při částečném výběru řádků se neprovádí hromadná aktualizace duplicit mimo vybraný náhled.
+- Jednostranné korporátní akce z IBKR Flex (bez páru SUB/ADD ve stejném eventu) se při náhledu převádějí na nákup/prodej, aby výpočet stavu účtu neselhal.
+- Pro jednostranné akce se aplikace pokusí převzít datum nabytí z původního tickeru (z existujících dat i právě importovaných řádků).
+- Pokud datum nabytí nelze spolehlivě odvodit, ponechá se datum z importu a řádek se označí v `Note` jako `ManualCheck:SingleLegCA-DateFallback` pro ruční kontrolu.
+- V importu IBKR Flex bylo odstraněno minutové posouvání času (`TimeShift:+Nm`) pro řešení kolizí.
+- Stabilita re-importu IBKR je nově řešena přes `TxnID`; pokud IBKR `TxnID` neposkytne, aplikace doplní deterministické náhradní ID (`IK-...`) odvozené z obsahu řádku.
+
 ## [Synchronizace s Google Drive] - 2026-02-16
 
 ### Přidáno
