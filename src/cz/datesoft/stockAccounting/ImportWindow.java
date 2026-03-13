@@ -274,10 +274,11 @@ public class ImportWindow extends javax.swing.JFrame {
     // Initial warning state based on default selection
     updateObsoleteFormatWarning();
 
-    // Busy overlay (glass pane) for long-running preview loads
-    initBusyOverlay();
+     // Busy overlay (glass pane) for long-running preview loads
+     initBusyOverlay();
+     hideBusy();
 
-    pack();
+     pack();
     setMinimumSize(new java.awt.Dimension(900, 620));
   }
 
