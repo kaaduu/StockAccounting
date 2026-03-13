@@ -321,13 +321,10 @@ public class ImportWindow extends javax.swing.JFrame {
        if (bSelectFile != null) {
          pFile.add(bSelectFile, java.awt.BorderLayout.WEST);
        }
-       if (lSelectedFile != null) {
-         pFile.add(lSelectedFile, java.awt.BorderLayout.CENTER);
-       }
-       if (bIBKRTradeLogHelp != null) {
-         pFile.add(bIBKRTradeLogHelp, java.awt.BorderLayout.EAST);
-       }
-       pHeader.add(pFile, java.awt.BorderLayout.WEST);
+        if (lSelectedFile != null) {
+          pFile.add(lSelectedFile, java.awt.BorderLayout.CENTER);
+        }
+        pHeader.add(pFile, java.awt.BorderLayout.WEST);
 
       javax.swing.JPanel pFormat = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
       if (jLabel4 != null)
@@ -3421,7 +3418,7 @@ public class ImportWindow extends javax.swing.JFrame {
     bIbkrFlexCsvDetails = new javax.swing.JButton();
      bSelectFile = new javax.swing.JButton();
      lSelectedFile = new javax.swing.JLabel();
-     bIBKRTradeLogHelp = new javax.swing.JButton();
+     bIBKRTradeLogHelp = new javax.swing.JButton("Nápověda");
      bRefresh = new javax.swing.JButton();
     bImport = new javax.swing.JButton();
     jPanel2 = new javax.swing.JPanel();
@@ -5488,7 +5485,17 @@ public class ImportWindow extends javax.swing.JFrame {
        bIBKRTradeLogHelp.setVisible(formatIndex == 3);
      }
 
-     // Update button text and state based on current state
+     if (bIBKRTradeLogHelp != null && formatIndex == 3) {
+       javax.swing.JPanel pFile = new javax.swing.JPanel(new java.awt.BorderLayout(8, 0));
+       pFile.add(bSelectFile, java.awt.BorderLayout.WEST);
+       pFile.add(lSelectedFile, java.awt.BorderLayout.CENTER);
+       pFile.add(bIBKRTradeLogHelp, java.awt.BorderLayout.EAST);
+       getContentPane().add(pFile, new java.awt.GridBagConstraints(0, 0, 6, 1, 0.0, 0.0,
+           java.awt.GridBagConstraints.WEST, java.awt.GridBagConstraints.HORIZONTAL,
+           new java.awt.Insets(5, 5, 5, 5), 0, 0));
+     }
+
+      // Update button text and state based on current state
     updateImportButtonText();
     updateImportButtonState(); // Check API credentials
 
