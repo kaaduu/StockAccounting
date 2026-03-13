@@ -340,14 +340,16 @@ public class ImportWindow extends javax.swing.JFrame {
          pFormat.add(bIbkrFlexCsvDetails);
        pHeader.add(pFormat, java.awt.BorderLayout.CENTER);
 
-       javax.swing.JPanel pActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
-       if (bRefresh != null)
-         pActions.add(bRefresh);
-       if (bImport != null)
-         pActions.add(bImport);
-       if (bCancel != null)
-         pActions.add(bCancel);
-       pHeader.add(pActions, java.awt.BorderLayout.EAST);
+        javax.swing.JPanel pActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
+        if (bRefresh != null)
+          pActions.add(bRefresh);
+        if (bImport != null)
+          pActions.add(bImport);
+        if (bCancel != null)
+          pActions.add(bCancel);
+        if (bIBKRTradeLogHelp != null)
+          pActions.add(bIBKRTradeLogHelp);
+        pHeader.add(pActions, java.awt.BorderLayout.EAST);
 
        java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
        gbc.gridx = 0;
@@ -361,74 +363,70 @@ public class ImportWindow extends javax.swing.JFrame {
      }
    }
 
-  private void initBusyOverlay() {
-    javax.swing.JPanel p = new javax.swing.JPanel(new java.awt.GridBagLayout());
-    p.setOpaque(true);
-    p.setBackground(new java.awt.Color(255, 255, 255, 200));
+   private void initBusyOverlay() {
+     javax.swing.JPanel p = new javax.swing.JPanel(new java.awt.GridBagLayout());
+     p.setOpaque(true);
+     p.setBackground(new java.awt.Color(255, 255, 255, 200));
 
-    javax.swing.JPanel card = new javax.swing.JPanel(new java.awt.GridBagLayout());
-    card.setOpaque(true);
-    card.setBackground(new java.awt.Color(255, 255, 255));
-    card.setBorder(javax.swing.BorderFactory.createCompoundBorder(
-        javax.swing.BorderFactory.createLineBorder(new java.awt.Color(180, 180, 180)),
-        javax.swing.BorderFactory.createEmptyBorder(12, 14, 12, 14)));
+     javax.swing.JPanel card = new javax.swing.JPanel(new java.awt.GridBagLayout());
+     card.setOpaque(true);
+     card.setBackground(new java.awt.Color(255, 255, 255));
+     card.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+         javax.swing.BorderFactory.createLineBorder(new java.awt.Color(180, 180, 180)),
+         javax.swing.BorderFactory.createEmptyBorder(12, 14, 12, 14)));
 
-    busyLabel = new javax.swing.JLabel("Načítám…");
-    busyLabel.setFont(busyLabel.getFont().deriveFont(java.awt.Font.BOLD));
-    busyBar = new javax.swing.JProgressBar();
-    busyBar.setIndeterminate(true);
-    busyBar.setPreferredSize(new java.awt.Dimension(260, 14));
+     busyLabel = new javax.swing.JLabel("Načítám…");
+     busyLabel.setFont(busyLabel.getFont().deriveFont(java.awt.Font.BOLD));
+     busyBar = new javax.swing.JProgressBar();
+     busyBar.setIndeterminate(true);
+     busyBar.setPreferredSize(new java.awt.Dimension(260, 14));
 
-    busyCancel = new javax.swing.JButton("Storno");
-    busyCancel.setEnabled(false);
-    busyCancel.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(java.awt.event.ActionEvent evt) {
-        try {
-          javax.swing.SwingWorker<?, ?> w = currentPreviewWorker;
-          if (w != null) {
-            w.cancel(true);
-          }
-        } catch (Exception e) {
-          // ignore
-        }
-      }
-    });
+     busyCancel = new javax.swing.JButton("Storno");
+     busyCancel.setEnabled(false);
+     busyCancel.addActionListener(new java.awt.event.ActionListener() {
+       public void actionPerformed(java.awt.event.ActionEvent evt) {
+         try {
+           javax.swing.SwingWorker<?, ?> w = currentPreviewWorker;
+           if (w != null) {
+             w.cancel(true);
+           }
+         } catch (Exception e) {
+           // ignore
+         }
+       }
+     });
 
-    java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.anchor = java.awt.GridBagConstraints.WEST;
-    gbc.insets = new java.awt.Insets(0, 0, 8, 0);
-    card.add(busyLabel, gbc);
+     java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
+     gbc.gridx = 0;
+     gbc.gridy = 0;
+     gbc.anchor = java.awt.GridBagConstraints.WEST;
+     gbc.insets = new java.awt.Insets(0, 0, 8, 0);
+     card.add(busyLabel, gbc);
 
-    gbc = new java.awt.GridBagConstraints();
-    gbc.gridx = 0;
-    gbc.gridy = 1;
-    gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-    gbc.weightx = 1.0;
-    card.add(busyBar, gbc);
+     gbc = new java.awt.GridBagConstraints();
+     gbc.gridx = 0;
+     gbc.gridy = 1;
+     gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+     gbc.weightx = 1.0;
+     card.add(busyBar, gbc);
 
-    gbc = new java.awt.GridBagConstraints();
-    gbc.gridx = 0;
-    gbc.gridy = 2;
-    gbc.anchor = java.awt.GridBagConstraints.EAST;
-    gbc.insets = new java.awt.Insets(10, 0, 0, 0);
-    card.add(busyCancel, gbc);
+     gbc = new java.awt.GridBagConstraints();
+     gbc.gridx = 0;
+     gbc.gridy = 2;
+     gbc.anchor = java.awt.GridBagConstraints.EAST;
+     gbc.insets = new java.awt.Insets(10, 0, 0, 0);
+     card.add(busyCancel, gbc);
 
-    gbc = new java.awt.GridBagConstraints();
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.anchor = java.awt.GridBagConstraints.CENTER;
-    p.add(card, gbc);
+     gbc = new java.awt.GridBagConstraints();
+     gbc.gridx = 0;
+     gbc.gridy = 0;
+     gbc.anchor = java.awt.GridBagConstraints.CENTER;
+     p.add(card, gbc);
 
-    // Eat mouse events so user can't interact while busy.
-    p.addMouseListener(new java.awt.event.MouseAdapter() {
-    });
-
-    busyGlass = p;
-    setGlassPane(busyGlass);
-    busyGlass.setVisible(false);
-  }
+     busyGlass = p;
+     setGlassPane(busyGlass);
+     busyGlass.setVisible(false);
+   }
 
   private void showBusy(String message) {
     if (busyGlass == null)
@@ -5483,34 +5481,12 @@ public class ImportWindow extends javax.swing.JFrame {
        tradeLogMultiSelection = false;
      }
 
-     // Show/hide IBKR TradeLog help button
-     if (bIBKRTradeLogHelp != null) {
-       bIBKRTradeLogHelp.setVisible(formatIndex == 3);
-     }
+      // Show/hide IBKR TradeLog help button
+      if (bIBKRTradeLogHelp != null) {
+        bIBKRTradeLogHelp.setVisible(formatIndex == 3);
+      }
 
-     if (bIBKRTradeLogHelp != null && formatIndex == 3) {
-       bIBKRTradeLogHelp.setVisible(true);
-       java.awt.Container root = getContentPane();
-       root.remove(bIBKRTradeLogHelp);
-       javax.swing.JPanel pActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
-       if (bRefresh != null)
-         pActions.add(bRefresh);
-       if (bImport != null)
-         pActions.add(bImport);
-       if (bCancel != null)
-         pActions.add(bCancel);
-       pActions.add(bIBKRTradeLogHelp);
-
-       java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
-       gbc.gridx = 0;
-       gbc.gridy = 0;
-       gbc.gridwidth = java.awt.GridBagConstraints.REMAINDER;
-       gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-       gbc.weightx = 1.0;
-       root.add(pActions, gbc);
-     }
-
-      // Update button text and state based on current state
+       // Update button text and state based on current state
     updateImportButtonText();
     updateImportButtonState(); // Check API credentials
 
