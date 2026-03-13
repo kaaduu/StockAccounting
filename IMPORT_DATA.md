@@ -307,16 +307,35 @@ IBKR AssetClass determines Transaction direction type:
 
 ### Note Construction Algorithm
 
-**Format**: `[Description]|Broker:IB|AccountID:[ClientAccountID]|ISIN:[ISIN]|TxnID:[TransactionID]|Code:[Code]`
+**Format** (conditional field inclusion):
+```
+[Description]|Broker:IB|AccountID:[ClientAccountID]|ISIN:[ISIN]|TxnID:[TransactionID]|Code:[Code]|IssuerCountry:[Country]
+```
 
 **Logic**:
-1. Extract company name from Description column
-2. Use broker identifier "IB" (consistent with IB TradeLog format)
-3. Extract ClientAccountID (e.g., "U123456")
-4. Extract ISIN (following Trading 212 pattern)
-5. Extract TransactionID
-6. Extract status Code
-7. **Skip fields entirely if not present** (no empty values)
+1. Extract company name from Description column (always included, even if empty)
+2. Add broker identifier "IB" (always added)
+3. **Conditionally add** ClientAccountID if present and non-empty
+4. **Conditionally add** ISIN if present and non-empty
+5. **Conditionally add** IssuerCountry if present and non-empty
+6. **Conditionally add** TransactionID if present and non-empty (prefers IBOrderID over TransactionID)
+7. **Conditionally add** Code if present and non-empty
+
+**Key Differences from IB TradeLog**:
+- Fields are **skipped entirely** if not present (no empty values like `|ISIN:|`)
+- **IssuerCountry** field added (not present in TradeLog format)
+- **IBOrderID** preferred over TransactionID for consolidation stability
+
+**Examples**:
+- Full data: `"APPLE INC.|Broker:IB|AccountID:U123456|ISIN:US0378331005|TxnID:987654321|Code:O|IssuerCountry:US"`
+- No ISIN: `"APPLE INC.|Broker:IB|AccountID:U123456|TxnID:987654321|Code:O"`
+- Minimal: `"APPLE INC.|Broker:IB|TxnID:987654321"`
+- No description: `"|Broker:IB|AccountID:U123456|ISIN:US0378331005|TxnID:987654321"`
+
+**Consolidated Transactions**:
+- When multiple fills share the same IBOrderID, they are consolidated into a single transaction
+- Note includes consolidation marker: `|Consolidated:N fills`
+- Example: `"APPLE INC.|Broker:IB|AccountID:U123456|ISIN:US0378331005|TxnID:987654321|Code:O|Consolidated:3 fills"`
 
 **Examples**:
 - Full data: `"APPLE INC.|Broker:IB|AccountID:U123456|ISIN:US0378331005|TxnID:987654321|Code:O"`
@@ -330,329 +349,104 @@ IBKR AssetClass determines Transaction direction type:
 - Missing Code: Field skipped entirely
 - Empty Description: Note starts with `"|Broker:IB|..."`
 
-### Symbol/Ticker Format
+### Corporate Action Notes
 
-IBKR uses different formats for different asset classes in the Symbol column:
+Corporate action transactions use a different note format to capture the full action description from IBKR:
 
-**Stocks (AssetClass=STK):**
-- **Format**: `SYMBOL`
-- **Example**: `"AMZN"`, `"AAPL"`, `"TSLA"`
-- **Stored as**: Exactly as provided (e.g., `"AMZN"`)
-
-**Options (AssetClass=OPT):**
-- **Format**: `UNDERLYING  YYMMDD[C|P]STRIKEXXXX`
-- **Example**: `"ORCL  260116C00220000"`
-- **Breakdown**:
-  - `ORCL` = Underlying stock symbol
-  - `  ` = Space separator (2-3 spaces)
-  - `260116` = Expiration date (Jan 16, 2026 in YYMMDD format)
-  - `C` = Call option (`P` = Put option)
-  - `00220000` = Strike price ($220.00, multiply by 0.001)
-- **Stored as**: Full contract string (e.g., `"ORCL  260116C00220000"`)
-
-**Futures (AssetClass=FUT):**
-- **Format**: `SYMBOL   MONTH YY`
-- **Example**: `"ES   MAR 26"`
-- **Stored as**: Full string with expiration (e.g., `"ES   MAR 26"`)
-
-**Import Behavior:**
-- Full Symbol column value stored in Ticker field
-- Edge whitespace trimmed, internal spaces preserved
-- Each option contract has unique ticker in database
-- Consistent with IB FlexQuery CSV import (ImportCustomCSV.java)
-
-**Real Examples from IBKR CSV:**
-```csv
-AssetClass,Symbol                 → Ticker in Database
-STK,       "AMZN"                 → "AMZN"
-OPT,       "ORCL  260116C00220000" → "ORCL  260116C00220000"
-OPT,       "SPY   260109P00660000" → "SPY   260109P00660000"
-OPT,       "TSLA  260116C00520000" → "TSLA  260116C00520000"
+**Format for RS (Reverse Splits):**
+```
+RS: [Full Description from IBKR]
 ```
 
-### Multiplier Handling
-
-IBKR uses the **Multiplier** field to convert contract quantities to actual shares/units.
-
-**Application**: `Amount = Quantity × Multiplier`
-
-**By Asset Class**:
-- **Stocks (STK)**: Multiplier is typically `1` (no effect)
-  - Example: Quantity=100, Multiplier=1 → Amount=100 shares
-- **Options (OPT)**: Multiplier is typically `100` (1 contract = 100 shares)
-  - Example: Quantity=1, Multiplier=100 → Amount=100 shares
-- **Futures (FUT)**: Multiplier varies by contract specification
-  - Example: Quantity=5, Multiplier=50 → Amount=250 units
-- **Warrants (WAR)**: Multiplier typically `1`
-
-**Important Notes**:
-- For **SELL orders**, Quantity is negative (e.g., `-1`), but multiplier still applies
-  - Example: Quantity=-1, Multiplier=100 → Amount=|-100|=100 (absolute value used)
-- If Multiplier column is missing/empty, defaults to `1.0`
-- Direction is determined separately from Buy/Sell and AssetClass columns
-
-**CSV Examples**:
-```csv
-Quantity,Multiplier,AssetClass,Buy/Sell → Amount
-100,1,STK,BUY                    → 100 shares
--100,1,STK,SELL                  → 100 shares (abs value)
-1,100,OPT,BUY                    → 100 shares (1 contract)
--2,100,OPT,SELL                  → 200 shares (2 contracts)
+**Format for TC (Ticker Changes/Mergers) with Value:**
+```
+TC (Value: [Monetary Value]): [Full Description from IBKR]
 ```
 
-### Corporate Actions (Reverse Splits)
-
-IBKR Flex Query reports corporate actions (e.g., reverse splits with ticker changes) as separate rows with Code="RS".
-
-#### How It Works
-
-When a reverse split occurs with ticker change, IBKR creates **two separate CSV rows** (one for old ticker, one for new):
-
-1. **Old ticker row**: Shows shares removed (negative amount)
-   - Example: `CODX.OLD  -1370 shares`
-   - Imported as: **Transformation OUT** (DIRECTION_TRANS_SUB = -2)
-   
-2. **New ticker row**: Shows shares added (positive amount)
-   - Example: `CODX  +45.6667 shares`
-   - Imported as: **Transformation IN** (DIRECTION_TRANS_ADD = +2)
-   - **Note**: Amount includes fractional shares from split calculation
-
-3. **Fractional share disposal**: Separate trade row with Code="LF" (Lieu of Fractional)
-   - Example: `CODX SELL -0.6667 shares`
-   - Imported as: **Regular sell transaction** (DIRECTION_SSELL = -1)
-   - **Result**: Net whole shares in portfolio
-
-#### CSV Structure Differences
-
-Corporate action rows have **different structure** from regular trades:
-
-| Aspect                | Regular Trade     | Corporate Action  |
-| --------------------- | ----------------- | ----------------- |
-| **Column Count**      | 85 columns        | 51 columns        |
-| **Symbol Column**     | Actual ticker     | "COMMON" (generic)|
-| **Description Column**| Company name      | **Actual ticker** |
-| **Quantity Column**   | Trade quantity    | "0" (not used)    |
-| **Column 38**         | N/A               | **Actual share change** |
-| **Code Column**       | O, C, LF, etc.    | "RS" (Reverse Split) |
-
-**Key Parsing Difference**:
-- Regular trades: Ticker from **Symbol** column (col 7)
-- Corporate actions: Ticker from **Description** column (col 8)
-- Corporate actions: Share change from **column 38** (not Quantity col 33)
-
-#### Ticker Name Normalization
-
-IBKR uses `.OLD` suffix in CSV exports to distinguish between old and new tickers
-during corporate actions (e.g., `EVFM.OLD` vs `EVFM`). StockAccounting automatically
-strips this suffix to ensure correct matching with historical transactions.
-
-**Why this is necessary**:
-StockAccounting matches transactions by ticker name. If `.OLD` suffix is not stripped,
-the system would treat `EVFM` and `EVFM.OLD` as different securities, breaking:
-- Portfolio balance calculations
-- Cost basis tracking
-- Transaction history matching
+**Format for TC without Value:**
+```
+TC: [Full Description from IBKR]
+```
 
 **Examples**:
-- IBKR CSV: `EVFM.OLD` -10000 shares → Imported as: `EVFM` TRANS_SUB 10000 shares
-- IBKR CSV: `EVFM` +666 shares → Imported as: `EVFM` TRANS_ADD 666 shares
-- IBKR CSV: `CALA.OLD` -5200 shares → Imported as: `CALA` TRANS_SUB 5200 shares
-- IBKR CSV: `SYN.OLD` -1000 shares → Imported as: `SYN` TRANS_SUB 1000 shares
+- `"RS: CODX.OLD(US1897631057) SPLIT 1 FOR 30 (CODX.OLD, CO-DIAGNOSTICS INC, US1897631057)"`
+- `"TC (Value: 1353.87054): CS(US2254011081) MERGED(Acquisition) WITH H42097107 100 FOR 2248 (UBS GROUP AG, CH0012032030)"`
+- `"TC: APGN(US03759B1026) MERGED(Acquisition) WITH US7473241013 69 FOR 400 (PYXS THERAPEUTICS INC, US7473241013)"`
 
-This normalization ensures that corporate action transformations correctly reference
-the same ticker as historical buy/sell transactions in the database.
+### Corporate Action Notes
 
-**Implementation**: The `.OLD` suffix is stripped in `parseCorporateAction()` method
-immediately after extracting the ticker name. The original ticker is preserved in
-log messages for debugging (e.g., "EVFM (was: EVFM.OLD)").
+Corporate action transactions use a different note format to capture the full action description from IBKR:
 
-#### Intelligent Filtering & Time Offsets
-
-**Problem**: Some IBKR corporate action reports contain redundant rows that cancel each other out, creating duplicate transformations.
-
-**Anomalous Pattern (EVFM Example)**:
+**Format for RS (Reverse Splits):**
 ```
-IBKR CSV contains 4 rows that cancel out:
-  EVFM        +666      (new ticker, added)
-  EVFM        -666      (new ticker, removed → cancels above!)
-  EVFM.OLD    -10000    (old ticker, removed)
-  EVFM.OLD    +10000    (old ticker, added → cancels above!)
-
-Net effect: 0 (everything cancels, no transformation!)
+RS: [Full Description from IBKR]
 ```
 
-**Solution - Automatic Filtering**:
-
-The parser now applies intelligent filtering based on corporate action type:
-
-1. **For Reverse Splits (RS)**:
-   - Groups transactions by event (same date + note prefix)
-   - Detects canceling pairs (same absolute amount, opposite direction)
-   - Removes redundant pairs
-   - Keeps only meaningful transformations
-   - **Result**: EVFM 4 rows → 2 transactions
-
-2. **For Ticker Changes (TC)**:
-   - No filtering applied
-   - All rows preserved (different tickers = different assets)
-   - **Example**: CS → UBS merger keeps both CS removal and UBS addition
-
-**Filtering Algorithm (Reverse Splits)**:
+**Format for TC (Ticker Changes/Mergers) with Value:**
 ```
-1. Group transactions by same-day corporate action
-2. Find pairs with identical absolute amounts but opposite directions
-3. Remove both transactions in each canceling pair
-4. Fallback: If all cancel, keep largest SUB and largest ADD
+TC (Value: [Monetary Value]): [Full Description from IBKR]
 ```
 
-**SUB-before-ADD Ordering**:
-
-Portfolio calculations require removals (TRANS_SUB) to execute before additions (TRANS_ADD):
-
+**Format for TC without Value:**
 ```
-Correct order:
-  1. TRANS_SUB 5200 CALA  → Remove old shares first
-  2. TRANS_ADD 260 CALA   → Then add new shares
-
-Wrong order would cause:
-  1. Portfolio calculation errors
-  2. Duplicate ticker conflicts
-  3. Incorrect cost basis tracking
+TC: [Full Description from IBKR]
 ```
 
-**Implementation**: All corporate action transactions are automatically sorted with TRANS_SUB before TRANS_ADD within each event.
+**Examples:**
+- `"RS: CODX.OLD(US1897631057) SPLIT 1 FOR 30 (CODX.OLD, CO-DIAGNOSTICS INC, US1897631057)"`
+- `"TC (Value: 1353.87054): CS(US2254011081) MERGED(Acquisition) WITH H42097107 100 FOR 2248 (UBS GROUP AG, CH0012032030)"`
+- `"TC: APGN(US03759B1026) MERGED(Acquisition) WITH US7473241013 69 FOR 400 (PYXS THERAPEUTICS INC, US7473241013)"`
 
-**Time Offsets**:
+**Code References:**
+- `IBKRFlexParser.java:2896-2903` - Corporate action note construction
+- `IBKRFlexParser.java:2883-2886` - Full description extraction
+- `IBKRFlexParser.java:2889` - Code column (RS/TC)
 
-**Problem**: Multiple transformations for the same ticker cannot have identical timestamps.
+### Cash Transaction Notes (Dividends, Interest, Fees)
 
-**Solution**: Sequential time offsets:
+Cash transactions from CTRN section use a different note format:
+
+**Format:**
 ```
-Original:
-  20:25:00  CALA TRANS_SUB 5200
-  20:25:00  CALA TRANS_ADD 260   ← Duplicate timestamp!
-
-With offsets:
-  20:25:00  CALA TRANS_SUB 5200
-  20:26:00  CALA TRANS_ADD 260   [Time: +1 min]
-```
-
-**Time Offset Rules**:
-- First transaction: Original timestamp preserved
-- Subsequent transactions: +1, +2, +3... minute offsets
-- Both `date` and `executionDate` are updated
-- Note field appends `[Time: +N min]` marker
-
-**Complex Example (CS → UBS Merger)**:
-```
-Before:
-  20:25:00  CS  TRANS_SUB 1500
-  20:25:00  UBS TRANS_ADD 66.726   ← Different tickers, but same time!
-
-After:
-  20:25:00  CS  TRANS_SUB 1500
-  20:26:00  UBS TRANS_ADD 66.726   [Time: +1 min]
+[Description]|Broker:IB|Type:[TransactionType]|IssuerCountry:[Country]|ISIN:[ISIN]|ActionID:[ActionID]
 ```
 
-**Multi-Asset Example (PLSE Conversion)**:
-```
-6 CSV rows → 6 transactions with sequential times:
-  20:25:00  PLSE.RTS2  TRANS_SUB 487
-  20:26:00  PLSE.RTS3  TRANS_SUB 4129   [Time: +1 min]
-  20:27:00  PLSE       TRANS_ADD 487    [Time: +2 min]
-  20:28:00  PLSE       TRANS_ADD 4129   [Time: +3 min]
-  20:29:00  PLSE.WT    TRANS_ADD 487    [Time: +4 min]
-  20:30:00  PLSE.WT    TRANS_ADD 4129   [Time: +5 min]
-```
+**Logic:**
+1. Description (IBKR's transaction description)
+2. Broker identifier "IB"
+3. Transaction type (Dividends, Withholding Tax, Broker Interest, etc.)
+4. Conditionally add IssuerCountry if present
+5. Conditionally add ISIN if present
+6. Conditionally add ActionID if present
 
-**Implementation Details**:
-- **Filtering**: `processCorporateActions()`, `filterReverseSplit()` methods
-- **Grouping**: `groupCorporateActionsByEvent()` method
-- **Sorting**: `sortTransactionsByDirection()` method
-- **Time Offsets**: `applyTimeOffsets()` method
-- **Location**: `IBKRFlexParser.java` (~275 lines of filtering logic)
+**Examples:**
+- Dividend: `"AAPL Cash Dividend 0.92 USD|Broker:IB|Type:Dividends|IssuerCountry:US|ISIN:US0378331005|ActionID:123456789"`
+- Withholding tax: `"Withholding Tax - Dividend|Broker:IB|Type:Withholding Tax|IssuerCountry:US|ISIN:US0378331005|ActionID:123456789"`
+- Interest: `"Credit Interest|Broker:IB|Type:Broker Interest Received"`
 
-**Verification**:
-- Filtered transactions have note marker `[Time: +N min]`
-- Log messages show "Applied +N min offset" entries
-- Import preview shows sequential timestamps
+**Transaction Types Imported:**
+- **Dividends** - `DIRECTION_DIVI_BRUTTO`
+- **Withholding Tax** - `DIRECTION_DIVI_TAX`
+- **Broker Interest Received** - `DIRECTION_INT_BRUTTO`
+- **Broker Interest Paid** - `DIRECTION_INT_PAID`
+- **Broker Fees** - `DIRECTION_INT_FEE`
 
-#### Zero-Net Corporate Action Detection & Skipping
+**Special Ticker Assignments:**
+- `Kreditni.Urok` - Credit interest (receiving)
+- `Debetni.Urok` - Debit interest (paying)
+- `CASH.internal` - Withholding tax without ticker symbol
 
-**Problem**: IBKR generates corporate action records even when you sold all shares before the transformation date, resulting in canceling transactions with zero net effect on your portfolio.
+**Code References:**
+- `IBKRFlexParser.java:3749-3762` - Cash transaction note construction
+- `IBKRFlexParser.java:3692-3719` - Transaction type classification
+- `IBKRFlexParser.java:2386-2401` - Special ticker assignment logic
+- `IBKRFlexParser.java:2410-2436` - Direction mapping for cash transactions
 
-**Real-World Examples**:
-
-1. **EVFM (May 6, 2022)**:
-   - User sold 10,000 shares on May 5, 2022
-   - Reverse split (1-for-15) occurred May 6, 2022
-   - IBKR generated 4 canceling rows in CSV:
-     ```
-     EVFM     +666      (new shares theoretically added)
-     EVFM     -666      (immediately canceled)
-     EVFM.OLD +10000    (old shares theoretically removed)
-     EVFM.OLD -10000    (immediately canceled)
-     ```
-   - After filtering: 2 rows remain (EVFM +666, EVFM.OLD -10000)
-   - Net effect after ticker normalization: +666 - 10000 = 0 shares
-   - **Result**: Zero-net event detected → Skipped entirely
-
-2. **MULN First RS (May 4, 2023)**:
-   - User sold 40,000 shares on May 3, 2023
-   - Reverse split (1-for-25) occurred May 4, 2023
-   - IBKR generated 4 canceling rows
-   - After filtering: 2 rows remain
-   - Net effect: 0 shares
-   - **Result**: Zero-net event detected → Skipped entirely
-
-3. **MULN Second RS (August 11, 2023)** - Normal transformation:
-   - User held 17,000 shares on August 10, 2023
-   - Reverse split (1-for-9) occurred August 11, 2023
-   - IBKR generated 2 rows:
-     ```
-     MULN     +1888.89  (new shares: 17000 ÷ 9)
-     MULN.OLD -17000    (old shares removed)
-     ```
-   - Net effect: +1888.89 - 17000 = -15111.11 ≠ 0
-   - **Result**: Normal transformation → Imported (2 transactions)
-
-**Detection Algorithm**:
-
-```
-After filtering redundant pairs (4 rows → 2 rows):
-1. Group remaining transactions by ticker
-2. Calculate net share change for each ticker:
-   - TRANS_SUB (direction=-2): Subtract amount
-   - TRANS_ADD (direction=+2): Add amount
-3. Check if ALL tickers net to approximately zero:
-   - Tolerance: |net| < 0.001 shares (handles floating-point)
-4. If yes for ALL tickers → Zero-net event → Skip entire event
-5. If no (at least one ticker has non-zero net) → Import normally
-```
-
-**Implementation**:
+### Transaction Direction Constants
 
 ```java
-private boolean isZeroNetEvent(Vector<Transaction> transactions) {
-    Map<String, Double> netByTicker = new HashMap<>();
-    
-    for (Transaction t : transactions) {
-        double amount = t.getAmount();
-        if (t.getDirection() == DIRECTION_TRANS_SUB) {
-            amount = -amount;
-        }
-        netByTicker.merge(t.getTicker(), amount, Double::sum);
-    }
-    
-    // All tickers must net to approximately zero
-    for (Double net : netByTicker.values()) {
-        if (Math.abs(net) > 0.001) { // 0.001 shares tolerance
-            return false; // At least one ticker has non-zero net
-        }
-    }
-    
-    return true; // All tickers cancel out
-}
+DIRECTION_TRANS_SUB = -2   // Transformation OUT (old ticker, shares removed)
+DIRECTION_TRANS_ADD = +2   // Transformation IN (new ticker, shares added)
 ```
 
 **When Zero-Net Occurs**:
@@ -1211,6 +1005,39 @@ StockAccounting historicky očekával maximálně jednu dvojici transformací (O
 | Datum obchodu | Date    | Trade date            | ✅ (Date)      | 15.1.2024     |
 | Poplatky v CZK | Decimal | Fees in CZK          | ✅ (Fee)       | -25.50        |
 
+### Dividend Handling
+
+FIO exports dividends with Czech text descriptions. The parser detects direction based on text:
+
+| FIO Text | Direction | Description |
+|-----------|-----------|-------------|
+| "Výnos CP" | `DIRECTION_DIVI_BRUTTO` | Gross dividend |
+| "Dividenda - USA" | `DIRECTION_DIVI_BRUTTO` | US dividend |
+| "Daň z divid. zaplacená v USA" | `DIRECTION_DIVI_TAX` | US dividend tax |
+| Negative price value | `DIRECTION_DIVI_TAX` | Tax (fallback) |
+| Other positive | `DIRECTION_DIVI_UNKNOWN` | Unknown type |
+
+### Transformation Handling
+
+When "Trh" (market) field contains "Transformace":
+
+| Original Direction | Transformed Direction | Description |
+|------------------|---------------------|-------------|
+| `DIRECTION_SBUY` (Nákup) | `DIRECTION_TRANS_ADD` | Shares added |
+| `DIRECTION_SSELL` (Prodej) | `DIRECTION_TRANS_SUB` | Shares removed |
+
+The market field is cleared to empty string for transformations.
+
+### Fee Handling
+
+FIO supports fees in multiple currencies with priority:
+
+1. First check: "Poplatky v EUR" (Euro fees)
+2. Second check: "Poplatky v USD" (US dollar fees)
+3. Final check: "Poplatky v CZK" (Czech koruna fees)
+
+Only the first non-zero fee amount is used.
+
 ### Note Construction Algorithm
 
 **Format**: Raw content from "Text FIO" field (no broker prefix added)
@@ -1232,6 +1059,37 @@ StockAccounting historicky očekával maximálně jednu dvojici transformací (O
 ### Code Location
 - **Parser**: `ImportFio.java`
 - **Note Logic**: "Text FIO" column mapped to ID_NOTE
+
+### Trading 212 CZK Variant (ImportT212CZK.java)
+
+ImportT212CZK.java is a separate parser for Trading 212 exports with Czech-specific tax columns.
+
+**File Format:** Same as regular Trading 212 (comma-delimited CSV)
+
+**Additional Fee Columns:**
+
+| Column Name | Description | Example |
+|-------------|-------------|----------|
+| "Stamp duty reserve tax (CZK)" | Czech stamp duty tax | 25.50 |
+| "Currency conversion fee (CZK)" | Currency conversion fee | 12.30 |
+
+**Fee Handling:**
+```java
+drow.fee = parseNumber(a[feeStampIdx]) + parseNumber(a[feeConversionIdx]);
+```
+
+Both fees are combined and stored in the fee field with "CZK" currency.
+
+**Note Format:** Identical to regular T212
+```
+[Company Name]|Broker:T212|ISIN:[ISIN]|TxnID:[TransactionID]
+```
+
+**Code References:**
+- `ImportT212CZK.java:1-229` - Complete CZK variant implementation
+- `ImportT212CZK.java:77-81` - Czech-specific column registrations (stamp duty, conversion fee)
+- `ImportT212CZK.java:192` - Note construction (same as ImportT212.java)
+- `ImportT212CZK.java:202` - Fee handling: stamp duty + conversion fee
 
 ## Revolut
 
@@ -1258,9 +1116,25 @@ StockAccounting historicky očekával maximálně jednu dvojici transformací (O
 
 ### Code Location
 - **Parser**: `ImportRevolutCSV.java`
-- **Note Logic**: Hardcoded string
+- **Note Logic**: Hardcoded string on line 183
 
 ## Configuration Options
+
+### Note Format Settings
+
+- **T212 Enhanced Notes**: Always enabled (company name + ISIN)
+- **IB TradeLog Enhancement**: Planned - Account ID + Transaction ID inclusion
+- **FIO Notes**: Raw text preservation (no modification)
+- **Revolut Notes**: Static broker identifier
+- **IBKR Flex Parser**: Structured note with conditional field inclusion
+- **IBKR Flex Corporate Actions**: Special format (RS/TC) with full description
+- **IBKR Flex Cash Transactions**: Enhanced format (Type, IssuerCountry, ISIN, ActionID)
+
+### Import Behavior
+
+- **Duplicate Detection**: Applied to all imports
+- **Date Range Filtering**: Supported by all parsers
+- **Currency Handling**: Automatic currency detection and fee separation
 
 ### Note Format Settings
 - **T212 Enhanced Notes**: Always enabled (company name + ISIN)

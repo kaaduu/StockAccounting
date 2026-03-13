@@ -7,6 +7,28 @@ cd "$DIR"
 echo "Starting StockAccounting..."
 echo "Working directory: $(pwd)"
 
+# Ensure runtime Java is compatible with compiled bytecode (Java 17+).
+if ! command -v java >/dev/null 2>&1; then
+    echo "ERROR: Java runtime not found in PATH."
+    echo "Install Java 17+ and run again."
+    exit 1
+fi
+
+JAVA_VERSION_OUTPUT="$(java -version 2>&1 | head -n 1)"
+JAVA_MAJOR="$(echo "$JAVA_VERSION_OUTPUT" | sed -E 's/.*version "([0-9]+).*/\1/')"
+if ! [[ "$JAVA_MAJOR" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: Unable to detect Java version."
+    echo "Detected output: $JAVA_VERSION_OUTPUT"
+    exit 1
+fi
+
+if [ "$JAVA_MAJOR" -lt 17 ]; then
+    echo "ERROR: Incompatible Java runtime detected: $JAVA_VERSION_OUTPUT"
+    echo "This application requires Java 17 or newer."
+    echo "Tip: install OpenJDK 17+ and ensure 'java -version' points to it."
+    exit 1
+fi
+
 # Determine JAR location and lib directory
 if [ -f "dist/lib/StockAccounting.jar" ]; then
     # Running from project root, use Gradle-style dist directory
@@ -43,8 +65,10 @@ echo "Library directory: $LIB_DIR ($(ls "$LIB_DIR"/*.jar 2>/dev/null | wc -l) JA
 CLASSPATH="$JAR_FILE"
 for jar in "$LIB_DIR"/*.jar; do
     if [ -f "$jar" ]; then
-        CLASSPATH="$CLASSPATH:$jar"
-        echo "Including: $(basename "$jar")"
+        if [ "$jar" != "$JAR_FILE" ]; then
+            CLASSPATH="$CLASSPATH:$jar"
+            echo "Including: $(basename "$jar")"
+        fi
     fi
 done
 

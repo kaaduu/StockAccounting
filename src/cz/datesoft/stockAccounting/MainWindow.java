@@ -2158,7 +2158,11 @@ public class MainWindow extends javax.swing.JFrame {
       try {
         openFile(selectedFile);
       } catch (Exception e) {
-        UiDialogs.error(this, "Při načítání souboru nastala chyba: " + e.getMessage(), "Chyba", e);
+        UiDialogs.warn(this,
+            "Soubor se nepodařilo načíst (neplatný nebo nepodporovaný formát).\n"
+                + "Původní data zůstala beze změny.\n\n"
+                + "Detail: " + e.getMessage(),
+            "Načtení souboru");
       }
     }
   }

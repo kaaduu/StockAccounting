@@ -111,6 +111,8 @@ public class ImportWindow extends javax.swing.JFrame {
   private javax.swing.JButton bIBKRFlexRefreshPreview; // "Obnovit náhled"
   private javax.swing.JButton bIBKRFlexHelp; // "Nápověda"
   private javax.swing.JButton bIBKRFlexMerge; // "Sloučit do databáze"
+  private javax.swing.JButton bIBKRFlexSelectAllRows; // "Vybrat vše"
+  private javax.swing.JButton bIBKRFlexDeselectAllRows; // "Zrušit výběr"
   private javax.swing.JCheckBox cbIBKRFlexIncludeCorporateActions; // include Transformace
   private javax.swing.JCheckBox cbIBKRFlexCaRS;
   private javax.swing.JCheckBox cbIBKRFlexCaTC;
@@ -137,6 +139,7 @@ public class ImportWindow extends javax.swing.JFrame {
   // Deduplicate IBKR Flex structural warnings per loaded CSV content
   private String lastIbkrFlexStructureWarnKey = null;
   private String lastIbkrFlexFxtrWarnKey = null;
+  private String lastIbkrFlexSingleLegWarnKey = null;
 
   // Local file selection components (for file-based imports)
   private javax.swing.JButton bSelectFile;
@@ -145,6 +148,7 @@ public class ImportWindow extends javax.swing.JFrame {
   private String lastIbkrCsvContent = null;
   private String lastIbkrSourceLabel = null;
   private boolean ibkrPreviewDirty = false;
+  private boolean ibkrSelectionListenerInstalled = false;
 
   private static final int IBKR_MODE_TRADES_AND_TRANS = 0;
   private static final int IBKR_MODE_TRADES_ONLY = 1;
@@ -999,6 +1003,7 @@ public class ImportWindow extends javax.swing.JFrame {
     }
     lastIbkrFlexStructureWarnKey = null;
     lastIbkrFlexFxtrWarnKey = null;
+    lastIbkrFlexSingleLegWarnKey = null;
     if (bIBKRFlexRefreshPreview != null) {
       bIBKRFlexRefreshPreview.setEnabled(false);
       bIBKRFlexRefreshPreview.setText("Obnovit náhled");
@@ -1082,6 +1087,351 @@ public class ImportWindow extends javax.swing.JFrame {
     }
   }
 
+  private int getIbkrPreviewRowCount() {
+    return transactions != null && transactions.rows != null ? transactions.rows.size() : 0;
+  }
+
+  private int toModelRowIndex(int viewRow) {
+    if (table == null) {
+      return viewRow;
+    }
+    try {
+      return table.convertRowIndexToModel(viewRow);
+    } catch (Exception e) {
+      return viewRow;
+    }
+  }
+
+  private int getSelectedIbkrPreviewRowCount() {
+    if (table == null || !isIBKRFlexFormat()) {
+      return 0;
+    }
+    int[] selected = table.getSelectedRows();
+    if (selected == null || selected.length == 0) {
+      return 0;
+    }
+    int maxRows = getIbkrPreviewRowCount();
+    int count = 0;
+    for (int viewRow : selected) {
+      int modelRow = toModelRowIndex(viewRow);
+      if (modelRow >= 0 && modelRow < maxRows) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  private java.util.Vector<Transaction> getSelectedIbkrPreviewTransactions() {
+    java.util.Vector<Transaction> selectedTransactions = new java.util.Vector<>();
+    if (table == null || transactions == null) {
+      return selectedTransactions;
+    }
+    int[] selectedRows = table.getSelectedRows();
+    if (selectedRows == null || selectedRows.length == 0) {
+      return selectedTransactions;
+    }
+    int maxRows = getIbkrPreviewRowCount();
+    java.util.Set<Integer> seenModelRows = new java.util.HashSet<>();
+    for (int viewRow : selectedRows) {
+      int modelRow = toModelRowIndex(viewRow);
+      if (modelRow < 0 || modelRow >= maxRows || !seenModelRows.add(modelRow)) {
+        continue;
+      }
+      selectedTransactions.add(transactions.getRowAt(modelRow));
+    }
+    return selectedTransactions;
+  }
+
+  private void selectAllIbkrPreviewRows() {
+    if (table == null || !isIBKRFlexFormat()) {
+      return;
+    }
+    int rowCount = getIbkrPreviewRowCount();
+    table.clearSelection();
+    if (rowCount > 0) {
+      table.setRowSelectionInterval(0, rowCount - 1);
+    }
+    updateIBKRFlexButtonState();
+  }
+
+  private void deselectAllIbkrPreviewRows() {
+    if (table == null || !isIBKRFlexFormat()) {
+      return;
+    }
+    table.clearSelection();
+    updateIBKRFlexButtonState();
+  }
+
+  private void ensureIbkrSelectionListenerInstalled() {
+    if (table == null || ibkrSelectionListenerInstalled) {
+      return;
+    }
+    table.getSelectionModel().addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+      @Override
+      public void valueChanged(javax.swing.event.ListSelectionEvent e) {
+        if (e != null && e.getValueIsAdjusting()) {
+          return;
+        }
+        if (isIBKRFlexFormat()) {
+          updateIBKRFlexButtonState();
+        }
+      }
+    });
+    ibkrSelectionListenerInstalled = true;
+  }
+
+  private static boolean isIbkrCorporateTransformation(Transaction tx) {
+    if (tx == null) {
+      return false;
+    }
+    int d = tx.getDirection();
+    if (d != Transaction.DIRECTION_TRANS_ADD && d != Transaction.DIRECTION_TRANS_SUB) {
+      return false;
+    }
+    String broker = tx.getBroker();
+    if (broker != null && broker.trim().equalsIgnoreCase("IB")) {
+      return true;
+    }
+    String note = tx.getNote();
+    return note != null && note.matches("^[A-Z]{2}\\|.*");
+  }
+
+  private static String extractIbkrCorporateSourceTicker(Transaction tx) {
+    if (tx == null || tx.getNote() == null) {
+      return null;
+    }
+    String note = tx.getNote().trim();
+    int firstPipe = note.indexOf('|');
+    if (firstPipe < 0 || firstPipe + 1 >= note.length()) {
+      return null;
+    }
+    String payload = note.substring(firstPipe + 1).trim();
+    if (payload.isEmpty()) {
+      return null;
+    }
+    java.util.regex.Matcher m = java.util.regex.Pattern.compile("^([A-Z0-9.\\-]+)\\(").matcher(payload);
+    if (m.find()) {
+      String ticker = m.group(1);
+      if (ticker != null && !ticker.trim().isEmpty()) {
+        return ticker.trim().toUpperCase();
+      }
+    }
+    int cut = payload.indexOf(' ');
+    String token = (cut > 0 ? payload.substring(0, cut) : payload).trim();
+    token = token.replaceAll("[^A-Za-z0-9.\\-]", "");
+    if (token.isEmpty()) {
+      return null;
+    }
+    return token.toUpperCase();
+  }
+
+  private static boolean isAcquisitionCandidateForInheritance(Transaction tx) {
+    if (tx == null || tx.getAmount() == null || tx.getAmount().doubleValue() <= 0.0) {
+      return false;
+    }
+    int d = tx.getDirection();
+    return d == Transaction.DIRECTION_SBUY || d == Transaction.DIRECTION_TRANS_ADD;
+  }
+
+  private static java.util.Date minDate(java.util.Date a, java.util.Date b) {
+    if (a == null)
+      return b;
+    if (b == null)
+      return a;
+    return a.before(b) ? a : b;
+  }
+
+  private java.util.Date findInheritedAcquisitionDate(String sourceTicker, java.util.Date eventDate,
+      java.util.Vector<Transaction> parsedTransactions) {
+    if (sourceTicker == null || sourceTicker.trim().isEmpty() || eventDate == null) {
+      return null;
+    }
+    String src = sourceTicker.trim().toUpperCase();
+    java.util.Date best = null;
+
+    TransactionSet db = mainWindow != null ? mainWindow.getTransactionDatabase() : null;
+    if (db != null && db.rows != null) {
+      for (Transaction t : db.rows) {
+        if (t == null || t.getTicker() == null) {
+          continue;
+        }
+        if (!src.equalsIgnoreCase(t.getTicker().trim())) {
+          continue;
+        }
+        if (!isAcquisitionCandidateForInheritance(t)) {
+          continue;
+        }
+        java.util.Date d = t.getDate();
+        if (d != null && !d.after(eventDate)) {
+          best = minDate(best, d);
+        }
+      }
+    }
+
+    if (parsedTransactions != null) {
+      for (Transaction t : parsedTransactions) {
+        if (t == null || t.getTicker() == null) {
+          continue;
+        }
+        if (!src.equalsIgnoreCase(t.getTicker().trim())) {
+          continue;
+        }
+        if (!isAcquisitionCandidateForInheritance(t)) {
+          continue;
+        }
+        java.util.Date d = t.getDate();
+        if (d != null && !d.after(eventDate)) {
+          best = minDate(best, d);
+        }
+      }
+    }
+
+    return best;
+  }
+
+  private static String formatDateIso(java.util.Date d) {
+    if (d == null) {
+      return "";
+    }
+    return new java.text.SimpleDateFormat("yyyy-MM-dd").format(d);
+  }
+
+  private int normalizeSingleLegIbkrCorporateActions(java.util.Vector<Transaction> parsedTransactions) {
+    if (parsedTransactions == null || parsedTransactions.isEmpty()) {
+      return 0;
+    }
+
+    java.util.Map<String, java.util.List<Transaction>> groups = new java.util.LinkedHashMap<>();
+    for (Transaction t : parsedTransactions) {
+      if (!isIbkrCorporateTransformation(t)) {
+        continue;
+      }
+      String txnId = t.getTxnId() != null ? t.getTxnId().trim() : "";
+      String accountId = t.getAccountId() != null ? t.getAccountId().trim() : "";
+      String note = t.getNote() != null ? t.getNote().trim() : "";
+      java.util.Date d = t.getDate();
+      String time = d != null ? String.valueOf(d.getTime()) : "";
+      String fallback = note.length() > 64 ? note.substring(0, 64) : note;
+      String key = accountId + "|" + (txnId.isEmpty() ? ("NO_TXN|" + time + "|" + fallback) : txnId);
+      groups.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(t);
+    }
+
+    int manualReviewCount = 0;
+    for (java.util.List<Transaction> group : groups.values()) {
+      if (group == null || group.isEmpty()) {
+        continue;
+      }
+
+      int adds = 0;
+      int subs = 0;
+      for (Transaction t : group) {
+        if (t.getDirection() == Transaction.DIRECTION_TRANS_ADD) {
+          adds++;
+        } else if (t.getDirection() == Transaction.DIRECTION_TRANS_SUB) {
+          subs++;
+        }
+      }
+      if (adds > 0 && subs > 0) {
+        continue; // normal paired corporate action
+      }
+
+      for (Transaction t : group) {
+        java.util.Date originalDate = t.getDate();
+        String sourceTicker = extractIbkrCorporateSourceTicker(t);
+        java.util.Date inheritedDate = findInheritedAcquisitionDate(sourceTicker, originalDate, parsedTransactions);
+
+        if (t.getDirection() == Transaction.DIRECTION_TRANS_ADD) {
+          t.setDirection(Transaction.DIRECTION_SBUY);
+        } else if (t.getDirection() == Transaction.DIRECTION_TRANS_SUB) {
+          t.setDirection(Transaction.DIRECTION_SSELL);
+        }
+
+        String note = t.getNote() == null ? "" : t.getNote();
+        if (inheritedDate != null) {
+          t.setDate(inheritedDate);
+          t.setExecutionDate(inheritedDate);
+          note += "|AutoFix:SingleLegCA->BuySell|SourceTicker:" + (sourceTicker != null ? sourceTicker : "")
+              + "|InheritedAcqDate:" + formatDateIso(inheritedDate);
+        } else {
+          manualReviewCount++;
+          note += "|ManualCheck:SingleLegCA-DateFallback|SourceTicker:" + (sourceTicker != null ? sourceTicker : "")
+              + "|EventDate:" + formatDateIso(originalDate);
+        }
+        t.setNote(note);
+      }
+    }
+
+    return manualReviewCount;
+  }
+
+  private void assignDeterministicIbkrTxnIds(java.util.Vector<Transaction> parsedTransactions) {
+    if (parsedTransactions == null || parsedTransactions.isEmpty()) {
+      return;
+    }
+    java.util.Map<String, Integer> seen = new java.util.HashMap<>();
+    for (Transaction tx : parsedTransactions) {
+      if (tx == null) {
+        continue;
+      }
+      if (!"IB".equalsIgnoreCase(tx.getBroker())) {
+        continue;
+      }
+      String txnId = tx.getTxnId();
+      if (txnId != null && !txnId.trim().isEmpty()) {
+        continue;
+      }
+
+      String canonical = buildIbkrDeterministicTxnKey(tx);
+      if (canonical.isEmpty()) {
+        continue;
+      }
+      String base = "IK-" + shortSha256Hex(canonical);
+      int idx = seen.getOrDefault(base, 0) + 1;
+      seen.put(base, idx);
+      String syntheticTxnId = idx == 1 ? base : (base + "-" + idx);
+      tx.setTxnId(syntheticTxnId);
+    }
+  }
+
+  private static String buildIbkrDeterministicTxnKey(Transaction tx) {
+    if (tx == null) {
+      return "";
+    }
+    StringBuilder sb = new StringBuilder(256);
+    sb.append(nullToEmpty(tx.getBroker()).toUpperCase()).append('|');
+    sb.append(nullToEmpty(tx.getAccountId()).toUpperCase()).append('|');
+    sb.append(tx.getDirection()).append('|');
+    sb.append(nullToEmpty(tx.getTicker()).toUpperCase()).append('|');
+    sb.append(tx.getDate() != null ? tx.getDate().getTime() : 0L).append('|');
+    sb.append(tx.getExecutionDate() != null ? tx.getExecutionDate().getTime() : 0L).append('|');
+    sb.append(tx.getAmount() != null ? tx.getAmount() : 0.0d).append('|');
+    sb.append(tx.getPrice() != null ? tx.getPrice() : 0.0d).append('|');
+    sb.append(nullToEmpty(tx.getPriceCurrency()).toUpperCase()).append('|');
+    sb.append(tx.getFee() != null ? tx.getFee() : 0.0d).append('|');
+    sb.append(nullToEmpty(tx.getFeeCurrency()).toUpperCase()).append('|');
+    sb.append(nullToEmpty(tx.getMarket()).toUpperCase()).append('|');
+    sb.append(nullToEmpty(tx.getCode()).toUpperCase()).append('|');
+    sb.append(nullToEmpty(tx.getNote()));
+    return sb.toString();
+  }
+
+  private static String shortSha256Hex(String value) {
+    if (value == null) {
+      return "0";
+    }
+    try {
+      java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+      byte[] dig = md.digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      StringBuilder sb = new StringBuilder(16);
+      for (int i = 0; i < 8 && i < dig.length; i++) {
+        sb.append(String.format("%02x", dig[i]));
+      }
+      return sb.toString();
+    } catch (Exception e) {
+      return Integer.toHexString(value.hashCode());
+    }
+  }
+
   private void refreshIbkrPreviewFromCachedCsv() {
     if (!isIBKRFlexFormat())
       return;
@@ -1154,6 +1504,9 @@ public class ImportWindow extends javax.swing.JFrame {
         }
         parsedTransactions = only;
       }
+
+      int manualDateReviewCount = normalizeSingleLegIbkrCorporateActions(parsedTransactions);
+      assignDeterministicIbkrTxnIds(parsedTransactions);
       lastIBKRParser = parser;
       updateIbkrFlexCsvInfoLabel();
 
@@ -1183,16 +1536,9 @@ public class ImportWindow extends javax.swing.JFrame {
 
       clearPreview();
 
-      // Enforce minute-level uniqueness rules for transformations.
-      // If a transformation pair exists at a minute, it must be the only content of
-      // that minute.
-      // Any colliding trades/other rows are shifted forward by +N minutes.
-      normalizeIbkrMinuteCollisions(mainWindow.getTransactionDatabase(), parsedTransactions);
-
-      // Disambiguate rare collisions caused by minute-level timestamp precision.
-      // This keeps IBKR Flex re-import stable: update one existing row, insert the
-      // other(s).
-      disambiguateIbkrDuplicateCollisions(mainWindow.getTransactionDatabase(), parsedTransactions);
+      // IBKR path: keep original timestamps from source CSV (no TimeShift minute
+      // normalization). Re-import matching is handled by TxnID / deterministic
+      // fallback TxnID for rows where IBKR omits TxnID.
 
       Vector<Transaction> filteredTransactions = mainWindow.getTransactionDatabase()
           .filterDuplicates(parsedTransactions);
@@ -1222,6 +1568,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
       transactions.rows.addAll(filteredTransactions);
       transactions.fireTableDataChanged();
+      selectAllIbkrPreviewRows();
 
       String previewText = "Náhled (" + filteredTransactions.size() + " záznamů)";
       if (duplicatesFiltered > 0) {
@@ -1269,6 +1616,20 @@ public class ImportWindow extends javax.swing.JFrame {
               "\"Dividends\" a \"Payment in Lieu of Dividends\", aby byly dividendy kompletní i bez fallbacku.\n");
           javax.swing.JOptionPane.showMessageDialog(this, msg.toString(), "IBKR Flex",
               javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        }
+      }
+      if (manualDateReviewCount > 0) {
+        statusMsg += ", " + manualDateReviewCount + " řádků vyžaduje kontrolu data";
+        String key = "SINGLE_LEG_CA|" + (lastIbkrSourceLabel != null ? lastIbkrSourceLabel : "") + "|"
+            + manualDateReviewCount;
+        if (lastIbkrFlexSingleLegWarnKey == null || !lastIbkrFlexSingleLegWarnKey.equals(key)) {
+          lastIbkrFlexSingleLegWarnKey = key;
+          javax.swing.JOptionPane.showMessageDialog(this,
+              "IBKR Flex: u některých jednostranných korporátních akcí nebylo možné\n"
+                  + "spolehlivě určit původní datum nabytí.\n\n"
+                  + "Tyto řádky jsou označeny v Note jako 'ManualCheck:SingleLegCA-DateFallback'\n"
+                  + "a je potřeba je ručně zkontrolovat/upravit.",
+              "IBKR Flex", javax.swing.JOptionPane.WARNING_MESSAGE);
         }
       }
       lblIBKRFlexStatus.setText(statusMsg);
@@ -1916,6 +2277,10 @@ public class ImportWindow extends javax.swing.JFrame {
       bIBKRFlexClear.setVisible(visible);
     if (bIBKRFlexRefreshPreview != null)
       bIBKRFlexRefreshPreview.setVisible(visible);
+    if (bIBKRFlexSelectAllRows != null)
+      bIBKRFlexSelectAllRows.setVisible(visible);
+    if (bIBKRFlexDeselectAllRows != null)
+      bIBKRFlexDeselectAllRows.setVisible(visible);
     if (bIBKRFlexHelp != null)
       bIBKRFlexHelp.setVisible(visible);
     if (bIBKRFlexMerge != null)
@@ -3844,7 +4209,11 @@ public class ImportWindow extends javax.swing.JFrame {
       bIBKRFlexClear = new javax.swing.JButton("Vymazat náhled");
       bIBKRFlexRefreshPreview = new javax.swing.JButton("Obnovit náhled");
       bIBKRFlexHelp = new javax.swing.JButton("Nápověda");
+      bIBKRFlexSelectAllRows = new javax.swing.JButton("Vybrat vše");
+      bIBKRFlexDeselectAllRows = new javax.swing.JButton("Zrušit výběr");
       bIBKRFlexHelp.setToolTipText("Jak nastavit IBKR Flex Query (sekce, Cash Transactions a konfigurace)");
+      bIBKRFlexSelectAllRows.setToolTipText("Vybrat všechny řádky v náhledu");
+      bIBKRFlexDeselectAllRows.setToolTipText("Odznačit všechny řádky v náhledu");
 
       bIBKRFlexMerge = new javax.swing.JButton("Sloučit do databáze");
       bIBKRFlexMerge.setToolTipText("Sloučit načtené transakce do hlavní databáze");
@@ -3966,6 +4335,16 @@ public class ImportWindow extends javax.swing.JFrame {
           showIbkrFlexHelpDialog();
         }
       });
+      bIBKRFlexSelectAllRows.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          selectAllIbkrPreviewRows();
+        }
+      });
+      bIBKRFlexDeselectAllRows.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+          deselectAllIbkrPreviewRows();
+        }
+      });
 
       cbIBKRFlexIncludeCorporateActions.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -4004,6 +4383,8 @@ public class ImportWindow extends javax.swing.JFrame {
       javax.swing.JPanel pPreview = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
       pPreview.setBorder(javax.swing.BorderFactory.createTitledBorder("2) Náhled"));
       pPreview.add(bIBKRFlexRefreshPreview);
+      pPreview.add(bIBKRFlexSelectAllRows);
+      pPreview.add(bIBKRFlexDeselectAllRows);
       pPreview.add(bIBKRFlexMerge);
       pPreview.add(bIBKRFlexClear);
       pPreview.add(bIBKRFlexHelp);
@@ -4060,6 +4441,12 @@ public class ImportWindow extends javax.swing.JFrame {
       pack();
     }
 
+    ensureIbkrSelectionListenerInstalled();
+    if (table != null) {
+      table.setRowSelectionAllowed(true);
+      table.setColumnSelectionAllowed(false);
+    }
+
     // Ensure visibility
     bIBKRFlexFetch.setVisible(true);
     bIBKRFlexFile.setVisible(true);
@@ -4069,6 +4456,12 @@ public class ImportWindow extends javax.swing.JFrame {
     }
     if (bIBKRFlexRefreshPreview != null) {
       bIBKRFlexRefreshPreview.setVisible(true);
+    }
+    if (bIBKRFlexSelectAllRows != null) {
+      bIBKRFlexSelectAllRows.setVisible(true);
+    }
+    if (bIBKRFlexDeselectAllRows != null) {
+      bIBKRFlexDeselectAllRows.setVisible(true);
     }
     if (bIBKRFlexHelp != null) {
       bIBKRFlexHelp.setVisible(true);
@@ -4123,6 +4516,12 @@ public class ImportWindow extends javax.swing.JFrame {
     if (bIBKRFlexRefreshPreview != null) {
       bIBKRFlexRefreshPreview.setVisible(false);
     }
+    if (bIBKRFlexSelectAllRows != null) {
+      bIBKRFlexSelectAllRows.setVisible(false);
+    }
+    if (bIBKRFlexDeselectAllRows != null) {
+      bIBKRFlexDeselectAllRows.setVisible(false);
+    }
     if (bIBKRFlexHelp != null) {
       bIBKRFlexHelp.setVisible(false);
     }
@@ -4172,7 +4571,10 @@ public class ImportWindow extends javax.swing.JFrame {
       return;
     }
 
-    boolean hasWork = !transactions.rows.isEmpty() || (duplicatesToUpdate != null && !duplicatesToUpdate.isEmpty());
+    int previewRows = getIbkrPreviewRowCount();
+    int selectedRows = getSelectedIbkrPreviewRowCount();
+    boolean hasDuplicates = duplicatesToUpdate != null && !duplicatesToUpdate.isEmpty();
+    boolean hasWork = (previewRows > 0 && selectedRows > 0) || (previewRows == 0 && hasDuplicates);
 
     // Fetch button is always fetch; merge is a separate button (like Trading 212).
     bIBKRFlexFetch.setText("Načíst z IBKR");
@@ -4180,11 +4582,23 @@ public class ImportWindow extends javax.swing.JFrame {
 
     if (bIBKRFlexMerge != null) {
       bIBKRFlexMerge.setEnabled(hasWork);
+      if (previewRows > 0) {
+        bIBKRFlexMerge.setToolTipText("Sloučit vybrané řádky do hlavní databáze");
+      } else {
+        bIBKRFlexMerge.setToolTipText("Sloučit načtené transakce do hlavní databáze");
+      }
     }
 
     // Enable/disable clear button
     if (bIBKRFlexClear != null) {
-      bIBKRFlexClear.setEnabled(hasWork);
+      bIBKRFlexClear.setEnabled(previewRows > 0 || hasDuplicates);
+    }
+
+    if (bIBKRFlexSelectAllRows != null) {
+      bIBKRFlexSelectAllRows.setEnabled(previewRows > 0);
+    }
+    if (bIBKRFlexDeselectAllRows != null) {
+      bIBKRFlexDeselectAllRows.setEnabled(previewRows > 0);
     }
 
     if (bIBKRFlexRefreshPreview != null) {
@@ -4357,30 +4771,48 @@ public class ImportWindow extends javax.swing.JFrame {
       System.out.println("[IBKR:MERGE:001] Starting merge mode - merging preview to database");
 
       try {
+        int previewRows = getIbkrPreviewRowCount();
+        java.util.Vector<Transaction> selectedPreviewRows = getSelectedIbkrPreviewTransactions();
+        if (previewRows > 0 && selectedPreviewRows.isEmpty()) {
+          javax.swing.JOptionPane.showMessageDialog(this,
+              "Vyberte alespoň jeden řádek v náhledu pro import.",
+              "IBKR Flex", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+          return;
+        }
+
         // Track initial count for accurate reporting
         int initialTransactionCount = mainWindow.getTransactionDatabase().getRowCount();
         System.out.println("[IBKR:MERGE:002] Initial transaction count in database: " + initialTransactionCount);
 
         TransactionSet mainDbForUndo = mainWindow.getTransactionDatabase();
         mainDbForUndo.beginImportUndoCapture();
-        transactions.mergeTo(mainDbForUndo);
+        if (previewRows > 0) {
+          TransactionSet selectedRowsSet = new TransactionSet();
+          selectedRowsSet.rows.addAll(selectedPreviewRows);
+          selectedRowsSet.mergeTo(mainDbForUndo);
+        }
 
         // Update duplicates (IBKR Flex: always on)
         int updatedCount = 0;
-        if (!duplicatesToUpdate.isEmpty()) {
+        boolean allPreviewRowsSelected = previewRows == 0 || selectedPreviewRows.size() >= previewRows;
+        java.util.Vector<Transaction> duplicatesForUpdate = allPreviewRowsSelected ? duplicatesToUpdate
+            : new java.util.Vector<>();
+        if (!duplicatesForUpdate.isEmpty()) {
           TransactionSet mainDb = mainWindow.getTransactionDatabase();
 
-          System.out.println("[IBKR:UPDATE:001] Updating " + duplicatesToUpdate.size() + " duplicate transactions");
+          System.out.println("[IBKR:UPDATE:001] Updating " + duplicatesForUpdate.size() + " duplicate transactions");
 
           // Start batch update to prevent double-updating same transaction
           mainDb.startBatchUpdate();
 
-          updatedCount += mainDb.updateDuplicateTransactions(duplicatesToUpdate);
+          updatedCount += mainDb.updateDuplicateTransactions(duplicatesForUpdate);
 
           // End batch update
           mainDb.endBatchUpdate();
 
           System.out.println("[IBKR:UPDATE:002] Successfully updated " + updatedCount + " transactions");
+        } else if (!allPreviewRowsSelected && previewRows > 0 && duplicatesToUpdate != null && !duplicatesToUpdate.isEmpty()) {
+          System.out.println("[IBKR:UPDATE:003] Skipping duplicate updates due to partial row selection");
         }
 
         // Clear duplicates list
@@ -4919,6 +5351,9 @@ public class ImportWindow extends javax.swing.JFrame {
     updateClearButtonState();
     updateTrading212ButtonsState();
     updateTrading212CsvDetailsButtonState();
+    if (table != null) {
+      table.clearSelection();
+    }
     System.out.println("[CLEAR:002] Preview cleared successfully");
   }
 

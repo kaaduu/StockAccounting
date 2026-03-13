@@ -1,8 +1,11 @@
 package cz.datesoft.stockAccounting;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.GregorianCalendar;
 import java.util.Vector;
 import java.util.logging.Logger;
@@ -76,6 +79,8 @@ public class TransactionRepository {
    */
   public static LoadedData load(File srcFile, TransformationCache transformationCache)
       throws java.io.FileNotFoundException, java.io.IOException {
+    validateDatHeader(srcFile);
+
     try (BufferedReader ifl = new BufferedReader(new java.io.FileReader(srcFile))) {
       String a[];
 
@@ -87,15 +92,15 @@ public class TransactionRepository {
       a = readLine(ifl);
 
       if (a[0] == null) {
-        return data;
+        throw new java.io.IOException("Soubor je prázdný.");
       }
 
       if (!a[0].equals("version")) {
-        return data;
+        throw new java.io.IOException("Neplatný formát souboru: chybí hlavička 'version='.");
       }
 
       if (!a[1].equals("1")) {
-        return data;
+        throw new java.io.IOException("Nepodporovaná verze souboru: " + a[1]);
       }
 
       for (;;) {
@@ -131,6 +136,8 @@ public class TransactionRepository {
    */
   public static LoadedData loadAdd(File srcFile, TransformationCache transformationCache)
       throws java.io.FileNotFoundException, java.io.IOException {
+    validateDatHeader(srcFile);
+
     BufferedReader ifl = new BufferedReader(new java.io.FileReader(srcFile));
     String a[];
 
@@ -143,17 +150,17 @@ public class TransactionRepository {
 
     if (a[0] == null) {
       ifl.close();
-      return data;
+      throw new java.io.IOException("Soubor je prázdný.");
     }
 
     if (!a[0].equals("version")) {
       ifl.close();
-      return data;
+      throw new java.io.IOException("Neplatný formát souboru: chybí hlavička 'version='.");
     }
 
     if (!a[1].equals("1")) {
       ifl.close();
-      return data;
+      throw new java.io.IOException("Nepodporovaná verze souboru: " + a[1]);
     }
 
     for (;;) {
@@ -185,6 +192,55 @@ public class TransactionRepository {
 
     String parts[] = line.split("=", 2);
     return parts;
+  }
+
+  private static void validateDatHeader(File srcFile) throws java.io.IOException {
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(srcFile), StandardCharsets.UTF_8))) {
+      String line1 = br.readLine();
+      String line2 = br.readLine();
+      String line3 = br.readLine();
+
+      if (line1 == null || line2 == null || line3 == null) {
+        throw new java.io.IOException("Neplatný formát souboru: chybí povinné hlavičky.");
+      }
+
+      line1 = stripUtf8Bom(line1);
+
+      ensureAsciiHeader(line1, "1");
+      ensureAsciiHeader(line2, "2");
+      ensureAsciiHeader(line3, "3");
+
+      if (!line1.startsWith("version=")) {
+        throw new java.io.IOException("Neplatný formát souboru: 1. řádek musí začínat 'version='.");
+      }
+      if (!line2.startsWith("serialCounter=")) {
+        throw new java.io.IOException("Neplatný formát souboru: 2. řádek musí začínat 'serialCounter='.");
+      }
+      if (!line3.startsWith("lastDateSet=")) {
+        throw new java.io.IOException("Neplatný formát souboru: 3. řádek musí začínat 'lastDateSet='.");
+      }
+
+      String version = line1.substring("version=".length()).trim();
+      if (!"1".equals(version)) {
+        throw new java.io.IOException("Nepodporovaná verze souboru: " + version);
+      }
+    }
+  }
+
+  private static void ensureAsciiHeader(String line, String lineNo) throws java.io.IOException {
+    for (int i = 0; i < line.length(); i++) {
+      char c = line.charAt(i);
+      if (c > 127) {
+        throw new java.io.IOException("Neplatný formát souboru: hlavička na řádku " + lineNo + " není ASCII text.");
+      }
+    }
+  }
+
+  private static String stripUtf8Bom(String line) {
+    if (line != null && !line.isEmpty() && line.charAt(0) == '\uFEFF') {
+      return line.substring(1);
+    }
+    return line;
   }
 
   private static java.util.Date parseDate(String dateStr) {

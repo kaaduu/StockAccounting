@@ -740,43 +740,55 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     * Load from a file
     */
    public void load(File srcFile) throws java.io.FileNotFoundException, java.io.IOException {
-     // Initialize
+     // Load into temporary structures first. If parsing fails, keep existing data untouched.
+     TransformationCache loadedTransformationCache = new TransformationCache();
+     TransactionRepository.LoadedData data = TransactionRepository.load(srcFile, loadedTransformationCache);
+
+     Vector<Transaction> loadedRows = new Vector<Transaction>();
+     int loadedSerialCounter = 1;
+     Date loadedLastDateSet = null;
+
+     if (data.transactions != null) {
+       loadedRows.addAll(data.transactions);
+       loadedSerialCounter = data.serialCounter;
+       loadedLastDateSet = data.lastDateSet;
+     }
+
+     // Sort loaded data before committing.
+     Transaction[] arr = new Transaction[loadedRows.size()];
+     loadedRows.copyInto(arr);
+     java.util.Arrays.sort(arr);
+     for (int i = 0; i < arr.length; i++) {
+       loadedRows.set(i, arr[i]);
+     }
+
+     // Commit loaded data.
      rows.clear();
+     rows.addAll(loadedRows);
      filteredRows = null;
      cbmodel.removeAllElements();
-     serialCounter = 1;
+     serialCounter = loadedSerialCounter;
+     lastDateSet = loadedLastDateSet;
 
      // Reset Stocks instance and transformation cache for new data
      stocksInstance = null;
-     transformationCache.invalidate();
+     transformationCache = loadedTransformationCache;
 
-     // Load data using repository
-     TransactionRepository.LoadedData data = TransactionRepository.load(srcFile, transformationCache);
-
-     // Process loaded data
-     if (data.transactions != null) {
-       rows.addAll(data.transactions);
-       serialCounter = data.serialCounter;
-       lastDateSet = data.lastDateSet;
-
-       // Populate ticker model
-       for (Transaction tx : rows) {
-         if (tx.ticker != null && tx.ticker.length() > 0) {
-           cbmodel.putItem(tx.ticker.toUpperCase());
-         }
+     // Populate ticker model
+     for (Transaction tx : rows) {
+       if (tx.ticker != null && tx.ticker.length() > 0) {
+         cbmodel.putItem(tx.ticker.toUpperCase());
        }
      }
 
-      sort();
+     // Repair duplicate/broken serials (affects highlighting and batch update logic)
+     normalizeSerialsIfNeeded();
 
-      // Repair duplicate/broken serials (affects highlighting and batch update logic)
-      normalizeSerialsIfNeeded();
+     fireTableDataChanged();
 
-      // We don't fire data changed event, since it is alreday done by sort()
-
-       diskFile = srcFile;
-       modified = false;
-    }
+     diskFile = srcFile;
+     modified = false;
+   }
 
     /**
      * Load from a file and merge with existing data
