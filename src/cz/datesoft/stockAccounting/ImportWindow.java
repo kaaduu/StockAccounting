@@ -110,6 +110,7 @@ public class ImportWindow extends javax.swing.JFrame {
   private javax.swing.JButton bIBKRFlexClear; // "Vymazat náhled"
   private javax.swing.JButton bIBKRFlexRefreshPreview; // "Obnovit náhled"
   private javax.swing.JButton bIBKRFlexHelp; // "Nápověda"
+  private javax.swing.JButton bIBKRTradeLogHelp; // "Nápověda"
   private javax.swing.JButton bIBKRFlexMerge; // "Sloučit do databáze"
   private javax.swing.JButton bIBKRFlexSelectAllRows; // "Vybrat vše"
   private javax.swing.JButton bIBKRFlexDeselectAllRows; // "Zrušit výběr"
@@ -317,13 +318,16 @@ public class ImportWindow extends javax.swing.JFrame {
       pHeader.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 0, 5));
 
       javax.swing.JPanel pFile = new javax.swing.JPanel(new java.awt.BorderLayout(8, 0));
-      if (bSelectFile != null) {
-        pFile.add(bSelectFile, java.awt.BorderLayout.WEST);
-      }
-      if (lSelectedFile != null) {
-        pFile.add(lSelectedFile, java.awt.BorderLayout.CENTER);
-      }
-      pHeader.add(pFile, java.awt.BorderLayout.WEST);
+       if (bSelectFile != null) {
+         pFile.add(bSelectFile, java.awt.BorderLayout.WEST);
+       }
+       if (lSelectedFile != null) {
+         pFile.add(lSelectedFile, java.awt.BorderLayout.CENTER);
+       }
+       if (bIBKRTradeLogHelp != null) {
+         pFile.add(bIBKRTradeLogHelp, java.awt.BorderLayout.EAST);
+       }
+       pHeader.add(pFile, java.awt.BorderLayout.WEST);
 
       javax.swing.JPanel pFormat = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
       if (jLabel4 != null)
@@ -3415,9 +3419,10 @@ public class ImportWindow extends javax.swing.JFrame {
     lblIbkrFlexCsvInfo = new javax.swing.JLabel();
     lblIbkrFlexCsvSpacer = new javax.swing.JLabel();
     bIbkrFlexCsvDetails = new javax.swing.JButton();
-    bSelectFile = new javax.swing.JButton();
-    lSelectedFile = new javax.swing.JLabel();
-    bRefresh = new javax.swing.JButton();
+     bSelectFile = new javax.swing.JButton();
+     lSelectedFile = new javax.swing.JLabel();
+     bIBKRTradeLogHelp = new javax.swing.JButton();
+     bRefresh = new javax.swing.JButton();
     bImport = new javax.swing.JButton();
     jPanel2 = new javax.swing.JPanel();
     bCancel = new javax.swing.JButton();
@@ -3528,9 +3533,9 @@ public class ImportWindow extends javax.swing.JFrame {
       bT212CsvDetails.setEnabled(false);
     }
 
-    bSelectFile.setText("Vybrat soubor...");
+     bSelectFile.setText("Vybrat soubor...");
     bSelectFile.setToolTipText("Vybrat lokální soubor pro import (dle zvoleného formátu)");
-    bSelectFile.addActionListener(new java.awt.event.ActionListener() {
+     bSelectFile.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
         selectLocalImportFile();
       }
@@ -3542,8 +3547,16 @@ public class ImportWindow extends javax.swing.JFrame {
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
     getContentPane().add(bSelectFile, gridBagConstraints);
 
-    lSelectedFile.setText("(soubor nevybrán)");
-    gridBagConstraints = new java.awt.GridBagConstraints();
+     lSelectedFile.setText("(soubor nevybrán)");
+     if (bIBKRTradeLogHelp != null) {
+       bIBKRTradeLogHelp.setToolTipText("Info o formátu IB TradeLog");
+       bIBKRTradeLogHelp.addActionListener(new java.awt.event.ActionListener() {
+         public void actionPerformed(java.awt.event.ActionEvent evt) {
+           showIbkrTradeLogHelpDialog();
+         }
+       });
+     }
+     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 1;
     gridBagConstraints.gridy = 0;
     gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
@@ -4207,9 +4220,10 @@ public class ImportWindow extends javax.swing.JFrame {
       bIBKRFlexFetch = new javax.swing.JButton("Načíst z IBKR");
       bIBKRFlexFile = new javax.swing.JButton("Načíst ze souboru");
       bIBKRFlexClear = new javax.swing.JButton("Vymazat náhled");
-      bIBKRFlexRefreshPreview = new javax.swing.JButton("Obnovit náhled");
-      bIBKRFlexHelp = new javax.swing.JButton("Nápověda");
-      bIBKRFlexSelectAllRows = new javax.swing.JButton("Vybrat vše");
+       bIBKRFlexRefreshPreview = new javax.swing.JButton("Obnovit náhled");
+       bIBKRFlexHelp = new javax.swing.JButton("Nápověda");
+       bIBKRTradeLogHelp = new javax.swing.JButton("Nápověda");
+       bIBKRFlexSelectAllRows = new javax.swing.JButton("Vybrat vše");
       bIBKRFlexDeselectAllRows = new javax.swing.JButton("Zrušit výběr");
       bIBKRFlexHelp.setToolTipText("Jak nastavit IBKR Flex Query (sekce, Cash Transactions a konfigurace)");
       bIBKRFlexSelectAllRows.setToolTipText("Vybrat všechny řádky v náhledu");
@@ -4330,12 +4344,17 @@ public class ImportWindow extends javax.swing.JFrame {
         }
       });
 
-      bIBKRFlexHelp.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-          showIbkrFlexHelpDialog();
-        }
-      });
-      bIBKRFlexSelectAllRows.addActionListener(new java.awt.event.ActionListener() {
+       bIBKRFlexHelp.addActionListener(new java.awt.event.ActionListener() {
+         public void actionPerformed(java.awt.event.ActionEvent evt) {
+           showIbkrFlexHelpDialog();
+         }
+       });
+       bIBKRTradeLogHelp.addActionListener(new java.awt.event.ActionListener() {
+         public void actionPerformed(java.awt.event.ActionEvent evt) {
+           showIbkrTradeLogHelpDialog();
+         }
+       });
+       bIBKRFlexSelectAllRows.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
           selectAllIbkrPreviewRows();
         }
@@ -5458,13 +5477,18 @@ public class ImportWindow extends javax.swing.JFrame {
       setIbkrFlexUiVisible(false);
     }
 
-    // Clear multi-selection state when switching away from IB TradeLog.
-    if (formatIndex != 3) {
-      currentFiles = null;
-      tradeLogMultiSelection = false;
-    }
+     // Clear multi-selection state when switching away from IB TradeLog.
+     if (formatIndex != 3) {
+       currentFiles = null;
+       tradeLogMultiSelection = false;
+     }
 
-    // Update button text and state based on current state
+     // Show/hide IBKR TradeLog help button
+     if (bIBKRTradeLogHelp != null) {
+       bIBKRTradeLogHelp.setVisible(formatIndex == 3);
+     }
+
+     // Update button text and state based on current state
     updateImportButtonText();
     updateImportButtonState(); // Check API credentials
 
@@ -6042,23 +6066,39 @@ public class ImportWindow extends javax.swing.JFrame {
     }
   }
 
-  private void showIbkrFlexHelpDialog() {
-    String text = buildIbkrFlexHelpText();
-    javax.swing.JTextArea ta = new javax.swing.JTextArea(24, 110);
-    ta.setEditable(false);
-    ta.setLineWrap(true);
-    ta.setWrapStyleWord(true);
-    ta.setText(text);
-    ta.setCaretPosition(0);
+   private void showIbkrFlexHelpDialog() {
+     String text = buildIbkrFlexHelpText();
+     javax.swing.JTextArea ta = new javax.swing.JTextArea(24, 110);
+     ta.setEditable(false);
+     ta.setLineWrap(true);
+     ta.setWrapStyleWord(true);
+     ta.setText(text);
+     ta.setCaretPosition(0);
 
-    javax.swing.JScrollPane sp = new javax.swing.JScrollPane(ta);
-    javax.swing.JOptionPane pane = new javax.swing.JOptionPane(sp, javax.swing.JOptionPane.PLAIN_MESSAGE);
-    javax.swing.JDialog dialog = pane.createDialog(this, "IBKR Flex - Nápověda");
-    dialog.setResizable(true);
-    dialog.setVisible(true);
-  }
+     javax.swing.JScrollPane sp = new javax.swing.JScrollPane(ta);
+     javax.swing.JOptionPane pane = new javax.swing.JOptionPane(sp, javax.swing.JOptionPane.PLAIN_MESSAGE);
+     javax.swing.JDialog dialog = pane.createDialog(this, "IBKR Flex - Nápověda");
+     dialog.setResizable(true);
+     dialog.setVisible(true);
+   }
 
-  private static String buildIbkrFlexHelpText() {
+   private void showIbkrTradeLogHelpDialog() {
+     String text = buildIbkrTradeLogHelpText();
+     javax.swing.JTextArea ta = new javax.swing.JTextArea(24, 110);
+     ta.setEditable(false);
+     ta.setLineWrap(true);
+     ta.setWrapStyleWord(true);
+     ta.setText(text);
+     ta.setCaretPosition(0);
+
+     javax.swing.JScrollPane sp = new javax.swing.JScrollPane(ta);
+     javax.swing.JOptionPane pane = new javax.swing.JOptionPane(sp, javax.swing.JOptionPane.PLAIN_MESSAGE);
+     javax.swing.JDialog dialog = pane.createDialog(this, "IB TradeLog - Nápověda");
+     dialog.setResizable(true);
+     dialog.setVisible(true);
+   }
+
+   private static String buildIbkrFlexHelpText() {
     StringBuilder sb = new StringBuilder();
     sb.append("IBKR Flex - doporučené nastavení Flex Query (CSV v2)\n\n");
 
@@ -6097,12 +6137,54 @@ public class ImportWindow extends javax.swing.JFrame {
     sb.append("- Date/Time Separator: : (semi-colon)\n");
     sb.append("- Include Currency Rates: NO (kurzy řeší StockAccounting)\n");
     sb.append("\n");
-    sb.append("Tip: Pokud při náhledu vidíte varování o chybějících povinných sekcích,\n");
-    sb.append("zkontrolujte, že v IBKR Flex Query máte vybrané Trades a Corporate Actions.\n");
-    return sb.toString();
-  }
+     sb.append("Tip: Pokud při náhledu vidíte varování o chybějících povinných sekcích,\n");
+     sb.append("zkontrolujte, že v IBKR Flex Query máte vybrané Trades a Corporate Actions.\n");
+     return sb.toString();
+   }
 
-  /**
+   private static String buildIbkrTradeLogHelpText() {
+     StringBuilder sb = new StringBuilder();
+     sb.append("IB TradeLog - Formát obchodů (pružné pole .tlg)\n\n");
+     sb.append("IB TradeLog obsahuje pouze obchodní transakce (akcie, futures atd.).\n\n");
+
+     sb.append("⚠️ Důležitá omezení:\n");
+     sb.append("- Neobsahuje dividendy a úroky\n");
+     sb.append("- Neobsahuje poplatky a daně\n");
+     sb.append("- Nepodporuje automatickou korekci datumů pro transformační akce\n\n");
+
+     sb.append("🆚 Porovnání s IBKR Flex:\n");
+     sb.append("IBKR Flex má podporu pro:\n");
+     sb.append("- ✅ Dividendy (CTRN)\n");
+     sb.append("- ✅ Úroky (CTRN)\n");
+     sb.append("- ✅ Poplatky a daně (CFI)\n");
+     sb.append("- ✅ Transformace (Reverse Split, Merger, CUSIP change)\n");
+     sb.append("- ✅ Automatická normalizace jednostranných korporátních akcí\n");
+     sb.append("- ✅ Plnější podpora rušícího importu (TxnID)\n\n");
+
+     sb.append("💡 Doporučení:\n");
+     sb.append("Pro úplný výpis obchodů, dividend a poplatků používejte\n");
+     sb.append("IBKR Flex formát, který má pro export rozsáhlejší možnosti.\n\n");
+
+     sb.append("📄 Struktura TradeLog:\n");
+     sb.append("- Formát: Pružné pole (pipe-delimited, |)\n");
+     sb.append("- Soubory: .tlg soubory\n");
+     sb.append("- Položky: Type, TxnID, Ticker, Description, Exchange, Action, Status, Date, Time, Currency, Price, Qty, Total, Fee, RealizedPnL\n\n");
+
+     sb.append("📦 Importované položky:\n");
+     sb.append("- Akcie (STK_TRD)\n");
+     sb.append("- Futures (FUT_TRD)\n");
+     sb.append("- Možná (OPT_TRD)\n");
+     sb.append("- Call/Put opce (COP_STR, POP_STR)\n");
+     sb.append("- Původní údaje z headeru: AccountID, Name, Type, Address\n\n");
+
+     sb.append("📝 Poznámky:\n");
+     sb.append("- Transakční ID (TxnID) se uloží do poznámky\n");
+     sb.append("- Počet kopií se normalizuje pro rušící import\n");
+     sb.append("- Account ID se extrahuje z headeru ACT_INF\n");
+     return sb.toString();
+   }
+
+   /**
    * Log current UI component states for debugging format switching issues
    */
   private void logUIComponentStates() {
