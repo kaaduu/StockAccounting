@@ -283,80 +283,82 @@ public class ImportWindow extends javax.swing.JFrame {
 
   private boolean headerRebuilt = false;
 
-  private void rebuildHeaderRow() {
-    if (headerRebuilt) {
-      return;
-    }
-    headerRebuilt = true;
+   private void rebuildHeaderRow() {
+     if (headerRebuilt) {
+       return;
+     }
+     headerRebuilt = true;
 
-    try {
-      java.awt.Container root = getContentPane();
+     try {
+       java.awt.Container root = getContentPane();
 
-      // Detach header widgets from legacy GridBag.
-      if (bSelectFile != null)
-        root.remove(bSelectFile);
-      if (lSelectedFile != null)
-        root.remove(lSelectedFile);
-      if (jLabel4 != null)
-        root.remove(jLabel4);
-      if (cbFormat != null)
-        root.remove(cbFormat);
-      if (lblIbkrFlexCsvInfo != null)
-        root.remove(lblIbkrFlexCsvInfo);
-      if (bIbkrFlexCsvDetails != null)
-        root.remove(bIbkrFlexCsvDetails);
-      if (lblIbkrFlexCsvSpacer != null)
-        root.remove(lblIbkrFlexCsvSpacer);
-      if (bRefresh != null)
-        root.remove(bRefresh);
-      if (bImport != null)
-        root.remove(bImport);
-      if (bCancel != null)
-        root.remove(bCancel);
+       // Detach header widgets from legacy GridBag.
+       if (bSelectFile != null)
+         root.remove(bSelectFile);
+       if (lSelectedFile != null)
+         root.remove(lSelectedFile);
+       if (jLabel4 != null)
+         root.remove(jLabel4);
+       if (cbFormat != null)
+         root.remove(cbFormat);
+       if (lblIbkrFlexCsvInfo != null)
+         root.remove(lblIbkrFlexCsvInfo);
+       if (bIbkrFlexCsvDetails != null)
+         root.remove(bIbkrFlexCsvDetails);
+       if (lblIbkrFlexCsvSpacer != null)
+         root.remove(lblIbkrFlexCsvSpacer);
+       if (bRefresh != null)
+         root.remove(bRefresh);
+       if (bImport != null)
+         root.remove(bImport);
+       if (bCancel != null)
+         root.remove(bCancel);
+       if (bIBKRTradeLogHelp != null)
+         root.remove(bIBKRTradeLogHelp);
 
-      javax.swing.JPanel pHeader = new javax.swing.JPanel(new java.awt.BorderLayout(10, 0));
-      pHeader.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 0, 5));
+       javax.swing.JPanel pHeader = new javax.swing.JPanel(new java.awt.BorderLayout(10, 0));
+       pHeader.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 0, 5));
 
-      javax.swing.JPanel pFile = new javax.swing.JPanel(new java.awt.BorderLayout(8, 0));
-       if (bSelectFile != null) {
-         pFile.add(bSelectFile, java.awt.BorderLayout.WEST);
-       }
-        if (lSelectedFile != null) {
-          pFile.add(lSelectedFile, java.awt.BorderLayout.CENTER);
+       javax.swing.JPanel pFile = new javax.swing.JPanel(new java.awt.BorderLayout(8, 0));
+        if (bSelectFile != null) {
+          pFile.add(bSelectFile, java.awt.BorderLayout.WEST);
         }
-        pHeader.add(pFile, java.awt.BorderLayout.WEST);
+         if (lSelectedFile != null) {
+           pFile.add(lSelectedFile, java.awt.BorderLayout.CENTER);
+         }
+         pHeader.add(pFile, java.awt.BorderLayout.WEST);
 
-      javax.swing.JPanel pFormat = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-      if (jLabel4 != null)
-        pFormat.add(jLabel4);
-      if (cbFormat != null)
-        pFormat.add(cbFormat);
-      if (lblIbkrFlexCsvInfo != null)
-        pFormat.add(lblIbkrFlexCsvInfo);
-      if (bIbkrFlexCsvDetails != null)
-        pFormat.add(bIbkrFlexCsvDetails);
-      pHeader.add(pFormat, java.awt.BorderLayout.CENTER);
+       javax.swing.JPanel pFormat = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+       if (jLabel4 != null)
+         pFormat.add(jLabel4);
+       if (cbFormat != null)
+         pFormat.add(cbFormat);
+       if (lblIbkrFlexCsvInfo != null)
+         pFormat.add(lblIbkrFlexCsvInfo);
+       if (bIbkrFlexCsvDetails != null)
+         pFormat.add(bIbkrFlexCsvDetails);
+       pHeader.add(pFormat, java.awt.BorderLayout.CENTER);
 
-      javax.swing.JPanel pActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
-      if (bRefresh != null)
-        pActions.add(bRefresh);
-      if (bImport != null)
-        pActions.add(bImport);
-      if (bCancel != null)
-        pActions.add(bCancel);
-      pHeader.add(pActions, java.awt.BorderLayout.EAST);
+       javax.swing.JPanel pActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
+       if (bRefresh != null)
+         pActions.add(bRefresh);
+       if (bImport != null)
+         pActions.add(bImport);
+       if (bCancel != null)
+         pActions.add(bCancel);
+       pHeader.add(pActions, java.awt.BorderLayout.EAST);
 
-      java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
-      gbc.gridx = 0;
-      gbc.gridy = 0;
-      gbc.gridwidth = java.awt.GridBagConstraints.REMAINDER;
-      gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-      gbc.weightx = 1.0;
-      root.add(pHeader, gbc);
-    } catch (Exception e) {
-      // Best effort only.
-    }
-  }
+       java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
+       gbc.gridx = 0;
+       gbc.gridy = 0;
+       gbc.gridwidth = java.awt.GridBagConstraints.REMAINDER;
+       gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+       gbc.weightx = 1.0;
+       root.add(pHeader, gbc);
+     } catch (Exception e) {
+       // Best effort only.
+     }
+   }
 
   private void initBusyOverlay() {
     javax.swing.JPanel p = new javax.swing.JPanel(new java.awt.GridBagLayout());
@@ -5486,13 +5488,25 @@ public class ImportWindow extends javax.swing.JFrame {
      }
 
      if (bIBKRTradeLogHelp != null && formatIndex == 3) {
-       javax.swing.JPanel pFile = new javax.swing.JPanel(new java.awt.BorderLayout(8, 0));
-       pFile.add(bSelectFile, java.awt.BorderLayout.WEST);
-       pFile.add(lSelectedFile, java.awt.BorderLayout.CENTER);
-       pFile.add(bIBKRTradeLogHelp, java.awt.BorderLayout.EAST);
-       getContentPane().add(pFile, new java.awt.GridBagConstraints(0, 0, 6, 1, 0.0, 0.0,
-           java.awt.GridBagConstraints.WEST, java.awt.GridBagConstraints.HORIZONTAL,
-           new java.awt.Insets(5, 5, 5, 5), 0, 0));
+       bIBKRTradeLogHelp.setVisible(true);
+       java.awt.Container root = getContentPane();
+       root.remove(bIBKRTradeLogHelp);
+       javax.swing.JPanel pActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
+       if (bRefresh != null)
+         pActions.add(bRefresh);
+       if (bImport != null)
+         pActions.add(bImport);
+       if (bCancel != null)
+         pActions.add(bCancel);
+       pActions.add(bIBKRTradeLogHelp);
+
+       java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
+       gbc.gridx = 0;
+       gbc.gridy = 0;
+       gbc.gridwidth = java.awt.GridBagConstraints.REMAINDER;
+       gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+       gbc.weightx = 1.0;
+       root.add(pActions, gbc);
      }
 
       // Update button text and state based on current state
