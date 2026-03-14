@@ -345,8 +345,12 @@ public class ImportWindow extends javax.swing.JFrame {
            pActions.add(bImport);
          if (bCancel != null)
            pActions.add(bCancel);
-         if (formatIndex == 3 && bIBKRTradeLogHelp != null)
+         if (bIBKRTradeLogHelp != null) {
            pActions.add(bIBKRTradeLogHelp);
+           if (formatIndex != 3) {
+             bIBKRTradeLogHelp.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+           }
+         }
          pHeader.add(pActions, java.awt.BorderLayout.EAST);
 
         java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
