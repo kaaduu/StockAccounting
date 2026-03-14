@@ -340,15 +340,13 @@ public class ImportWindow extends javax.swing.JFrame {
          pFormat.add(bIbkrFlexCsvDetails);
        pHeader.add(pFormat, java.awt.BorderLayout.CENTER);
 
-        javax.swing.JPanel pActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
+         javax.swing.JPanel pActions = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
         if (bRefresh != null)
           pActions.add(bRefresh);
         if (bImport != null)
           pActions.add(bImport);
         if (bCancel != null)
           pActions.add(bCancel);
-        if (bIBKRTradeLogHelp != null)
-          pActions.add(bIBKRTradeLogHelp);
         pHeader.add(pActions, java.awt.BorderLayout.EAST);
 
        java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
@@ -5481,12 +5479,28 @@ public class ImportWindow extends javax.swing.JFrame {
        tradeLogMultiSelection = false;
      }
 
-      // Show/hide IBKR TradeLog help button
+        // Show/hide IBKR TradeLog help button
       if (bIBKRTradeLogHelp != null) {
         bIBKRTradeLogHelp.setVisible(formatIndex == 3);
       }
 
-       // Update button text and state based on current state
+      if (bIBKRTradeLogHelp != null) {
+        if (formatIndex == 3) {
+          java.awt.Container root = getContentPane();
+          java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
+          gbc.gridx = 0;
+          gbc.gridy = 0;
+          gbc.gridwidth = java.awt.GridBagConstraints.REMAINDER;
+          gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+          gbc.weightx = 1.0;
+          root.add(bIBKRTradeLogHelp, gbc);
+        } else {
+          java.awt.Container root = getContentPane();
+          root.remove(bIBKRTradeLogHelp);
+        }
+      }
+
+        // Update button text and state based on current state
     updateImportButtonText();
     updateImportButtonState(); // Check API credentials
 
