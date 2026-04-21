@@ -61,6 +61,7 @@ public class ComputeWindow extends javax.swing.JDialog {
   }
 
   private static final DateTimeFormatter CZ_DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+  private static final DateTimeFormatter GENERATED_AT_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
   private static boolean isEndOfYearTradeDateForYear(java.util.Date d, int year) {
     if (d == null)
@@ -156,12 +157,21 @@ public class ComputeWindow extends javax.swing.JDialog {
   private final java.util.List<CpTaxExportTrade> lastComputedCpTaxTrades = new java.util.ArrayList<>();
   private final java.util.List<TickerNativeResultEntry> lastComputedCpTickerNativeResults = new java.util.ArrayList<>();
   private final java.util.List<TickerNativeResultEntry> lastComputedDerTickerNativeResults = new java.util.ArrayList<>();
+  private final java.util.List<Dividends.Dividend> lastComputedDividendEntries = new java.util.ArrayList<>();
 
   private static class TickerNativeResultEntry {
     String ticker;
     String currency;
     double resultNative;
     double resultCzk;
+  }
+
+  private static class DividendCountrySummary {
+    String countryIndicator;
+    String countryName;
+    java.util.List<Dividends.Dividend> dividends = new java.util.ArrayList<>();
+    double totalDividendCzk;
+    double totalTaxCzk;
   }
 
   private void saveWindowBounds() {
@@ -176,6 +186,44 @@ public class ComputeWindow extends javax.swing.JDialog {
     } catch (Exception e) {
       // ignore
     }
+  }
+
+  private static final String DIVIDEND_HTML_SAVE_DIR_KEY = "computeWindow.dividendHtmlSaveDir";
+
+  private File getLastDividendHtmlSaveDir() {
+    try {
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      String dirPath = p.get(DIVIDEND_HTML_SAVE_DIR_KEY, null);
+      if (dirPath == null || dirPath.trim().isEmpty())
+        return null;
+      File dir = new File(dirPath);
+      return dir.isDirectory() ? dir : null;
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private void rememberDividendHtmlSaveDir(File file) {
+    try {
+      if (file == null)
+        return;
+      File dir = file.isDirectory() ? file : file.getParentFile();
+      if (dir == null || !dir.isDirectory())
+        return;
+      java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
+      p.put(DIVIDEND_HTML_SAVE_DIR_KEY, dir.getAbsolutePath());
+    } catch (Exception e) {
+      // ignore
+    }
+  }
+
+  private FileDialog createDividendHtmlSaveDialog(String title) {
+    FileDialog dialog = new FileDialog(this, title, FileDialog.SAVE);
+    File lastDir = getLastDividendHtmlSaveDir();
+    if (lastDir != null) {
+      dialog.setDirectory(lastDir.getAbsolutePath());
+    }
+    return dialog;
   }
 
   /** Creates new form ComputeDialog */
@@ -575,33 +623,73 @@ public class ComputeWindow extends javax.swing.JDialog {
    * Save dividend summary as HTML
    */
   private void saveDiviHTML(String title, File file) throws java.io.IOException {
-    java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file));
-
-    saveHTMLHeader(ofl, title, diviTable);
-
-    // Save all other lines
-    DefaultTableModel model = (DefaultTableModel) diviTable.getModel();
-    int emptyRow = model.getRowCount() - 2;
-    int finalRow = model.getRowCount() - 1;
-    for (int i = 0; i < model.getRowCount(); i++) {
-      if (i != emptyRow) {
-        ofl.write("<tr" + ((i == finalRow) ? " class=\"finalRow\"" : "") + ">");
-        for (int n = 0; n < model.getColumnCount(); n++) {
-          if (n == 1)
-            ofl.write("<td class=\"left\">");
-          else
-            ofl.write("<td>");
-          String s = (String) model.getValueAt(i, n);
-          s = spaces2nbsp(s);
-          ofl.write(s + "</td>");
-        }
-        ofl.println("</tr>");
-      }
+    String fxMode = Settings.getUseDailyRates() ? "Denní kurzy" : "Jednotný kurz";
+    String generatedAt = LocalDateTime.now().format(GENERATED_AT_FMT);
+    java.util.List<DividendCountrySummary> countries = buildDividendCountrySummaries();
+    java.text.DecimalFormat f2 = new java.text.DecimalFormat("0.00");
+    f2.setGroupingUsed(true);
+    f2.setGroupingSize(3);
+    double totalDivi = 0;
+    double totalTax = 0;
+    for (DividendCountrySummary country : countries) {
+      totalDivi += country.totalDividendCzk;
+      totalTax += country.totalTaxCzk;
     }
 
-    ofl.println("</body></html>");
+    try (java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file))) {
+      ofl.println("<!DOCTYPE html>");
+      ofl.println("<html><head><title>" + htmlEscape(title) + "</title>");
+      ofl.println("<meta charset=\"utf-8\">");
+      writeDividendModernStyle(ofl);
+      ofl.println("</head><body>");
+      ofl.println("<div class=\"page\">");
+      ofl.println("<h1>" + htmlEscape(title) + "</h1>");
+      ofl.println("<p class=\"muted\"><strong>Režim přepočtu:</strong> " + htmlEscape(fxMode) + "</p>");
+      ofl.println("<div class=\"summary-grid\">");
+      ofl.println(summaryCard("Dividendy", f2.format(totalDivi), "CZK"));
+      ofl.println(summaryCard("Daň", f2.format(totalTax), "CZK"));
+      ofl.println(summaryCard("Daňový poměr", totalDivi > 0 ? f2.format((totalTax / totalDivi) * 100.0) + "%" : "", ""));
+      ofl.println("</div>");
 
-    ofl.close();
+      ofl.println("<div class=\"section-nav\">");
+      if (!countries.isEmpty()) {
+        ofl.println("<a href=\"#divi-total\">CELKEM</a>");
+        for (DividendCountrySummary country : countries) {
+          ofl.println("<a href=\"#" + makeDividendAnchor(country.countryIndicator, country.countryName) + "\">"
+              + htmlEscape(country.countryName) + "</a>");
+        }
+      }
+      ofl.println("</div>");
+
+      ofl.println("<div class=\"country-grid\">");
+
+      for (DividendCountrySummary country : countries) {
+        String countryId = makeDividendAnchor(country.countryIndicator, country.countryName);
+        ofl.println("<div class=\"country-card row-subtotal\" id=\"" + countryId + "\">");
+        ofl.println("<div class=\"country-title\">" + htmlEscape(country.countryName) + "</div>");
+        ofl.println("<div class=\"country-metrics\">");
+        ofl.println(metricLine("Dividendy CZK", f2.format(country.totalDividendCzk)));
+        ofl.println(metricLine("Daň CZK", f2.format(country.totalTaxCzk)));
+        ofl.println(metricLine("Daň %", country.totalDividendCzk > 0
+            ? f2.format((country.totalTaxCzk / country.totalDividendCzk) * 100.0) + "%"
+            : ""));
+        ofl.println("</div>");
+        ofl.println("</div>");
+      }
+
+      ofl.println("<div class=\"country-card row-total\" id=\"divi-total\">");
+      ofl.println("<div class=\"country-title\">CELKEM</div>");
+      ofl.println("<div class=\"country-metrics\">");
+      ofl.println(metricLine("Dividendy CZK", f2.format(totalDivi)));
+      ofl.println(metricLine("Daň CZK", f2.format(totalTax)));
+      ofl.println(metricLine("Daň %", totalDivi > 0 ? f2.format((totalTax / totalDivi) * 100.0) + "%" : ""));
+      ofl.println("</div>");
+      ofl.println("</div>");
+      ofl.println("</div>");
+
+      writeDividendModernFooter(ofl, fxMode, generatedAt);
+      ofl.println("</body></html>");
+    }
   }
 
   private void saveInterestHTML(String title, File file) throws java.io.IOException {
@@ -715,6 +803,11 @@ public class ComputeWindow extends javax.swing.JDialog {
       return;
     }
 
+    if (table == diviTable && format == SaveFormat.HTML) {
+      saveDividendsHtml();
+      return;
+    }
+
     FileDialog dialog = new FileDialog(this, "Uložit jako " + format, FileDialog.SAVE);
     dialog.setVisible(true);
 
@@ -740,10 +833,7 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     try {
       if (table == diviTable) {
-        if (format == SaveFormat.HTML)
-          saveDiviHTML("Shrnutí dividend za rok " + yearComputed, file);
-        else
-          saveCSV("Shrnutí dividend za rok " + yearComputed, file, diviTable, SPLIT_COLUMNS, " měna");
+        saveCSV("Shrnutí dividend za rok " + yearComputed, file, diviTable, SPLIT_COLUMNS, " měna");
       } else if (table == interestTable) {
         if (format == SaveFormat.HTML)
           saveInterestHTML("Shrnutí úroků za rok " + yearComputed, file);
@@ -817,31 +907,299 @@ public class ComputeWindow extends javax.swing.JDialog {
     }
   }
 
-  private void promptOpenSavedHtml(File file) {
-    if (file == null)
+  private void saveDividendsHtml() {
+    if (yearComputed == 0) {
+      JOptionPane.showMessageDialog(this, "Výsledky nebyly (ještě) dopočítány.");
       return;
-    int r = JOptionPane.showConfirmDialog(this,
-        "Chcete otevřít uložený HTML soubor v prohlížeči?\n\n" + file.getAbsolutePath(),
-        "Otevřít HTML", JOptionPane.YES_NO_OPTION);
+    }
+
+    FileDialog dialog = createDividendHtmlSaveDialog("Uložit jako HTML");
+    dialog.setVisible(true);
+
+    String fileName = dialog.getFile();
+    if (fileName == null)
+      return;
+
+    File summaryFile = normalizeDividendHtmlFile(new File(dialog.getDirectory(), fileName));
+    File detailFile = appendSuffixBeforeExtension(summaryFile, "_detaily");
+
+    if (summaryFile.exists() || detailFile.exists()) {
+      StringBuilder msg = new StringBuilder();
+      msg.append("Jeden nebo oba soubory již existují:\n\n");
+      msg.append(summaryFile.getAbsolutePath()).append("\n");
+      msg.append(detailFile.getAbsolutePath()).append("\n\n");
+      msg.append("Chcete je přepsat?");
+      if (JOptionPane.showConfirmDialog(this, msg.toString(), "Přepsat soubor?",
+          JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+        return;
+      }
+    }
+
+    try {
+      saveDiviHTML("Shrnutí dividend za rok " + yearComputed, summaryFile);
+      saveDiviHTMLNew("Shrnutí dividend za rok " + yearComputed, detailFile);
+      rememberDividendHtmlSaveDir(summaryFile);
+      promptOpenSavedHtml(summaryFile, detailFile);
+    } catch (Exception e) {
+      JOptionPane.showMessageDialog(this, "Chyba při ukládání: " + e.getMessage());
+      e.printStackTrace();
+    }
+  }
+
+  private void saveDiviHTMLNew(String title, File file) throws java.io.IOException {
+    String fxMode = Settings.getUseDailyRates() ? "Denní kurzy" : "Jednotný kurz";
+    String generatedAt = LocalDateTime.now().format(GENERATED_AT_FMT);
+    java.util.List<DividendCountrySummary> countries = buildDividendCountrySummaries();
+    java.text.DecimalFormat f2 = new java.text.DecimalFormat("0.00");
+    f2.setGroupingUsed(true);
+    f2.setGroupingSize(3);
+    java.text.DecimalFormat f4 = new java.text.DecimalFormat("0.0000");
+    f4.setGroupingUsed(true);
+    f4.setGroupingSize(3);
+
+    double totalDivi = 0;
+    double totalTax = 0;
+    for (DividendCountrySummary country : countries) {
+      totalDivi += country.totalDividendCzk;
+      totalTax += country.totalTaxCzk;
+    }
+
+    try (java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file))) {
+      ofl.println("<!DOCTYPE html>");
+      ofl.println("<html><head><title>" + htmlEscape(title) + "</title>");
+      ofl.println("<meta charset=\"utf-8\">");
+      writeDividendModernStyle(ofl);
+      ofl.println("</head><body>");
+      ofl.println("<div class=\"page\">");
+      ofl.println("<h1>" + htmlEscape(title) + "</h1>");
+      ofl.println("<p class=\"muted\"><strong>Režim přepočtu:</strong> " + htmlEscape(fxMode) + "</p>");
+      ofl.println("<div class=\"summary-grid\">");
+      ofl.println(summaryCard("Dividendy", f2.format(totalDivi), "CZK"));
+      ofl.println(summaryCard("Daň", f2.format(totalTax), "CZK"));
+      ofl.println(summaryCard("Daňový poměr", totalDivi > 0 ? f2.format((totalTax / totalDivi) * 100.0) + "%" : "", ""));
+      ofl.println("</div>");
+
+      ofl.println("<div class=\"section-nav\">");
+      if (!countries.isEmpty()) {
+        ofl.println("<a href=\"#divi-total\">CELKEM</a>");
+        for (DividendCountrySummary country : countries) {
+          ofl.println("<a href=\"#" + makeDividendAnchor(country.countryIndicator, country.countryName) + "\">"
+              + htmlEscape(country.countryName) + "</a>");
+        }
+      }
+      ofl.println("</div>");
+
+      for (DividendCountrySummary country : countries) {
+        java.util.List<Dividends.Dividend> dividends = new java.util.ArrayList<>(country.dividends);
+        dividends.sort((a, b) -> {
+          int cmp = a.date.compareTo(b.date);
+          if (cmp != 0)
+            return cmp;
+          String t1 = a.ticker != null ? a.ticker : "";
+          String t2 = b.ticker != null ? b.ticker : "";
+          cmp = t1.compareToIgnoreCase(t2);
+          if (cmp != 0)
+            return cmp;
+          return Double.compare(a.dividend, b.dividend);
+        });
+
+        String countryId = makeDividendAnchor(country.countryIndicator, country.countryName);
+        ofl.println("<h2 id=\"" + countryId + "\">" + htmlEscape(country.countryName) + "</h2>");
+        ofl.println("<table>");
+        ofl.println("<thead><tr>");
+        ofl.println("<th>Datum</th>");
+        ofl.println("<th>Ticker</th>");
+        ofl.println("<th>Měna dividendy</th>");
+        ofl.println("<th class=\"align-right\">Dividenda</th>");
+        ofl.println("<th class=\"align-right\">Kurz</th>");
+        ofl.println("<th class=\"align-right\">Dividenda CZK</th>");
+        ofl.println("<th>Měna daně</th>");
+        ofl.println("<th class=\"align-right\">Daň</th>");
+        ofl.println("<th class=\"align-right\">Kurz</th>");
+        ofl.println("<th class=\"align-right\">Daň CZK</th>");
+        ofl.println("<th class=\"align-right\">Daň %</th>");
+        ofl.println("</tr></thead><tbody>");
+
+        for (Dividends.Dividend d : dividends) {
+          String dividendCurrency = d.dividendCurrency != null ? d.dividendCurrency.trim().toUpperCase() : "";
+          String taxCurrency = d.taxCurrency != null ? d.taxCurrency.trim().toUpperCase() : "";
+          double dividendRate = dividendCurrency.isEmpty() ? 0.0 : Settings.getExchangeRate(dividendCurrency, d.date);
+          double taxRate = taxCurrency.isEmpty() ? 0.0 : Settings.getExchangeRate(taxCurrency, d.date);
+          double dividendCzk = dividendAmountToCzk(dividendCurrency, d.date, d.dividend);
+          double taxCzk = dividendAmountToCzk(taxCurrency, d.date, d.tax);
+          String taxPct = d.dividend > 0 && d.tax > 0 ? f2.format((d.tax / d.dividend) * 100.0) + "%" : "";
+
+          ofl.println("<tr>");
+          ofl.println("<td>" + htmlEscape(formatDate(d.date)) + "</td>");
+          ofl.println("<td>" + htmlEscape(d.ticker != null ? d.ticker : "") + "</td>");
+          ofl.println("<td>" + htmlEscape(dividendCurrency.isEmpty() ? "-" : dividendCurrency) + "</td>");
+          ofl.println("<td class=\"align-right\">" + htmlEscape(d.dividendCurrency != null ? f2.format(d.dividend) : "") + "</td>");
+          ofl.println("<td class=\"align-right\">" + htmlEscape(dividendCurrency.isEmpty() ? "" : f4.format(dividendRate)) + "</td>");
+          ofl.println("<td class=\"align-right\">" + htmlEscape(dividendCurrency.isEmpty() ? "" : f2.format(dividendCzk)) + "</td>");
+          ofl.println("<td>" + htmlEscape(taxCurrency.isEmpty() ? "-" : taxCurrency) + "</td>");
+          ofl.println("<td class=\"align-right\">" + htmlEscape(d.taxCurrency != null ? f2.format(d.tax) : "") + "</td>");
+          ofl.println("<td class=\"align-right\">" + htmlEscape(taxCurrency.isEmpty() ? "" : f4.format(taxRate)) + "</td>");
+          ofl.println("<td class=\"align-right\">" + htmlEscape(taxCurrency.isEmpty() ? "" : f2.format(taxCzk)) + "</td>");
+          ofl.println("<td class=\"align-right\">" + htmlEscape(taxPct) + "</td>");
+          ofl.println("</tr>");
+        }
+
+        ofl.println("<tr class=\"row-subtotal\">");
+        ofl.println("<td colspan=\"3\">SOUČET " + htmlEscape(country.countryName) + "</td>");
+        ofl.println("<td></td>");
+        ofl.println("<td></td>");
+        ofl.println("<td class=\"align-right\">" + htmlEscape(f2.format(country.totalDividendCzk)) + "</td>");
+        ofl.println("<td></td>");
+        ofl.println("<td></td>");
+        ofl.println("<td></td>");
+        ofl.println("<td class=\"align-right\">" + htmlEscape(f2.format(country.totalTaxCzk)) + "</td>");
+        ofl.println("<td class=\"align-right\">"
+            + htmlEscape(country.totalDividendCzk > 0 ? f2.format((country.totalTaxCzk / country.totalDividendCzk) * 100.0) + "%" : "")
+            + "</td>");
+        ofl.println("</tr>");
+        ofl.println("</tbody></table>");
+      }
+
+      ofl.println("<table id=\"divi-total\">");
+      ofl.println("<tr class=\"row-total\"><td colspan=\"11\">CELKEM</td></tr>");
+      ofl.println("<tr class=\"row-total\">");
+      ofl.println("<td colspan=\"5\">Celkem CZK</td>");
+      ofl.println("<td class=\"align-right\">" + htmlEscape(f2.format(totalDivi)) + "</td>");
+      ofl.println("<td colspan=\"3\"></td>");
+      ofl.println("<td class=\"align-right\">" + htmlEscape(f2.format(totalTax)) + "</td>");
+      ofl.println("<td class=\"align-right\">"
+          + htmlEscape(totalDivi > 0 ? f2.format((totalTax / totalDivi) * 100.0) + "%" : "") + "</td>");
+      ofl.println("</tr>");
+      ofl.println("</table>");
+
+      ofl.println("<div class=\"export-footer\">");
+      ofl.println("<div><strong>Režim přepočtu:</strong> " + htmlEscape(fxMode) + "</div>");
+      ofl.println("<div>Generováno: " + htmlEscape(generatedAt) + "</div>");
+      ofl.println("</div>");
+      ofl.println("</div></body></html>");
+    }
+  }
+
+  private void writeDividendModernStyle(java.io.PrintWriter ofl) {
+    ofl.println("<style>");
+    ofl.println(
+        "body { font-family: 'Roboto Condensed', sans-serif; color: #777; font-size: 14px; background-color: #f9f9f9; padding: 20px; }");
+    ofl.println(".page { max-width: 1200px; margin: 0 auto; }");
+    ofl.println("h1, h2 { color: #333; }");
+    ofl.println(
+        ".summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 16px 0 18px 0; }");
+    ofl.println(
+        ".summary-card { background: #fff; border: 1px solid #e6e6e6; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 12px 14px; }");
+    ofl.println(".summary-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #7a7a7a; }");
+    ofl.println(".summary-card .value { font-size: 22px; font-weight: 700; color: #222; margin-top: 5px; }");
+    ofl.println(".summary-card .subvalue { margin-top: 4px; color: #888; font-size: 12px; }");
+    ofl.println(
+        ".country-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 6px 0 20px 0; }");
+    ofl.println(
+        ".country-card { background: #fff; border: 1px solid #e6e6e6; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 14px 16px; border-top: 4px solid #028af4; }");
+    ofl.println(".country-card.row-total { border-top-color: #7da97d; }");
+    ofl.println(".country-title { font-size: 18px; font-weight: 700; color: #222; margin-bottom: 12px; }");
+    ofl.println(".country-metrics { display: grid; gap: 8px; }");
+    ofl.println(".metric-line { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; }");
+    ofl.println(".metric-line .metric-label { color: #7a7a7a; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }");
+    ofl.println(".metric-line .metric-value { color: #222; font-weight: 700; font-size: 16px; text-align: right; }");
+    ofl.println(".section-nav { margin: 10px 0 22px 0; }");
+    ofl.println(
+        ".section-nav a { display: inline-block; margin-right: 10px; padding: 6px 10px; background: #fff; border: 1px solid #e6e6e6; border-radius: 8px; text-decoration: none; color: #028af4; }");
+    ofl.println(".section-nav a:hover { background: #f1f8ff; }");
+    ofl.println(
+        "table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 20px; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 12px; overflow: hidden; }");
+    ofl.println(
+        "th { background-color: #028af4; color: white; padding: 8px 5px; text-align: left; font-weight: bold; border-left: 1px solid rgba(255,255,255,0.2); }");
+    ofl.println("th:first-child { border-left: none; }");
+    ofl.println("td { padding: 5px; border-bottom: 1px solid #eee; color: #555; }");
+    ofl.println("tr:hover td { background-color: #f1f8ff; }");
+    ofl.println(".align-right { text-align: right; }");
+    ofl.println(".center { text-align: center; }");
+    ofl.println(".bold { font-weight: bold; }");
+    ofl.println(".red { color: red; }");
+    ofl.println(".green { color: green; }");
+    ofl.println(".border-top td { border-top: 1px solid #aaa; background-color: #fafafa; font-weight: bold; }");
+    ofl.println(".row-header td { background-color: #f0f0f0; font-weight: bold; color: #444; }");
+    ofl.println(".row-subtotal td { background-color: #e7f4ff; font-weight: bold; }");
+    ofl.println(".row-total td { background-color: #def0df; font-weight: bold; border-top: 2px solid #7da97d; border-bottom: 2px solid #7da97d; }");
+    ofl.println(".row-separator td { background-color: #fafafa; color: #aaa; border-top: 1px dashed #ddd; border-bottom: 1px dashed #ddd; }");
+    ofl.println(".muted { color: #8a8a8a; }");
+    ofl.println(
+        ".export-footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #d8d8d8; color: #777; font-size: 12px; }");
+    ofl.println(".export-footer strong { color: #444; }");
+    ofl.println("</style>");
+  }
+
+  private void writeDividendModernFooter(java.io.PrintWriter ofl, String fxMode, String generatedAt) {
+    ofl.println("<div class=\"export-footer\">");
+    ofl.println("<div><strong>Režim přepočtu:</strong> " + htmlEscape(fxMode) + "</div>");
+    ofl.println("<div>Generováno: " + htmlEscape(generatedAt) + "</div>");
+    ofl.println("</div>");
+  }
+
+  private String metricLine(String label, String value) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("<div class=\"metric-line\">");
+    sb.append("<div class=\"metric-label\">").append(htmlEscape(label)).append("</div>");
+    sb.append("<div class=\"metric-value\">").append(htmlEscape(value)).append("</div>");
+    sb.append("</div>");
+    return sb.toString();
+  }
+
+  private File normalizeDividendHtmlFile(File file) {
+    if (file == null)
+      return null;
+    if (file.getName().lastIndexOf('.') < 0) {
+      return new File(file.getParent(), file.getName() + ".html");
+    }
+    return file;
+  }
+
+  private File appendSuffixBeforeExtension(File file, String suffix) {
+    if (file == null)
+      return null;
+    String name = file.getName();
+    int dot = name.lastIndexOf('.');
+    if (dot < 0)
+      return new File(file.getParent(), name + suffix + ".html");
+    return new File(file.getParent(), name.substring(0, dot) + suffix + name.substring(dot));
+  }
+
+  private void promptOpenSavedHtml(File... files) {
+    if (files == null || files.length == 0)
+      return;
+    StringBuilder msg = new StringBuilder();
+    msg.append("Chcete otevřít uložené HTML soubory v prohlížeči?\n\n");
+    for (File file : files) {
+      if (file != null)
+        msg.append(file.getAbsolutePath()).append("\n");
+    }
+    int r = JOptionPane.showConfirmDialog(this, msg.toString(),
+        "Otevřít HTML soubory", JOptionPane.YES_NO_OPTION);
     if (r != JOptionPane.YES_OPTION)
       return;
 
     try {
       if (!Desktop.isDesktopSupported()) {
-        JOptionPane.showMessageDialog(this,
-            "Otevření v prohlížeči není podporováno na této platformě.\n" + file.getAbsolutePath());
+        JOptionPane.showMessageDialog(this, "Otevření v prohlížeči není podporováno na této platformě.");
         return;
       }
       Desktop d = Desktop.getDesktop();
-      if (d.isSupported(Desktop.Action.BROWSE)) {
-        d.browse(file.toURI());
-      } else if (d.isSupported(Desktop.Action.OPEN)) {
-        d.open(file);
-      } else {
-        JOptionPane.showMessageDialog(this, "Otevření v prohlížeči není podporováno.\n" + file.getAbsolutePath());
+      for (File file : files) {
+        if (file == null)
+          continue;
+        if (d.isSupported(Desktop.Action.BROWSE)) {
+          d.browse(file.toURI());
+        } else if (d.isSupported(Desktop.Action.OPEN)) {
+          d.open(file);
+        } else {
+          JOptionPane.showMessageDialog(this, "Otevření v prohlížeči není podporováno.\n" + file.getAbsolutePath());
+          return;
+        }
       }
     } catch (Exception e) {
-      JOptionPane.showMessageDialog(this, "Nelze otevřít soubor: " + e.getMessage() + "\n" + file.getAbsolutePath());
+      JOptionPane.showMessageDialog(this, "Nelze otevřít soubor: " + e.getMessage());
     }
   }
 
@@ -1050,6 +1408,127 @@ public class ComputeWindow extends javax.swing.JDialog {
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace("\"", "&quot;");
+  }
+
+  private String safeTableCell(DefaultTableModel model, int row, int column) {
+    Object value = model.getValueAt(row, column);
+    return value == null ? "" : value.toString();
+  }
+
+  private String summaryCard(String label, String value, String suffix) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("<div class=\"summary-card\">");
+    sb.append("<div class=\"label\">").append(htmlEscape(label)).append("</div>");
+    sb.append("<div class=\"value\">").append(htmlEscape(value)).append("</div>");
+    if (suffix != null && !suffix.isEmpty()) {
+      sb.append("<div class=\"subvalue\">").append(htmlEscape(suffix)).append("</div>");
+    }
+    sb.append("</div>");
+    return sb.toString();
+  }
+
+  private String dividendRowClass(CollapsibleDividendTableModel.RowType rowType) {
+    if (rowType == null)
+      return "";
+    switch (rowType) {
+      case HEADER:
+        return "row-header";
+      case COUNTRY_SUBTOTAL:
+        return "row-subtotal";
+      case TOTAL:
+        return "row-total";
+      case SEPARATOR:
+        return "row-separator";
+      default:
+        return "";
+    }
+  }
+
+  private String dividendCellClass(int column) {
+    if (column == 0 || column == 1)
+      return "";
+    return "align-right";
+  }
+
+  private String stripLeadingDividendMarker(String value) {
+    if (value == null)
+      return "";
+    String trimmed = value.trim();
+    if (trimmed.startsWith("▶ ") || trimmed.startsWith("▼ ")) {
+      trimmed = trimmed.substring(2).trim();
+    }
+    return trimmed;
+  }
+
+  private String makeDividendAnchor(String countryIndicator, String fallbackLabel) {
+    String base = countryIndicator != null ? countryIndicator.trim() : "";
+    if (base.isEmpty())
+      base = stripLeadingDividendMarker(fallbackLabel);
+    if (base.isEmpty())
+      base = "divi";
+    String normalized = base.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "-");
+    normalized = normalized.replaceAll("^-+", "").replaceAll("-+$", "");
+    if (normalized.isEmpty())
+      normalized = "divi";
+    return "divi-" + normalized;
+  }
+
+  private double dividendAmountToCzk(String currency, Date rateDate, double amount) {
+    if (currency == null || currency.trim().isEmpty() || rateDate == null)
+      return 0.0;
+    try {
+      return Stocks.roundToHellers(amount * Settings.getExchangeRate(currency.trim().toUpperCase(), rateDate));
+    } catch (Exception e) {
+      return 0.0;
+    }
+  }
+
+  private java.util.List<DividendCountrySummary> buildDividendCountrySummaries() {
+    if (mainWindow == null) {
+      return java.util.Collections.emptyList();
+    }
+
+    TransactionSet transactions = mainWindow.getTransactionDatabase();
+    if (transactions == null) {
+      return java.util.Collections.emptyList();
+    }
+
+    java.util.Map<String, String> isinToCountry = buildIsinCountryMap(transactions);
+    java.util.Map<String, DividendCountrySummary> byCountry = new java.util.HashMap<>();
+
+    for (Dividends.Dividend d : lastComputedDividendEntries) {
+      if (d == null)
+        continue;
+
+      String issuerCountry = d.issuerCountry;
+      if ((issuerCountry == null || issuerCountry.isEmpty()) && d.isin != null && !d.isin.isEmpty()) {
+        issuerCountry = isinToCountry.get(d.isin);
+      }
+
+      String countryIndicator = getCountryIndicator(issuerCountry, d.ticker);
+      if (countryIndicator.isEmpty()) {
+        countryIndicator = "[OTHER] ";
+      }
+
+      DividendCountrySummary country = byCountry.get(countryIndicator);
+      if (country == null) {
+        country = new DividendCountrySummary();
+        country.countryIndicator = countryIndicator;
+        country.countryName = getCountryName(countryIndicator);
+        if (country.countryName.isEmpty()) {
+          country.countryName = "Ostatní";
+        }
+        byCountry.put(countryIndicator, country);
+      }
+
+      country.dividends.add(d);
+      country.totalDividendCzk += dividendAmountToCzk(d.dividendCurrency, d.date, d.dividend);
+      country.totalTaxCzk += dividendAmountToCzk(d.taxCurrency, d.date, d.tax);
+    }
+
+    java.util.List<DividendCountrySummary> out = new java.util.ArrayList<>(byCountry.values());
+    out.sort((a, b) -> a.countryName.compareToIgnoreCase(b.countryName));
+    return out;
   }
 
   private void writeKackaLikeCpSections(java.io.PrintWriter ofl) {
@@ -2242,6 +2721,7 @@ public class ComputeWindow extends javax.swing.JDialog {
     // Clear model - cast to our custom model
     CollapsibleDividendTableModel model = (CollapsibleDividendTableModel) diviTable.getModel();
     model.clearRows();
+    lastComputedDividendEntries.clear();
 
     // Dividend holder
     Dividends divis = new Dividends();
@@ -2272,6 +2752,7 @@ public class ComputeWindow extends javax.swing.JDialog {
     } catch (Exception ex) {
       // Clear model
       model.clearRows();
+      lastComputedDividendEntries.clear();
 
       UiDialogs.error(this,
           "V průběhu výpočtu došlo k chybě:\n\n" + ex.getMessage() + "\n\nVýpočet byl přerušen.",
@@ -2281,6 +2762,9 @@ public class ComputeWindow extends javax.swing.JDialog {
     }
 
     // Put dividends into model & compute country-grouped summaries
+    Dividends.Dividend[] ds = divis.getDividends();
+    lastComputedDividendEntries.clear();
+    java.util.Collections.addAll(lastComputedDividendEntries, ds);
     double sumDivi = 0;
     double sumTaxes = 0;
 
@@ -2289,8 +2773,6 @@ public class ComputeWindow extends javax.swing.JDialog {
 
     // Group dividends by country
     java.util.Map<String, java.util.List<Dividends.Dividend>> countryGroups = new java.util.HashMap<>();
-
-    Dividends.Dividend[] ds = divis.getDividends();
     for (int i = 0; i < ds.length; i++) {
       Dividends.Dividend d = ds[i];
 
