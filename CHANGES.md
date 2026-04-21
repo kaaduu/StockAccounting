@@ -4,6 +4,53 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Tabulka transakcí: řádkové Uložit skutečně potvrzuje nový záznam] - 2026-04-21
+
+### Upraveno
+- Řádkové tlačítko `Uložit` nyní před vlastním potvrzením bezpečně commitne právě rozpracovanou datovou buňku, takže se poslední změna neztratí při kliknutí do sloupce `Akce`.
+- Pokud nový řádek po potvrzení stále není kompletní, aplikace už nepředstírá úspěch, zůstane na stejném řádku a zobrazí krátkou stavovou zprávu.
+- Nově byla doplněna regresní sada testů pro transformační řádek: potvrzení rozpracované editace, zobrazení při filtru `Typ = Transformace` a zachování po uložení a znovunačtení souboru.
+- Akce `Výpočet` a `Stav účtu` nyní před otevřením okna vždy potvrdí aktivní editaci tabulky, takže nově uložená transformace vstoupí i do výpočtů nad aktuálními daty.
+- Opraveno bylo i ruční přidávání nového řádku při aktivním filtru: záznam se nyní vždy uloží do hlavního modelu dat, takže po zrušení filtru ani ve `Stav účtu` už okamžitě nemizí.
+
+## [Tabulka transakcí: zachování rozpracované editace při řazení] - 2026-04-21
+
+### Upraveno
+- Tlačítko `Seřadit` nyní před samotným řazením nejdřív potvrdí aktivní editaci buňky, takže se rozpracovaný řádek neztratí.
+- Opraven byl scénář s posledním prázdným řádkem pro ruční zadávání, kde se nová transformace po kliknutí na `Seřadit` mohla tvářit jako zmizelá.
+- Po řazení se aplikace pokusí zachovat výběr právě upravovaného záznamu, aby uživatel neztratil kontext práce.
+- Do horní lišty bylo přidáno tlačítko `Přidat záznam`, které zruší aktivní filtr a rovnou otevře poslední prázdný řádek v režimu editace.
+- Tlačítko `Přidat záznam` nyní po potvrzení rozpracovaného řádku správně přeskočí na další nový prázdný řádek místo znovuotevření právě uloženého záznamu.
+- Do tabulky byl přidán nový sloupec `Akce` s tlačítkem `Uložit`, které se zobrazuje na právě zadávaném posledním ručním řádku a po potvrzení otevře další prázdný řádek.
+- Řádkové `Uložit` už nově nespouští automatické rušení filtrů; potvrzení záznamu a otevření dalšího řádku je oddělené od horní akce `Přidat záznam`.
+
+## [Podklad pro DP: summary a detailní HTML export dividend] - 2026-03-31
+
+### Upraveno
+- Tlačítko `Uložit HTML` v sekci dividend nyní při uložení vytváří dva soubory: stručné shrnutí a detailní verzi s příponou `_detaily`.
+- Detailní HTML export obsahuje rozbalený výpis dividend po zemích a u každého záznamu zobrazuje použitý kurz pro přepočet do CZK.
+- Stručné summary je nově vizuálně sjednocené s detailním exportem, aby oba HTML soubory měly stejný grafický základ.
+- Summary výstup dividend je nyní řešen jako kartový přehled po zemích, aby byl vizuálně lehčí než detailní verze.
+- Při ukládání se uživatel jedním potvrzením dotazuje, zda chce otevřít oba uložené HTML soubory v prohlížeči.
+- Předvyplnění posledního použitého adresáře pro ukládání dividendového HTML zůstává zachováno.
+
+## [Podklad pro DP: volba stylu HTML pro dividendy] - 2026-03-31
+
+### Upraveno
+- Tlačítko `Uložit HTML` v sekci dividend nyní po stisku nabízí volbu mezi původním vzhledem a novým grafickým stylem.
+- Nový styl dividend je graficky sladěn s exportem `Uložit HTML new` a zachovává jen dividendové zvýraznění a souhrnné karty.
+- Do obou dividendových HTML stylů byl doplněn text s režimem přepočtu (`Jednotný kurz` / `Denní kurzy`) a patička s časem generování.
+- Ukládání dividendového HTML si pamatuje poslední použitý adresář a při dalším ukládání ho předvolí, pokud stále existuje.
+- Export dividend nově obsahuje i součty podle původní měny výplaty pro každou zemi, aby bylo vidět rozdělení mimo CZK přepočet, bez redundantního mezisoučtu uvnitř stejné měny.
+- V měnovém detailu exportu se nově zobrazuje i použitý kurz pro jednotlivé dividendové záznamy.
+- Po uložení se u obou stylů znovu nabízí otevření uloženého HTML v prohlížeči.
+
+## [Podklad pro DP: otevření uloženého HTML u dividend] - 2026-03-31
+
+### Upraveno
+- Tlačítko `Uložit HTML` v sekci dividend po úspěšném uložení nově nabízí otevření uloženého souboru v prohlížeči.
+- Chování odpovídá tlačítku `Uložit HTML new`, takže uživatel po uložení dostane stejnou volbu bez ohledu na typ HTML exportu.
+
 ## [Podklad pro DP: souhrn podle tickeru v nativní měně] - 2026-03-08
 
 ### Přidáno

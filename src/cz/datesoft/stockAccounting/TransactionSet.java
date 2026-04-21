@@ -33,6 +33,10 @@ import cz.datesoft.stockAccounting.Settings;
  * @author lemming2
  */
 public class TransactionSet extends javax.swing.table.AbstractTableModel {
+  public static final int COL_NOTE = 18;
+  public static final int COL_DISABLED = 19;
+  public static final int COL_ACTION = 20;
+
   /** Import format constants */
   public final int IMPORT_FORMAT_FIO = 1;
   public final int IMPORT_FORMAT_BJ_HTML = 2;
@@ -110,7 +114,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   /** Column names */
   private String[] columnNames = { "Datum", "Typ", "Směr", "Ticker", "Množství", "Kurs", "Měna kursu", "Poplatky",
       "Měna poplatků", "Trh", "Datum vypořádání", "Broker", "ID účtu", "ID transakce", "Efekt", "ActionID",
-      "Země emitenta", "ISIN", "Note", "Ignorovat" };
+      "Země emitenta", "ISIN", "Note", "Ignorovat", "Akce" };
 
   /**
    * File we are stored in
@@ -416,8 +420,12 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   public Object getValueAt(int row, int col) {
     Vector<Transaction> v = (filteredRows != null) ? filteredRows : rows;
 
-    if (row >= v.size())
+    if (row >= v.size()) {
+      if (col == COL_ACTION && v.isEmpty() && row == 0) {
+        return "Uložit";
+      }
       return null;
+    }
 
     Transaction tx = v.get(row);
 
@@ -458,10 +466,12 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         return tx.getMetadataFromNote("IssuerCountry");
       case 17:
         return tx.getMetadataFromNote("ISIN");
-      case 18:
+      case COL_NOTE:
         return tx.getNote();
-      case 19:
+      case COL_DISABLED:
         return tx.isDisabled();
+      case COL_ACTION:
+        return row == v.size() - 1 ? "Uložit" : null;
       default:
         return null;
     }
@@ -475,16 +485,23 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
     Transaction tx;
     Vector<Transaction> v = (filteredRows != null) ? filteredRows : rows;
 
+    if (col == COL_ACTION) {
+      return;
+    }
+
     if (row == v.size()) {
       if (value == null)
         return; // Don't add when null is set
 
       // Add new transaction
       tx = new Transaction(serialCounter++);
+      rows.add(tx);
+      if (filteredRows != null) {
+        filteredRows.add(tx);
+      }
 
-      v.add(tx);
-
-      fireTableRowsInserted(v.size() - 1, v.size() - 1);
+      int insertedViewRow = ((filteredRows != null) ? filteredRows : rows).size() - 1;
+      fireTableRowsInserted(insertedViewRow, insertedViewRow);
     } else
       tx = v.get(row);
 
@@ -559,7 +576,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         // These columns are derived from Note or specific metadata, cannot be edited
         // directly
         return;
-      case 18: // Note
+      case COL_NOTE: // Note
         tx.setNote((String) value);
         fireTableCellUpdated(row, col);
         // Also notify derived columns to refresh
@@ -571,7 +588,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
         fireTableCellUpdated(row, 16); // IssuerCountry
         fireTableCellUpdated(row, 17); // ISIN
         break;
-      case 19: // Ignorovat
+      case COL_DISABLED: // Ignorovat
         boolean disable;
         if (value instanceof Boolean) {
           disable = (Boolean) value;
@@ -623,7 +640,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       case 15:
       case 16:
       case 17:
-      case 18:
+      case COL_NOTE:
         return String.class;
       case 10:
         return java.util.Date.class;
@@ -631,8 +648,10 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       case 7:
       case 4:
         return Double.class;
-      case 19:
+      case COL_DISABLED:
         return Boolean.class;
+      case COL_ACTION:
+        return Object.class;
       default:
         return Object.class;
     }
@@ -651,13 +670,20 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
    */
   @Override
   public boolean isCellEditable(int row, int column) {
-    // Columns 11-14 are read-only (derived from Note)
-    if (column >= 11 && column <= 14) {
+    Vector<Transaction> v = (filteredRows != null) ? filteredRows : rows;
+
+    // Columns 11-17 are read-only metadata columns.
+    if (column >= 11 && column <= 17) {
       return false;
     }
-    // Ignorovat is editable only for real rows (not the extra last empty row)
-    if (column == 16) {
-      return row < ((filteredRows != null) ? filteredRows : rows).size();
+    if (column == COL_DISABLED) {
+      return row < v.size();
+    }
+    if (column == COL_ACTION) {
+      if (v.isEmpty()) {
+        return row == 0;
+      }
+      return row == v.size() - 1;
     }
     return true;
   }

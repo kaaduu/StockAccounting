@@ -196,6 +196,64 @@ public class MainWindow extends javax.swing.JFrame {
       return res.getTime();
     }
   }
+
+  private class SaveActionRenderer extends javax.swing.JButton implements javax.swing.table.TableCellRenderer {
+    SaveActionRenderer() {
+      setOpaque(true);
+      setText("Uložit");
+      setFocusPainted(false);
+    }
+
+    @Override
+    public Component getTableCellRendererComponent(javax.swing.JTable table, Object value, boolean isSelected,
+        boolean hasFocus, int row, int column) {
+      boolean visible = value != null && String.valueOf(value).trim().length() > 0;
+      setText(visible ? String.valueOf(value) : "");
+      setEnabled(visible);
+      setVisible(visible);
+      if (visible) {
+        setForeground(isSelected ? table.getSelectionForeground() : table.getForeground());
+        setBackground(isSelected ? table.getSelectionBackground() : javax.swing.UIManager.getColor("Button.background"));
+      }
+      return this;
+    }
+  }
+
+  private class SaveActionEditor extends javax.swing.AbstractCellEditor
+      implements javax.swing.table.TableCellEditor, java.awt.event.ActionListener {
+    private final javax.swing.JButton button;
+    private int actionRow = -1;
+
+    SaveActionEditor() {
+      button = new javax.swing.JButton("Uložit");
+      button.setFocusPainted(false);
+      button.addActionListener(this);
+    }
+
+    @Override
+    public Component getTableCellEditorComponent(javax.swing.JTable table, Object value, boolean isSelected, int row,
+        int column) {
+      actionRow = row;
+      button.setText(value == null ? "Uložit" : String.valueOf(value));
+      return button;
+    }
+
+    @Override
+    public Object getCellEditorValue() {
+      return "Uložit";
+    }
+
+    @Override
+    public void actionPerformed(java.awt.event.ActionEvent evt) {
+      if (!commitManualRowForSave(actionRow)) {
+        fireEditingCanceled();
+        return;
+      }
+
+      fireEditingStopped();
+      javax.swing.SwingUtilities.invokeLater(() -> startEditingLastInputRow(false));
+    }
+  }
   // </editor-fold>
 
   // Transaction database
@@ -592,6 +650,7 @@ public class MainWindow extends javax.swing.JFrame {
     jLabel6 = new javax.swing.JLabel();
     jSeparator3 = new javax.swing.JSeparator();
     bDelete = new javax.swing.JButton();
+    bAddRecord = new javax.swing.JButton();
     bSort = new javax.swing.JButton();
     jLabel7 = new javax.swing.JLabel();
     tfNote = new javax.swing.JTextField();
@@ -837,6 +896,14 @@ public class MainWindow extends javax.swing.JFrame {
 
     // bClearTxnId is initialized above; action is wired there
 
+    bAddRecord.setText("Přidat záznam");
+    bAddRecord.setToolTipText("Zruší filtr a otevře poslední prázdný řádek pro nový záznam");
+    bAddRecord.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        bAddRecordActionPerformed(evt);
+      }
+    });
+
     bSort.setText("Seřadit");
     bSort.setToolTipText("Seřadí tabulku podle aktuálního řazení aplikace");
     bSort.addActionListener(new java.awt.event.ActionListener() {
@@ -857,6 +924,7 @@ public class MainWindow extends javax.swing.JFrame {
     pTopRight.add(bToggleDisabled);
     pTopRight.add(bClearColors);
     pTopRight.add(bClearTxnId);
+    pTopRight.add(bAddRecord);
     pTopRight.add(bSort);
     pTopRight.add(bDelete);
     // pUndoStrip is attached after it is created (later in this method).
@@ -1373,22 +1441,221 @@ public class MainWindow extends javax.swing.JFrame {
     table.getColumnModel().getColumn(17).setMaxWidth(150);
 
     // Poznamka (Note)
-    table.getColumnModel().getColumn(18).setPreferredWidth(200);
-    table.getColumnModel().getColumn(18).setMaxWidth(500);
+    table.getColumnModel().getColumn(TransactionSet.COL_NOTE).setPreferredWidth(200);
+    table.getColumnModel().getColumn(TransactionSet.COL_NOTE).setMaxWidth(500);
 
     // Ignorovat
-    table.getColumnModel().getColumn(19).setPreferredWidth(80);
-    table.getColumnModel().getColumn(19).setMaxWidth(100);
+    table.getColumnModel().getColumn(TransactionSet.COL_DISABLED).setPreferredWidth(80);
+    table.getColumnModel().getColumn(TransactionSet.COL_DISABLED).setMaxWidth(100);
+
+    // Akce
+    table.getColumnModel().getColumn(TransactionSet.COL_ACTION).setPreferredWidth(80);
+    table.getColumnModel().getColumn(TransactionSet.COL_ACTION).setMaxWidth(100);
+    table.getColumnModel().getColumn(TransactionSet.COL_ACTION).setCellRenderer(new SaveActionRenderer());
+    table.getColumnModel().getColumn(TransactionSet.COL_ACTION).setCellEditor(new SaveActionEditor());
 
     // Apply highlighted cell renderer to all non-date columns
-    for (int i = 1; i <= 19; i++) {
-      if (i != 0 && i != 10) { // Skip date columns
+    for (int i = 1; i <= TransactionSet.COL_DISABLED; i++) {
+      if (i != 10) { // Skip date columns and keep Akce custom-rendered.
         table.getColumnModel().getColumn(i).setCellRenderer(highlightRenderer);
       }
     }
 
     // Apply column visibility settings
     updateColumnVisibility();
+
+    // Commit the current editor when focus leaves the table. The explicit
+    // commit-before-sort guard remains the primary protection for action buttons.
+    table.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
+
+    installSaveActionPreCommitGuard();
+  }
+
+  private void installSaveActionPreCommitGuard() {
+    final String installedKey = MainWindow.class.getName() + ".saveActionPreCommitGuardInstalled";
+    if (Boolean.TRUE.equals(table.getClientProperty(installedKey))) {
+      return;
+    }
+
+    table.addMouseListener(new java.awt.event.MouseAdapter() {
+      @Override
+      public void mousePressed(java.awt.event.MouseEvent evt) {
+        int viewColumn = table.columnAtPoint(evt.getPoint());
+        int actionViewColumn = table.convertColumnIndexToView(TransactionSet.COL_ACTION);
+        if (viewColumn != actionViewColumn) {
+          return;
+        }
+
+        if (!TableEditSupport.commitActiveDataEditor(table, TransactionSet.COL_ACTION)) {
+          evt.consume();
+          java.awt.Toolkit.getDefaultToolkit().beep();
+          setTransientStatusMessage("Řádek není potvrzen", 5000L);
+        }
+      }
+    });
+
+    table.putClientProperty(installedKey, Boolean.TRUE);
+  }
+
+  private Integer getCurrentSelectionSerial() {
+    int viewRow = table.getSelectedRow();
+    if (viewRow < 0) {
+      return null;
+    }
+
+    int modelRow = table.convertRowIndexToModel(viewRow);
+    if (modelRow < 0 || modelRow >= transactions.getRowCount() - 1) {
+      return null;
+    }
+
+    Transaction tx = transactions.getRowAt(modelRow);
+    return tx == null ? null : Integer.valueOf(tx.getSerial());
+  }
+
+  private void restoreSelectionBySerial(Integer serial) {
+    if (serial == null) {
+      return;
+    }
+
+    for (int row = 0; row < transactions.getRowCount() - 1; row++) {
+      Transaction tx = transactions.getRowAt(row);
+      if (tx != null && tx.getSerial() == serial.intValue()) {
+        table.getSelectionModel().setSelectionInterval(row, row);
+        java.awt.Rectangle rect = table.getCellRect(row, 0, true);
+        table.scrollRectToVisible(rect);
+        return;
+      }
+    }
+  }
+
+  private boolean hasActiveOrPendingFilters() {
+    if (transactions != null && transactions.filteredRows != null) {
+      return true;
+    }
+
+    if (tfQuickFilter != null && tfQuickFilter.getText() != null && tfQuickFilter.getText().trim().length() > 0) {
+      return true;
+    }
+    if (tfTicker != null && tfTicker.getText() != null && tfTicker.getText().trim().length() > 0) {
+      return true;
+    }
+    if (tfMarket != null && tfMarket.getText() != null && tfMarket.getText().trim().length() > 0) {
+      return true;
+    }
+    if (tfNote != null && tfNote.getText() != null && tfNote.getText().trim().length() > 0) {
+      return true;
+    }
+    if (cbTypeFilter != null && cbTypeFilter.getSelectedIndex() > 0) {
+      return true;
+    }
+    if (cbBrokerFilter != null && cbBrokerFilter.getSelectedIndex() > 0) {
+      return true;
+    }
+    if (cbAccountIdFilter != null && cbAccountIdFilter.getSelectedIndex() > 0) {
+      return true;
+    }
+    if (cbEffectFilter != null && cbEffectFilter.getSelectedIndex() > 0) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private void scrollToViewRow(int viewRow) {
+    java.awt.Rectangle rect = table.getCellRect(viewRow, 0, true);
+    try {
+      java.awt.Container parent = table.getParent();
+      if (parent instanceof javax.swing.JViewport) {
+        javax.swing.JViewport vp = (javax.swing.JViewport) parent;
+        int viewHeight = vp.getExtentSize().height;
+        java.awt.Rectangle target = new java.awt.Rectangle(rect);
+        target.y = Math.max(0, rect.y - (viewHeight / 2) + (rect.height / 2));
+        target.height = viewHeight;
+        table.scrollRectToVisible(target);
+      } else {
+        table.scrollRectToVisible(rect);
+      }
+    } catch (Exception e) {
+      table.scrollRectToVisible(rect);
+    }
+  }
+
+  private void startEditingLastInputRow(boolean clearFiltersIfNeeded) {
+    final int previousEditingRow = table.getEditingRow();
+    final int previousSelectedRow = table.getSelectedRow();
+
+    if (!TableEditSupport.commitActiveEditor(table)) {
+      java.awt.Toolkit.getDefaultToolkit().beep();
+      return;
+    }
+
+    boolean filtersWereActive = clearFiltersIfNeeded && hasActiveOrPendingFilters();
+    if (filtersWereActive) {
+      clearAllFiltersAndInputs();
+      setTransientStatusMessage("Filtr zrušen – připraven nový záznam", 5000L);
+    }
+
+    javax.swing.SwingUtilities.invokeLater(() -> {
+      int viewRow = Math.max(0, table.getRowCount() - 1);
+      int viewColumn = table.convertColumnIndexToView(0);
+
+      if (viewColumn < 0 || viewRow >= table.getRowCount()) {
+        java.awt.Toolkit.getDefaultToolkit().beep();
+        return;
+      }
+
+      if (viewRow == previousEditingRow || viewRow == previousSelectedRow) {
+        viewRow = Math.max(0, table.getRowCount() - 1);
+      }
+
+      scrollToViewRow(viewRow);
+      if (!TableEditSupport.activateCellEditor(table, viewRow, viewColumn)) {
+        java.awt.Toolkit.getDefaultToolkit().beep();
+      }
+    });
+  }
+
+  private boolean commitManualRowForSave(int row) {
+    if (row < 0 || row >= transactions.getRowCount() - 1) {
+      java.awt.Toolkit.getDefaultToolkit().beep();
+      setTransientStatusMessage("Řádek není kompletní", 5000L);
+      return false;
+    }
+
+    if (!TableEditSupport.commitActiveDataEditor(table, TransactionSet.COL_ACTION)) {
+      java.awt.Toolkit.getDefaultToolkit().beep();
+      setTransientStatusMessage("Řádek není potvrzen", 5000L);
+      return false;
+    }
+
+    Transaction tx = transactions.getRowAt(row);
+    if (tx == null || !tx.isFilledIn()) {
+      java.awt.Toolkit.getDefaultToolkit().beep();
+      setTransientStatusMessage("Řádek není kompletní", 5000L);
+      table.clearSelection();
+      table.getSelectionModel().setSelectionInterval(row, row);
+
+      int retryColumn = TableEditSupport.getLastEditedColumn(table);
+      if (retryColumn < 0 || retryColumn == TransactionSet.COL_ACTION || retryColumn >= table.getColumnCount()) {
+        retryColumn = 0;
+      }
+      TableEditSupport.activateCellEditor(table, row, retryColumn);
+      return false;
+    }
+
+    return true;
+  }
+
+  private boolean prepareDataAction(String blockedStatusMessage) {
+    if (TableEditSupport.commitActiveEditor(table)) {
+      return true;
+    }
+
+    java.awt.Toolkit.getDefaultToolkit().beep();
+    if (blockedStatusMessage != null && blockedStatusMessage.trim().length() > 0) {
+      setTransientStatusMessage(blockedStatusMessage, 5000L);
+    }
+    return false;
   }
 
   private int computePackedDateColumnWidth() {
@@ -1699,11 +1966,17 @@ public class MainWindow extends javax.swing.JFrame {
 
   private void miReportActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_miReportActionPerformed
   {// GEN-HEADEREND:event_miReportActionPerformed
+    if (!prepareDataAction("Výpočet nebyl spuštěn – potvrďte rozpracovaný řádek")) {
+      return;
+    }
     computeWindow.setVisible(true);
   }// GEN-LAST:event_miReportActionPerformed
 
   private void miAccountStateActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_miAccountStateActionPerformed
   {// GEN-HEADEREND:event_miAccountStateActionPerformed
+    if (!prepareDataAction("Stav účtu nebyl spuštěn – potvrďte rozpracovaný řádek")) {
+      return;
+    }
    // Show account state window
     accountStateWindow.showDialog();
   }// GEN-LAST:event_miAccountStateActionPerformed
@@ -1868,9 +2141,22 @@ public class MainWindow extends javax.swing.JFrame {
 
   private void bSortActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bSortActionPerformed
   {// GEN-HEADEREND:event_bSortActionPerformed
-   // Sort rows
+    if (!TableEditSupport.commitActiveEditor(table)) {
+      java.awt.Toolkit.getDefaultToolkit().beep();
+      return;
+    }
+
+    Integer selectedSerial = getCurrentSelectionSerial();
+
+    // Sort rows
     transactions.sort();
+
+    restoreSelectionBySerial(selectedSerial);
   }// GEN-LAST:event_bSortActionPerformed
+
+  private void bAddRecordActionPerformed(java.awt.event.ActionEvent evt) {
+    startEditingLastInputRow(true);
+  }
 
   /**
    * Save transactions to this file, smart-handle errors
@@ -2908,6 +3194,7 @@ public class MainWindow extends javax.swing.JFrame {
   private javax.swing.JComboBox cbEffectFilter;
   private javax.swing.JCheckBox cbShowMetadata;
   private javax.swing.JCheckBox cbShowSeconds;
+  private javax.swing.JButton bAddRecord;
   private javax.swing.JButton bCopy;
   private javax.swing.JButton bClearColors;
   private javax.swing.JButton bToggleDisabled;
