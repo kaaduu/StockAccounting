@@ -519,6 +519,7 @@ public class ImportWindow extends javax.swing.JFrame {
     // 7 Revolut CSV
     // 8 Trading 212 (API cache and/or local CSV)
     // 9 IBKR Flex (API/file via dedicated buttons)
+    // 10 Firefish CSV
     switch (formatIndex) {
       case 1:
         return new String[] { ".csv" };
@@ -534,6 +535,8 @@ public class ImportWindow extends javax.swing.JFrame {
       case 7:
         return new String[] { ".csv" };
       case 8:
+        return new String[] { ".csv" };
+      case 10:
         return new String[] { ".csv" };
       default:
         return null;
@@ -561,6 +564,26 @@ public class ImportWindow extends javax.swing.JFrame {
       // Activity export / API CSV report header should include these.
       if (!h.contains("Action") || !h.contains("Time")) {
         return "chybí hlavička Trading 212 (Action, Time, ...)";
+      }
+      return null;
+    } catch (Exception e) {
+      return "nelze číst soubor";
+    }
+  }
+
+  private String validateFirefishCsvHeader(java.io.File file) {
+    if (file == null)
+      return "chybí soubor";
+    try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(file))) {
+      String l1 = readFirstNonEmptyLine(r);
+      if (l1 == null)
+        return "prázdný soubor";
+      String h = l1.trim();
+      if (h.startsWith("\uFEFF")) {
+        h = h.substring(1);
+      }
+      if (!h.contains("Investment id") || !h.contains("Closed at") || !h.contains("Amount due")) {
+        return "chybí hlavička Firefish (Investment id, Closed at, Amount due, ...)";
       }
       return null;
     } catch (Exception e) {
@@ -668,6 +691,14 @@ public class ImportWindow extends javax.swing.JFrame {
             "Neplatný soubor", JOptionPane.WARNING_MESSAGE);
         return;
       }
+    } else if (formatIndex == 10) {
+      String err = validateFirefishCsvHeader(selected);
+      if (err != null) {
+        JOptionPane.showMessageDialog(this,
+            "Vybraný soubor nevypadá jako Firefish CSV export.\n" + err,
+            "Neplatný soubor", JOptionPane.WARNING_MESSAGE);
+        return;
+      }
     }
 
     currentFiles = null;
@@ -699,6 +730,9 @@ public class ImportWindow extends javax.swing.JFrame {
       } else if (formatIndex == 7) {
         brokerKey = "revolut";
         prefix = "revolut_csv";
+      } else if (formatIndex == 10) {
+        brokerKey = "firefish";
+        prefix = "firefish_csv";
       }
 
       java.nio.file.Path cached = CacheManager.archiveFile(brokerKey, CacheManager.Source.FILE,
@@ -2536,7 +2570,9 @@ public class ImportWindow extends javax.swing.JFrame {
       } else {
         System.out.println("[FORMAT:004] About to call importFile with formatIndex=" + formatIndex + " (programmatic: "
             + currentImportFormat + ", UI: " + cbFormat.getSelectedIndex() + ") for file: " + currentFile.getName());
-        transactions.importFile(currentFile, startD, endD, formatIndex, notImported);
+        Date effectiveStart = isDateFilterIgnoredForFormat(formatIndex) ? null : startD;
+        Date effectiveEnd = isDateFilterIgnoredForFormat(formatIndex) ? null : endD;
+        transactions.importFile(currentFile, effectiveStart, effectiveEnd, formatIndex, notImported);
       }
 
       // Filter duplicate transactions that already exist in main database
@@ -2744,16 +2780,18 @@ public class ImportWindow extends javax.swing.JFrame {
     final java.util.Vector<Transaction> duplicatesToUpdate;
     final java.util.List<UpdatePair> updatePairs;
     final int duplicatesFiltered;
+    final int candidateCount;
     final int formatIndex;
 
     LoadResult(java.util.Vector<Transaction> preview, java.util.Vector<String[]> notImported,
         java.util.Vector<Transaction> duplicatesToUpdate, java.util.List<UpdatePair> updatePairs,
-        int duplicatesFiltered, int formatIndex) {
+        int duplicatesFiltered, int candidateCount, int formatIndex) {
       this.preview = preview;
       this.notImported = notImported;
       this.duplicatesToUpdate = duplicatesToUpdate;
       this.updatePairs = updatePairs;
       this.duplicatesFiltered = duplicatesFiltered;
+      this.candidateCount = candidateCount;
       this.formatIndex = formatIndex;
     }
   }
@@ -2777,16 +2815,16 @@ public class ImportWindow extends javax.swing.JFrame {
     // components.
     if (formatIndex == 0) {
       return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(),
-          new java.util.ArrayList<>(), 0, formatIndex);
+          new java.util.ArrayList<>(), 0, 0, formatIndex);
     }
     if (formatIndex == 9) {
       // IBKR Flex: preview is handled by dedicated flows
       return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(),
-          new java.util.ArrayList<>(), 0, formatIndex);
+          new java.util.ArrayList<>(), 0, 0, formatIndex);
     }
     if (file == null) {
       return new LoadResult(new java.util.Vector<>(), new java.util.Vector<>(), new java.util.Vector<>(),
-          new java.util.ArrayList<>(), 0, formatIndex);
+          new java.util.ArrayList<>(), 0, 0, formatIndex);
     }
 
     java.util.Vector<String[]> notImported = new java.util.Vector<>();
@@ -2858,7 +2896,9 @@ public class ImportWindow extends javax.swing.JFrame {
       lastTrading212YearForCache = null;
     } else {
       // Single-file import: reuse existing importer path
-      tmpPreview.importFile(file, startD, endD, formatIndex, notImported);
+      java.util.Date effectiveStart = isDateFilterIgnoredForFormat(formatIndex) ? null : startD;
+      java.util.Date effectiveEnd = isDateFilterIgnoredForFormat(formatIndex) ? null : endD;
+      tmpPreview.importFile(file, effectiveStart, effectiveEnd, formatIndex, notImported);
     }
 
     // Filter duplicates vs main DB (same logic as current loadImport)
@@ -2928,7 +2968,7 @@ public class ImportWindow extends javax.swing.JFrame {
 
     // duplicatesFiltered counts all non-new items (both "update" and "filtered")
     int duplicatesFiltered = original.size() - filtered.size();
-    return new LoadResult(filtered, notImported, dupsToUpdate, pairs, duplicatesFiltered, formatIndex);
+    return new LoadResult(filtered, notImported, dupsToUpdate, pairs, duplicatesFiltered, original.size(), formatIndex);
   }
 
   /**
@@ -3130,13 +3170,20 @@ public class ImportWindow extends javax.swing.JFrame {
         previewText += " - " + r.duplicatesFiltered + " duplikátů vyfiltrováno";
       }
     }
+    if (r.formatIndex == 10 && n == 0 && r.candidateCount > 0 && r.duplicatesFiltered == r.candidateCount) {
+      previewText += " - všechny kandidáty skončily jako duplicity";
+    }
     previewText += ":";
     lPreview.setText(previewText);
 
     if (lSummary != null) {
       int up = duplicatesToUpdate.size();
       int ni = r.notImported != null ? r.notImported.size() : 0;
-      lSummary.setText("Nové: " + n + " | K aktualizaci: " + up + " | Neimportované: " + ni);
+      String summary = "Nové: " + n + " | K aktualizaci: " + up + " | Neimportované: " + ni;
+      if (r.formatIndex == 10) {
+        summary += " | Kandidáti: " + r.candidateCount;
+      }
+      lSummary.setText(summary);
     }
 
     updateUpdatePreviewSection();
@@ -3162,6 +3209,8 @@ public class ImportWindow extends javax.swing.JFrame {
         String header = "Col " + c;
         if (tradeLogMultiSelection && colCount > 0 && c == 0) {
           header = "Soubor";
+        } else if (r.formatIndex == 10 && c == 0) {
+          header = "Důvod";
         }
         niTable.getColumnModel().getColumn(c).setHeaderValue(header);
       }
@@ -3465,7 +3514,7 @@ public class ImportWindow extends javax.swing.JFrame {
     cbFormat.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "<vyberte formát>", "Fio - obchody export",
         "⚠️ BrokerJet - HTML export (legacy)", "IB - TradeLog", "⚠️ IB - FlexQuery Trades only CSV",
         "T212 Invest  - csv  mena: USD", "T212 Invest  - csv  mena: CZK", "Revolut - csv", "Trading 212",
-        "IBKR Flex" }));
+        "IBKR Flex", "Firefish - csv" }));
     cbFormat.setMinimumSize(new java.awt.Dimension(100, 20));
     cbFormat.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -5399,6 +5448,7 @@ public class ImportWindow extends javax.swing.JFrame {
     boolean isApiFormat = (formatIndex == 8 || formatIndex == 9); // Trading 212 (API/csv) or IBKR Flex
     boolean isTrading212 = (formatIndex == 8);
     boolean isIBKR = (formatIndex == 9);
+    boolean hideDateFilter = isApiFormat || isDateFilterIgnoredForFormat(formatIndex);
 
     // Clear preview when switching to API format to prevent data contamination from
     // previous imports
@@ -5407,12 +5457,11 @@ public class ImportWindow extends javax.swing.JFrame {
       clearPreview();
     }
 
-    // Hide date selection UI for Trading 212 and IBKR Flex (they don't use the date
-    // pickers)
-    jLabel1.setVisible(!isApiFormat); // "Importovat od:"
-    jLabel2.setVisible(!isApiFormat); // "do:"
-    startDate.setVisible(!isApiFormat);
-    endDate.setVisible(!isApiFormat);
+    // Hide date selection UI for formats that ignore the date pickers.
+    jLabel1.setVisible(!hideDateFilter); // "Importovat od:"
+    jLabel2.setVisible(!hideDateFilter); // "do:"
+    startDate.setVisible(!hideDateFilter);
+    endDate.setVisible(!hideDateFilter);
 
     // Keep preview tables visible for API formats - they show fetched data
     // IBKR Flex uses its own status line; hide the generic preview header to avoid
@@ -5508,6 +5557,10 @@ public class ImportWindow extends javax.swing.JFrame {
     updateIbkrFlexCsvInfoLabel();
     updateTrading212CsvDetailsButtonState();
     updateTrading212CsvDetailsButtonState();
+  }
+
+  private boolean isDateFilterIgnoredForFormat(int formatIndex) {
+    return formatIndex == 10; // Firefish local CSV uses whole-file import.
   }
 
   private void showIbkrFlexCsvDetailsDialog() {

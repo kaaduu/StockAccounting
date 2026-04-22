@@ -4,6 +4,33 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Firefish: import uzavřených a zlikvidovaných půjček z CSV] - 2026-04-22
+
+### Přidáno
+- Do dialogu importu byl přidán nový formát `Firefish - csv` pro lokální CSV exporty půjček z Firefish.
+- Firefish import zpracovává pouze řádky se stavem `CLOSED` a `LIQUIDATED` a převádí je na transakce typu `Úrok` s tickerem `Kreditni.Urok`.
+- `Datum` i `Datum vypořádání` se u Firefish bere z pole `Closed at`, zatímco `Start date` a `Maturity date` se ukládají do poznámky.
+- `ID transakce` je nově u Firefish rovno `Investment id` z CSV a stejná hodnota se zapisuje i do poznámky jako `TxnID`.
+
+### Upraveno
+- Hodnota `Cena` se u Firefish počítá jako skutečně vydělaný úrok (`Amount due - Investment amount`), aby výpočty pracovaly s výnosem, ne s jistinou.
+- Do poznámky se ukládají důležité detaily půjčky: účet, stav, datum otevření/splatnosti/uzavření, částky, úroková sazba, kolaterál, likvidační cena, typ půjčky a identifikátory protistran.
+- Lokální Firefish CSV soubory se při výběru archivují do importní cache stejně jako ostatní podporované file-based importy.
+- Firefish import už jednotlivý vadný řádek neshodí celý náhled; problémové řádky se nově přesunou do sekce `Neimportované` s důvodem.
+- V sekci `Neimportované` má Firefish nově první sloupec `Důvod`, takže je vidět rozdíl mezi `IGNORED_STATUS:...` a skutečnou chybou parsování.
+- Souhrn náhledu u Firefish nově ukazuje i počet kandidátů před deduplikací a při prázdném náhledu výslovně říká, když všechny kandidáty skončily jako duplicity.
+- Firefish lokální CSV nově ignoruje pole `Importovat od / do`; náhled i import vždy pracují s celým souborem a filtrují jen podle stavu půjčky.
+
+## [DP výpočet: filtr brokeru na kartě Úroky] - 2026-04-22
+
+### Přidáno
+- Do karty `Úroky` v okně `Výpočet základu pro DP` byl přidán filtr `Broker` s výchozí hodnotou „všechny“.
+
+### Upraveno
+- Filtr brokeru na kartě `Úroky` nyní ovlivňuje celý výpočet této karty, tedy řádky tabulky i souhrnné částky.
+- Při exportu `Úroků` aplikace nově upozorní, pokud je aktivní broker filtr, že export bude omezen jen na vybraného brokera.
+- Dialog exportu `Úroků` nově umožňuje filtr před exportem rovnou resetovat a kartu znovu přepočítat pro všechny brokery.
+
 ## [Tabulka transakcí: řádkové Uložit skutečně potvrzuje nový záznam] - 2026-04-21
 
 ### Upraveno

@@ -135,6 +135,8 @@ public class ComputeWindow extends javax.swing.JDialog {
    */
   private int yearComputed;
 
+  private boolean suppressInterestBrokerFilterEvents = false;
+
   /**
    * Include over tax free duration
    */
@@ -320,6 +322,8 @@ public class ComputeWindow extends javax.swing.JDialog {
     tcmInt.getColumn(7).setCellRenderer(rarenderer);
     tcmInt.getColumn(8).setCellRenderer(rarenderer);
     tcmInt.getColumn(9).setCellRenderer(rarenderer);
+
+    refreshInterestBrokerFilterModel();
   }
 
   private void installMainSplitPane() {
@@ -835,6 +839,9 @@ public class ComputeWindow extends javax.swing.JDialog {
       if (table == diviTable) {
         saveCSV("Shrnutí dividend za rok " + yearComputed, file, diviTable, SPLIT_COLUMNS, " měna");
       } else if (table == interestTable) {
+        if (!confirmInterestExportScope()) {
+          return;
+        }
         if (format == SaveFormat.HTML)
           saveInterestHTML("Shrnutí úroků za rok " + yearComputed, file);
         else
@@ -2674,6 +2681,80 @@ public class ComputeWindow extends javax.swing.JDialog {
 
   }
 
+  private void refreshInterestBrokerFilterModel() {
+    if (cbInterestBrokerFilter == null || mainWindow == null) {
+      return;
+    }
+    Object selected = cbInterestBrokerFilter.getSelectedItem();
+    suppressInterestBrokerFilterEvents = true;
+    try {
+      cbInterestBrokerFilter.setModel(mainWindow.getTransactionDatabase().getBrokersModel());
+      if (selected != null) {
+        cbInterestBrokerFilter.setSelectedItem(selected);
+      }
+      if (cbInterestBrokerFilter.getSelectedItem() == null && cbInterestBrokerFilter.getItemCount() > 0) {
+        cbInterestBrokerFilter.setSelectedIndex(0);
+      }
+    } finally {
+      suppressInterestBrokerFilterEvents = false;
+    }
+  }
+
+  private String getSelectedInterestBroker() {
+    if (cbInterestBrokerFilter == null) {
+      return null;
+    }
+    Object selected = cbInterestBrokerFilter.getSelectedItem();
+    if (!(selected instanceof String)) {
+      return null;
+    }
+    String broker = ((String) selected).trim();
+    return broker.isEmpty() ? null : broker;
+  }
+
+  private boolean matchesInterestBrokerFilter(Transaction tx, String selectedBroker) {
+    if (selectedBroker == null || selectedBroker.isEmpty()) {
+      return true;
+    }
+    if (tx == null) {
+      return false;
+    }
+    String broker = tx.getBroker();
+    if (broker == null) {
+      return false;
+    }
+    return selectedBroker.equalsIgnoreCase(broker.trim());
+  }
+
+  private boolean confirmInterestExportScope() {
+    String selectedBroker = getSelectedInterestBroker();
+    if (selectedBroker == null) {
+      return true;
+    }
+
+    Object[] options = { "Exportovat s filtrem", "Resetovat filtr a přepočítat", "Zrušit" };
+    String message = "Na kartě Úroky je aktivní filtr brokeru: " + selectedBroker + ".\n\n"
+        + "Export bude obsahovat pouze úroky pro tohoto brokera.\n"
+        + "Pokud chcete export za všechny brokery, resetujte filtr před exportem.";
+    int choice = JOptionPane.showOptionDialog(this, message, "Export Úroků",
+        JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
+
+    if (choice == 0) {
+      return true;
+    }
+    if (choice == 1) {
+      suppressInterestBrokerFilterEvents = true;
+      try {
+        cbInterestBrokerFilter.setSelectedIndex(0);
+      } finally {
+        suppressInterestBrokerFilterEvents = false;
+      }
+      computeInterests(yearComputed);
+      return true;
+    }
+    return false;
+  }
+
   /**
    * Build ISIN-to-country mapping from all transactions (ignoring year)
    */
@@ -2927,6 +3008,7 @@ public class ComputeWindow extends javax.swing.JDialog {
   private void computeInterests(int year) {
     TransactionSet transactions = mainWindow.getTransactionDatabase();
     GregorianCalendar cal = new GregorianCalendar();
+    String selectedBroker = getSelectedInterestBroker();
 
     DecimalFormat f2 = new DecimalFormat("0.00");
     f2.setGroupingUsed(true);
@@ -2957,6 +3039,8 @@ public class ComputeWindow extends javax.swing.JDialog {
         cal.setTime(exDate);
         int ty = cal.get(GregorianCalendar.YEAR);
         if (ty != year)
+          continue;
+        if (!matchesInterestBrokerFilter(tx, selectedBroker))
           continue;
 
         ints.applyTransaction(tx);
@@ -3095,6 +3179,8 @@ public class ComputeWindow extends javax.swing.JDialog {
     jPanelInterestHeader = new javax.swing.JPanel();
     jLabelInterest = new javax.swing.JLabel();
     cbComputeInterest = new javax.swing.JCheckBox();
+    jLabelInterestBroker = new javax.swing.JLabel();
+    cbInterestBrokerFilter = new javax.swing.JComboBox();
     bSaveCSVInterest = new javax.swing.JButton();
     bSaveHTMLInterest = new javax.swing.JButton();
     jScrollPaneInterest = new javax.swing.JScrollPane();
@@ -3457,6 +3543,18 @@ public class ComputeWindow extends javax.swing.JDialog {
     cbComputeInterest.setMargin(new java.awt.Insets(0, 0, 0, 0));
     jPanelInterestHeader.add(cbComputeInterest);
 
+    jLabelInterestBroker.setText("Broker:");
+    jPanelInterestHeader.add(jLabelInterestBroker);
+
+    cbInterestBrokerFilter.setMinimumSize(new java.awt.Dimension(140, 24));
+    cbInterestBrokerFilter.setPreferredSize(new java.awt.Dimension(180, 24));
+    cbInterestBrokerFilter.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        cbInterestBrokerFilterActionPerformed(evt);
+      }
+    });
+    jPanelInterestHeader.add(cbInterestBrokerFilter);
+
     bSaveCSVInterest.setText("Uložit CSV");
     bSaveCSVInterest.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3627,6 +3725,16 @@ public class ComputeWindow extends javax.swing.JDialog {
     save(SaveFormat.CSV, interestTable);
   }
 
+  private void cbInterestBrokerFilterActionPerformed(java.awt.event.ActionEvent evt) {
+    if (suppressInterestBrokerFilterEvents) {
+      return;
+    }
+    if (yearComputed == 0) {
+      return;
+    }
+    computeInterests(yearComputed);
+  }
+
   private void bCloseActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_bCloseActionPerformed
   {// GEN-HEADEREND:event_bCloseActionPerformed
     setVisible(false);
@@ -3636,6 +3744,7 @@ public class ComputeWindow extends javax.swing.JDialog {
   {// GEN-HEADEREND:event_bComputeActionPerformed
     /* Run computation */
     TransactionSet transactions = mainWindow.getTransactionDatabase();
+    refreshInterestBrokerFilterModel();
     IncludeOverTaxFreeDuration overTaxFreeDuration;
     NoIncomeTrades noIncomeTrades;
     GregorianCalendar cal = new GregorianCalendar();
@@ -3897,6 +4006,7 @@ public class ComputeWindow extends javax.swing.JDialog {
   private javax.swing.JCheckBox cbAllowShortOverYearBoundary;
   private javax.swing.JCheckBox cbComputeDivi;
   private javax.swing.JCheckBox cbComputeInterest;
+  private javax.swing.JComboBox cbInterestBrokerFilter;
   private javax.swing.JComboBox cbNoIncome;
   private javax.swing.JComboBox cbOverTaxFreeDuration;
   private javax.swing.JCheckBox cbSeparateCurrencyCSV;
@@ -3906,6 +4016,7 @@ public class ComputeWindow extends javax.swing.JDialog {
   private javax.swing.JLabel jLabel1;
   private javax.swing.JLabel jLabel2;
   private javax.swing.JLabel jLabelInterest;
+  private javax.swing.JLabel jLabelInterestBroker;
   private javax.swing.JLabel jLabel3;
   private javax.swing.JLabel jLabel4;
   private javax.swing.JPanel jPanel1;

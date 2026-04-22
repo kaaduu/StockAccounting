@@ -45,6 +45,7 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
   public final int IMPORT_FORMAT_T212USD = 5;
   public final int IMPORT_FORMAT_T212CZK = 6;
   public final int IMPORT_FORMAT_REVOLUT_CSV = 7;
+  public final int IMPORT_FORMAT_FIREFISH_CSV = 10;
 
   /** Our set */
   protected Vector<Transaction> rows;
@@ -1200,6 +1201,8 @@ public class TransactionSet extends javax.swing.table.AbstractTableModel {
       importer = new ImportT212CZK();
     else if (format == IMPORT_FORMAT_REVOLUT_CSV)
       importer = new ImportRevolutCSV();
+    else if (format == IMPORT_FORMAT_FIREFISH_CSV)
+      importer = new ImportFirefish();
     else if (format == IMPORT_FORMAT_TRADING212_API) {
       // Handle Trading 212 API import
       handleTrading212ApiImport(startDate, endDate, notImported);

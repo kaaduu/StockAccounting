@@ -9,8 +9,9 @@ This document provides detailed technical specifications for all supported broke
 4. [Interactive Brokers - FlexQuery](#interactive-brokers-flexquery)
 5. [FIO Bank](#fio-bank)
 6. [Revolut](#revolut)
-7. [Configuration Options](#configuration-options)
-8. [Version History](#version-history)
+7. [Firefish](#firefish)
+8. [Configuration Options](#configuration-options)
+9. [Version History](#version-history)
 
 ## Overview
 
@@ -1118,6 +1119,95 @@ Both fees are combined and stored in the fee field with "CZK" currency.
 - **Parser**: `ImportRevolutCSV.java`
 - **Note Logic**: Hardcoded string on line 183
 
+## Firefish
+
+### File Format Specifications
+- **File Type**: CSV with header row
+- **Delimiter**: Comma (,)
+- **Encoding**: UTF-8 (BOM tolerated)
+- **Date Formats**:
+  - `MM-dd-yy` in older exports
+  - `M/d/yyyy` and `M/d/yy` in newer exports
+- **Imported Statuses**: `CLOSED`, `LIQUIDATED`
+- **Ignored Statuses**: Any other value stays visible in `Neimportované`
+
+### Business Semantics
+
+Firefish rows are imported as **interest transactions**, not as security trades.
+
+- **Ticker**: always `Kreditni.Urok`
+- **Direction**: `DIRECTION_INT_BRUTTO`
+- **Date / ExecutionDate**: `Closed at`
+- **Amount**: always `1`
+- **Price**: realized interest only, calculated as `Amount due - Investment amount`
+- **Broker**: `Firefish`
+- **Account ID**: `My account number`
+- **Transaction ID**: `Investment id`
+
+### Field Mapping Table
+
+| Column | Field Name | Data Type | Description | Used In Output | Example Value |
+| ------ | ---------- | --------- | ----------- | -------------- | ------------- |
+| 0 | Investment id | String | Firefish investment identifier | ✅ (TxnID, Note) | `1e2d1770` |
+| 1 | Start date (mm/dd/yyyy) | Date | Loan opening date | ✅ (Note) | `01-22-26` |
+| 2 | Maturity date (mm/dd/yyyy) | Date | Planned maturity date | ✅ (Note) | `01-22-27` |
+| 3 | Interest rate (% p.a.) | Decimal | Annual rate | ✅ (Note) | `9.00` |
+| 4 | Currency | String | Settlement currency | ✅ (PriceCurrency, FeeCurrency, Note) | `CZK` |
+| 5 | Investment amount | Decimal | Original principal | ✅ (Note) | `40000` |
+| 6 | Amount due | Decimal | Final repayment value | ✅ (Interest calculation, Note) | `43600` |
+| 7 | Status | String | Loan status | ✅ (Import decision, Note) | `CLOSED` |
+| 8 | Closed at (mm/dd/yyyy) | Date | Real closing date | ✅ (Date, ExecutionDate, Note) | `02-24-26` |
+| 9 | My account number | String | Investor account number | ✅ (AccountID, Note) | `251168350/0600` |
+| 10 | Collateral sum (BTC) | Decimal | BTC collateral amount | ✅ (Note) | `0.04325200` |
+| 11 | Liquidation price | Decimal | Liquidation threshold | ✅ (Note) | `1061109` |
+| 12 | Investor id | String | Firefish investor identifier | ✅ (Note) | `1800000.0000072` |
+| 13 | Borrower id | String | Firefish borrower identifier | ✅ (Note) | `e4df3dae` |
+| 14 | Note | String | Optional CSV note | ✅ (Note) | `` |
+| 15 | Loan type | String | Firefish product type | ✅ (Note) | `Standard` |
+
+### Note Construction Algorithm
+
+**Format**:
+`Firefish loan closed|Broker:Firefish|AccountID:[AccountID]|TxnID:[InvestmentId]|StartDate:[StartDate]|MaturityDate:[MaturityDate]|ClosedAt:[ClosedAt]|Status:[Status]|InterestRate:[Rate]|Currency:[Currency]|InvestmentAmount:[InvestmentAmount]|AmountDue:[AmountDue]|EarnedInterest:[Result]|CollateralBTC:[Collateral]|LiquidationPrice:[LiquidationPrice]|LoanType:[LoanType]|InvestorID:[InvestorID]|BorrowerID:[BorrowerID]|CsvNote:[CsvNote]`
+
+**Logic**:
+1. Accept only rows with `Status = CLOSED` or `Status = LIQUIDATED`
+2. Parse `Closed at` and use it as both transaction date and execution date
+3. Calculate realized interest as `Amount due - Investment amount`
+4. Store Firefish identifiers and loan metadata in `Note`
+5. Omit empty segments instead of writing blank values
+
+**Examples**:
+- `Firefish loan closed|Broker:Firefish|AccountID:251168350/0600|TxnID:1e2d1770|StartDate:01-22-26|MaturityDate:01-22-27|ClosedAt:02-24-26|Status:CLOSED|InterestRate:9.00|Currency:CZK|InvestmentAmount:40000|AmountDue:43600|EarnedInterest:3600.0|CollateralBTC:0.04325200|LiquidationPrice:1061109|LoanType:Standard|InvestorID:1800000.0000072|BorrowerID:e4df3dae`
+- `Firefish loan closed|Broker:Firefish|AccountID:LT863250094146707728|TxnID:a5d88418|StartDate:07-22-25|MaturityDate:07-22-27|ClosedAt:02-06-26|Status:LIQUIDATED|InterestRate:15.00|Currency:EUR|InvestmentAmount:1500|AmountDue:1950|EarnedInterest:450.0|CollateralBTC:0.03851100|LiquidationPrice:53300|LoanType:Standard|InvestorID:1800000.0000072|BorrowerID:ecca114f`
+
+### Non-Imported Row Behavior
+
+Firefish intentionally keeps skipped rows visible in the import window.
+
+- **Ignored business rows**: prefixed with `IGNORED_STATUS:[status]`
+  - Example: `IGNORED_STATUS:ACTIVE`
+- **Row-level parsing/validation errors**: prefixed with `ERROR:[reason]`
+  - Example: `ERROR:Firefish: neplatné datum 'not-a-date'.`
+
+### ImportWindow Behavior
+
+- Format name in UI: **`Firefish - csv`**
+- Firefish local CSV import **ignores the `Importovat od / do` date filter**
+  - the whole file is scanned on each preview/import
+  - filtering is based on status and duplicate detection only
+- Preview summary shows:
+  - new rows
+  - duplicate rows / rows to update
+  - not imported rows
+  - Firefish candidate count before deduplication
+- If all Firefish candidates match existing transactions, preview explicitly reports that all candidates ended as duplicates
+
+### Code Location
+- **Parser**: `ImportFirefish.java`
+- **ImportWindow integration**: `ImportWindow.java`
+- **Format dispatch**: `TransactionSet.java`
+
 ## Configuration Options
 
 ### Note Format Settings
@@ -1129,11 +1219,12 @@ Both fees are combined and stored in the fee field with "CZK" currency.
 - **IBKR Flex Parser**: Structured note with conditional field inclusion
 - **IBKR Flex Corporate Actions**: Special format (RS/TC) with full description
 - **IBKR Flex Cash Transactions**: Enhanced format (Type, IssuerCountry, ISIN, ActionID)
+- **Firefish Notes**: Structured loan-closing note with account, TxnID, amounts, status, and collateral metadata
 
 ### Import Behavior
 
 - **Duplicate Detection**: Applied to all imports
-- **Date Range Filtering**: Supported by all parsers
+- **Date Range Filtering**: Supported by most parsers; Firefish local CSV intentionally ignores `Importovat od / do`
 - **Currency Handling**: Automatic currency detection and fee separation
 
 ### Note Format Settings
@@ -1141,10 +1232,11 @@ Both fees are combined and stored in the fee field with "CZK" currency.
 - **IB TradeLog Enhancement**: Planned - Account ID + Transaction ID inclusion
 - **FIO Notes**: Raw text preservation (no modification)
 - **Revolut Notes**: Static broker identifier
+- **Firefish Notes**: Structured loan-closing note with explicit reason markers for skipped rows
 
 ### Import Behavior
 - **Duplicate Detection**: Applied to all imports
-- **Date Range Filtering**: Supported by all parsers
+- **Date Range Filtering**: Supported by most parsers; Firefish local CSV intentionally ignores `Importovat od / do`
 - **Currency Handling**: Automatic currency detection and fee separation
 
 ## Version History
@@ -1161,8 +1253,14 @@ Both fees are combined and stored in the fee field with "CZK" currency.
 - **Added**: Tolerance-based amount comparison (±0.01)
 - **Added**: Import preview with duplicate filtering
 
+### v2026.04.22 - Firefish CSV Import
+- **Added**: Firefish broker import format for closed and liquidated loan CSV exports
+- **Added**: Mapping from Firefish loan rows to `Úrok` transactions with ticker `Kreditni.Urok`
+- **Added**: Structured Firefish note format with `TxnID`, account, amounts, status, and collateral metadata
+- **Added**: Firefish-specific preview behavior for skipped rows and duplicate diagnostics
+
 ### v2021-2025 - Core Features
-- **Added**: Multi-broker support (IB, T212, FIO, Revolut)
+- **Added**: Multi-broker support (IB, T212, FIO, Revolut, Firefish)
 - **Added**: Currency exchange rate management
 - **Added**: Tax calculation and reporting features
 - **Added**: HTML and CSV export capabilities
