@@ -4,6 +4,12 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Stav účtu: CP po transformaci ve stejném čase] - 2026-08-04
+
+### Opraveno
+- Záznam typu `CP`, který následuje po dokončené dvojici transformací se stejným časem, se už omylem nevkládá do interní fronty transformací a zpracuje se jako běžný nákup nebo prodej.
+- Doplněny byly regresní testy pro následný prodej CP, transformační dvojice v různých i shodných časech a odmítnutí dvou transformací stejného směru.
+
 ## [Firefish: import uzavřených a zlikvidovaných půjček z CSV] - 2026-04-22
 
 ### Přidáno

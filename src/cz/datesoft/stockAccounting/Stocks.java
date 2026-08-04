@@ -1009,11 +1009,11 @@ public class Stocks {
       Transaction tx1 = trans.get(0);
 
       if ((tx.getDirection() != Transaction.DIRECTION_TRANS_ADD)
-          && (tx.getDirection() != Transaction.DIRECTION_TRANS_SUB))
+          && (tx.getDirection() != Transaction.DIRECTION_TRANS_SUB)) {
         finishTransformations(); // Not a transformation - finish
-      if (tx.getDate().compareTo(tx1.getDate()) != 0)
+      } else if (tx.getDate().compareTo(tx1.getDate()) != 0) {
         finishTransformations(); // Another date - finish
-      else {
+      } else {
         // Backward-compatible handling for multiple transformation pairs at the same timestamp:
         // if a 3rd transformation arrives for the same exact time, finish the current pair
         // and start a new pair instead of throwing.
