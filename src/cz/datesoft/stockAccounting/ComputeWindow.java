@@ -627,35 +627,33 @@ public class ComputeWindow extends javax.swing.JDialog {
    * Save computed as HTML
    */
   private void saveHTML(String title, File file, JTable table) throws Exception {
-    java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file));
+    try (java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file))) {
 
-    saveHTMLHeader(ofl, title, table);
+      saveHTMLHeader(ofl, title, table);
 
-    // Save all other lines
-    DefaultTableModel model = (DefaultTableModel) table.getModel();
-    int emptyRow = -1;
-    int finalRow = model.getRowCount() - 1;
-    for (int i = 0; i < model.getRowCount(); i++) {
-      if (i != emptyRow) {
-        ofl.write("<tr" + ((i == finalRow) ? " class=\"finalRow\"" : "") + ">");
-        for (int n = 0; n < model.getColumnCount(); n++) {
-          if ((n == 1) || (n == 7) || (n == 8) || (n == 15))
-            ofl.write("<td class=\"left\">");
-          else
-            ofl.write("<td>");
-          String s = (String) model.getValueAt(i, n);
-          if (n != 15)
-            s = spaces2nbsp(s);
-          ofl.write(s + "</td>");
+      // Save all other lines
+      DefaultTableModel model = (DefaultTableModel) table.getModel();
+      int emptyRow = -1;
+      int finalRow = model.getRowCount() - 1;
+      for (int i = 0; i < model.getRowCount(); i++) {
+        if (i != emptyRow) {
+          ofl.write("<tr" + ((i == finalRow) ? " class=\"finalRow\"" : "") + ">");
+          for (int n = 0; n < model.getColumnCount(); n++) {
+            if ((n == 1) || (n == 7) || (n == 8) || (n == 15))
+              ofl.write("<td class=\"left\">");
+            else
+              ofl.write("<td>");
+            String s = (String) model.getValueAt(i, n);
+            if (n != 15)
+              s = spaces2nbsp(s);
+            ofl.write(s + "</td>");
+          }
+          ofl.println("</tr>");
         }
-        ofl.println("</tr>");
       }
+
+      ofl.println("</body></html>");
     }
-
-    ofl.println("</body></html>");
-
-    ofl.close();
-
   }
 
   /**

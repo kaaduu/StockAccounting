@@ -2548,22 +2548,22 @@ public class MainWindow extends javax.swing.JFrame {
         transactions.exportFIO(file);
 
         // Convert just created exportFIO from utf-8 to Windows-1250
-        FileInputStream input = new FileInputStream(file);
-        InputStreamReader reader = new InputStreamReader(input, "utf-8");
-        // create temporary file
         File destinationFile = File.createTempFile("temp", ".csv");
-        // System.out.println(destinationFile.getAbsolutePath());
-
-        FileOutputStream output = new FileOutputStream(destinationFile);
-        OutputStreamWriter writer = new OutputStreamWriter(output, "Windows-1250");
-
-        int read = reader.read();
-        while (read != -1) {
-          writer.write(read);
-          read = reader.read();
+        
+        try (FileInputStream input = new FileInputStream(file);
+             InputStreamReader reader = new InputStreamReader(input, "utf-8");
+             FileOutputStream output = new FileOutputStream(destinationFile);
+             OutputStreamWriter writer = new OutputStreamWriter(output, "Windows-1250");
+             java.io.BufferedReader bufferedReader = new java.io.BufferedReader(reader);
+             java.io.BufferedWriter bufferedWriter = new java.io.BufferedWriter(writer)) {
+          
+          String line;
+          while ((line = bufferedReader.readLine()) != null) {
+            bufferedWriter.write(line);
+            bufferedWriter.newLine();
+          }
         }
-        reader.close();
-        writer.close();
+        
         // Move temporary converted file as original
         Files.move(Paths.get(destinationFile.toString()), Paths.get(file.toString()),
             StandardCopyOption.REPLACE_EXISTING);
