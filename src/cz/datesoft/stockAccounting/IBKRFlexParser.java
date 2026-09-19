@@ -1792,8 +1792,8 @@ public class IBKRFlexParser {
 
             // Essential fields
             row.ibOrderId = fields[COL_IB_ORDER_ID].trim();
-            row.quantity = parseDouble(fields[COL_QUANTITY]);
-            row.price = parseDouble(fields[COL_PRICE]);
+            row.quantity = NumberParser.parseDouble(fields[COL_QUANTITY]);
+            row.price = NumberParser.parseDouble(fields[COL_PRICE]);
             row.commission = (COL_COMMISSION >= 0 && COL_COMMISSION < fields.length)
                     ? parseDecimal(fields[COL_COMMISSION])
                     : BigDecimal.ZERO; // Keep original sign
@@ -1814,7 +1814,7 @@ public class IBKRFlexParser {
 
             // Multiplier
             double multiplier = (COL_MULTIPLIER >= 0 && COL_MULTIPLIER < fields.length)
-                    ? parseDouble(fields[COL_MULTIPLIER])
+                    ? NumberParser.parseDouble(fields[COL_MULTIPLIER])
                     : 1.0;
             row.quantity *= multiplier;
 
@@ -2173,15 +2173,15 @@ public class IBKRFlexParser {
                 : "";
 
         // Parse raw quantity (may be negative for SELL orders)
-        double rawQuantity = parseDouble(fields[COL_QUANTITY]);
+        double rawQuantity = NumberParser.parseDouble(fields[COL_QUANTITY]);
 
         // Apply multiplier (contract size for options/futures, typically 1 for stocks)
         double multiplier = (COL_MULTIPLIER >= 0 && COL_MULTIPLIER < fields.length)
-                ? parseDouble(fields[COL_MULTIPLIER])
+                ? NumberParser.parseDouble(fields[COL_MULTIPLIER])
                 : 1.0;
         double quantity = rawQuantity * multiplier;
 
-        double price = parseDouble(fields[COL_PRICE]);
+        double price = NumberParser.parseDouble(fields[COL_PRICE]);
 
         String currency = (COL_CURRENCY >= 0 && COL_CURRENCY < fields.length)
                 ? fields[COL_CURRENCY].trim()
@@ -2238,7 +2238,7 @@ public class IBKRFlexParser {
             total = price * amount;
         } else {
             // Sell: use net proceeds if available, otherwise calculate
-            total = (COL_NET_PROCEEDS >= 0 && COL_NET_PROCEEDS < fields.length) ? parseDouble(fields[COL_NET_PROCEEDS])
+            total = (COL_NET_PROCEEDS >= 0 && COL_NET_PROCEEDS < fields.length) ? NumberParser.parseDouble(fields[COL_NET_PROCEEDS])
                     : price * amount;
         }
 
@@ -2401,7 +2401,7 @@ public class IBKRFlexParser {
                 ticker = forcedTicker;
             }
 
-            double amount = parseDouble(fields[COL_CTRN_AMOUNT]);
+            double amount = NumberParser.parseDouble(fields[COL_CTRN_AMOUNT]);
             if (amount == 0.0) {
                 return null;
             }
@@ -2564,7 +2564,7 @@ public class IBKRFlexParser {
         r.dateTimeStr = fields[COL_FXTR_DATETIME] != null ? fields[COL_FXTR_DATETIME].trim() : "";
         r.fxCurrency = fields[COL_FXTR_FX_CURRENCY] != null ? fields[COL_FXTR_FX_CURRENCY].trim() : "";
         r.activityDescription = desc;
-        r.quantity = parseDouble(fields[COL_FXTR_QUANTITY]);
+        r.quantity = NumberParser.parseDouble(fields[COL_FXTR_QUANTITY]);
         if (r.dateTimeStr.isEmpty() || r.fxCurrency.isEmpty())
             return;
         if (r.quantity == 0.0)
@@ -2835,7 +2835,7 @@ public class IBKRFlexParser {
         // Extract share change from Quantity column (index 33)
         // Negative = shares removed (old ticker, e.g., CODX.OLD: -1370)
         // Positive = shares added (new ticker, e.g., CODX: +45.6667)
-        double shareChange = parseDouble(fields[33]);
+        double shareChange = NumberParser.parseDouble(fields[33]);
 
         if (shareChange == 0) {
             logger.fine("Skipping corporate action with zero share change for " + ticker);
@@ -2931,19 +2931,6 @@ public class IBKRFlexParser {
                 " " + amount + " shares (Code: " + code + ")");
 
         return t;
-    }
-
-    private double parseDouble(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return 0.0;
-        }
-
-        try {
-            String cleaned = value.replaceAll("[^0-9.-]", "");
-            return Double.parseDouble(cleaned);
-        } catch (NumberFormatException e) {
-            return 0.0;
-        }
     }
 
     /**
@@ -3548,7 +3535,7 @@ public class IBKRFlexParser {
             r.type = (COL_CTRN_TYPE >= 0 && COL_CTRN_TYPE < fields.length) ? fields[COL_CTRN_TYPE].trim() : "";
             r.symbol = (COL_SYMBOL >= 0 && COL_SYMBOL < fields.length) ? fields[COL_SYMBOL].trim() : "";
             r.description = (COL_NAME >= 0 && COL_NAME < fields.length) ? fields[COL_NAME].trim() : "";
-            r.amount = (COL_CTRN_AMOUNT >= 0 && COL_CTRN_AMOUNT < fields.length) ? parseDouble(fields[COL_CTRN_AMOUNT])
+            r.amount = (COL_CTRN_AMOUNT >= 0 && COL_CTRN_AMOUNT < fields.length) ? NumberParser.parseDouble(fields[COL_CTRN_AMOUNT])
                     : 0.0;
             r.currency = (COL_CURRENCY >= 0 && COL_CURRENCY < fields.length) ? fields[COL_CURRENCY].trim() : "CZK";
             r.dateTimeStr = (COL_CTRN_DATETIME >= 0 && COL_CTRN_DATETIME < fields.length)

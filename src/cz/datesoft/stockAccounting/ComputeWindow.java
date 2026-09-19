@@ -1359,7 +1359,7 @@ public class ComputeWindow extends javax.swing.JDialog {
           // 6: Otevření CZK (Expense)
           String expStr = val(model, r, 6);
           ofl.println("<td class=\"align-right\">" + expStr + "</td>");
-          sumExpense += parseDouble(expStr);
+          sumExpense += NumberParser.parseDouble(expStr);
 
           // 7: Zavřeno
           ofl.println("<td class=\"center\">" + val(model, r, 7) + "</td>");
@@ -1375,11 +1375,11 @@ public class ComputeWindow extends javax.swing.JDialog {
           // 13: Zavření CZK (Income)
           String incStr = val(model, r, 13);
           ofl.println("<td class=\"align-right\">" + incStr + "</td>");
-          sumIncome += parseDouble(incStr);
+          sumIncome += NumberParser.parseDouble(incStr);
 
           // 14: Výsledek CZK (Profit)
           String profitStr = val(model, r, 14);
-          double profit = parseDouble(profitStr);
+          double profit = NumberParser.parseDouble(profitStr);
           String colorClass = profit < 0 ? "red" : "green";
           ofl.println("<td class=\"align-right bold " + colorClass + "\">" + profitStr + "</td>");
           sumProfit += profit;
@@ -2240,67 +2240,6 @@ public class ComputeWindow extends javax.swing.JDialog {
       ofl.println("</tr>");
 
       ofl.println("</tbody></table>");
-    }
-  }
-
-  private double parseDouble(String s) {
-    if (s == null)
-      return 0.0;
-    s = s.trim();
-    if (s.isEmpty() || s.equals("-"))
-      return 0.0;
-
-    try {
-      boolean negative = false;
-
-      // Normalize minus signs (Unicode variants to standard ASCII minus)
-      // \u2212 (Minus Sign), \u2013 (En Dash), \u2014 (Em Dash)
-      s = s.replace('\u2212', '-').replace('\u2013', '-').replace('\u2014', '-');
-
-      // Normalize spaces (remove standard spaces, NBSP \u00A0, Narrow NBSP \u202F)
-      s = s.replace(" ", "").replace("\u00A0", "").replace("\u202F", "");
-
-      // Negative values can be encoded as (123.45)
-      if (s.startsWith("(") && s.endsWith(")") && s.length() > 2) {
-        negative = true;
-        s = s.substring(1, s.length() - 1);
-      }
-
-      if (s.startsWith("-")) {
-        negative = true;
-        s = s.substring(1);
-      } else if (s.startsWith("+")) {
-        s = s.substring(1);
-      }
-
-      // Normalize thousands/decimal separators.
-      // Supports:
-      // - Czech: 123 456,78 -> after space removal: 123456,78
-      // - US: 123,456.78
-      // - EU: 123.456,78
-      int lastComma = s.lastIndexOf(',');
-      int lastDot = s.lastIndexOf('.');
-      if (lastComma >= 0 && lastDot >= 0) {
-        if (lastDot > lastComma) {
-          // Decimal '.' and ',' are thousands
-          s = s.replace(",", "");
-        } else {
-          // Decimal ',' and '.' are thousands
-          s = s.replace(".", "");
-          s = s.replace(',', '.');
-        }
-      } else if (lastComma >= 0) {
-        // Only comma -> decimal comma
-        s = s.replace(',', '.');
-      }
-
-      double v = Double.parseDouble(s);
-      return negative ? -v : v;
-    } catch (NumberFormatException e) {
-      // If parsing fails, return 0.0 which maps to green (neutral/gain)
-      // Ideally we should log this or output visual warning, but 0.0 is safe fallback
-      System.err.println("Failed to parse double: '" + s + "'");
-      return 0.0;
     }
   }
 

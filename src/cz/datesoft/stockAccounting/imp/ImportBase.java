@@ -9,6 +9,7 @@
 
 package cz.datesoft.stockAccounting.imp;
 
+import cz.datesoft.stockAccounting.NumberParser;
 import java.util.Vector;
 import java.io.File;
 import java.util.Date;
@@ -169,13 +170,7 @@ public abstract class ImportBase
    */
   protected static double parseNumber(String value)
   {
-    // Remove all non-numeric and non-comma characters
-    String s = value.replaceAll("[^0-9,.]+", "");
-    
-    if (s.length() == 0) return 0; // Empty string is 0
-    
-    // Convert comma to dot and return
-    return Double.parseDouble(s.replace(',','.'));
+    return NumberParser.parseDouble(value);
   }
   
   /**

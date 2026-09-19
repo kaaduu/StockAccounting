@@ -187,14 +187,7 @@ public class AccountStateWindow extends javax.swing.JDialog {
       return 0.0;
     if (o instanceof Number)
       return ((Number) o).doubleValue();
-    try {
-      String s = o.toString().trim().replace(',', '.');
-      if (s.isEmpty())
-        return 0.0;
-      return Double.parseDouble(s);
-    } catch (Exception e) {
-      return 0.0;
-    }
+    return NumberParser.parseDouble(o.toString());
   }
 
   /**
