@@ -10,11 +10,11 @@
 
 | Phase | Tasks | Completed | Status |
 |-------|-------|-----------|--------|
-| **Phase 1: Critical Bugs** | 5 | 0 | ⏳ Not Started |
+| **Phase 1: Critical Bugs** | 5 | 2 | 🔄 In Progress |
 | **Phase 2: Dead Code Removal** | 6 | 0 | ⏳ Not Started |
 | **Phase 3: Structural Improvements** | 4 | 0 | ⏳ Not Started |
-| **Phase 4: Build & Repo Hygiene** | 8 | 0 | ⏳ Not Started |
-| **TOTAL** | **23** | **0** | **0%** |
+| **Phase 4: Build & Repo Hygiene** | 8 | 1 | 🔄 In Progress |
+| **TOTAL** | **23** | **3** | **13%** |
 
 ---
 
@@ -28,15 +28,15 @@ These bugs affect data integrity, file persistence, and financial calculations. 
 - [x] **Fix:** Implement actual JSON serialization in `saveCacheIndex()`, parse it in `loadCacheFromDisk()`
 - [x] **Test:** `CacheRoundTripTest` — save year → new instance → `hasCachedYear()` returns true
 - [x] **Effort:** 2h
-- [x] **Status:** ⏳ Pending
+- [x] **Status:** ✅ Done (commit a29ffe0)
 
 ### 1.2 Fix Trading212ReportCache write-only persistence ✅
 - [x] **Issue:** `loadCacheFromDisk()` reads file but never parses JSON
 - [x] **Files:** `Trading212ReportCache.java:97-124`
-- [x] **Fix:** Parse the JSON that `saveCacheToDisk()` writes
+- [x] **Fix:** Parse the JSON that `saveCacheToDisk()` writes using org.json
 - [x] **Test:** Same `CacheRoundTripTest`
 - [x] **Effort:** 1h
-- [x] **Status:** ⏳ Pending
+- [x] **Status:** ✅ Done (commit a29ffe0)
 
 ### 1.3 Unify NumberParser (5 conflicting implementations) ✅
 - [x] **Issue:** `ComputeWindow.parseDouble`, `Trading212CsvParser.parseDouble`, `IBKRFlexParser.parseDouble`, `AccountStateWindow.parseDouble`, `ImportBase.parseNumber` all disagree
@@ -206,7 +206,7 @@ These reduce duplication and improve maintainability. **Medium priority.**
 - [x] **Issue:** `ComputeWindow.java` has uncommitted changes (+47/-11) on `master` — adds `getColumnClass` override, switches `addRow(new String[])` → `addRow(new Object[])`, adds `rightTotalNative` renderer
 - [x] **Fix:** Commit on `fix/code-review-cleanup` branch
 - [x] **Effort:** 5 min
-- [x] **Status:** ⏳ Pending
+- [x] **Status:** ✅ Done (commit a29ffe0)
 
 ---
 
@@ -249,8 +249,9 @@ After each phase, verify:
 | Date | Task | Time Spent | Notes |
 |------|------|------------|-------|
 | 2026-09-19 | Plan created | 1h | Initial review and plan authoring |
+| 2026-09-19 | Phase 1.1 + 1.2 + 4.8 | 2h | Cache persistence fixes + ComputeWindow commit. Tests: IBKRFlexCacheTest (4), Trading212ReportCacheTest (2). Commit: a29ffe0 |
 | | | | |
 
 ---
 
-**Next action:** Start with Phase 1.1 (IBKRFlexCache fix) + write `CacheRoundTripTest` first.
+**Next action:** Continue with Phase 1.3 (unify NumberParser) + write `NumberParsingTest` first.
