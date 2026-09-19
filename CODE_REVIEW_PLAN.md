@@ -11,10 +11,10 @@
 | Phase | Tasks | Completed | Status |
 |-------|-------|-----------|--------|
 | **Phase 1: Critical Bugs** | 5 | 5 | ✅ Complete |
-| **Phase 2: Dead Code Removal** | 6 | 0 | ⏳ Not Started |
+| **Phase 2: Dead Code Removal** | 6 | 3 | 🔄 In Progress |
 | **Phase 3: Structural Improvements** | 4 | 0 | ⏳ Not Started |
-| **Phase 4: Build & Repo Hygiene** | 8 | 1 | 🔄 In Progress |
-| **TOTAL** | **23** | **6** | **26%** |
+| **Phase 4: Build & Repo Hygiene** | 8 | 2 | 🔄 In Progress |
+| **TOTAL** | **23** | **10** | **43%** |
 
 ---
 
@@ -85,7 +85,7 @@ These bugs affect data integrity, file persistence, and financial calculations. 
 - [x] **Files:** `CloudBackupData.java` (63 lines, 10 accessors)
 - [x] **Issue:** Referenced only by its own file and `CHANGES.md:168`; not used by `CloudSyncManager`, not Gson-serialised
 - [x] **Effort:** 15 min
-- [x] **Status:** ⏳ Pending
+- [x] **Status:** ✅ Done (commit eca3d5f)
 
 ### 2.3 Delete dead fields (14 total) ✅
 - [x] `ImportWindow.cbIBKRFlexUpdateDups` — declared but never instantiated (functional gap: IBKR Flex "update duplicates" has no widget)
@@ -108,13 +108,13 @@ These bugs affect data integrity, file persistence, and financial calculations. 
 - [x] `tools/__pycache__/` — should be gitignored
 - [x] `.codex` — empty file, mode `-r--r--r--`
 - [x] **Effort:** 15 min
-- [x] **Status:** ⏳ Pending
+- [x] **Status:** ✅ Done (commit eca3d5f)
 
 ### 2.6 Delete RateManagementDialog.java.backup ✅
 - [x] **Issue:** 40,941 bytes shipped inside production jar (verified in `build/libs/StockAccounting.jar`)
 - [x] **Fix:** Delete file, add `exclude '**/*.backup'` to `build.gradle:38`
 - [x] **Effort:** 15 min
-- [x] **Status:** ⏳ Pending
+- [x] **Status:** ✅ Done (commit eca3d5f)
 
 ---
 
@@ -187,7 +187,7 @@ These reduce duplication and improve maintainability. **Medium priority.**
 - [x] **Issue:** 137 KB of NetBeans `.form` files shipped in jar (`MainWindow.form`, `SettingsWindow.form`, etc.) — never loaded at runtime
 - [x] **Fix:** Add `exclude '**/*.form'` to `build.gradle:38`
 - [x] **Effort:** 10 min
-- [x] **Status:** ⏳ Pending
+- [x] **Status:** ✅ Done (commit eca3d5f)
 
 ### 4.6 Route 69 swallowed exceptions through AppLog ✅
 - [x] **Issue:** Empty or comment-only `catch` bodies. Worst: `SettingsWindow` (14), `ImportWindow` (9), `MainWindow` (8), `ComputeWindow` (6), `TransactionSet` (6)
@@ -252,8 +252,9 @@ After each phase, verify:
 | 2026-09-19 | Phase 1.1 + 1.2 + 4.8 | 2h | Cache persistence fixes + ComputeWindow commit. Tests: IBKRFlexCacheTest (4), Trading212ReportCacheTest (2). Commit: a29ffe0 |
 | 2026-09-19 | Phase 1.3 | 2h | Unified 5 parseDouble implementations into NumberParser. Fixed critical bug in IBKRFlexParser (Czech locale). Tests: NumberParsingTest (8). Commit: 0e5cfc4 |
 | 2026-09-19 | Phase 1.4 + 1.5 | 1h | Fixed resource leaks in saveHTML and FIO export. Added try-with-resources + buffered I/O. Commit: 1cc4fc8 |
+| 2026-09-19 | Phase 2.2 + 2.5 + 2.6 + 4.5 | 1h | Deleted orphan files (CloudBackupData, TestRenderer, VerifyIbkrLabel, .backup, __pycache__). Excluded .form and .backup from jar. 1,146 lines deleted. Commit: eca3d5f |
 | | | | |
 
 ---
 
-**Next action:** Phase 1 complete! 🎉 Continue with Phase 2 (Dead Code Removal) — start with task 2.1 (delete 93 dead methods, 1,172 lines).
+**Next action:** Continue with Phase 2.1 (delete 93 dead methods, 1,172 lines) — the largest single task. This requires careful verification that methods are truly unused.
