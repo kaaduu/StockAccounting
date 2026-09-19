@@ -10,11 +10,11 @@
 
 | Phase | Tasks | Completed | Status |
 |-------|-------|-----------|--------|
-| **Phase 1: Critical Bugs** | 5 | 2 | 🔄 In Progress |
+| **Phase 1: Critical Bugs** | 5 | 3 | 🔄 In Progress |
 | **Phase 2: Dead Code Removal** | 6 | 0 | ⏳ Not Started |
 | **Phase 3: Structural Improvements** | 4 | 0 | ⏳ Not Started |
 | **Phase 4: Build & Repo Hygiene** | 8 | 1 | 🔄 In Progress |
-| **TOTAL** | **23** | **3** | **13%** |
+| **TOTAL** | **23** | **4** | **17%** |
 
 ---
 
@@ -42,9 +42,9 @@ These bugs affect data integrity, file persistence, and financial calculations. 
 - [x] **Issue:** `ComputeWindow.parseDouble`, `Trading212CsvParser.parseDouble`, `IBKRFlexParser.parseDouble`, `AccountStateWindow.parseDouble`, `ImportBase.parseNumber` all disagree
 - [x] **Risk:** Czech `"1234,56"` → IBKRFlexParser drops comma → `"123456"` (1000× wrong)
 - [x] **Fix:** Extract one `NumberParser` class using `ComputeWindow`'s robust logic (handles Unicode minus, NBSP, parentheses)
-- [x] **Test:** `NumberParsingTest` — 20 inputs including `"1 234,56"`, `"(1 234.56)"`, `"−12,34"` (U+2212), NBSP variants
+- [x] **Test:** `NumberParsingTest` — 8 testů including `"1 234,56"`, `"(1 234.56)"`, `"−12,34"` (U+2212), NBSP variants
 - [x] **Effort:** 3h
-- [x] **Status:** ⏳ Pending
+- [x] **Status:** ✅ Done (commit 0e5cfc4)
 
 ### 1.4 Fix ComputeWindow.saveHTML() resource leak ✅
 - [x] **Issue:** `PrintWriter ofl = new PrintWriter(new FileWriter(file))` with no try-with-resources
@@ -250,8 +250,9 @@ After each phase, verify:
 |------|------|------------|-------|
 | 2026-09-19 | Plan created | 1h | Initial review and plan authoring |
 | 2026-09-19 | Phase 1.1 + 1.2 + 4.8 | 2h | Cache persistence fixes + ComputeWindow commit. Tests: IBKRFlexCacheTest (4), Trading212ReportCacheTest (2). Commit: a29ffe0 |
+| 2026-09-19 | Phase 1.3 | 2h | Unified 5 parseDouble implementations into NumberParser. Fixed critical bug in IBKRFlexParser (Czech locale). Tests: NumberParsingTest (8). Commit: 0e5cfc4 |
 | | | | |
 
 ---
 
-**Next action:** Continue with Phase 1.3 (unify NumberParser) + write `NumberParsingTest` first.
+**Next action:** Continue with Phase 1.4 (fix ComputeWindow.saveHTML() resource leak) + Phase 1.5 (fix MainWindow FIO export char-by-char transcoding + leak).
