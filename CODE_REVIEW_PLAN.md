@@ -10,11 +10,11 @@
 
 | Phase | Tasks | Completed | Status |
 |-------|-------|-----------|--------|
-| **Phase 1: Critical Bugs** | 5 | 3 | 🔄 In Progress |
+| **Phase 1: Critical Bugs** | 5 | 5 | ✅ Complete |
 | **Phase 2: Dead Code Removal** | 6 | 0 | ⏳ Not Started |
 | **Phase 3: Structural Improvements** | 4 | 0 | ⏳ Not Started |
 | **Phase 4: Build & Repo Hygiene** | 8 | 1 | 🔄 In Progress |
-| **TOTAL** | **23** | **4** | **17%** |
+| **TOTAL** | **23** | **6** | **26%** |
 
 ---
 
@@ -51,13 +51,13 @@ These bugs affect data integrity, file persistence, and financial calculations. 
 - [x] **Files:** `ComputeWindow.java:630`
 - [x] **Fix:** Wrap in try-with-resources (cf. `:678` which already does it correctly)
 - [x] **Effort:** 15 min
-- [x] **Status:** ⏳ Pending
+- [x] **Status:** ✅ Done (commit 1cc4fc8)
 
 ### 1.5 Fix MainWindow FIO export char-by-char transcoding + leak ✅
 - [x] **Issue:** `MainWindow.java:2551-2566` — manual char-by-char UTF-8→Windows-1250 conversion, no finally block
-- [x] **Fix:** Use try-with-resources, buffered I/O, or write directly in Windows-1250
+- [x] **Fix:** Use try-with-resources, buffered I/O (readLine/newLine instead of character-by-character)
 - [x] **Effort:** 30 min
-- [x] **Status:** ⏳ Pending
+- [x] **Status:** ✅ Done (commit 1cc4fc8)
 
 ---
 
@@ -251,8 +251,9 @@ After each phase, verify:
 | 2026-09-19 | Plan created | 1h | Initial review and plan authoring |
 | 2026-09-19 | Phase 1.1 + 1.2 + 4.8 | 2h | Cache persistence fixes + ComputeWindow commit. Tests: IBKRFlexCacheTest (4), Trading212ReportCacheTest (2). Commit: a29ffe0 |
 | 2026-09-19 | Phase 1.3 | 2h | Unified 5 parseDouble implementations into NumberParser. Fixed critical bug in IBKRFlexParser (Czech locale). Tests: NumberParsingTest (8). Commit: 0e5cfc4 |
+| 2026-09-19 | Phase 1.4 + 1.5 | 1h | Fixed resource leaks in saveHTML and FIO export. Added try-with-resources + buffered I/O. Commit: 1cc4fc8 |
 | | | | |
 
 ---
 
-**Next action:** Continue with Phase 1.4 (fix ComputeWindow.saveHTML() resource leak) + Phase 1.5 (fix MainWindow FIO export char-by-char transcoding + leak).
+**Next action:** Phase 1 complete! 🎉 Continue with Phase 2 (Dead Code Removal) — start with task 2.1 (delete 93 dead methods, 1,172 lines).
