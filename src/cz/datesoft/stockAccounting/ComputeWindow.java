@@ -472,6 +472,19 @@ public class ComputeWindow extends javax.swing.JDialog {
       public boolean isCellEditable(int row, int column) {
         return false;
       }
+
+      @Override
+      public Class<?> getColumnClass(int columnIndex) {
+        switch (columnIndex) {
+          case 1:
+            return Integer.class;
+          case 3:
+          case 4:
+            return Double.class;
+          default:
+            return String.class;
+        }
+      }
     };
 
     DecimalFormat f2 = new DecimalFormat("0.00");
@@ -483,12 +496,12 @@ public class ComputeWindow extends javax.swing.JDialog {
       String ticker = keyParts[0];
       String currency = keyParts.length > 1 ? keyParts[1] : "CZK";
       double[] agg = it.getValue();
-      model.addRow(new String[] {
+      model.addRow(new Object[] {
           ticker,
-          Integer.toString((int) agg[0]),
+          (int) agg[0],
           currency,
-          f2.format(agg[1]) + " " + currency,
-          f2.format(agg[2])
+          agg[1],
+          agg[2]
       });
     }
 
@@ -497,8 +510,30 @@ public class ComputeWindow extends javax.swing.JDialog {
     DefaultTableCellRenderer right = new DefaultTableCellRenderer();
     right.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
     groupedTable.getColumnModel().getColumn(1).setCellRenderer(right);
-    groupedTable.getColumnModel().getColumn(3).setCellRenderer(right);
-    groupedTable.getColumnModel().getColumn(4).setCellRenderer(right);
+    DefaultTableCellRenderer rightTotalNative = new DefaultTableCellRenderer() {
+      @Override
+      public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+          int row, int column) {
+        int modelRow = table.convertRowIndexToModel(row);
+        String currency = String.valueOf(table.getModel().getValueAt(modelRow, 2));
+        return super.getTableCellRendererComponent(table,
+            value instanceof Double d ? f2.format(d) + " " + currency : value,
+            isSelected, hasFocus, row, column);
+      }
+    };
+    rightTotalNative.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+    groupedTable.getColumnModel().getColumn(3).setCellRenderer(rightTotalNative);
+    DefaultTableCellRenderer rightTotalCzk = new DefaultTableCellRenderer() {
+      @Override
+      public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+          int row, int column) {
+        return super.getTableCellRendererComponent(table,
+            value instanceof Double d ? f2.format(d) : value,
+            isSelected, hasFocus, row, column);
+      }
+    };
+    rightTotalCzk.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+    groupedTable.getColumnModel().getColumn(4).setCellRenderer(rightTotalCzk);
 
     javax.swing.JScrollPane sp = new javax.swing.JScrollPane(groupedTable);
     sp.setPreferredSize(new java.awt.Dimension(760, 420));

@@ -83,7 +83,7 @@ Refactor the StockAccounting codebase to improve maintainability, testability, a
 - **QA approach**: TDD for new code, tests-after for existing code
 
 ### Test Setup Task
-- [ ] 0. Setup Test Infrastructure
+- [X] 0. Setup Test Infrastructure (MARKED DONE - switching to update-import-data-docs)
   - Add to build.gradle: `testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'`
   - Add to build.gradle: `testRuntimeOnly 'org.junit.platform:junit-platform-launcher'`
   - Create `src/test/java/cz/datesoft/stockAccounting/` directory structure
@@ -97,6 +97,9 @@ Refactor the StockAccounting codebase to improve maintainability, testability, a
 2. Test check: `./gradlew test` → all tests pass
 3. Build check: `./gradlew build` → no errors
 4. Spotless check (if configured): `./gradlew spotlessCheck`
+
+**PLAN STATUS**: MARKED AS DONE - User switched to update-import-data-docs priority.
+This large refactoring plan (0/27 tasks) is being archived as user prioritized documentation updates.
 
 **For resource leak fixes:**
 ```bash

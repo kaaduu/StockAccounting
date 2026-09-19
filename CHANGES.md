@@ -4,6 +4,12 @@
 
 Všechny významné změny projektu StockAccounting budou zdokumentovány v tomto souboru.
 
+## [Souhrn tickerů: číselné řazení Total a Total CZK] - 2026-09-03
+
+### Opraveno
+- V dialogu `Souhrn tickerů` (tlačítko `Souhrn tickerů` u CP i derivátů) řadily sloupce `Total`, `Total CZK` i `Počet realizovaných obchodů` podle textu, takže např. `999.00` se zařadilo za `1 000.00`.
+- Tyto sloupce nyní obsahují skutečná čísla a řadí se číselně; zobrazení zůstává beze změny (formát `0.00` s oddělovači tisíců, u `Total` i s měnou).
+
 ## [Stav účtu: CP po transformaci ve stejném čase] - 2026-08-04
 
 ### Opraveno
