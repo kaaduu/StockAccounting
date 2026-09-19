@@ -1711,50 +1711,6 @@ public class Settings {
     OVERWRITE, SKIP, ASK_USER
   }
 
-  /**
-   * Show enhanced management dialog for daily rates
-   */
-  public static void showDeleteDailyRatesDialog(java.awt.Component parent) {
-    // This will be replaced by the new RateManagementDialog
-    // For now, keep the old implementation as fallback
-    int result = javax.swing.JOptionPane.showConfirmDialog(
-        parent,
-        "Opravdu chcete smazat všechny uložené denní kurzy?",
-        "Smazat denní kurzy",
-        javax.swing.JOptionPane.YES_NO_OPTION,
-        javax.swing.JOptionPane.WARNING_MESSAGE);
-
-    if (result == javax.swing.JOptionPane.YES_OPTION) {
-      try {
-        java.util.prefs.Preferences p = java.util.prefs.Preferences.userNodeForPackage(Settings.class);
-        String[] keys = p.keys();
-        int deletedCount = 0;
-
-        for (String key : keys) {
-          if (key.startsWith("dailyRate.")) {
-            p.remove(key);
-            deletedCount++;
-          }
-        }
-
-        if (dailyRates != null) {
-          dailyRates.clear();
-        }
-
-        javax.swing.JOptionPane.showMessageDialog(
-            parent,
-            "Smazáno " + deletedCount + " denních kurzů.",
-            "Hotovo",
-            javax.swing.JOptionPane.INFORMATION_MESSAGE);
-      } catch (Exception e) {
-        javax.swing.JOptionPane.showMessageDialog(
-            parent,
-            "Chyba při mazání denních kurzů: " + e.getMessage(),
-            "Chyba",
-            javax.swing.JOptionPane.ERROR_MESSAGE);
-      }
-    }
-  }
 
   public static java.util.Map<String, Object> exportAllSettings() {
     java.util.Map<String, Object> settings = new java.util.HashMap<String, Object>();

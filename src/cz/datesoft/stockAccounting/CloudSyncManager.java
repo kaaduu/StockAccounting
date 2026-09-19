@@ -107,37 +107,6 @@ public class CloudSyncManager {
     }
   }
 
-  public SyncResult backupTransactionFile(String filePath, char[] password) {
-    try {
-      if (!isAuthenticated()) {
-        initialize();
-      }
-
-      Path path = Paths.get(filePath);
-      if (!Files.exists(path)) {
-        return new SyncResult(false, "Soubor neexistuje: " + filePath);
-      }
-
-      byte[] fileData = Files.readAllBytes(path);
-      byte[] encryptedData = EncryptionUtils.encryptData(fileData, password);
-
-      String filename = BACKUP_FILENAME_PREFIX + path.getFileName().toString() + "-" + generateTimestamp() + BACKUP_FILENAME_SUFFIX;
-
-      String existingFileId = googleDriveClient.findFileByName(filename);
-      if (existingFileId != null) {
-        googleDriveClient.updateFile(existingFileId, encryptedData, "application/octet-stream");
-      } else {
-        googleDriveClient.uploadFile(filename, encryptedData, "application/octet-stream");
-      }
-
-      Settings.setLastCloudSyncTimestamp(System.currentTimeMillis());
-      return new SyncResult(true, "Soubor úspěšně odeslán do Google Drive (" + filename + ")");
-
-    } catch (Exception e) {
-      AppLog.error("Chyba při záloze souboru: " + e.getMessage(), e);
-      return new SyncResult(false, "Chyba při záloze souboru: " + e.getMessage());
-    }
-  }
 
   public SyncResult checkSyncStatus() {
     try {

@@ -591,37 +591,6 @@ public class ComputeWindow extends javax.swing.JDialog {
     ofl.println("</tr>");
   }
 
-  private void saveHTMLHeaderNewTrades(java.io.PrintWriter ofl, String title, javax.swing.JTable tbl) {
-    ofl.println("<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
-        "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">"
-        +
-        "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"cz\" lang=\"cz\"><head><title>" + title + "</title>");
-    ofl.println("<style type=\"text/css\">");
-    ofl.println("body { text-align: center; background-color: white; }");
-    ofl.println("table { border: 1px solid black; border-spacing: 0px; margin-left: auto; margin-right: auto; }");
-    ofl.println("td { border: 1px solid black; padding: 2px; text-align: right; }");
-    ofl.println("th { border: 1px solid black; padding: 2px; background-color: #dddddd; }");
-    ofl.println(".left { text-align: left; }");
-    ofl.println(".finalRow { font-weight: bold; }");
-    ofl.println("</style></head>");
-    ofl.println("<body>");
-    ofl.println("<h1>" + title + "</h1>");
-    ofl.println("<table>");
-
-    // Header line (18 columns): insert Poplatky CZK after open+close Poplatky
-    TableColumnModel cm = tbl.getColumnModel();
-    ofl.println("<tr>");
-    for (int i = 0; i < tbl.getColumnCount(); i++) {
-      ofl.write("<th>" + (String) cm.getColumn(i).getHeaderValue() + "</th>");
-      if (i == 5) {
-        ofl.write("<th>Poplatky CZK (otev.)</th>");
-      }
-      if (i == 12) {
-        ofl.write("<th>Poplatky CZK (zav.)</th>");
-      }
-    }
-    ofl.println("</tr>");
-  }
 
   /**
    * Save computed as HTML
