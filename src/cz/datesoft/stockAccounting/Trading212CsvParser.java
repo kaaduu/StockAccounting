@@ -35,15 +35,10 @@ public class Trading212CsvParser {
     private static final String H_SHARES = "No. of shares";
     private static final String H_PRICE = "Price / share";
     private static final String H_PRICE_CUR = "Currency (Price / share)";
-    private static final String H_EXCHANGE_RATE = "Exchange rate";
-    private static final String H_RESULT = "Result";
-    private static final String H_RESULT_CUR = "Currency (Result)";
     private static final String H_TOTAL = "Total";
     private static final String H_TOTAL_CUR = "Currency (Total)";
     private static final String H_WITHHOLDING = "Withholding tax";
     private static final String H_WITHHOLDING_CUR = "Currency (Withholding tax)";
-    private static final String H_FEE_CONV = "Currency conversion fee";
-    private static final String H_FEE_CONV_CUR = "Currency (Currency conversion fee)";
 
     private java.util.Map<String, Integer> headerIndex;
 

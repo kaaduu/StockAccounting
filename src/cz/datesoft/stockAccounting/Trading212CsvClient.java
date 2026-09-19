@@ -28,7 +28,6 @@ public class Trading212CsvClient {
     private final String authHeader;
 
     // CSV report rate limiting: 1 request per 30 seconds
-    private static final int CSV_RATE_LIMIT_REQUESTS = 1;
     private static final int CSV_RATE_LIMIT_WINDOW_SECONDS = 30;
     private long lastCsvRequestTime = 0;
 

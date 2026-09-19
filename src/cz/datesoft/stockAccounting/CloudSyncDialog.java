@@ -13,7 +13,6 @@ public class CloudSyncDialog extends JDialog {
   private char[] password;
   private JLabel lblStatus;
   private JProgressBar progressBar;
-  private Timer progressTimer;
 
   public CloudSyncDialog(java.awt.Window parent, String title, String message) {
     super(parent, title, Dialog.ModalityType.APPLICATION_MODAL);

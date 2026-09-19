@@ -26,7 +26,6 @@ public class GoogleDriveClient {
   private static final String APPLICATION_NAME = "StockAccounting Cloud Sync";
   private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
   private static final List<String> SCOPES = Collections.singletonList(DriveScopes.DRIVE_APPDATA);
-  private static final String TOKENS_DIRECTORY_PATH = "tokens";
   private static final String APPDATA_FOLDER = "appDataFolder";
 
   private Drive driveService;

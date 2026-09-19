@@ -67,8 +67,6 @@ public abstract class ImportBase
    */
   private HashMap<String, Integer> _columnNames;
   
-  private final CharsetDecoder DECODER_WIN1250 = Charset.forName("Windows-1250").newDecoder();
-  private final CharsetDecoder DECODER_ISO88592 = Charset.forName("ISO-8859-2").newDecoder();
   
   /**
    * Set identity of a column by a number

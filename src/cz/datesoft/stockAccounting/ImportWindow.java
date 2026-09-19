@@ -94,7 +94,6 @@ public class ImportWindow extends javax.swing.JFrame {
 
   // Trading 212 UI components for cache/refresh
   private javax.swing.JButton bRefreshFromApi;
-  private javax.swing.JLabel lblCacheStatus;
 
   // Trading 212: dedicated source buttons (like IBKR Flex)
   private javax.swing.JButton bT212Fetch;
@@ -130,7 +129,6 @@ public class ImportWindow extends javax.swing.JFrame {
   private javax.swing.JCheckBoxMenuItem miIBKRAssetOPT;
   private javax.swing.JCheckBoxMenuItem miIBKRAssetFUT;
   private javax.swing.JCheckBoxMenuItem miIBKRAssetCASH;
-  private javax.swing.JCheckBox cbIBKRFlexUpdateDups; // Update duplicates checkbox (reuse existing)
   private IBKRFlexParser lastIBKRParser = null; // Store parser reference for statistics
   private javax.swing.JLabel lblIbkrFlexCsvInfo = null;
   private javax.swing.JButton bIbkrFlexCsvDetails = null;
