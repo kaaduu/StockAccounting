@@ -2,14 +2,20 @@
 build/
 dist/
 nbproject/private/
-wiki/
 .gradle/
-
-# Gradle build outputs
-build/
 
 # Local datasets / sample exports
 data/
 
 # Local scratch / session notes
 session-ses_uroky.md
+
+# IDE and tool artifacts
+.codegraph/
+.gradle-test/
+.zcode/
+.vscode/
+.codex
+.sisyphus/drafts/
+untitled folder/
+tools/__pycache__/

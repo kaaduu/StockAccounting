@@ -11,10 +11,10 @@
 | Phase | Tasks | Completed | Status |
 |-------|-------|-----------|--------|
 | **Phase 1: Critical Bugs** | 5 | 5 | ✅ Complete |
-| **Phase 2: Dead Code Removal** | 6 | 4 | 🔄 In Progress |
+| **Phase 2: Dead Code Removal** | 6 | 5 | 🔄 In Progress |
 | **Phase 3: Structural Improvements** | 4 | 0 | ⏳ Not Started |
 | **Phase 4: Build & Repo Hygiene** | 8 | 2 | 🔄 In Progress |
-| **TOTAL** | **23** | **11** | **48%** |
+| **TOTAL** | **23** | **12** | **52%** |
 
 ---
 
