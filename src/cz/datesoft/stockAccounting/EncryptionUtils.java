@@ -86,69 +86,6 @@ public class EncryptionUtils {
     }
   }
 
-  public static void encryptStream(InputStream input, OutputStream output, char[] password) throws GeneralSecurityException, IOException {
-    byte[] salt = generateRandomBytes(SALT_LENGTH);
-    byte[] iv = generateRandomBytes(IV_LENGTH);
-    SecretKey key = deriveKey(password, salt);
-
-    output.write(salt);
-    output.write(iv);
-
-    Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-    cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
-
-    byte[] buffer = new byte[4096];
-    int bytesRead;
-    byte[] encryptedBuffer;
-
-    while ((bytesRead = input.read(buffer)) != -1) {
-      encryptedBuffer = cipher.update(buffer, 0, bytesRead);
-      if (encryptedBuffer != null) {
-        output.write(encryptedBuffer);
-      }
-    }
-
-    encryptedBuffer = cipher.doFinal();
-    byte[] finalData = encryptedBuffer;
-    byte[] hmac = computeHMAC(key, salt, iv, finalData);
-    output.write(finalData);
-    output.write(hmac);
-  }
-
-  public static void decryptStream(InputStream input, OutputStream output, char[] password) throws GeneralSecurityException, IOException {
-    byte[] salt = new byte[SALT_LENGTH];
-    byte[] iv = new byte[IV_LENGTH];
-
-    if (input.read(salt) != SALT_LENGTH || input.read(iv) != IV_LENGTH) {
-      throw new GeneralSecurityException("Neplatný formát šifrovaných dat");
-    }
-
-    SecretKey key = deriveKey(password, salt);
-    Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-    cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
-
-    ByteArrayOutputStream ciphertextBuffer = new ByteArrayOutputStream();
-    byte[] buffer = new byte[4096];
-    int bytesRead;
-
-    while (input.available() > HMAC_LENGTH) {
-      bytesRead = input.read(buffer);
-      ciphertextBuffer.write(buffer, 0, bytesRead);
-    }
-
-    byte[] ciphertext = ciphertextBuffer.toByteArray();
-    byte[] hmac = new byte[HMAC_LENGTH];
-    input.read(hmac);
-
-    byte[] computedHmac = computeHMAC(key, salt, iv, ciphertext);
-
-    if (!MessageDigest.isEqual(hmac, computedHmac)) {
-      throw new GeneralSecurityException("Neplatný HMAC - poškozená data nebo špatné heslo");
-    }
-
-    byte[] decryptedData = cipher.doFinal(ciphertext);
-    output.write(decryptedData);
-  }
 
   private static SecretKey deriveKey(char[] password, byte[] salt) throws GeneralSecurityException {
     try {

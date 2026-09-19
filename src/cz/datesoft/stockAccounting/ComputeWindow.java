@@ -472,6 +472,19 @@ public class ComputeWindow extends javax.swing.JDialog {
       public boolean isCellEditable(int row, int column) {
         return false;
       }
+
+      @Override
+      public Class<?> getColumnClass(int columnIndex) {
+        switch (columnIndex) {
+          case 1:
+            return Integer.class;
+          case 3:
+          case 4:
+            return Double.class;
+          default:
+            return String.class;
+        }
+      }
     };
 
     DecimalFormat f2 = new DecimalFormat("0.00");
@@ -483,12 +496,12 @@ public class ComputeWindow extends javax.swing.JDialog {
       String ticker = keyParts[0];
       String currency = keyParts.length > 1 ? keyParts[1] : "CZK";
       double[] agg = it.getValue();
-      model.addRow(new String[] {
+      model.addRow(new Object[] {
           ticker,
-          Integer.toString((int) agg[0]),
+          (int) agg[0],
           currency,
-          f2.format(agg[1]) + " " + currency,
-          f2.format(agg[2])
+          agg[1],
+          agg[2]
       });
     }
 
@@ -497,8 +510,30 @@ public class ComputeWindow extends javax.swing.JDialog {
     DefaultTableCellRenderer right = new DefaultTableCellRenderer();
     right.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
     groupedTable.getColumnModel().getColumn(1).setCellRenderer(right);
-    groupedTable.getColumnModel().getColumn(3).setCellRenderer(right);
-    groupedTable.getColumnModel().getColumn(4).setCellRenderer(right);
+    DefaultTableCellRenderer rightTotalNative = new DefaultTableCellRenderer() {
+      @Override
+      public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+          int row, int column) {
+        int modelRow = table.convertRowIndexToModel(row);
+        String currency = String.valueOf(table.getModel().getValueAt(modelRow, 2));
+        return super.getTableCellRendererComponent(table,
+            value instanceof Double d ? f2.format(d) + " " + currency : value,
+            isSelected, hasFocus, row, column);
+      }
+    };
+    rightTotalNative.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+    groupedTable.getColumnModel().getColumn(3).setCellRenderer(rightTotalNative);
+    DefaultTableCellRenderer rightTotalCzk = new DefaultTableCellRenderer() {
+      @Override
+      public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+          int row, int column) {
+        return super.getTableCellRendererComponent(table,
+            value instanceof Double d ? f2.format(d) : value,
+            isSelected, hasFocus, row, column);
+      }
+    };
+    rightTotalCzk.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+    groupedTable.getColumnModel().getColumn(4).setCellRenderer(rightTotalCzk);
 
     javax.swing.JScrollPane sp = new javax.swing.JScrollPane(groupedTable);
     sp.setPreferredSize(new java.awt.Dimension(760, 420));
@@ -556,71 +591,38 @@ public class ComputeWindow extends javax.swing.JDialog {
     ofl.println("</tr>");
   }
 
-  private void saveHTMLHeaderNewTrades(java.io.PrintWriter ofl, String title, javax.swing.JTable tbl) {
-    ofl.println("<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
-        "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">"
-        +
-        "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"cz\" lang=\"cz\"><head><title>" + title + "</title>");
-    ofl.println("<style type=\"text/css\">");
-    ofl.println("body { text-align: center; background-color: white; }");
-    ofl.println("table { border: 1px solid black; border-spacing: 0px; margin-left: auto; margin-right: auto; }");
-    ofl.println("td { border: 1px solid black; padding: 2px; text-align: right; }");
-    ofl.println("th { border: 1px solid black; padding: 2px; background-color: #dddddd; }");
-    ofl.println(".left { text-align: left; }");
-    ofl.println(".finalRow { font-weight: bold; }");
-    ofl.println("</style></head>");
-    ofl.println("<body>");
-    ofl.println("<h1>" + title + "</h1>");
-    ofl.println("<table>");
-
-    // Header line (18 columns): insert Poplatky CZK after open+close Poplatky
-    TableColumnModel cm = tbl.getColumnModel();
-    ofl.println("<tr>");
-    for (int i = 0; i < tbl.getColumnCount(); i++) {
-      ofl.write("<th>" + (String) cm.getColumn(i).getHeaderValue() + "</th>");
-      if (i == 5) {
-        ofl.write("<th>Poplatky CZK (otev.)</th>");
-      }
-      if (i == 12) {
-        ofl.write("<th>Poplatky CZK (zav.)</th>");
-      }
-    }
-    ofl.println("</tr>");
-  }
 
   /**
    * Save computed as HTML
    */
   private void saveHTML(String title, File file, JTable table) throws Exception {
-    java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file));
+    try (java.io.PrintWriter ofl = new java.io.PrintWriter(new java.io.FileWriter(file))) {
 
-    saveHTMLHeader(ofl, title, table);
+      saveHTMLHeader(ofl, title, table);
 
-    // Save all other lines
-    DefaultTableModel model = (DefaultTableModel) table.getModel();
-    int emptyRow = -1;
-    int finalRow = model.getRowCount() - 1;
-    for (int i = 0; i < model.getRowCount(); i++) {
-      if (i != emptyRow) {
-        ofl.write("<tr" + ((i == finalRow) ? " class=\"finalRow\"" : "") + ">");
-        for (int n = 0; n < model.getColumnCount(); n++) {
-          if ((n == 1) || (n == 7) || (n == 8) || (n == 15))
-            ofl.write("<td class=\"left\">");
-          else
-            ofl.write("<td>");
-          String s = (String) model.getValueAt(i, n);
-          if (n != 15)
-            s = spaces2nbsp(s);
-          ofl.write(s + "</td>");
+      // Save all other lines
+      DefaultTableModel model = (DefaultTableModel) table.getModel();
+      int emptyRow = -1;
+      int finalRow = model.getRowCount() - 1;
+      for (int i = 0; i < model.getRowCount(); i++) {
+        if (i != emptyRow) {
+          ofl.write("<tr" + ((i == finalRow) ? " class=\"finalRow\"" : "") + ">");
+          for (int n = 0; n < model.getColumnCount(); n++) {
+            if ((n == 1) || (n == 7) || (n == 8) || (n == 15))
+              ofl.write("<td class=\"left\">");
+            else
+              ofl.write("<td>");
+            String s = (String) model.getValueAt(i, n);
+            if (n != 15)
+              s = spaces2nbsp(s);
+            ofl.write(s + "</td>");
+          }
+          ofl.println("</tr>");
         }
-        ofl.println("</tr>");
       }
+
+      ofl.println("</body></html>");
     }
-
-    ofl.println("</body></html>");
-
-    ofl.close();
-
   }
 
   /**
@@ -1324,7 +1326,7 @@ public class ComputeWindow extends javax.swing.JDialog {
           // 6: Otevření CZK (Expense)
           String expStr = val(model, r, 6);
           ofl.println("<td class=\"align-right\">" + expStr + "</td>");
-          sumExpense += parseDouble(expStr);
+          sumExpense += NumberParser.parseDouble(expStr);
 
           // 7: Zavřeno
           ofl.println("<td class=\"center\">" + val(model, r, 7) + "</td>");
@@ -1340,11 +1342,11 @@ public class ComputeWindow extends javax.swing.JDialog {
           // 13: Zavření CZK (Income)
           String incStr = val(model, r, 13);
           ofl.println("<td class=\"align-right\">" + incStr + "</td>");
-          sumIncome += parseDouble(incStr);
+          sumIncome += NumberParser.parseDouble(incStr);
 
           // 14: Výsledek CZK (Profit)
           String profitStr = val(model, r, 14);
-          double profit = parseDouble(profitStr);
+          double profit = NumberParser.parseDouble(profitStr);
           String colorClass = profit < 0 ? "red" : "green";
           ofl.println("<td class=\"align-right bold " + colorClass + "\">" + profitStr + "</td>");
           sumProfit += profit;
@@ -2205,67 +2207,6 @@ public class ComputeWindow extends javax.swing.JDialog {
       ofl.println("</tr>");
 
       ofl.println("</tbody></table>");
-    }
-  }
-
-  private double parseDouble(String s) {
-    if (s == null)
-      return 0.0;
-    s = s.trim();
-    if (s.isEmpty() || s.equals("-"))
-      return 0.0;
-
-    try {
-      boolean negative = false;
-
-      // Normalize minus signs (Unicode variants to standard ASCII minus)
-      // \u2212 (Minus Sign), \u2013 (En Dash), \u2014 (Em Dash)
-      s = s.replace('\u2212', '-').replace('\u2013', '-').replace('\u2014', '-');
-
-      // Normalize spaces (remove standard spaces, NBSP \u00A0, Narrow NBSP \u202F)
-      s = s.replace(" ", "").replace("\u00A0", "").replace("\u202F", "");
-
-      // Negative values can be encoded as (123.45)
-      if (s.startsWith("(") && s.endsWith(")") && s.length() > 2) {
-        negative = true;
-        s = s.substring(1, s.length() - 1);
-      }
-
-      if (s.startsWith("-")) {
-        negative = true;
-        s = s.substring(1);
-      } else if (s.startsWith("+")) {
-        s = s.substring(1);
-      }
-
-      // Normalize thousands/decimal separators.
-      // Supports:
-      // - Czech: 123 456,78 -> after space removal: 123456,78
-      // - US: 123,456.78
-      // - EU: 123.456,78
-      int lastComma = s.lastIndexOf(',');
-      int lastDot = s.lastIndexOf('.');
-      if (lastComma >= 0 && lastDot >= 0) {
-        if (lastDot > lastComma) {
-          // Decimal '.' and ',' are thousands
-          s = s.replace(",", "");
-        } else {
-          // Decimal ',' and '.' are thousands
-          s = s.replace(".", "");
-          s = s.replace(',', '.');
-        }
-      } else if (lastComma >= 0) {
-        // Only comma -> decimal comma
-        s = s.replace(',', '.');
-      }
-
-      double v = Double.parseDouble(s);
-      return negative ? -v : v;
-    } catch (NumberFormatException e) {
-      // If parsing fails, return 0.0 which maps to green (neutral/gain)
-      // Ideally we should log this or output visual warning, but 0.0 is safe fallback
-      System.err.println("Failed to parse double: '" + s + "'");
-      return 0.0;
     }
   }
 

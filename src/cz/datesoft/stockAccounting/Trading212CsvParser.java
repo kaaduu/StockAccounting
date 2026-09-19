@@ -35,15 +35,10 @@ public class Trading212CsvParser {
     private static final String H_SHARES = "No. of shares";
     private static final String H_PRICE = "Price / share";
     private static final String H_PRICE_CUR = "Currency (Price / share)";
-    private static final String H_EXCHANGE_RATE = "Exchange rate";
-    private static final String H_RESULT = "Result";
-    private static final String H_RESULT_CUR = "Currency (Result)";
     private static final String H_TOTAL = "Total";
     private static final String H_TOTAL_CUR = "Currency (Total)";
     private static final String H_WITHHOLDING = "Withholding tax";
     private static final String H_WITHHOLDING_CUR = "Currency (Withholding tax)";
-    private static final String H_FEE_CONV = "Currency conversion fee";
-    private static final String H_FEE_CONV_CUR = "Currency (Currency conversion fee)";
 
     private java.util.Map<String, Integer> headerIndex;
 
@@ -204,8 +199,8 @@ public class Trading212CsvParser {
             String ticker = getField(fields, H_TICKER);
             if (ticker.isEmpty()) return null;
 
-            double shares = parseDouble(getField(fields, H_SHARES));
-            double price = parseDouble(getField(fields, H_PRICE));
+            double shares = NumberParser.parseDouble(getField(fields, H_SHARES));
+            double price = NumberParser.parseDouble(getField(fields, H_PRICE));
             String priceCur = getField(fields, H_PRICE_CUR);
 
             if (priceCur.equalsIgnoreCase("GBX")) {
@@ -261,8 +256,8 @@ public class Trading212CsvParser {
             String ticker = getField(fields, H_TICKER);
             if (ticker.isEmpty()) return null;
 
-            double shares = parseDouble(getField(fields, H_SHARES));
-            double divPerShare = parseDouble(getField(fields, H_PRICE));
+            double shares = NumberParser.parseDouble(getField(fields, H_SHARES));
+            double divPerShare = NumberParser.parseDouble(getField(fields, H_PRICE));
             String divCur = getField(fields, H_PRICE_CUR);
             if (divCur.equalsIgnoreCase("GBX")) {
                 divCur = "GBP";
@@ -306,7 +301,7 @@ public class Trading212CsvParser {
             String wtStr = getField(fields, H_WITHHOLDING);
             String wtCur = getField(fields, H_WITHHOLDING_CUR);
             if (!wtStr.isEmpty()) {
-                double wt = parseDouble(wtStr);
+                double wt = NumberParser.parseDouble(wtStr);
                 if (wt != 0.0) {
                     Transaction tax = new Transaction(
                             0,
@@ -345,7 +340,7 @@ public class Trading212CsvParser {
             if (totalStr.isEmpty() || totalCur.isEmpty()) {
                 return null;
             }
-            double amt = parseDouble(totalStr);
+            double amt = NumberParser.parseDouble(totalStr);
             if (amt == 0.0) return null;
 
             int dir = amt < 0 ? Transaction.DIRECTION_INT_PAID : Transaction.DIRECTION_INT_BRUTTO;
@@ -389,7 +384,7 @@ public class Trading212CsvParser {
             String ticker = getField(fields, H_TICKER);
             if (ticker.isEmpty()) return null;
 
-            double shares = parseDouble(getField(fields, H_SHARES));
+            double shares = NumberParser.parseDouble(getField(fields, H_SHARES));
             if (shares == 0.0) return null;
 
             String timeStr = getField(fields, H_TIME);
@@ -472,22 +467,6 @@ public class Trading212CsvParser {
     /**
      * Parse double safely, handling empty strings and invalid formats
      */
-    private double parseDouble(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return 0.0;
-        }
-
-        try {
-            // Remove any non-numeric characters except decimal point, comma and minus.
-            String cleanValue = value.replaceAll("[^0-9,.-]", "").replace(',', '.');
-            if (cleanValue.isEmpty() || cleanValue.equals("-") || cleanValue.equals(".")) return 0.0;
-            return Double.parseDouble(cleanValue);
-        } catch (NumberFormatException e) {
-            logger.warning("Failed to parse double: '" + value + "' - " + e.getMessage());
-            return 0.0;
-        }
-    }
-
     /**
      * Parse date/time from Trading 212 CSV format: "2022-04-06 14:36:21"
      */

@@ -796,60 +796,6 @@ public class IBKRFlexParser {
         return s;
     }
 
-    private RawCorporateActionRow parseCorporateActionRow(String[] fields) {
-        try {
-            if (COL_ACTION_ID < 0 || COL_ACTION_ID >= fields.length) {
-                return null;
-            }
-            if (COL_CA_TYPE < 0 || COL_CA_TYPE >= fields.length) {
-                return null;
-            }
-            if (COL_CA_DATETIME < 0 || COL_CA_DATETIME >= fields.length) {
-                return null;
-            }
-            if (COL_SYMBOL < 0 || COL_SYMBOL >= fields.length) {
-                return null;
-            }
-            if (COL_QUANTITY < 0 || COL_QUANTITY >= fields.length) {
-                return null;
-            }
-
-            RawCorporateActionRow row = new RawCorporateActionRow();
-            row.actionId = fields[COL_ACTION_ID].trim();
-            row.accountId = (COL_CLIENT_ACCOUNT_ID >= 0 && COL_CLIENT_ACCOUNT_ID < fields.length)
-                    ? fields[COL_CLIENT_ACCOUNT_ID].trim()
-                    : "";
-            row.type = fields[COL_CA_TYPE].trim();
-            row.code = (COL_CODE >= 0 && COL_CODE < fields.length) ? fields[COL_CODE].trim() : "";
-            row.symbol = fields[COL_SYMBOL].trim();
-            row.quantity = parseDecimal(fields[COL_QUANTITY]);
-            row.dateTimeStr = fields[COL_CA_DATETIME].trim();
-            if (row.dateTimeStr.isEmpty() && COL_CA_REPORT_DATE >= 0 && COL_CA_REPORT_DATE < fields.length) {
-                row.dateTimeStr = fields[COL_CA_REPORT_DATE].trim();
-            }
-            row.actionDescription = (COL_CA_ACTION_DESCRIPTION >= 0 && COL_CA_ACTION_DESCRIPTION < fields.length)
-                    ? fields[COL_CA_ACTION_DESCRIPTION].trim()
-                    : ((COL_NAME >= 0 && COL_NAME < fields.length) ? fields[COL_NAME].trim() : "");
-
-            if (row.actionId.isEmpty() || row.type.isEmpty() || row.symbol.isEmpty()) {
-                return null;
-            }
-
-            // Type filter (RS/TC/IC/TO)
-            if (!isCorporateActionTypeAllowed(row.type)) {
-                return null;
-            }
-            if (row.dateTimeStr.isEmpty()) {
-                // Should not happen for well-formed exports
-                logger.warning("Corporate action row missing Date/Time for ActionID=" + row.actionId);
-                return null;
-            }
-            return row;
-        } catch (Exception e) {
-            logger.warning("Failed to parse corporate action row: " + e.getMessage());
-            return null;
-        }
-    }
 
     private Vector<Transaction> buildCorporateActionsFromActionIdNetting(List<RawCorporateActionRow> rows) {
         Map<String, List<RawCorporateActionRow>> byActionId = new LinkedHashMap<>();
@@ -1792,8 +1738,8 @@ public class IBKRFlexParser {
 
             // Essential fields
             row.ibOrderId = fields[COL_IB_ORDER_ID].trim();
-            row.quantity = parseDouble(fields[COL_QUANTITY]);
-            row.price = parseDouble(fields[COL_PRICE]);
+            row.quantity = NumberParser.parseDouble(fields[COL_QUANTITY]);
+            row.price = NumberParser.parseDouble(fields[COL_PRICE]);
             row.commission = (COL_COMMISSION >= 0 && COL_COMMISSION < fields.length)
                     ? parseDecimal(fields[COL_COMMISSION])
                     : BigDecimal.ZERO; // Keep original sign
@@ -1814,7 +1760,7 @@ public class IBKRFlexParser {
 
             // Multiplier
             double multiplier = (COL_MULTIPLIER >= 0 && COL_MULTIPLIER < fields.length)
-                    ? parseDouble(fields[COL_MULTIPLIER])
+                    ? NumberParser.parseDouble(fields[COL_MULTIPLIER])
                     : 1.0;
             row.quantity *= multiplier;
 
@@ -2173,15 +2119,15 @@ public class IBKRFlexParser {
                 : "";
 
         // Parse raw quantity (may be negative for SELL orders)
-        double rawQuantity = parseDouble(fields[COL_QUANTITY]);
+        double rawQuantity = NumberParser.parseDouble(fields[COL_QUANTITY]);
 
         // Apply multiplier (contract size for options/futures, typically 1 for stocks)
         double multiplier = (COL_MULTIPLIER >= 0 && COL_MULTIPLIER < fields.length)
-                ? parseDouble(fields[COL_MULTIPLIER])
+                ? NumberParser.parseDouble(fields[COL_MULTIPLIER])
                 : 1.0;
         double quantity = rawQuantity * multiplier;
 
-        double price = parseDouble(fields[COL_PRICE]);
+        double price = NumberParser.parseDouble(fields[COL_PRICE]);
 
         String currency = (COL_CURRENCY >= 0 && COL_CURRENCY < fields.length)
                 ? fields[COL_CURRENCY].trim()
@@ -2238,7 +2184,7 @@ public class IBKRFlexParser {
             total = price * amount;
         } else {
             // Sell: use net proceeds if available, otherwise calculate
-            total = (COL_NET_PROCEEDS >= 0 && COL_NET_PROCEEDS < fields.length) ? parseDouble(fields[COL_NET_PROCEEDS])
+            total = (COL_NET_PROCEEDS >= 0 && COL_NET_PROCEEDS < fields.length) ? NumberParser.parseDouble(fields[COL_NET_PROCEEDS])
                     : price * amount;
         }
 
@@ -2401,7 +2347,7 @@ public class IBKRFlexParser {
                 ticker = forcedTicker;
             }
 
-            double amount = parseDouble(fields[COL_CTRN_AMOUNT]);
+            double amount = NumberParser.parseDouble(fields[COL_CTRN_AMOUNT]);
             if (amount == 0.0) {
                 return null;
             }
@@ -2564,7 +2510,7 @@ public class IBKRFlexParser {
         r.dateTimeStr = fields[COL_FXTR_DATETIME] != null ? fields[COL_FXTR_DATETIME].trim() : "";
         r.fxCurrency = fields[COL_FXTR_FX_CURRENCY] != null ? fields[COL_FXTR_FX_CURRENCY].trim() : "";
         r.activityDescription = desc;
-        r.quantity = parseDouble(fields[COL_FXTR_QUANTITY]);
+        r.quantity = NumberParser.parseDouble(fields[COL_FXTR_QUANTITY]);
         if (r.dateTimeStr.isEmpty() || r.fxCurrency.isEmpty())
             return;
         if (r.quantity == 0.0)
@@ -2835,7 +2781,7 @@ public class IBKRFlexParser {
         // Extract share change from Quantity column (index 33)
         // Negative = shares removed (old ticker, e.g., CODX.OLD: -1370)
         // Positive = shares added (new ticker, e.g., CODX: +45.6667)
-        double shareChange = parseDouble(fields[33]);
+        double shareChange = NumberParser.parseDouble(fields[33]);
 
         if (shareChange == 0) {
             logger.fine("Skipping corporate action with zero share change for " + ticker);
@@ -2931,19 +2877,6 @@ public class IBKRFlexParser {
                 " " + amount + " shares (Code: " + code + ")");
 
         return t;
-    }
-
-    private double parseDouble(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return 0.0;
-        }
-
-        try {
-            String cleaned = value.replaceAll("[^0-9.-]", "");
-            return Double.parseDouble(cleaned);
-        } catch (NumberFormatException e) {
-            return 0.0;
-        }
     }
 
     /**
@@ -3077,150 +3010,6 @@ public class IBKRFlexParser {
         return note.toString();
     }
 
-    /**
-     * Process corporate actions to remove redundant rows and apply time offsets.
-     * 
-     * Handles two main patterns:
-     * 1. RS (Reverse Splits): May have 4 rows with canceling pairs (e.g., EVFM)
-     * 2. TC (Ticker Changes): Each ticker is a different asset, keep all
-     * 
-     * Also ensures:
-     * - TRANS_SUB (removals) always come before TRANS_ADD (additions)
-     * - Sequential +1 second time offsets to prevent duplicate timestamps
-     * - Notes updated to indicate time adjustments
-     * 
-     * @param transactions All parsed transactions including corporate actions
-     * @return Processed transactions with filtering and time offsets applied
-     */
-    private Vector<Transaction> processCorporateActions(Vector<Transaction> transactions) {
-        Vector<Transaction> regularTrades = new Vector<>();
-        Vector<Transaction> corporateActions = new Vector<>();
-
-        // Separate corporate actions from regular trades
-        for (Transaction t : transactions) {
-            if (t.getDirection() == Transaction.DIRECTION_TRANS_ADD ||
-                    t.getDirection() == Transaction.DIRECTION_TRANS_SUB) {
-                corporateActions.add(t);
-            } else {
-                regularTrades.add(t);
-            }
-        }
-
-        if (corporateActions.isEmpty()) {
-            return transactions; // No corporate actions to process
-        }
-
-        logger.info("Processing " + corporateActions.size() + " corporate action transactions");
-
-        // Group corporate actions by event (same date and note prefix)
-        Map<String, Vector<Transaction>> events = groupCorporateActionsByEvent(corporateActions);
-
-        Vector<Transaction> processedCA = new Vector<>();
-        int filteredCount = 0;
-
-        for (Map.Entry<String, Vector<Transaction>> entry : events.entrySet()) {
-            Vector<Transaction> eventTxns = entry.getValue();
-            int originalCount = eventTxns.size();
-
-            // Determine if this is RS or TC based on note content
-            boolean isReversSplit = eventTxns.get(0).getNote().contains("RS:");
-
-            Vector<Transaction> filtered;
-            if (isReversSplit) {
-                filtered = filterReverseSplit(eventTxns);
-            } else {
-                filtered = filterTickerChange(eventTxns);
-            }
-
-            filteredCount += (originalCount - filtered.size());
-
-            // Check if event has zero net effect (shares sold before corporate action)
-            // Only check RS events (TC events rarely have this pattern)
-            if (isReversSplit && isZeroNetEvent(filtered)) {
-                String ticker = extractTickerFromNote(filtered.get(0).getNote());
-                String eventDate = new SimpleDateFormat("yyyy-MM-dd").format(filtered.get(0).getDate());
-
-                skippedZeroNetEvents++;
-                skippedZeroNetTickers.add(ticker);
-
-                // Verbose logging as requested
-                logger.info(String.format(
-                        "Skipped zero-net RS: %s (filtered %d→%d rows, net: 0.0 shares, date: %s, reason: shares sold before split)",
-                        ticker, originalCount, filtered.size(), eventDate));
-
-                // Skip adding to result - don't import these transactions
-                continue;
-            }
-
-            // This is a legitimate corporate action - count it
-            importedCorporateActionEvents++;
-
-            // Sort: SUB before ADD (critical for portfolio calculations)
-            sortTransactionsByDirection(filtered);
-
-            // Apply time offsets to prevent duplicate timestamps
-            applyTimeOffsets(filtered);
-
-            processedCA.addAll(filtered);
-        }
-
-        // Final ordering for preview/merge stability:
-        // Always show OUT (TRANS_SUB) before IN (TRANS_ADD) within the same day.
-        // This improves readability in import preview and keeps transformation pairs
-        // consistent.
-        processedCA.sort((t1, t2) -> {
-            Date d1 = t1.getDate();
-            Date d2 = t2.getDate();
-            if (d1 != null && d2 != null) {
-                java.util.Calendar c1 = java.util.Calendar.getInstance();
-                java.util.Calendar c2 = java.util.Calendar.getInstance();
-                c1.setTime(d1);
-                c2.setTime(d2);
-                // Compare only by day first
-                int y1 = c1.get(java.util.Calendar.YEAR);
-                int y2 = c2.get(java.util.Calendar.YEAR);
-                if (y1 != y2)
-                    return Integer.compare(y1, y2);
-                int m1 = c1.get(java.util.Calendar.MONTH);
-                int m2 = c2.get(java.util.Calendar.MONTH);
-                if (m1 != m2)
-                    return Integer.compare(m1, m2);
-                int day1 = c1.get(java.util.Calendar.DAY_OF_MONTH);
-                int day2 = c2.get(java.util.Calendar.DAY_OF_MONTH);
-                if (day1 != day2)
-                    return Integer.compare(day1, day2);
-            }
-
-            // Same day (or missing dates): OUT before IN
-            int dirCmp = Integer.compare(t1.getDirection(), t2.getDirection());
-            if (dirCmp != 0)
-                return dirCmp;
-
-            // Same direction: sort by time
-            if (d1 != null && d2 != null) {
-                int timeCmp = d1.compareTo(d2);
-                if (timeCmp != 0)
-                    return timeCmp;
-            }
-
-            // Stable tie-breakers
-            int tickerCmp = String.valueOf(t1.getTicker()).compareToIgnoreCase(String.valueOf(t2.getTicker()));
-            if (tickerCmp != 0)
-                return tickerCmp;
-            return Double.compare(Math.abs(t2.getAmount()), Math.abs(t1.getAmount()));
-        });
-
-        if (filteredCount > 0) {
-            logger.info("Filtered " + filteredCount + " redundant corporate action rows");
-        }
-
-        // Merge regular trades and processed corporate actions
-        Vector<Transaction> result = new Vector<>();
-        result.addAll(regularTrades);
-        result.addAll(processedCA);
-
-        return result;
-    }
 
     /**
      * Group corporate actions by event (same date and description pattern).
@@ -3548,7 +3337,7 @@ public class IBKRFlexParser {
             r.type = (COL_CTRN_TYPE >= 0 && COL_CTRN_TYPE < fields.length) ? fields[COL_CTRN_TYPE].trim() : "";
             r.symbol = (COL_SYMBOL >= 0 && COL_SYMBOL < fields.length) ? fields[COL_SYMBOL].trim() : "";
             r.description = (COL_NAME >= 0 && COL_NAME < fields.length) ? fields[COL_NAME].trim() : "";
-            r.amount = (COL_CTRN_AMOUNT >= 0 && COL_CTRN_AMOUNT < fields.length) ? parseDouble(fields[COL_CTRN_AMOUNT])
+            r.amount = (COL_CTRN_AMOUNT >= 0 && COL_CTRN_AMOUNT < fields.length) ? NumberParser.parseDouble(fields[COL_CTRN_AMOUNT])
                     : 0.0;
             r.currency = (COL_CURRENCY >= 0 && COL_CURRENCY < fields.length) ? fields[COL_CURRENCY].trim() : "CZK";
             r.dateTimeStr = (COL_CTRN_DATETIME >= 0 && COL_CTRN_DATETIME < fields.length)

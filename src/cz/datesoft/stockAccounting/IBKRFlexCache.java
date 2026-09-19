@@ -10,9 +10,12 @@ package cz.datesoft.stockAccounting;
 import java.io.*;
 import java.nio.file.*;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
+
+import org.json.JSONObject;
 
 public class IBKRFlexCache {
 
@@ -160,11 +163,58 @@ public class IBKRFlexCache {
 
         Path cacheIndexFile = getUnifiedDir().resolve("cache_index.json");
         if (!Files.exists(cacheIndexFile)) {
+            // Fallback: scan directory for CSV files (legacy behaviour)
+            loadCacheFromDirectoryScan();
             return;
         }
 
         try {
             String content = Files.readString(cacheIndexFile);
+            if (content.trim().isEmpty()) {
+                loadCacheFromDirectoryScan();
+                return;
+            }
+
+            JSONObject root = new JSONObject(content);
+            for (String key : root.keySet()) {
+                try {
+                    JSONObject obj = root.getJSONObject(key);
+                    int year = obj.getInt("year");
+                    String filePathStr = obj.getString("filePath");
+                    Path filePath = Paths.get(filePathStr);
+
+                    if (Files.exists(filePath)) {
+                        CachedYear cached = new CachedYear();
+                        cached.year = year;
+                        cached.filePath = filePath;
+                        if (obj.has("cachedAt")) {
+                            cached.cachedAt = LocalDateTime.parse(
+                                obj.getString("cachedAt"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                        } else {
+                            cached.cachedAt = LocalDateTime.now();
+                        }
+                        cache.put(year, cached);
+                    } else {
+                        logger.warning("Cached file no longer exists: " + filePathStr);
+                    }
+                } catch (Exception e) {
+                    logger.warning("Failed to parse cache entry for key '" + key + "': " + e.getMessage());
+                }
+            }
+
+            logger.info("Loaded " + cache.size() + " cached years from disk (from index)");
+        } catch (Exception e) {
+            logger.warning("Failed to load cache index, falling back to directory scan: " + e.getMessage());
+            loadCacheFromDirectoryScan();
+        }
+    }
+
+    /**
+     * Fallback: scan cache directory for CSV files matching the naming pattern.
+     * Used when cache_index.json is missing or corrupt.
+     */
+    private void loadCacheFromDirectoryScan() {
+        try {
             File cacheDir = getUnifiedDir().toFile();
             File[] csvFiles = cacheDir.listFiles((dir, name) -> 
                     name.endsWith(".csv") && name.startsWith("ibkr_flex_"));
@@ -190,14 +240,32 @@ public class IBKRFlexCache {
                 }
             }
 
-            logger.info("Loaded " + cache.size() + " cached years from disk");
+            logger.info("Loaded " + cache.size() + " cached years from disk (directory scan)");
         } catch (Exception e) {
-            logger.warning("Failed to load cache index: " + e.getMessage());
+            logger.warning("Failed to scan cache directory: " + e.getMessage());
         }
     }
 
     private void saveCacheIndex() {
-        logger.info("Cache index saved");
+        try {
+            Path cacheIndexFile = getUnifiedDir().resolve("cache_index.json");
+            Files.createDirectories(cacheIndexFile.getParent());
+
+            JSONObject root = new JSONObject();
+            for (Map.Entry<Integer, CachedYear> entry : cache.entrySet()) {
+                CachedYear cy = entry.getValue();
+                JSONObject obj = new JSONObject();
+                obj.put("year", cy.year);
+                obj.put("filePath", cy.filePath.toString());
+                obj.put("cachedAt", cy.cachedAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                root.put(String.valueOf(cy.year), obj);
+            }
+
+            Files.writeString(cacheIndexFile, root.toString(2));
+            logger.info("Cache index saved (" + cache.size() + " entries)");
+        } catch (Exception e) {
+            logger.warning("Failed to save cache index: " + e.getMessage());
+        }
     }
 
     private static class CachedYear {

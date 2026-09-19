@@ -86,37 +86,6 @@ public class Trading212ApiClient {
         return responseBody;
     }
 
-    /**
-     * Fetch historical orders with pagination support
-     */
-    public String fetchHistoricalOrdersPaginated(String nextPagePath)
-        throws IOException, InterruptedException {
-
-        enforceRateLimit();
-
-        String url = nextPagePath.startsWith("http")
-            ? nextPagePath
-            : baseUrl + nextPagePath;
-
-        HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Authorization", authHeader)
-            .header("Accept", "application/json")
-            .GET()
-            .build();
-
-        logger.info("Fetching paginated orders from: " + url);
-
-        HttpResponse<String> response = httpClient.send(request,
-            HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() != 200) {
-            throw new IOException("API request failed with status " + response.statusCode() +
-                ": " + response.body());
-        }
-
-        return response.body();
-    }
 
     /**
      * Enforce rate limiting (6 requests per minute)

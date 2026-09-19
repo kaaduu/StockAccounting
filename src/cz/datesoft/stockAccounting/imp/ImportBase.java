@@ -9,6 +9,7 @@
 
 package cz.datesoft.stockAccounting.imp;
 
+import cz.datesoft.stockAccounting.NumberParser;
 import java.util.Vector;
 import java.io.File;
 import java.util.Date;
@@ -66,8 +67,6 @@ public abstract class ImportBase
    */
   private HashMap<String, Integer> _columnNames;
   
-  private final CharsetDecoder DECODER_WIN1250 = Charset.forName("Windows-1250").newDecoder();
-  private final CharsetDecoder DECODER_ISO88592 = Charset.forName("ISO-8859-2").newDecoder();
   
   /**
    * Set identity of a column by a number
@@ -169,13 +168,7 @@ public abstract class ImportBase
    */
   protected static double parseNumber(String value)
   {
-    // Remove all non-numeric and non-comma characters
-    String s = value.replaceAll("[^0-9,.]+", "");
-    
-    if (s.length() == 0) return 0; // Empty string is 0
-    
-    // Convert comma to dot and return
-    return Double.parseDouble(s.replace(',','.'));
+    return NumberParser.parseDouble(value);
   }
   
   /**

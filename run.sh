@@ -49,7 +49,14 @@ elif [ -f "StockAccounting.jar" ]; then
 else
     # Fallback to build directory
     echo "No JAR found, trying build directory..."
-    java -cp "build:libjar/*" cz.datesoft.stockAccounting.Main 2>&1
+    # Exclude debug jars from classpath (same as Gradle build)
+    CP="build"
+    for jar in libjar/*.jar; do
+        if [ -f "$jar" ] && [[ ! "$jar" =~ debug ]]; then
+            CP="$CP:$jar"
+        fi
+    done
+    java -cp "$CP" cz.datesoft.stockAccounting.Main 2>&1
     exit $?
 fi
 

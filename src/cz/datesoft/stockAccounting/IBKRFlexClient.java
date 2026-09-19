@@ -25,7 +25,6 @@ public class IBKRFlexClient {
     private static final Logger logger = Logger.getLogger(IBKRFlexClient.class.getName());
     private static final String BASE_URL = "https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService";
     private static final int MAX_WAIT_MINUTES = 10;
-    private static final int POLL_INTERVAL_SECONDS = 5;
     private static final int CONNECT_TIMEOUT_SECONDS = 10;
     private static final int READ_TIMEOUT_SECONDS = 30;
     private static final int REQUEST_TIMEOUT_SECONDS = 60;

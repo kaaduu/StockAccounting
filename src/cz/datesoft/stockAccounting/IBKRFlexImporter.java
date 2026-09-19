@@ -22,7 +22,6 @@ public class IBKRFlexImporter {
     @SuppressWarnings("unused")
     private static final String CACHE_DIR = System.getProperty("user.home") + "/.ibkr_flex";
     @SuppressWarnings("unused")
-    private static final String CACHE_FILE = CACHE_DIR + "/year_cache.json";
 
     private final String flexToken;
     private final String queryId;

@@ -112,9 +112,43 @@ public class Trading212ReportCache {
                 return;
             }
 
-            // Simple JSON parsing for cache loading
-            // In production, this would use proper JSON parsing
-            // For now, we'll just initialize empty cache
+            // Parse JSON cache
+            org.json.JSONObject root = new org.json.JSONObject(content);
+            for (String key : root.keySet()) {
+                try {
+                    long reportId = Long.parseLong(key);
+                    org.json.JSONObject obj = root.getJSONObject(key);
+
+                    CachedReportStatus cached = new CachedReportStatus();
+                    cached.reportId = reportId;
+
+                    String statusStr = obj.getString("status");
+                    cached.status = Trading212CsvClient.CsvReportStatus.ReportStatus.valueOf(statusStr);
+
+                    cached.downloadUrl = obj.optString("downloadUrl", null);
+
+                    if (obj.has("cachedAt")) {
+                        cached.cachedAt = LocalDateTime.parse(
+                            obj.getString("cachedAt"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                    } else {
+                        cached.cachedAt = LocalDateTime.now();
+                    }
+
+                    if (obj.has("expiresAt")) {
+                        cached.expiresAt = LocalDateTime.parse(
+                            obj.getString("expiresAt"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                    } else {
+                        // Default: expire in 1 hour
+                        cached.expiresAt = LocalDateTime.now().plusHours(1);
+                    }
+
+                    reportCache.put(reportId, cached);
+                } catch (Exception e) {
+                    logger.warning("Failed to parse cache entry for reportId '" + key + "': " + e.getMessage());
+                }
+            }
+
+            logger.info("Loaded " + reportCache.size() + " cached report statuses from disk");
 
         } catch (Exception e) {
             logger.warning("Failed to load report cache: " + e.getMessage());
